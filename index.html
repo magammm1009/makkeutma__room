@@ -1541,7 +1541,7 @@
     // - 전환 기준은 [자동 전환]의 휴식/자리비움(분) 값을 사용 (자동 감지 ON일 때만)
     // -----------------------------
     const LS_IDLE_DETECT = "mk_idle_detect_enabled_v1";
-    const IDLE_DETECTOR_THRESHOLD_MS = 30 * 1000; // 30초: 디바이스 'idle' 판정 기준(고정)
+    const IDLE_DETECTOR_THRESHOLD_MS = 60 * 1000; // ⚠️ Chrome/Edge IdleDetector는 최소 60초(threshold>=1분) 필요
 
     function idleDetectSupported(){
       try{ return ("IdleDetector" in window); }catch(e){ return false; }
@@ -1683,7 +1683,27 @@
     async function startIdleDetectionCore(){
       // 권한이 이미 있으면(또는 방금 받았으면) 조용히 시작
       const det = new IdleDetector();
-      await det.start({ threshold: IDLE_DETECTOR_THRESHOLD_MS });
+      // IdleDetector는 브라우저 제한으로 threshold 최소 60,000ms(1분)
+      let _thr = Number(IDLE_DETECTOR_THRESHOLD_MS);
+      if (!Number.isFinite(_thr)) _thr = 60 * 1000;
+      _thr = Math.max(60 * 1000, Math.floor(_thr));
+      try {
+        await det.start({ threshold: _thr });
+      } catch (e) {
+        // 일부 환경에서 값이 잘못 전달되면 'Minimum threshold is 1 minute'로 실패함 → 60초로 재시도
+        const msg = String(e && (e.message || e));
+        if (e?.name === 'TypeError' || msg.includes('Minimum threshold') || msg.includes('1 minute')) {
+          try {
+            _thr = 60 * 1000;
+            await det.start({ threshold: _thr });
+          } catch (e2) {
+            throw e2;
+          }
+        } else {
+          throw e;
+        }
+      }
+      state._idleDetectorThresholdMs = _thr;
       state._idleDetector = det;
 
       // idle 상태 시작 시각
@@ -1751,7 +1771,17 @@
         console.warn(e);
         setIdleDetectEnabled(false);
         stopIdleDetection();
-        showToast("자동 감지를 켤 수 없었어 😢 (환경 제한)");
+        {
+        const msg = (e && (e.message||e.toString())) ? (e.message||e.toString()) : "";
+        // Chrome/Edge: threshold 최소 1분 제약 등
+        if(/minimum\s+threshold\s+is\s+1\s*minute/i.test(msg) || /threshold/i.test(msg) && /minute/i.test(msg)){
+          showToast("자동 감지 기준은 브라우저 제한으로 최소 1분이야 🙏 (휴식/자리비움 분 기준은 그대로 적용돼)");
+        }else if(/NotAllowedError/i.test(msg) || /permission/i.test(msg)){
+          showToast("자동 감지가 차단됐어 😢 (권한/정책 제한). 그래도 기본 자동전환은 계속 동작해!");
+        }else{
+          showToast("자동 감지를 켤 수 없었어 😢 (환경 제한)");
+        }
+      }
       }
     }
 
@@ -4993,7 +5023,7 @@ async function joinRoom(){
       els.meHint.textContent = name;
       try{ if(els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
       showToast("입장!");
-      // ✅ 30초마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
+      // ✅ 1분+마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
       try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, 30000); }catch(e){}
       // ✅ 입장 사운드(모두에게): 나는 즉시 재생, 다른 사람은 sfx 이벤트로 재생
