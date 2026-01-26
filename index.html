@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
-<title>마끝마</title>
+  <title>마끝마💗</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
   <style>
     :root{
       --panel:rgba(255,255,255,.06);
@@ -1153,7 +1153,7 @@
   <div class="topbar">
     <div class="brand">
       <span class="dot" title="방 불"></span>
-      <div class="brandTitle">마끝마</div>
+      <div class="brandTitle">💗마끝마💗</div>
     </div>
 
     <!-- 가운데: 상태표시 + 내프로필 -->
@@ -1391,6 +1391,18 @@
         </div>
 
         <div class="row">
+  <label>자동 감지</label>
+  <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap; align-items:center; justify-content:center;">
+    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+      <input id="idleDetectEnabled" type="checkbox" style="width:18px; height:18px;">
+      <span class="tiny" style="opacity:.95;">켜기</span>
+    </label>
+    <span id="idleDetectStatus" class="tiny" style="opacity:.85;">꺼짐</span>
+  </div>
+  <span class="tiny">크롬/엣지에서 PC 전체 입력(키보드/마우스) 기준으로 작업중/휴식/자리비움 자동 전환을 도와줘요. (정확한 “글쓰기 감지”는 아니고 “활동 감지”예요)</span>
+</div>
+
+<div class="row">
           <label>자동 전환</label>
           <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
             <div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
@@ -1402,7 +1414,7 @@
               <input id="autoIdleMin" type="number" min="1" max="180" value="15" style="width:76px">
             </div>
           </div>
-          <span class="tiny">작업중일 때만 적용돼요. (기본: 10/15분)</span>
+          <span class="tiny">자동 감지를 켰을 때만 설정할 수 있어요. (기본: 10/15분)</span>
         </div>
 
 <div class="row">
@@ -1505,12 +1517,7 @@
     // ✅ 클라이언트 입장키(간이 게이트)
     // - 보안 "강화"용(완전 차단은 Firestore Rules/인증이 필요)
     // -----------------------------
-    const ROOM_PASS_HASH = "1cbf9cd246f75abd2f4c4ce96d8a62d99cd76e90089ad6f0c9e92dd48983922a";
-    // 🔒 실제 비밀번호 문자열은 파일에 남기지 않기 위해 해시만 저장해요.
-    //    비번을 바꾸려면, 아래 해시를 새 비번의 SHA-256로 교체하면 됩니다.
-
-    
-
+    const ROOM_PASS_SHA256 = "0a34102dc560b97344f99ed8369092fc9921804a4a6101118485ac946f0739e8";
     // ✅ Root helpers (module 최상단) — 스코프 꼬임/중복 선언 방지
     function showToast(msg, ms=1600){
       try{
@@ -1525,7 +1532,245 @@
       }
     }
 
-    // ✅ 집중시간(24시간 누적, 자정 리셋) — 최상단 전역 유틸
+
+    // -----------------------------
+    
+    // -----------------------------
+    // ✅ Idle Detection — "웹 밖 작업"에서도 PC 활동(입력) 기반으로 자동 전환 보강 (Chrome/Edge)
+    // - 첫 1회 권한 허용 필요
+    // - 전환 기준은 [자동 전환]의 휴식/자리비움(분) 값을 사용 (자동 감지 ON일 때만)
+    // -----------------------------
+    const LS_IDLE_DETECT = "mk_idle_detect_enabled_v1";
+    const IDLE_DETECTOR_THRESHOLD_MS = 30 * 1000; // 30초: 디바이스 'idle' 판정 기준(고정)
+
+    function idleDetectSupported(){
+      try{ return ("IdleDetector" in window); }catch(e){ return false; }
+    }
+    function isIdleDetectEnabled(){
+      try{ return localStorage.getItem(LS_IDLE_DETECT) === "1"; }catch(e){ return false; }
+    }
+    function setIdleDetectEnabled(v){
+      try{ localStorage.setItem(LS_IDLE_DETECT, v ? "1" : "0"); }catch(e){}
+    }
+
+    function getAutoBreakMs(){
+      try{
+        const v = Math.min(180, Math.max(1, Number(els.autoBreakMin?.value || 10)));
+        return v * 60 * 1000;
+      }catch(e){ return 10 * 60 * 1000; }
+    }
+    function getAutoIdleMs(){
+      try{
+        const v = Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15)));
+        return v * 60 * 1000;
+      }catch(e){ return 15 * 60 * 1000; }
+    }
+
+    function setAutoTransitionInputsEnabled(enabled){
+      try{
+        if(els.autoBreakMin) els.autoBreakMin.disabled = !enabled;
+        if(els.autoIdleMin)  els.autoIdleMin.disabled  = !enabled;
+        // 시각적 힌트
+        const wrap = els.autoBreakMin?.closest(".row")?.querySelector("div[style*='gap:10px']");
+        if(wrap) wrap.style.opacity = enabled ? "1" : ".55";
+      }catch(e){}
+    }
+
+    function refreshIdleDetectUI(){
+      try{
+        const chk = els.idleDetectEnabled;
+        const st  = els.idleDetectStatus;
+        const enabled = isIdleDetectEnabled();
+
+        // 기본: 자동 감지 ON일 때만 자동 전환 값 수정 가능
+        setAutoTransitionInputsEnabled(enabled);
+
+        if(chk){
+          chk.checked = enabled;
+          chk.disabled = !idleDetectSupported();
+        }
+        if(!st) return;
+
+        if(!idleDetectSupported()){
+          st.textContent = "미지원 😢";
+          return;
+        }
+        const det = state._idleDetector;
+        if(enabled && det){
+          const us = det.userState || "?";
+          const ss = det.screenState || "?";
+          st.textContent = `켜짐 • ${us}${ss ? " / "+ss : ""}`;
+        }else{
+          st.textContent = enabled ? "켜짐" : "꺼짐";
+        }
+      }catch(e){}
+    }
+
+    function stopIdleDetection(){
+      try{
+        if(state._idleEvalTimer) clearInterval(state._idleEvalTimer);
+        state._idleEvalTimer = null;
+      }catch(e){}
+      try{
+        state._idleDetector = null; // spec상 stop() 없음 → 참조 해제
+      }catch(e){}
+      try{
+        state._idleSince = null;
+        state._idleAutoReason = null;
+      }catch(e){}
+      refreshIdleDetectUI();
+    }
+
+    async function evaluateIdleDetect(){
+      try{
+        if(!state.joined || !state.uid) return;
+        if(!isIdleDetectEnabled()) return;
+
+        const det = state._idleDetector;
+        if(!det) return;
+
+        const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
+        const status = me?.status || "idle";
+
+        const isLocked = det.screenState === "locked";
+        const isIdle = (det.userState === "idle") || isLocked;
+
+        if(!isIdle) return;
+
+        // locked는 즉시 자리비움 취급
+        if(isLocked){
+          if(status !== "idle"){
+            state.autoStatus = "idle";
+            state.autoStatusAt = Date.now();
+            state._idleAutoReason = "idleDetect";
+            await transitionTo("idle");
+          }
+          return;
+        }
+
+        const since = state._idleSince || Date.now();
+        const idleFor = Date.now() - since;
+
+        const breakMs = getAutoBreakMs();
+        const idleMs  = getAutoIdleMs();
+
+        // 자리비움(분) >= 휴식(분) 보정(안전)
+        if(idleMs < breakMs){
+          // 입력값은 applyProfile 저장 시에도 보정하지만,
+          // 여기서는 로직만 안전하게
+        }
+
+        // 작업 → 휴식
+        if(status === "work" && idleFor >= breakMs){
+          state.autoStatus = "break";
+          state.autoStatusAt = Date.now();
+          state._idleAutoReason = "idleDetect";
+          await transitionTo("break");
+          return;
+        }
+
+        // 작업/휴식 → 자리비움
+        if((status === "work" || status === "break") && idleFor >= idleMs){
+          state.autoStatus = "idle";
+          state.autoStatusAt = Date.now();
+          state._idleAutoReason = "idleDetect";
+          await transitionTo("idle");
+          return;
+        }
+      }catch(e){}
+    }
+
+    async function startIdleDetectionCore(){
+      // 권한이 이미 있으면(또는 방금 받았으면) 조용히 시작
+      const det = new IdleDetector();
+      await det.start({ threshold: IDLE_DETECTOR_THRESHOLD_MS });
+      state._idleDetector = det;
+
+      // idle 상태 시작 시각
+      state._idleSince = null;
+
+      async function onChange(){
+        try{
+          refreshIdleDetectUI();
+          if(!state.joined || !state.uid) return;
+
+          const d = state._idleDetector;
+          if(!d) return;
+
+          // active로 돌아오면 idleSince 초기화 + (자동으로 내려갔던 경우만) 작업 복귀
+          if(d.userState === "active" && d.screenState !== "locked"){
+            state.lastActivityMs = Date.now();
+            state._idleSince = null;
+
+            const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
+            const status = me?.status || "idle";
+            if(state._idleAutoReason === "idleDetect" && status !== "work"){
+              state.autoStatus = null;
+              state._idleAutoReason = null;
+              await transitionTo("work");
+            }
+            return;
+          }
+
+          // idle/locked 진입 시각 기록
+          if(!state._idleSince) state._idleSince = Date.now();
+
+          // 즉시 평가(locked는 여기서 바로 처리)
+          await evaluateIdleDetect();
+        }catch(e){}
+      }
+
+      det.addEventListener("change", onChange);
+      await onChange();
+
+      // 주기 평가: 휴식/자리비움(분) 기준까지 대기
+      if(state._idleEvalTimer) clearInterval(state._idleEvalTimer);
+      state._idleEvalTimer = setInterval(()=>{ evaluateIdleDetect(); }, 5000);
+    }
+
+    async function enableIdleDetectionFromUI(){
+      if(!idleDetectSupported()){
+        showToast("이 브라우저는 자동 감지를 지원하지 않아 😢");
+        setIdleDetectEnabled(false);
+        stopIdleDetection();
+        return;
+      }
+      try{
+        const perm = await IdleDetector.requestPermission();
+        if(perm !== "granted"){
+          setIdleDetectEnabled(false);
+          stopIdleDetection();
+          showToast("권한이 거부됐어 (브라우저 설정에서 다시 켤 수 있어)");
+          return;
+        }
+        await startIdleDetectionCore();
+        setIdleDetectEnabled(true);
+        refreshIdleDetectUI();
+        showToast("자동 감지 켜짐");
+      }catch(e){
+        console.warn(e);
+        setIdleDetectEnabled(false);
+        stopIdleDetection();
+        showToast("자동 감지를 켤 수 없었어 😢 (환경 제한)");
+      }
+    }
+
+    async function startIdleDetectionSilentIfEnabled(){
+      try{
+        if(!isIdleDetectEnabled()) return;
+        if(!idleDetectSupported()) return;
+        if(state._idleDetector) return;
+        await startIdleDetectionCore(); // 권한 없으면 실패 → UI로 유도
+        refreshIdleDetectUI();
+      }catch(e){
+        // 조용히 실패
+        stopIdleDetection();
+        refreshIdleDetectUI();
+      }
+    }
+
+
+// ✅ 집중시간(24시간 누적, 자정 리셋) — 최상단 전역 유틸
     const __LS_FOCUS_DAY = "mk_focus_day";
     const __LS_FOCUS_SEC = "mk_focus_sec";
     function __seoulDateKey(){
@@ -1734,9 +1979,6 @@
     }
 
 const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-    const LS_PASS_OK = "mk_room_pass_ok";
-    const LS_PASS_OK_EXP = "mk_room_pass_ok_exp";
-    // (호환성) 이전 버전 키
     const LS_PASS = "mk_room_pass";
     const LS_PASS_EXP = "mk_room_pass_exp";
     const LS_PROFILE = "mk_profile_pref_v1";
@@ -1783,22 +2025,24 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     }
     
 
-    
-    async function verifyRoomPass(pass){
+    async function sha256Hex(str){
       try{
-        const p = String(pass || "").trim();
-        if(!p) return false;
-        const h = await sha256Hex(p);
-        return h === ROOM_PASS_HASH;
-      }catch(e){ return false; }
+        const enc = new TextEncoder().encode(String(str||""));
+        const buf = await crypto.subtle.digest("SHA-256", enc);
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+      }catch(e){
+        // crypto.subtle 미지원 브라우저 대비(아주 구형): 그냥 실패 처리
+        return "";
+      }
     }
 
-    function loadPassOK(){
+    async function loadPassOK(){
       try{
-        const ok = localStorage.getItem(LS_PASS_OK) || "";
-        const exp = Number(localStorage.getItem(LS_PASS_OK_EXP) || 0);
-        if(ok === "1" && (!exp || exp > Date.now())){
+        const h = localStorage.getItem(LS_PASS) || "";
+        // ✅ 입장 패스는 '영구'로: exp(만료)와 무관하게 hash만 맞으면 통과
+        if(h && h === ROOM_PASS_SHA256){
           document.body.classList.add("passok");
+          // ✅ 비번(평문) 자동 채움 금지
           if(els.roomPass) els.roomPass.value = "";
           return true;
         }
@@ -1806,46 +2050,34 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
       document.body.classList.remove("passok");
       return false;
     }
-    function savePassOK(){
+    async function savePassOKHash(hash){
       try{
-        localStorage.setItem(LS_PASS_OK, "1");
-        localStorage.setItem(LS_PASS_OK_EXP, String(Date.now() + PASS_TTL_MS));
-        localStorage.removeItem(LS_PASS);
-        localStorage.removeItem(LS_PASS_EXP);
+        localStorage.setItem(LS_PASS, hash);
+        localStorage.setItem(LS_PASS_EXP, String(Date.now() + PASS_TTL_MS));
       }catch(e){}
       document.body.classList.add("passok");
     }
     function clearPass(){
-      try{
-        localStorage.removeItem(LS_PASS_OK);
-        localStorage.removeItem(LS_PASS_OK_EXP);
-        localStorage.removeItem(LS_PASS);
-        localStorage.removeItem(LS_PASS_EXP);
-      }catch(e){}
+      try{ localStorage.removeItem(LS_PASS); localStorage.removeItem(LS_PASS_EXP); }catch(e){}
       document.body.classList.remove("passok");
     }
     async function requirePassOK(){
-      if(loadPassOK()) return true;
+      if(await loadPassOK()) return true;
       const pass = (els.roomPass?.value || "").trim();
       if(!pass){
         showToast("입장키를 입력해줘!", 2500);
         try{ els.roomPass?.focus(); }catch(e){}
         return false;
       }
-      const ok = await verifyRoomPass(pass);
-      if(!ok){
-        if(!(window.crypto && crypto.subtle && window.isSecureContext)){
-          showToast("입장키 체크가 차단됐어! https(또는 Netlify/깃허브 pages)로 접속해줘 🙏", 3800);
-        }else{
-          showToast("입장키가 달라…", 2500);
-        }
+      const hash = await sha256Hex(pass);
+      if(!hash || hash !== ROOM_PASS_SHA256){
+        showToast("입장키를 입력해줘!", 2500);
         try{ els.roomPass?.focus(); }catch(e){}
         return false;
       }
-      savePassOK();
+      await savePassOKHash(hash);
       return true;
     }
-
 
     function loadLocalProfile(){
       try{
@@ -1876,16 +2108,20 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     measurementId: "G-CFQ6KZ7R7B"
   };
 
-    // Firebase imports (CDN)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc,
-      collection, onSnapshot, serverTimestamp, addDoc, query, orderBy, limit
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
+    // Firebase dynamic imports (CDN)
 ; (async ()=>{
+
+
+    // ✅ Firebase CDN을 '동적 import()'로 로드합니다.
+    // (type=module이 아닌 환경에서도 SyntaxError 없이 동작하도록)
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const {
+      getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc,
+      collection, onSnapshot, serverTimestamp, Timestamp, addDoc, query, orderBy, limit
+    } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { getAuth, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    const { getStorage, ref: sRef, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js");
+
 
 
     const app = initializeApp(firebaseConfig);
@@ -1977,6 +2213,8 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
       profileNick: $("profileNick"),
       autoBreakMin: $("autoBreakMin"),
       autoIdleMin: $("autoIdleMin"),
+      idleDetectEnabled: $("idleDetectEnabled"),
+      idleDetectStatus: $("idleDetectStatus"),
       applyProfile: $("applyProfile"),
 
       dashboardCard: $("dashboardCard"),
@@ -2056,6 +2294,10 @@ chatUnseen: 0,
       lastActivityMs: Date.now(),
       activityWatchTimer: null,
       activityThrottleMs: 0,
+      // ✅ 자동 휴식/자리비움 → 활동 감지 시 작업중 복귀용
+      autoStatus: null,
+      autoStatusAt: 0,
+      lastAutoWakeMs: 0,
       joined: false,
       ctxTarget: { uid:null, name:null },
 
@@ -2350,7 +2592,8 @@ function buildMissionEvent(action, m){
     name: name || "익명",
     text: (m?.text || "").trim().slice(0, 60),
     uid: state.uid || null,
-    tsMs: Date.now()
+    tsMs: Date.now(),
+    expireAt: Timestamp.fromMillis(Date.now() + 2*24*60*60*1000)
   };
 }
 
@@ -2779,90 +3022,11 @@ function showModal(el){ el.classList.add("show"); }
     function hideModal(el){ el.classList.remove("show"); }
 
     async function sha256Hex(text){
-      // Prefer WebCrypto when available (fast + native). Works on https/localhost.
-      try{
-        if(window.crypto && crypto.subtle && window.isSecureContext){
-          const enc = new TextEncoder().encode(text);
-          const hashBuf = await crypto.subtle.digest("SHA-256", enc);
-          const arr = Array.from(new Uint8Array(hashBuf));
-          return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
-        }
-      }catch(e){
-        console.warn("WebCrypto SHA-256 failed, falling back.", e);
-      }
-      // Fallback for file:// or restricted contexts
-      return sha256Fallback(String(text ?? ""));
+      const enc = new TextEncoder().encode(text);
+      const hashBuf = await crypto.subtle.digest("SHA-256", enc);
+      const arr = Array.from(new Uint8Array(hashBuf));
+      return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
     }
-
-    // ✅ SHA-256 fallback (for non-secure contexts like file://, or if crypto.subtle is unavailable)
-    //    - This keeps the "password not stored as plain text" behavior even outside https.
-    //    - Based on a compact public-domain style implementation.
-    function sha256Fallback(ascii){
-      function rightRotate(value, amount){ return (value>>>amount) | (value<<(32-amount)); }
-      var mathPow=Math.pow, maxWord=mathPow(2,32), lengthProperty='length';
-      var i, j, result='', words=[], asciiBitLength=ascii[lengthProperty]*8;
-
-      var hash=sha256Fallback.h=sha256Fallback.h||[];
-      var k=sha256Fallback.k=sha256Fallback.k||[];
-      var primeCounter=k[lengthProperty];
-
-      var isComposite={};
-      for (var candidate=2; primeCounter<64; candidate++){
-        if(!isComposite[candidate]){
-          for(i=0; i<313; i+=candidate){ isComposite[i]=candidate; }
-          hash[primeCounter]= (mathPow(candidate,.5)*maxWord)|0;
-          k[primeCounter++]= (mathPow(candidate,1/3)*maxWord)|0;
-        }
-      }
-
-      ascii += '\x80';
-      while (ascii[lengthProperty]%64 - 56) ascii += '\x00';
-      for (i=0; i<ascii[lengthProperty]; i++){
-        j=ascii.charCodeAt(i);
-        words[i>>2] |= j << ((3 - i)%4)*8;
-      }
-      words[words[lengthProperty]] = ((asciiBitLength/maxWord)|0);
-      words[words[lengthProperty]] = (asciiBitLength);
-
-      for (j=0; j<words[lengthProperty]; ){
-        var w=words.slice(j, j+=16);
-        var oldHash=hash.slice(0);
-
-        for (i=0; i<64; i++){
-          var w15=w[i-15], w2=w[i-2];
-
-          var a=hash[0], e=hash[4];
-          var temp1 = hash[7]
-            + (rightRotate(e,6) ^ rightRotate(e,11) ^ rightRotate(e,25))
-            + ((e & hash[5]) ^ ((~e) & hash[6]))
-            + k[i]
-            + (w[i] = (i<16) ? w[i] : (
-                w[i-16]
-                + (rightRotate(w15,7) ^ rightRotate(w15,18) ^ (w15>>>3))
-                + w[i-7]
-                + (rightRotate(w2,17) ^ rightRotate(w2,19) ^ (w2>>>10))
-              )|0);
-
-          var temp2 = (rightRotate(a,2) ^ rightRotate(a,13) ^ rightRotate(a,22))
-            + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-
-          hash = [(temp1+temp2)|0].concat(hash);
-          hash[4] = (hash[4] + temp1)|0;
-          hash.pop();
-        }
-
-        for (i=0; i<8; i++){ hash[i] = (hash[i] + oldHash[i])|0; }
-      }
-
-      for (i=0; i<8; i++){
-        for (j=3; j+1; j--){
-          var b=(hash[i] >> (j*8)) & 255;
-          result += (b < 16 ? '0' : '') + b.toString(16);
-        }
-      }
-      return result;
-    }
-
     function clampNum(v, min, max, def){
       const n = Number(v);
       if(!Number.isFinite(n)) return def;
@@ -3515,6 +3679,35 @@ layers.push(base);
       if(now - (state.activityThrottleMs || 0) < 800) return;
       state.activityThrottleMs = now;
       state.lastActivityMs = now;
+
+      // ✅ 자동으로 전환된 휴식/자리비움이라면, 활동 감지 시 작업중으로 복귀
+      try{
+        if(!state.joined || !state.roomId || !state.uid) return;
+        // ✅ 탭이 백그라운드(다른 앱에서 작업 중일 수 있음)면 자동 휴식/자리비움 전환을 막는다
+        if(document.visibilityState === "hidden"){
+          // 안전장치: 너무 오래 숨김 상태(기본 6시간)면 자리비움 처리
+          const MAX_HIDDEN_WORK_MS = 6*60*60*1000;
+          const hiddenFor = Date.now() - (state.pageHiddenAtMs || Date.now());
+          if(hiddenFor >= MAX_HIDDEN_WORK_MS){
+            state.autoStatus = "idle"; state.autoStatusAt = Date.now();
+            transitionTo("idle");
+            showToast("오래 비활성(탭 비공개) → 자리비움");
+          }
+          return;
+        }
+        const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
+        const status = me?.status || "idle";
+        const isAuto = (state.autoStatus && state.autoStatus === status && (now - (state.autoStatusAt||0) > 400));
+        if(isAuto && (status === "break" || status === "idle")){
+          if(now - (state.lastAutoWakeMs || 0) < 1500) return;
+          state.lastAutoWakeMs = now;
+          state.autoStatus = null;
+          state.autoStatusAt = 0;
+          // 비동기지만 이벤트 흐름은 유지
+          transitionTo("work").catch(()=>{});
+          showToast("활동 감지 → 작업중 복귀!");
+        }
+      }catch(e){}
     }
     ["mousemove","mousedown","keydown","scroll","touchstart"].forEach((ev)=>{
       window.addEventListener(ev, bumpActivity, {passive:true});
@@ -3522,9 +3715,11 @@ layers.push(base);
     document.addEventListener("visibilitychange", ()=>{
       try{
         if(document.visibilityState === "hidden"){
-          // ✅ 탭이 백그라운드로 가도 오늘 작업시간 로컬에 저장
+          // ✅ 탭이 백그라운드로 가도(다른 앱에서 작업 중일 수 있음) 자동전환은 하지 않음
+          state.pageHiddenAtMs = Date.now();
           if(state && state.joined) persistMyFocusToLocal();
         }else if(document.visibilityState === "visible"){
+          state.pageHiddenAtMs = 0;
           bumpActivity();
         }
       }catch(e){}
@@ -3545,6 +3740,19 @@ layers.push(base);
       state.activityWatchTimer = setInterval(()=>{
         if(!state.joined || !state.roomId || !state.uid) return;
 
+        // ✅ 탭이 백그라운드(다른 앱에서 작업 중일 수 있음)면 자동 휴식/자리비움 전환을 막는다
+        if(document.visibilityState === "hidden"){
+          // 안전장치: 너무 오래 숨김 상태(기본 6시간)면 자리비움 처리
+          const MAX_HIDDEN_WORK_MS = 6*60*60*1000;
+          const hiddenFor = Date.now() - (state.pageHiddenAtMs || Date.now());
+          if(hiddenFor >= MAX_HIDDEN_WORK_MS){
+            state.autoStatus = "idle"; state.autoStatusAt = Date.now();
+            transitionTo("idle");
+            showToast("오래 비활성 → 자리비움");
+          }
+          return;
+        }
+
         const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
         const status = me?.status || "idle";
         if(status !== "work") return;
@@ -3559,9 +3767,11 @@ layers.push(base);
           if(ai < ab) ai = Math.min(180, ab + 5);
         }catch(e){}
         if(idleMs >= ai*60*1000){
+          state.autoStatus = "idle"; state.autoStatusAt = Date.now();
           transitionTo("idle");
           showToast(`${ai}분 무반응 → 자리비움`);
         }else if(idleMs >= ab*60*1000){
+          state.autoStatus = "break"; state.autoStatusAt = Date.now();
           transitionTo("break");
           showToast(`${ab}분 무반응 → 휴식중`);
         }
@@ -4097,6 +4307,7 @@ async function emitSfx(kind){
       type: "sfx",
       kind: "enter",
       tsMs: Date.now(),
+          expireAt: Timestamp.fromMillis(Date.now() + 2*24*60*60*1000),
       uid: state.uid || "",
       name: state.nickname || (els.name ? (els.name.value||"").trim() : "")
     });
@@ -4205,6 +4416,7 @@ async function emitSfx(kind){
           name: myName,
           text: String(text).slice(0,500),
           tsMs: Date.now(),
+          expireAt: Timestamp.fromMillis(Date.now() + 2*24*60*60*1000),
           kind: "chat"
         });
 
@@ -4812,7 +5024,7 @@ async function joinRoom(){
       /* exit sfx disabled */
       if(!state.roomId || !state.uid) return;
 
-      try{ await transitionTo("idle"); }catch(e){}
+      try{ state.autoStatus=null; state.autoStatusAt=0; await transitionTo("idle"); }catch(e){}
 
       if(state.unsubParticipants) state.unsubParticipants();
       if(state.unsubRoom) state.unsubRoom();
@@ -4897,9 +5109,9 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       els.layoutToggleBtn.addEventListener("click", toggleLayoutMode);
     }
 
-    els.btnWork.addEventListener("click", ()=>{ transitionTo("work"); els.statusMenu.classList.add("hidden"); });
-    els.btnBreak.addEventListener("click", ()=>{ transitionTo("break"); els.statusMenu.classList.add("hidden"); });
-    els.btnIdle.addEventListener("click", ()=>{ transitionTo("idle"); els.statusMenu.classList.add("hidden"); });
+    els.btnWork.addEventListener("click", ()=>{ state.autoStatus=null; state.autoStatusAt=0; transitionTo("work"); els.statusMenu.classList.add("hidden"); });
+    els.btnBreak.addEventListener("click", ()=>{ state.autoStatus=null; state.autoStatusAt=0; transitionTo("break"); els.statusMenu.classList.add("hidden"); });
+    els.btnIdle.addEventListener("click", ()=>{ state.autoStatus=null; state.autoStatusAt=0; transitionTo("idle"); els.statusMenu.classList.add("hidden"); });
 
     // 상태 메뉴 토글
     
@@ -5079,12 +5291,60 @@ els.statusBtn.addEventListener("click", (ev)=>{
         if(els.autoBreakMin) els.autoBreakMin.value = String(Math.min(180, Math.max(1, isFinite(ab)?ab:10)));
         if(els.autoIdleMin) els.autoIdleMin.value = String(Math.min(180, Math.max(1, isFinite(ai)?ai:15)));
       }catch(e){}
+      try{ refreshIdleDetectUI(); }catch(e){}
       showModal(els.profileModal);
     });
     els.closeProfile.addEventListener("click", ()=>hideModal(els.profileModal));
     els.applyProfile.addEventListener("click", applyProfile);
 
-    // ✅ 오늘의 미션 모달 바인딩
+    
+    // ✅ Idle Detection UI bindings (checkbox)
+    try{
+      // 초기 UI 반영
+      refreshIdleDetectUI();
+
+      // 체크박스 ON/OFF
+      if(els.idleDetectEnabled){
+        els.idleDetectEnabled.addEventListener("change", async ()=>{
+          try{
+            const want = !!els.idleDetectEnabled.checked;
+            if(want){
+              await enableIdleDetectionFromUI();
+              // 권한 거부/실패 시 체크 원복
+              if(!isIdleDetectEnabled()) els.idleDetectEnabled.checked = false;
+            }else{
+              setIdleDetectEnabled(false);
+              stopIdleDetection();
+              showToast("자동 감지 꺼짐");
+            }
+            refreshIdleDetectUI();
+          }catch(e){}
+        });
+      }
+
+      // 자동 전환(분) 값이 바뀌면 (자동 감지 ON일 때) 즉시 반영
+      const onAutoMinChange = async ()=>{
+        try{
+          const b = Math.min(180, Math.max(1, Number(els.autoBreakMin?.value || 10)));
+          const i = Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15)));
+          if(i < b){
+            const fixed = Math.min(180, b + 5);
+            if(els.autoIdleMin) els.autoIdleMin.value = String(fixed);
+          }
+          if(isIdleDetectEnabled()){
+            await evaluateIdleDetect();
+          }
+        }catch(e){}
+      };
+      if(els.autoBreakMin) els.autoBreakMin.addEventListener("change", onAutoMinChange);
+      if(els.autoIdleMin)  els.autoIdleMin.addEventListener("change", onAutoMinChange);
+
+      // 새로고침/재입장 시, 켜져 있으면 조용히 재시도
+      startIdleDetectionSilentIfEnabled();
+    }catch(e){}
+
+
+// ✅ 오늘의 미션 모달 바인딩
     try{
       const mm = document.getElementById("missionModal");
       const close = document.getElementById("closeMission");
