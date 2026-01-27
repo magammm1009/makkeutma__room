@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>💗마끝마💗</title>
+  <title>마끝마</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
   <style>
     :root{
       --panel:rgba(255,255,255,.06);
@@ -1417,7 +1418,7 @@
           <span class="tiny">PC 활동 감지용 로컬 헬퍼가 켜져 있으면 ‘연결됨’으로 표시돼요.</span>
         </div>
 
-<div class="row autoSwitchRow" style="display:none" aria-hidden="true">
+<div class="row autoSwitchRow" style="display:flex" aria-hidden="false">
           <label>자동 전환</label>
           <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
             <div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
@@ -1532,7 +1533,28 @@
     // ✅ 클라이언트 입장키(간이 게이트)
     // - 보안 "강화"용(완전 차단은 Firestore Rules/인증이 필요)
     // -----------------------------
-    const ROOM_PASS = "mkm1919";
+    
+    // ✅ 클라이언트 입장키(간이 게이트)
+    // - GitHub에 '비밀번호(평문)'가 박히지 않게: 평문 대신 SHA-256 해시를 비교합니다.
+    // - ⚠️ 정적 웹은 코드가 공개되므로 '완전 보안'은 불가. 진짜 차단은 Firebase Rules/인증이 필요합니다.
+    const ROOM_PASS_HASH = "0a34102dc560b97344f99ed8369092fc9921804a4a6101118485ac946f0739e8"; // sha256("mkm1919")
+
+    async function sha256Hex(str){
+      const enc = new TextEncoder();
+      const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+    async function isRoomPassValid(pass){
+      const p = (pass ?? "").toString().trim();
+      if(!p) return false;
+      try{
+        const h = await sha256Hex(p);
+        return h === ROOM_PASS_HASH;
+      }catch(e){
+        return false;
+      }
+    }
+
     
 
     // ✅ Root helpers (module 최상단) — 스코프 꼬임/중복 선언 방지
@@ -1760,6 +1782,7 @@
 const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     const LS_PASS = "mk_room_pass";
     const LS_PASS_EXP = "mk_room_pass_exp";
+    const LS_PASS_OK = "mk_room_pass_ok";
     const LS_PROFILE = "mk_profile_pref_v1";
 
     // ✅ 집중시간(24시간 누적, 자정 리셋)
@@ -1809,41 +1832,72 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
     function loadPassOK(){
       try{
-        const p = localStorage.getItem(LS_PASS) || "";
-        // ✅ 입장 패스는 '영구'로: exp(만료)와 무관하게 pass만 맞으면 통과
-        if(p && p === ROOM_PASS){
+        const ok = (localStorage.getItem(LS_PASS_OK) === "1");
+        const exp = Number(localStorage.getItem(LS_PASS_EXP) || 0);
+        if(ok && exp && Date.now() <= exp){
           document.body.classList.add("passok");
-          if(els.roomPass) els.roomPass.value = p;
           return true;
         }
+        // 만료/깨짐이면 정리
+        if(exp && Date.now() > exp){
+          localStorage.removeItem(LS_PASS_OK);
+          localStorage.removeItem(LS_PASS_EXP);
+        }
       }catch(e){}
-      document.body.classList.remove("passok");
       return false;
     }
-    function savePassOK(pass){
+
+function savePassOK(pass){
       try{
-        localStorage.setItem(LS_PASS, pass);
+        // 🔒 평문은 '내 컴퓨터 로컬'에만 저장(재입력 귀찮음 방지)
+        localStorage.setItem(LS_PASS, String(pass || ""));
+        localStorage.setItem(LS_PASS_OK, "1");
         localStorage.setItem(LS_PASS_EXP, String(Date.now() + PASS_TTL_MS));
       }catch(e){}
       document.body.classList.add("passok");
-    }
-    function clearPass(){
-      try{ localStorage.removeItem(LS_PASS); localStorage.removeItem(LS_PASS_EXP); }catch(e){}
-      document.body.classList.remove("passok");
-    }
-    function requirePassOK(){
-      if(loadPassOK()) return true;
-      const pass = (els.roomPass?.value || "").trim();
-      if(pass !== ROOM_PASS){
-        showToast("입장키를 입력해줘!", 2500);
-        try{ els.roomPass?.focus(); }catch(e){}
-        return false;
-      }
-      savePassOK(pass);
-      return true;
+      try{ if(els.roomPass) els.roomPass.value = ""; }catch(e){}
     }
 
-    function loadLocalProfile(){
+    function clearPassOK(){
+      try{
+        localStorage.removeItem(LS_PASS);
+        localStorage.removeItem(LS_PASS_OK);
+        localStorage.removeItem(LS_PASS_EXP);
+      }catch(e){}
+      document.body.classList.remove("passok");
+    }
+
+async function requirePassOK(){
+      if(loadPassOK()) return true;
+      const typed = (els.roomPass?.value || "").trim();
+      let stored = "";
+      try{ stored = (localStorage.getItem(LS_PASS) || "").trim(); }catch(e){}
+
+      if(typed){
+        const ok = await isRoomPassValid(typed);
+        if(!ok){
+          showToast("입장키를 다시 확인해줘!", 2500);
+          try{ els.roomPass?.focus(); }catch(e){}
+          return false;
+        }
+        savePassOK(typed);
+        return true;
+      }
+
+      if(stored){
+        const ok = await isRoomPassValid(stored);
+        if(ok){
+          savePassOK(stored);
+          return true;
+        }
+      }
+
+      showToast("입장키를 입력해줘!", 2500);
+      try{ els.roomPass?.focus(); }catch(e){}
+      return false;
+    }
+
+function loadLocalProfile(){
       try{
         const raw = localStorage.getItem(LS_PROFILE);
         if(!raw) return null;
@@ -2054,6 +2108,7 @@ chatUnseen: 0,
       lastActivityMs: Date.now(),
       helperWatchTimer: null,
       helperActive: false,
+      _prevHelperActive: false,
       helperLastTs: 0,
       helperLastSeenMs: 0,
       activityWatchTimer: null,
@@ -3533,8 +3588,19 @@ async function pollHelperHeartbeat(){
           return;
         }
 
-        const active = !!hb.active;
-        const ts = Number(hb.ts || 0);
+        // ✅ 헬퍼 payload 호환: active 필드명이 버전마다 다를 수 있어요
+        const activeRaw = (hb.active ?? hb.isActive ?? hb.is_active ?? hb.moving ?? hb.isMoving ?? hb.activity ?? hb.state ?? hb.status);
+        let activeBool = false;
+        if(typeof activeRaw === "boolean") activeBool = activeRaw;
+        else if(typeof activeRaw === "number") activeBool = activeRaw > 0;
+        else if(typeof activeRaw === "string"){
+          const s = activeRaw.toLowerCase();
+          activeBool = (s === "active" || s === "work" || s === "working" || s === "moving" || s === "move" || s === "on" || s === "true" || s === "1");
+        }
+
+        // ✅ ts 필드명도 호환(기본은 ts)
+        const tsRaw = (hb.ts ?? hb.timestamp ?? hb.time ?? hb.t ?? hb.serverTs ?? hb.server_ts ?? hb.lastSeenAtMs ?? hb.last_seen_at_ms);
+        const ts = Number(tsRaw || 0);
 
         // 헬퍼가 서버 timestamp를 쓰므로, ts는 서버시간(ms)
         // 너무 오래된 신호면 미연결(기본: 45초)
@@ -3542,17 +3608,32 @@ async function pollHelperHeartbeat(){
         const fresh = ts && Math.abs(now - ts) <= 45000;
 
         state.helperConnected = !!fresh;
-        state.helperActive = !!(active && fresh);
+        state.helperActive = !!(activeBool && fresh);
         state.helperLastTs = ts || 0;
         state.helperLastSeenMs = now;
 
         updateHelperStatusUI();
 
-        // 내가 지금 '작업중'일 때만 lastActivityMs를 갱신 (자동 work 전환은 금지)
+        // ✅ helperActive가 '꺼졌다가 켜질 때'(=움직임 재감지) 자동 복귀 규칙
+        // - 단, 내가 '자동 전환(auto*)' 때문에 휴식/자리비움이 된 경우에만 work로 복귀
+        const prevActive = !!state._prevHelperActive;
+        state._prevHelperActive = !!state.helperActive;
+
         const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
         const status = me?.status || "idle";
+        const src = String(me?.statusSource || "");
+
+        // 1) 작업중이면: 헬퍼 active 동안은 마지막 활동을 갱신(자동 break/idle 방지)
         if(status === "work" && state.helperActive){
           state.lastActivityMs = now;
+          return;
+        }
+
+        // 2) 자동으로 break/idle 된 상태에서, 헬퍼가 다시 active(재감지) 되면 작업중으로 복귀
+        if(state.helperActive && !prevActive && (status === "break" || status === "idle") && src.startsWith("auto")){
+          transitionTo("work","helperResume");
+          state.lastActivityMs = now;
+          showToast("헬퍼 움직임 감지 → 작업중 복귀", 1800);
         }
       }catch(e){
         const now = Date.now();
@@ -3592,10 +3673,10 @@ function startHelperWatch(){
           if(ai < ab) ai = Math.min(180, ab + 5);
         }catch(e){}
         if(idleMs >= ai*60*1000){
-          transitionTo("idle");
+          transitionTo("idle","autoIdle");
           showToast(`${ai}분 무반응 → 자리비움`);
         }else if(idleMs >= ab*60*1000){
-          transitionTo("break");
+          transitionTo("break","autoBreak");
           showToast(`${ab}분 무반응 → 휴식중`);
         }
       }, 15000);
@@ -3621,7 +3702,7 @@ function startHelperWatch(){
 
     }
 
-    async function transitionTo(nextStatus){
+    async function transitionTo(nextStatus, source="manual"){
       // ✅ 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
       persistMyFocusToLocal();
       const ref = meRef(state.roomId, state.uid);
@@ -3629,7 +3710,7 @@ function startHelperWatch(){
       if(!snap.exists()) return;
       const p = snap.data();
       const now = Date.now();
-      const patch = { status: nextStatus, updatedAt: now, lastSeenAtMs: now };
+      const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
       if(nextStatus === "work") { state.lastActivityMs = now; }
 
       if(p.status === "work" && p.sessionStartedAtMs){
@@ -4703,7 +4784,7 @@ async function joinRoom(){
         setMyNickUI(name);
         try{ const lp = loadLocalProfile() || {}; lp.nickname = name; saveLocalProfile(lp); }catch(e){}
         if(!name){ showToast("닉네임 입력!"); return; }
-        if(!requirePassOK()) return;
+        if(!(await requirePassOK())) return;
 
         const miss = validateFirebaseConfig();
         if(miss.length){
@@ -4845,7 +4926,7 @@ async function joinRoom(){
       /* exit sfx disabled */
       if(!state.roomId || !state.uid) return;
 
-      try{ await transitionTo("idle"); }catch(e){}
+      try{ await transitionTo("idle","manual"); }catch(e){}
 
       if(state.unsubParticipants) state.unsubParticipants();
       if(state.unsubRoom) state.unsubRoom();
@@ -4930,9 +5011,9 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       els.layoutToggleBtn.addEventListener("click", toggleLayoutMode);
     }
 
-    els.btnWork.addEventListener("click", ()=>{ transitionTo("work"); els.statusMenu.classList.add("hidden"); });
-    els.btnBreak.addEventListener("click", ()=>{ transitionTo("break"); els.statusMenu.classList.add("hidden"); });
-    els.btnIdle.addEventListener("click", ()=>{ transitionTo("idle"); els.statusMenu.classList.add("hidden"); });
+    els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); els.statusMenu.classList.add("hidden"); });
+    els.btnBreak.addEventListener("click", ()=>{ transitionTo("break","manual"); els.statusMenu.classList.add("hidden"); });
+    els.btnIdle.addEventListener("click", ()=>{ transitionTo("idle","manual"); els.statusMenu.classList.add("hidden"); });
 
     // 상태 메뉴 토글
     
