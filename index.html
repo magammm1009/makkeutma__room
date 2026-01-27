@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>💗마끝마💗</title>
+  <title>마끝마</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
   <style>
     :root{
@@ -1418,6 +1418,19 @@
           <span class="tiny">PC 활동 감지용 로컬 헬퍼가 켜져 있으면 ‘연결됨’으로 표시돼요.</span>
         </div>
 
+
+        <div class="row">
+          <label>헬퍼 모드</label>
+          <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap; align-items:center;">
+            <select id="helperMode" style="width:170px; font-weight:1000;">
+              <option value="manual">수동(안전)</option>
+              <option value="auto">자동(연동)</option>
+            </select>
+            <span id="helperDebugText" class="tiny" style="font-weight:900; opacity:.9;"></span>
+          </div>
+          <span class="tiny">자동=무반응 시 휴식/자리비움 전환. 수동=버튼으로만 상태 변경(헬퍼는 표시/복귀만).</span>
+        </div>
+
 <div class="row autoSwitchRow" style="display:flex" aria-hidden="false">
           <label>자동 전환</label>
           <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
@@ -2024,6 +2037,8 @@ function loadLocalProfile(){
       timeColor: $("timeColor"),
       helperStatusDot: $("helperStatusDot"),
       helperStatusText: $("helperStatusText"),
+      helperMode: $("helperMode"),
+      helperDebugText: $("helperDebugText"),
       photoFile: $("photoFile"),
       uploadPhotoBtn: $("uploadPhotoBtn"),
       profileNick: $("profileNick"),
@@ -2111,6 +2126,11 @@ chatUnseen: 0,
       _prevHelperActive: false,
       helperLastTs: 0,
       helperLastSeenMs: 0,
+      helperMode: 'auto',
+      helperIdleSec: null,
+      helperIdleSecPresent: false,
+      helperIdleZeroStreak: 0,
+      _helperInactiveSinceMs: 0,
       activityWatchTimer: null,
       activityThrottleMs: 0,
       joined: false,
@@ -3570,7 +3590,62 @@ function helperPairKey(){
 
         els.helperStatusDot.className = cls;
         els.helperStatusText.textContent = text;
+
+        // ✅ 디버그(문제 진단용): active/idleSec/mode 표시
+        try{
+          if(els.helperDebugText){
+            const mode = getHelperMode();
+            const idleSec = (state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec)) ? state.helperIdleSec : null;
+            const z = Number(state.helperIdleZeroStreak || 0);
+            let extra = `mode:${mode}`;
+            if(state.helperAuthError) extra += " | rules";
+            if(state.helperKeyInvalid) extra += " | key";
+            if(state.helperConnected){
+              extra += ` | active:${state.helperActive ? "Y" : "N"}`;
+              if(idleSec !== null){
+                extra += ` | idleSec:${idleSec}`;
+                if(!state.helperActive && idleSec === 0 && z >= 6) extra += " ⚠️idle0";
+              }else{
+                // idleSec 미제공이면 웹이 자체 누적
+                if(state._helperInactiveSinceMs){
+                  const s = Math.floor((Date.now() - state._helperInactiveSinceMs)/1000);
+                  extra += ` | idle~${s}s`;
+                }
+              }
+            }
+            els.helperDebugText.textContent = extra;
+          }
+        }catch(e){}
+
       }catch(e){}
+    }
+
+
+    // ✅ 헬퍼 모드: manual(수동/안전) / auto(자동전환)
+    function getHelperMode(){
+      try{
+        const lp = loadLocalProfile() || {};
+        const m = String(lp.helperMode || state.helperMode || "auto");
+        return (m === "manual" || m === "auto") ? m : "auto";
+      }catch(e){ return (state.helperMode || "auto"); }
+    }
+    function setHelperMode(mode, save=true){
+      const m = (mode === "manual") ? "manual" : "auto";
+      state.helperMode = m;
+      try{
+        if(els.helperMode) els.helperMode.value = m;
+        // 자동일 때만 자동전환 분 입력 활성화
+        const en = (m === "auto");
+        if(els.autoBreakMin) els.autoBreakMin.disabled = !en;
+        if(els.autoIdleMin)  els.autoIdleMin.disabled  = !en;
+      }catch(e){}
+      if(save){
+        try{
+          const lp = loadLocalProfile() || {};
+          lp.helperMode = m;
+          saveLocalProfile(lp);
+        }catch(e){}
+      }
     }
 
 async function pollHelperHeartbeat(){
@@ -3683,17 +3758,36 @@ async function pollHelperHeartbeat(){
 
         updateHelperStatusUI();
 
-        // ✅ helper가 보내는 idleSec가 있으면, 브라우저 탭이 백그라운드여도 '마지막 활동 시각'을 보정
+                // ✅ idleSec/무반응 누적 처리(헬퍼가 idleSec를 못 올리거나 0으로 고정되는 케이스 방어)
+        state.helperIdleSecPresent = (idleSecRaw !== undefined && idleSecRaw !== null && idleSecRaw !== "");
+        state.helperIdleSec = (Number.isFinite(idleSec) ? idleSec : null);
+
         if(connected){
           if(state.helperActive){
             state.lastActivityMs = now;
-          }else if(Number.isFinite(idleSec) && idleSec >= 0){
-            const impliedLast = now - (idleSec * 1000);
-            state.lastActivityMs = Math.max(Number(state.lastActivityMs || 0), impliedLast);
+            state._helperInactiveSinceMs = 0;
+            state.helperIdleZeroStreak = 0;
+          }else{
+            // inactive 상태가 유지되면 웹에서 자체적으로 무반응 시간을 누적(헬퍼 idleSec가 고장나도 동작)
+            if(!state._helperInactiveSinceMs) state._helperInactiveSinceMs = now;
+
+            // idleSec가 0으로 반복되면 이상 신호로 간주(몇 번까지만 신뢰)
+            if(state.helperIdleSecPresent && state.helperIdleSec === 0){
+              state.helperIdleZeroStreak = Number(state.helperIdleZeroStreak || 0) + 1;
+            }else{
+              state.helperIdleZeroStreak = 0;
+            }
+
+            // idleSec가 유효(>0)면 마지막 활동 시각을 보정해줌(백그라운드 탭에서도 정확)
+            if(state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec) && state.helperIdleSec > 0){
+              const impliedLast = now - (state.helperIdleSec * 1000);
+              state.lastActivityMs = Math.max(Number(state.lastActivityMs || 0), impliedLast);
+              state._helperInactiveSinceMs = Math.min(state._helperInactiveSinceMs || now, impliedLast);
+            }
           }
         }
 
-        // ✅ helperActive가 '꺼졌다가 켜질 때'(=움직임 재감지) 자동 복귀 규칙
+// ✅ helperActive가 '꺼졌다가 켜질 때'(=움직임 재감지) 자동 복귀 규칙
         // - 단, 내가 '자동 전환(auto*)' 때문에 휴식/자리비움이 된 경우에만 work로 복귀
         const prevActive = !!state._prevHelperActive;
         state._prevHelperActive = !!state.helperActive;
@@ -3741,7 +3835,26 @@ function startHelperWatch(){
         const status = me?.status || "idle";
         if(status !== "work") return;
 
-        const idleMs = Date.now() - (state.lastActivityMs || Date.now());
+                // ✅ 자동/수동 모드
+        const mode = getHelperMode();
+        if(mode !== "auto") return;
+
+        // ✅ 무반응 시간 계산(헬퍼 idleSec가 고장나도, inactive 시작 시각으로 누적)
+        let idleMs = Date.now() - (state.lastActivityMs || Date.now());
+        if(state.helperConnected){
+          if(state.helperActive){
+            idleMs = 0;
+          }else{
+            // 1) 헬퍼가 idleSec를 정확히 올려주면 그 값을 우선 사용
+            if(state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec) && state.helperIdleSec > 0){
+              idleMs = state.helperIdleSec * 1000;
+            }else if(state._helperInactiveSinceMs){
+              // 2) idleSec가 없거나 0으로 고정되면, inactiveSince로 누적(헬퍼 이벤트 기반)
+              idleMs = Date.now() - state._helperInactiveSinceMs;
+            }
+          }
+        }
+
         // ✅ 로컬(내 프로필)에서 자동 전환 시간(분)을 읽어 적용
         let ab = 10, ai = 15;
         try{
@@ -3834,6 +3947,9 @@ function startHelperWatch(){
       }
 
 
+      // ✅ 헬퍼 모드 반영
+      try{ setHelperMode((els.helperMode && els.helperMode.value==='manual')?'manual':'auto', true); }catch(e){}
+
       // ✅ 브라우저에 프리셋 저장(로그인/입장 전에도 유지)
       try{
         const lp = loadLocalProfile() || {};
@@ -3841,6 +3957,7 @@ function startHelperWatch(){
         lp.bubbleText = bubbleText;
         if(state.nickname) lp.nickname = state.nickname;
         lp.autoBreakMin = Math.min(180, Math.max(1, Number(els.autoBreakMin?.value || lp.autoBreakMin || 10)));
+        lp.helperMode = (els.helperMode && els.helperMode.value==='manual') ? 'manual' : 'auto';
         lp.autoIdleMin  = Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || lp.autoIdleMin || 15)));
         if(lp.autoIdleMin < lp.autoBreakMin) lp.autoIdleMin = Math.min(180, lp.autoBreakMin + 5);
         saveLocalProfile(lp);
@@ -5270,11 +5387,18 @@ els.statusBtn.addEventListener("click", (ev)=>{
         const ai = Number(lp.autoIdleMin ?? 15);
         if(els.autoBreakMin) els.autoBreakMin.value = String(Math.min(180, Math.max(1, isFinite(ab)?ab:10)));
         if(els.autoIdleMin) els.autoIdleMin.value = String(Math.min(180, Math.max(1, isFinite(ai)?ai:15)));
+        // ✅ 헬퍼 모드
+        const hm = String(lp.helperMode || state.helperMode || 'auto');
+        setHelperMode((hm==='manual')?'manual':'auto', false);
       }catch(e){}
       showModal(els.profileModal);
     });
     els.closeProfile.addEventListener("click", ()=>hideModal(els.profileModal));
     els.applyProfile.addEventListener("click", applyProfile);
+    // ✅ 헬퍼 모드 즉시 반영
+    try{
+      if(els.helperMode) els.helperMode.addEventListener('change', ()=>{ setHelperMode(els.helperMode.value, true); updateHelperStatusUI(); });
+    }catch(e){}
 
     // ✅ 오늘의 미션 모달 바인딩
     try{
