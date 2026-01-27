@@ -79,8 +79,9 @@
       50%{ transform: translateY(-1px); filter: brightness(1.15); box-shadow: 0 0 18px rgba(255,119,184,.20); }
     }
     #checkInBtn.checkinPulse{
-      animation: checkInPulse 1.25s ease-in-out infinite;
+      animation: none !important;
       border-color: rgba(255,182,214,.55);
+      box-shadow: 0 0 12px rgba(255,119,184,.14), inset 0 0 0 1px rgba(0,0,0,.15);
     }
     #checkInBtn.checkinDone{
       opacity: .92;
@@ -119,7 +120,7 @@
     /* Main layout */
     .wrap{
       display:grid;
-      grid-template-columns: minmax(0, 1fr) clamp(280px, 28vw, 340px);
+      grid-template-columns: minmax(0, 1fr) 340px; /* fixed sidebar width to prevent sudden stretch */
       gap: 10px;
       padding:14px;
       width:100%;
@@ -129,7 +130,7 @@
 
     /* ✅ Main(타일) 영역 오른쪽 여백: 대시보드와 딱 붙는 느낌 완화 */
     .wrap > main{ padding-right:10px; }
-    @media (max-width: 980px){
+    @media (max-width: 760px){
       .wrap{grid-template-columns: 1fr; }
       .sidebar{order:-1; position:relative; top:auto; height:auto}
     }
@@ -296,10 +297,11 @@
     .tiny{font-size:12px; color:var(--muted); line-height:1.35}
 
     /* Chat */
-    .chatCard{flex:1; min-height: 260px; display:flex; flex-direction:column;}
-    .chatBody{display:flex; flex-direction:column; gap:10px; height:100%;}
+    .chatCard{flex:1; min-height:0; display:flex; flex-direction:column;}
+    .chatBody{display:flex; flex-direction:column; gap:10px; flex:1; min-height:0;}
     .chatList{
       flex:1;
+      min-height:220px;
       overflow:auto;
       border:1px solid rgba(255,255,255,.10);
       border-radius: 14px;
@@ -418,7 +420,7 @@
       flex-direction:column;
       gap:8px;
     
-      font-weight: 900;
+      font-weight: 1100;
     }
     .grid.compact5 .missionBtn{display:none !important;}
     .grid.compact5 .bottomStack{
@@ -593,7 +595,7 @@
       box-shadow: 0 18px 50px rgba(0,0,0,.25);
     }
     .gridRosterTitle{
-      font-weight: 900;
+      font-weight: 1100;
       letter-spacing: -.2px;
       margin: 2px 0 10px;
       color: rgba(255,255,255,.92);
@@ -647,7 +649,7 @@
       box-shadow: 0 10px 26px rgba(0,0,0,.28);
       display:flex; align-items:center; justify-content:center; text-align:center; justify-content:center;
       color: rgba(255,255,255,.78);
-      font-weight: 900;
+      font-weight: 1100;
       font-size: 12px;
     }
     .idPhoto img{width:100%; height:100%; object-fit:cover; display:block;}
@@ -858,7 +860,7 @@
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.04);
     }
-    @media (max-width: 980px){
+    @media (max-width: 760px){
       .topCenter{order:3; width:100%; justify-content:flex-start;}
       .actions{order:2;}
       .brand{order:1;}
@@ -877,7 +879,7 @@
     /* Status animations */
     .stIcon{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:10px; background: rgba(0,0,0,.34); border:1px solid rgba(255,255,255,.14); margin-right:6px;}
     .stWork{animation: wiggle 1.25s ease-in-out infinite;}
-    .stBreak{animation: puff 1.6s ease-in-out infinite;}
+    .stBreak{animation: none !important;}
     .stIdle{animation: floaty 1.8s ease-in-out infinite;}
     @keyframes wiggle{0%,100%{transform:rotate(0deg) translateY(0);}50%{transform:rotate(-10deg) translateY(-1px);}}
     @keyframes puff{0%,100%{transform:translateY(0);opacity:1;}50%{transform:translateY(-2px);opacity:.85;}}
@@ -1123,7 +1125,7 @@
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.14);
       color: rgba(255,255,255,.85);
-      font-weight: 900;
+      font-weight: 1100;
       cursor: pointer;
       display:flex;
       align-items:center;
@@ -1216,6 +1218,79 @@
 .helperDot.wait{ background: #ffd166; }
 .helperDot.off{ background: rgba(255,255,255,.22); }
 
+
+    .guidePre{
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:13px;
+      line-height:1.5;
+      color: rgba(255,255,255,.92);
+    }
+
+
+    /* ✅ 출근 버튼(미션처럼 은은한 반짝 테두리) */
+    #checkInBtn{ position:relative; overflow:hidden; }
+    #checkInBtn::after{
+      content:"";
+      position:absolute; inset:-2px;
+      border-radius:12px;
+      pointer-events:none;
+      border:1px solid rgba(255,182,214,.55);
+      box-shadow: 0 0 0 1px rgba(255,182,214,.25), 0 0 18px rgba(255,119,184,.22);
+      opacity:.75;
+      animation: checkInBorderPulse 1.6s ease-in-out infinite;
+    }
+    #checkInBtn::before{
+      content:"";
+      position:absolute; top:-45%; left:-60%;
+      width:60%; height:190%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
+      transform: rotate(20deg) translateX(-140%);
+      animation: checkInShine 2.6s ease-in-out infinite;
+      pointer-events:none;
+      opacity:.55;
+    }
+    @keyframes checkInBorderPulse{
+      0%,100%{opacity:.55; filter:brightness(1);}
+      50%{opacity:1; filter:brightness(1.25);}
+    }
+    @keyframes checkInShine{
+      0%{transform: rotate(20deg) translateX(-140%);}
+      55%{transform: rotate(20deg) translateX(240%);}
+      100%{transform: rotate(20deg) translateX(240%);}
+    }
+
+    /* ✅ 휴식중 커피 연기 애니메이션 */
+    .coffeeSteam{ position:relative; display:inline-block; margin-right:4px; }
+    .coffeeSteam::before,
+    .coffeeSteam::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:-6px;
+      width:12px;
+      height:16px;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,.55);
+      border-color: rgba(255,255,255,.42) transparent transparent transparent;
+      transform: translateX(-50%) translateY(6px) scale(.8);
+      opacity:0;
+      animation: coffeeSteamRise 1.6s ease-in-out infinite;
+      pointer-events:none;
+    }
+    .coffeeSteam::after{
+      top:-9px;
+      width:14px;
+      height:18px;
+      animation-delay:.8s;
+    }
+    @keyframes coffeeSteamRise{
+      0%{opacity:0; transform: translateX(-50%) translateY(7px) scale(.78);}
+      25%{opacity:.7;}
+      100%{opacity:0; transform: translateX(-50%) translateY(-12px) scale(1.08);}
+    }
+
 </style>
 </head>
 
@@ -1249,6 +1324,7 @@
 
       <button id="onlineBtn" class="ghost miniOnline" disabled title="접속 인원">👥 <span id="countOnline">0</span>명</button>
       <button id="profileBtn" class="ghost">🪪 내 프로필</button>
+      <button id="guideBtn" class="ghost">📖 가이드</button>
     </div>
 
     <div class="actions">
@@ -1463,6 +1539,33 @@
         </div>
 
         
+
+        <div class="row">
+          <label>닉네임 글씨 색</label>
+          <div class="colorControls">
+            <input id="nameColorPicker" type="color" value="#ffffff" />
+            <input id="nameColor" value="#ffffff" style="width:110px" />
+          </div>
+          <span class="tiny">타일/채팅 닉네임 색</span>
+        </div>
+
+        <div class="row">
+          <label>현재상태 글씨 색</label>
+          <div class="colorControls">
+            <input id="statusTextColorPicker" type="color" value="#ffffff" />
+            <input id="statusTextColor" value="#ffffff" style="width:110px" />
+          </div>
+          <span class="tiny">작업중/휴식중/자리비움 배지 글씨</span>
+        </div>
+
+        <div class="row">
+          <label>말풍선 글씨 색</label>
+          <div class="colorControls">
+            <input id="bubbleTextColorPicker" type="color" value="#ffffff" />
+            <input id="bubbleTextColor" value="#ffffff" style="width:110px" />
+          </div>
+          <span class="tiny">프로필 타일 말풍선(한 줄)</span>
+        </div>
         <div class="row">
           <label>헬퍼 상태</label>
           <div class="helperStatusLine" style="width:100%; display:flex; align-items:center; gap:10px;">
@@ -1517,6 +1620,14 @@
       <div class="modalBody">
         <div class="hint">
           처음 설정하는 사람은 “관리자 비번”을 등록하고, 이후부터는 비번이 있어야 변경할 수 있어요.
+        </div>
+
+        <div class="row">
+          <label>🔈 입장 소리</label>
+          <div style="display:flex; align-items:center; gap:10px; width:100%;">
+            <input id="sfxToggle" type="checkbox" checked />
+            <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
+          </div>
         </div>
         <div class="row">
           <input id="adminPass" type="password" placeholder="관리자 비번" />
@@ -2061,6 +2172,9 @@ function loadLocalProfile(){
       embedModalOpen: $("embedModalOpen"),
       embedModalFrame: $("embedModalFrame"),
 
+      guideModal: $("guideModal"),
+      closeGuide: $("closeGuide"),
+
       btnWork: $("btnWork"),
       btnBreak: $("btnBreak"),
       btnIdle: $("btnIdle"),
@@ -2068,6 +2182,7 @@ function loadLocalProfile(){
       statusBtn: $("statusBtn"),
       statusMenu: $("statusMenu"),
       profileBtn: $("profileBtn"),
+      guideBtn: $("guideBtn"),
       onlineBtn: $("onlineBtn"),
       meHint: $("meHint"),
 
@@ -2091,6 +2206,12 @@ function loadLocalProfile(){
       bubbleColor: $("bubbleColor"),
       timePicker: $("timePicker"),
       timeColor: $("timeColor"),
+      nameColorPicker: $("nameColorPicker"),
+      nameColor: $("nameColor"),
+      statusTextColorPicker: $("statusTextColorPicker"),
+      statusTextColor: $("statusTextColor"),
+      bubbleTextColorPicker: $("bubbleTextColorPicker"),
+      bubbleTextColor: $("bubbleTextColor"),
       helperStatusDot: $("helperStatusDot"),
       helperStatusText: $("helperStatusText"),
       helperMode: $("helperMode"),
@@ -2107,6 +2228,7 @@ function loadLocalProfile(){
 
       settingsModal: $("settingsModal"),
       closeSettings: $("closeSettings"),
+      sfxToggle: $("sfxToggle"),
       adminPass: $("adminPass"),
       adminUnlock: $("adminUnlock"),
       adminArea: $("adminArea"),
@@ -2118,6 +2240,11 @@ function loadLocalProfile(){
 
       toast: $("toast"),
     };
+    // ✅ 휴식중 버튼: 기본 아이콘(상단바에는 연기 없음, 타일에서만 연기)
+    try{
+      if(els.btnBreak) els.btnBreak.textContent = "☕ 휴식중";
+    }catch(e){}
+
 
     
     function isConfigPlaceholder(v){
@@ -2146,6 +2273,7 @@ function loadLocalProfile(){
       myMission: null,
       uid: null,
       roomId: FIXED_ROOM_ID,
+      sfxEnabled: true,
       unsubParticipants: null,
       _lastDayKey: null,
       unsubRoom: null,
@@ -2916,7 +3044,9 @@ function dockRightRail(){
       const me = state.currentParticipants.get(state.uid);
       const st = (me && me.status) ? me.status : "idle";
       const label = (st==="work") ? "✍️ 작업중" : (st==="break") ? "☕ 휴식중" : "🌙 자리비움";
-      if(els.statusBtn) els.statusBtn.textContent = `${label} ▾`;
+      if(els.statusBtn){
+        els.statusBtn.textContent = `${label} ▾`;
+      }
       if(els.btnWork) els.btnWork.className = (st==="work") ? "primary" : "ghost";
       if(els.btnBreak) els.btnBreak.className = (st==="break") ? "primary" : "ghost";
       if(els.btnIdle) els.btnIdle.className = (st==="idle") ? "primary" : "ghost";
@@ -3069,6 +3199,23 @@ function showModal(el){ el.classList.add("show"); }
         if(els.timeColor) els.timeColor.value = c;
         if(els.timePicker) els.timePicker.value = c;
       }
+
+      function setNameColorAll(hex){
+        const c = clampHexColor(hex || "#ffffff");
+        if(els.nameColor) els.nameColor.value = c;
+        if(els.nameColorPicker) els.nameColorPicker.value = c;
+      }
+      function setStatusTextColorAll(hex){
+        const c = clampHexColor(hex || "#ffffff");
+        if(els.statusTextColor) els.statusTextColor.value = c;
+        if(els.statusTextColorPicker) els.statusTextColorPicker.value = c;
+      }
+      function setBubbleTextColorAll(hex){
+        const c = clampHexColor(hex || "#ffffff");
+        if(els.bubbleTextColor) els.bubbleTextColor.value = c;
+        if(els.bubbleTextColorPicker) els.bubbleTextColorPicker.value = c;
+      }
+
 
 
       // sync: picker -> code
@@ -3502,11 +3649,14 @@ layers.push(base);
           emojiBg: clampHexColor(lp.theme.emojiBg || "#2b2b2b"),
           bubbleColor: clampHexColor(lp.theme.bubbleColor || lp.theme.bgColor || "#ffd0e2"),
           timeColor: clampHexColor(lp.theme.timeColor || "#ffffff"),
+          nameColor: clampHexColor(lp.theme.nameColor || "#ffffff"),
+          statusTextColor: clampHexColor(lp.theme.statusTextColor || "#ffffff"),
+          bubbleTextColor: clampHexColor(lp.theme.bubbleTextColor || "#ffffff"),
           emojiSize: Number(lp.theme.emojiSize || 40),
           photoSize: Number(lp.theme.photoSize || 68)
         };
       }
-      return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", emojiBg:"#2b2b2b", bubbleColor:"#ffd0e2", timeColor:"#ffffff", emojiSize:40, photoSize:68 };
+      return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", emojiBg:"#2b2b2b", bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
     }
     async function ensureMeDoc(){
       const ref = meRef(state.roomId, state.uid);
@@ -3995,6 +4145,9 @@ function startHelperWatch(){
         emojiBg: clampHexColor((els.emojiBgColor && els.emojiBgColor.value) ? els.emojiBgColor.value : "#2b2b2b"),
         bubbleColor: clampHexColor((els.bubbleColor && els.bubbleColor.value) ? els.bubbleColor.value : (els.bgColor ? els.bgColor.value : "#ffd0e2")),
         timeColor: clampHexColor((els.timeColor && els.timeColor.value) ? els.timeColor.value : "#ffffff"),
+        nameColor: clampHexColor((els.nameColor && els.nameColor.value) ? els.nameColor.value : "#ffffff"),
+        statusTextColor: clampHexColor((els.statusTextColor && els.statusTextColor.value) ? els.statusTextColor.value : "#ffffff"),
+        bubbleTextColor: clampHexColor((els.bubbleTextColor && els.bubbleTextColor.value) ? els.bubbleTextColor.value : "#ffffff"),
         emojiSize: 82,
         photoSize: 82
       };
@@ -4215,7 +4368,7 @@ function startHelperWatch(){
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
       }[c]));
     }
-    const CHAT_MAX_VIEW = 70;
+    const CHAT_MAX_VIEW = 20;
     // If mission events share the same collection, fetch a bit more so chat still shows up to 70.
     const CHAT_QUERY_LIMIT = 220;
 
@@ -4230,16 +4383,39 @@ function startHelperWatch(){
         <div class="meta"><span><span class="chatEmoji">${escapeHtml(emoji)}</span><span class="chatName">${escapeHtml(nick)}</span></span></div>
         <div class="text">${escapeHtml(m.text || "")}</div>
       `;
+      // theme-based text colors (if provided)
+      try{
+        const nc = p && p.theme && p.theme.nameColor ? clampHexColor(p.theme.nameColor) : null;
+        if(nc){
+          const nEl = div.querySelector(".chatName");
+          if(nEl) nEl.style.color = nc;
+        }
+      }catch(e){}
       return div;
     }
 
-    function renderChatFull(list){
-      els.chatList.innerHTML = "";
+    function renderChatFull(list, forceBottom){
+      const el = els.chatList;
+      if(!el) return;
+      const nearBottom = (typeof forceBottom === "boolean") ? forceBottom : isChatNearBottom();
+      const prevTop = el.scrollTop || 0;
+      const prevH = el.scrollHeight || 0;
+
+      el.innerHTML = "";
       const frag = document.createDocumentFragment();
       for(const m of list){
         frag.appendChild(makeMsgNode(m));
       }
-      els.chatList.appendChild(frag);
+      el.appendChild(frag);
+
+      // keep viewport stable when user is reading older msgs
+      if(!nearBottom){
+        const newH = el.scrollHeight || 0;
+        el.scrollTop = prevTop + Math.max(0, newH - prevH);
+        return;
+      }
+      // always land on the latest when near bottom
+      requestAnimationFrame(()=>{ try{ el.scrollTop = el.scrollHeight; }catch(e){} });
     }
 
     function isChatNearBottom(){
@@ -4342,7 +4518,7 @@ try{
 
         // ✅ 케이스 1) 최초/비정형 변화 → 전체 렌더(70개라 가벼움)
         if(oldIds.length === 0){
-          renderChatFull(list);
+          renderChatFull(list, nearBottom);
           state.chatDisplayIds = newIds;
           // 첫 로드(입장 직후)는 항상 최신 채팅이 보이게
           requestAnimationFrame(()=>{ scrollChatToBottom(); hideChatNewBar(true); });
@@ -4368,7 +4544,7 @@ try{
             els.chatList.appendChild(makeMsgNode(m));
             state.chatDisplayIds = newIds;
           }else{
-            renderChatFull(list);
+            renderChatFull(list, nearBottom);
             state.chatDisplayIds = newIds;
           }
         }
@@ -4434,6 +4610,8 @@ function __playEnterSfx(){
 function playSfx(kind){
   // 퇴장 소리는 제거: enter만 재생
   if(kind !== "enter") return;
+  // 🔈 local toggle
+  if(state && state.sfxEnabled === false) return;
 
   // 자동 재생 제한 상태면: 큐에 쌓아두고, 사용자에게 "한 번 클릭" 안내
   if(!__audioUnlocked){
@@ -4610,7 +4788,7 @@ async function emitSfx(kind){
       const online = isOnline(p.lastSeenAtMs);
       if(!online) return { text: "offline", cls: "bOff", emoji:"🫥" };
       if(p.status === "work")  return { text:"Work", cls:"bWork recBadge", emoji:"" };
-      if(p.status === "break") return { text:"휴식중", cls:"bBreak", emoji:"☕" };
+      if(p.status === "break") return { text:"휴식중", cls:"bBreak", emoji:"☕", emojiHtml:'<span class="coffeeSteam" aria-hidden="true">☕</span>' };
       return { text:"자리비움", cls:"bIdle", emoji:"🌙" };
     }
     function tileKey(p){
@@ -4665,7 +4843,9 @@ async function emitSfx(kind){
       b.className = `badge ${badge.cls}`;
       const isRec = (badge.cls || "").includes("recBadge");
       const iconCls = (isRec) ? "" : (badge.text==="휴식중") ? "stBreak" : (badge.text==="자리비움") ? "stIdle" : "";
-      b.innerHTML = isRec ? `<span class="recDot"></span><span style="font-weight:1100;">Work</span>` : `<span class="stIcon ${iconCls}">${badge.emoji}</span><span>${badge.text}</span>`;
+      const _emo = (badge.emojiHtml || badge.emoji || "");
+      b.innerHTML = isRec ? `<span class="recDot"></span><span style=\"font-weight:1100;\">Work</span>` : `<span class=\"stIcon ${iconCls}\">${_emo}</span><span>${badge.text}</span>`;
+      try{ if(!isRec && p.theme?.statusTextColor) b.style.color = clampHexColor(p.theme.statusTextColor); }catch(e){}
 
       const namePill = document.createElement("div");
       namePill.className = "namePill";
@@ -4811,8 +4991,21 @@ t.appendChild(bg);
 
     function isCompactNow(){
       const w = getViewportW();
-      if(!w) return false; // 0이면 compact로 오판하지 않기
-      return w <= COMPACT_W;
+      if(!w) return false;
+      const g = els.grid || document.getElementById("grid");
+      const isMini = !!(g && g.classList && g.classList.contains("compact5"));
+      const colsNeeded = isMini ? 4 : 2;
+      let tileMin = isMini ? 150 : 170;
+      try{
+        if(g){
+          const v = getComputedStyle(g).getPropertyValue("--tileMin").trim();
+          const n = parseFloat(v);
+          if(isFinite(n)) tileMin = n;
+        }
+      }catch(e){}
+      const gap = 8;
+      const threshold = Math.ceil(tileMin * colsNeeded + gap * Math.max(0, colsNeeded-1) + 50);
+      return w <= threshold;
     }
 
     function applyCompactMode(force){
@@ -5232,6 +5425,25 @@ async function joinRoom(){
     // UI bindings
     initPalette();
 
+    // ✅ 닉네임/상태/말풍선 글씨 색 컨트롤
+    (function(){
+      const wire = (pickerEl, textEl)=>{
+        if(!pickerEl || !textEl) return;
+        const sync = (v)=>{
+          const c = clampHexColor(v || "#ffffff");
+          textEl.value = c;
+          pickerEl.value = c;
+        };
+        pickerEl.addEventListener("input", ()=>sync(pickerEl.value));
+        textEl.addEventListener("change", ()=>sync(textEl.value));
+        textEl.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); sync(textEl.value); textEl.blur(); }});
+        sync(textEl.value || pickerEl.value || "#ffffff");
+      };
+      wire(els.nameColorPicker, els.nameColor);
+      wire(els.statusTextColorPicker, els.statusTextColor);
+      wire(els.bubbleTextColorPicker, els.bubbleTextColor);
+    })();
+
     // keep dashboard docked
     
 window.addEventListener("resize", ()=>{
@@ -5454,6 +5666,16 @@ els.statusBtn.addEventListener("click", (ev)=>{
         if(els.timeColor) els.timeColor.value = clampHexColor(theme.timeColor || els.timeColor.value || "#ffffff");
         if(els.timePicker) els.timePicker.value = els.timeColor.value;
 
+        // ✅ text colors
+        if(els.nameColor) els.nameColor.value = clampHexColor(theme.nameColor || "#ffffff");
+        if(els.nameColorPicker) els.nameColorPicker.value = els.nameColor.value;
+
+        if(els.statusTextColor) els.statusTextColor.value = clampHexColor(theme.statusTextColor || "#ffffff");
+        if(els.statusTextColorPicker) els.statusTextColorPicker.value = els.statusTextColor.value;
+
+        if(els.bubbleTextColor) els.bubbleTextColor.value = clampHexColor(theme.bubbleTextColor || "#ffffff");
+        if(els.bubbleTextColorPicker) els.bubbleTextColorPicker.value = els.bubbleTextColor.value;
+
         // ✅ 자동전환(분)
         const ab = Number(lp.autoBreakMin ?? 10);
         const ai = Number(lp.autoIdleMin ?? 15);
@@ -5466,6 +5688,16 @@ els.statusBtn.addEventListener("click", (ev)=>{
       showModal(els.profileModal);
     });
     els.closeProfile.addEventListener("click", ()=>hideModal(els.profileModal));
+    if(els.guideBtn){
+      els.guideBtn.addEventListener("click", ()=>{ showModal(els.guideModal); try{ els.guideModal.querySelector('.modalBody')?.scrollTo(0,0);}catch(e){} });
+    }
+    if(els.closeGuide){
+      els.closeGuide.addEventListener("click", ()=>hideModal(els.guideModal));
+    }
+    if(els.guideModal){
+      els.guideModal.addEventListener("click", (e)=>{ if(e.target === els.guideModal) hideModal(els.guideModal); });
+    }
+
     els.applyProfile.addEventListener("click", applyProfile);
     // ✅ 헬퍼 모드 즉시 반영
     try{
@@ -5718,6 +5950,22 @@ els.statusBtn.addEventListener("click", (ev)=>{
     
     // ✅ 입장키(24h) 기억
     loadPassOK();
+
+    // ✅ 입장 소리 토글(로컬)
+    try{
+      const v = (localStorage.getItem(LS_SFX_ENABLED) || "1");
+      state.sfxEnabled = (v !== "0");
+    }catch(e){ state.sfxEnabled = true; }
+    if(els.sfxToggle){
+      els.sfxToggle.checked = (state.sfxEnabled !== false);
+      els.sfxToggle.addEventListener("change", ()=>{
+        state.sfxEnabled = !!els.sfxToggle.checked;
+        try{ localStorage.setItem(LS_SFX_ENABLED, state.sfxEnabled ? "1" : "0"); }catch(e){}
+        try{ showToast(state.sfxEnabled ? "🔈 입장 소리 ON" : "🔇 입장 소리 OFF", 1600); }catch(e){}
+      });
+    }
+
+
     if(els.roomPass){
       els.roomPass.addEventListener("input", ()=>{
         if(!(els.roomPass.value||"").trim()) clearPass();
@@ -5826,6 +6074,60 @@ if(!window.__MK_BOOT_OK__){
         <button id="attCloseBtn" class="xBtn" type="button">닫기 ✖</button>
       </div>
       <iframe id="attFrame" title="출근(출석)" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
+    </div>
+  </div>
+
+
+  <!-- 📖 Guide Modal -->
+  <div id="guideModal" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" style="width:min(720px, 92vw);">
+      <div class="modalHeader">
+        <div class="t">📖 가이드</div>
+        <button id="closeGuide" class="ghost">닫기</button>
+      </div>
+      <div class="modalBody" style="max-height:72vh; overflow:auto;">
+        <pre id="guidePre" class="guidePre">
+
+📍 새로운 작업방 오픈 📌
+
+🟥초기 세팅🟥
+
+1) /출근 링크로 접속
+2) 닉네임 넣고 비밀번호 입력: mkm1919 
+⚡​영구 패스키라 브라우저 별로 처음만 입력하시면 돼요.
+⚡캐시 삭제 시 재입력 필요.
+
+3) 상단바에 있는 내 프로필에서 헬퍼 사용 선택
+⚡자동으로 활동 감지해서 누적 시간 체크를 하고 싶으신 분은!
+⚡​작업방에 공유되어 있는 로컬 헬퍼(각 운영체제에 맞는 걸루~) 다운 후 실행
+⚡​자동 감지 선택하신 작가님들은 상단바의 현재 상태를 작업 중으로 두셔야 합니다.
+⚡​자동 감지가 싫으신 분들은 내 프로필에서 헬퍼 감지 수동으로 변경
+⚡수동으로도 현재 상태 직접 선택하면서 작업하실 수 있습니다.
+
+4) 자동 활동 감지 선택하진 작가님들은 로컬 헬퍼 실행 후 입장한 닉네임과 동일하게 설정
+⚡초기 설정후 재입력 불필요, 작업할 때 실행만 하면 됩니다
+⚡But 언제나 수정이 가능하므로 오늘은 임티 잔뜩 붙은 닉넴으로 일할까 싶으시다면!
+⚡입장 닉넴과 헬퍼 닉넴을 동일하게 설정하시면 됩니당!
+
+5) 작업방 화면 상단에 움직이는 출근 버튼 클릭
+⚡기존 출근처럼 닉네임 선택(자동 기록)
+⚡퇴장 버튼 옆 세줄 짜리 아이콘에 입장 소리 온오프 체크 만들어 두었어요!
+6) 내 프로필에서 자유롭게 프로필 타일을 꾸미기
+⚡​플꾸타임~~~!!
+
+
+🟥​사용 프로그램을 등록하는 게 아니고 
+🟥입장하신 컴퓨터 활동 감지로 누적 시간을 체크합니다.
+🟥가볍게 운영하기 위해서 화면 공유는 사용하지 않습니다.
+🟥집필 시간 체크는 개인 적으로 체크하시면 됩니다!
+🟥내 프로필에서 자동 감지로 휴식/자리비움으로 넘어가는 시간을 설정하실 수 있어요.
+🟥조금 타이트하게 활동 시간을 체크하고 싶으신 분들은 짧게 설정하시면 됩니다.
+🟥다만 맥은 감지와 반영 사이에 3-5초 정도 딜레이가 쫌 있습니다.
+🟥우리가 함께 사용하는 링크들의 바로가기가 대시보드에 연결되어 있습니다.
+🟥오류는 그때그때 수정이 가능합니다.
+🟥혹여라도 새 작업방에서 작업하시다가 문제가 생긴 듯하다면 갠톡 주십셔! 
+</pre>
+      </div>
     </div>
   </div>
 
