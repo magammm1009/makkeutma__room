@@ -1324,7 +1324,6 @@
 
       <button id="onlineBtn" class="ghost miniOnline" disabled title="접속 인원">👥 <span id="countOnline">0</span>명</button>
       <button id="profileBtn" class="ghost">🪪 내 프로필</button>
-      <button id="guideBtn" class="ghost">📖 가이드</button>
     </div>
 
     <div class="actions">
@@ -1341,7 +1340,8 @@
     <main>
       <div class="gridHead">
         <div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
-        <div class="right"><button id="layoutToggleBtn" class="ghost layoutToggle" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">미니 보기</button></div>
+        <div class="right"><button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">📖 가이드</button>
+        <button id="layoutToggleBtn" class="ghost layoutToggle" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">미니 보기</button></div>
       </div>
 
       <div id="grid" class="grid"></div>
@@ -4794,7 +4794,12 @@ async function emitSfx(kind){
     function tileKey(p){
       return JSON.stringify({
         name:p.name, status:p.status, total:p.totalSecondsToday, started:p.sessionStartedAtMs,
-        bubble:p.bubbleText, emo:p.theme?.emoji, emoBg:p.theme?.emojiBg, emoSize:p.theme?.emojiSize, photoSize:p.theme?.photoSize, bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl,
+        bubble:p.bubbleText,
+        // theme (visual)
+        emo:p.theme?.emoji, emoBg:p.theme?.emojiBg, emoSize:p.theme?.emojiSize, photoSize:p.theme?.photoSize,
+        bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl,
+        // ✅ text colors (added v47): must be part of key so tile rerenders when only text colors change
+        nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
         online:isOnline(p.lastSeenAtMs)
       });
     }
@@ -4863,6 +4868,7 @@ async function emitSfx(kind){
       const nameAccent = clampHexColor(p.theme?.bubbleColor || p.theme?.bgColor || "#ffd0e2");
       namePill.style.background = hexToRgba(nameAccent, 0.22);
       namePill.style.borderColor = hexToRgba(nameAccent,0.55);
+      try{ if(p.theme?.nameColor) namePill.style.color = clampHexColor(p.theme.nameColor); }catch(e){}
 
       statusLeft.appendChild(b);
       statusLeft.appendChild(namePill);
@@ -4918,6 +4924,7 @@ bubble.className = "bubble";
 const bubbleAccent = clampHexColor(p.theme?.bubbleColor || p.theme?.bgColor || "#ffd0e2");
 bubble.style.background = hexToRgba(bubbleAccent, 0.34);
 bubble.style.borderColor = hexToRgba(bubbleAccent, 0.70);
+try{ if(p.theme?.bubbleTextColor) bubble.style.color = clampHexColor(p.theme.bubbleTextColor); }catch(e){}
 const bubbleText = (p.bubbleText || "").trim().slice(0,15);
 if(bubbleText){
   bubble.textContent = bubbleText;
@@ -6112,6 +6119,7 @@ if(!window.__MK_BOOT_OK__){
 5) 작업방 화면 상단에 움직이는 출근 버튼 클릭
 ⚡기존 출근처럼 닉네임 선택(자동 기록)
 ⚡퇴장 버튼 옆 세줄 짜리 아이콘에 입장 소리 온오프 체크 만들어 두었어요!
+
 6) 내 프로필에서 자유롭게 프로필 타일을 꾸미기
 ⚡​플꾸타임~~~!!
 
