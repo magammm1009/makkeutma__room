@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>마끝마</title>
+  <title>💗마끝마💗</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
   <style>
     :root{
@@ -3527,7 +3527,9 @@ layers.push(base);
     // - 헬퍼가 active=true 를 보내면, 작업방 탭이 백그라운드여도 lastActivityMs를 갱신해서
     //   자동 휴식/자리비움 전환을 막습니다(=웹 밖 작업도 작업중 유지).
     // - 상태를 자동으로 '작업중'으로 올리진 않습니다(수동/기존 규칙 유지).
-    function helperPairKey(){
+    
+        const HELPER_HEARTBEAT_FRESH_MS = 15000; // 헬퍼 heartbeat 신호 유효시간(ms) (기본 15초)
+function helperPairKey(){
       // Realtime Database key 제한: . # $ [ ] / 는 불가
       // '리로'처럼 일반 닉네임은 그대로 사용 가능
       return (state.nickname || "").trim();
@@ -3538,9 +3540,9 @@ layers.push(base);
       try{
         if(!els.helperStatusDot || !els.helperStatusText) return;
         const now = Date.now();
-        const lastSeen = Number(state.helperLastSeenMs || 0);
-        const connected = !!state.helperConnected || (lastSeen && (now - lastSeen) <= 60000);
-        const active = !!state.helperActive;
+        const lastFresh = Number(state.helperLastFreshMs || 0);
+        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
+        const active = !!(state.helperActive && connected);
 
         let cls = "helperDot off";
         let text = "미연결";
@@ -3569,22 +3571,22 @@ async function pollHelperHeartbeat(){
         // 네트워크/권한 문제로 읽기 실패 → 최근에 본 적 없으면 미연결 처리
         if(!res.ok){
           const now = Date.now();
-          if(state.helperLastSeenMs && (now - state.helperLastSeenMs) > 60000){
-            state.helperConnected = false;
-            state.helperActive = false;
-            updateHelperStatusUI();
-          }
+          const lastFresh = Number(state.helperLastFreshMs || 0);
+          const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
+          state.helperConnected = connected;
+          if(!connected) state.helperActive = false;
+          updateHelperStatusUI();
           return;
         }
 
         const hb = await res.json();
         if(!hb){
           const now = Date.now();
-          if(state.helperLastSeenMs && (now - state.helperLastSeenMs) > 60000){
-            state.helperConnected = false;
-            state.helperActive = false;
-            updateHelperStatusUI();
-          }
+          const lastFresh = Number(state.helperLastFreshMs || 0);
+          const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
+          state.helperConnected = connected;
+          if(!connected) state.helperActive = false;
+          updateHelperStatusUI();
           return;
         }
 
@@ -3605,10 +3607,16 @@ async function pollHelperHeartbeat(){
         // 헬퍼가 서버 timestamp를 쓰므로, ts는 서버시간(ms)
         // 너무 오래된 신호면 미연결(기본: 45초)
         const now = Date.now();
-        const fresh = ts && Math.abs(now - ts) <= 45000;
+        const fresh = ts && Math.abs(now - ts) <= HELPER_HEARTBEAT_FRESH_MS;
 
-        state.helperConnected = !!fresh;
-        state.helperActive = !!(activeBool && fresh);
+        // ✅ fresh 신호일 때만 '마지막 정상 신호' 시각을 갱신
+        if(fresh) state.helperLastFreshMs = now;
+
+        const lastFresh = Number(state.helperLastFreshMs || 0);
+        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
+
+        state.helperConnected = connected;
+        state.helperActive = !!(activeBool && connected);
         state.helperLastTs = ts || 0;
         state.helperLastSeenMs = now;
 
@@ -3637,14 +3645,13 @@ async function pollHelperHeartbeat(){
         }
       }catch(e){
         const now = Date.now();
-        if(state.helperLastSeenMs && (now - state.helperLastSeenMs) > 60000){
-          state.helperConnected = false;
-          state.helperActive = false;
-          updateHelperStatusUI();
-        }
+        const lastFresh = Number(state.helperLastFreshMs || 0);
+        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
+        state.helperConnected = connected;
+        if(!connected) state.helperActive = false;
+        updateHelperStatusUI();
       }
     }
-
 function startHelperWatch(){
       // helper는 5초마다 올리도록 설계(헬퍼 기본 ping_seconds=5)
       if(state.helperWatchTimer) clearInterval(state.helperWatchTimer);
