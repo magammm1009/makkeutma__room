@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>마끝마</title>
+  <title>MagamMagam</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
   <style>
     :root{
@@ -71,6 +71,7 @@
       box-shadow: 0 14px 30px rgba(255,119,184,.18);
     }
     button.ghost{display:flex;align-items:center;justify-content:center;gap:6px;background: rgba(255,255,255,.05)}
+    a.ghost{text-decoration:none;}
 
     /* ✅ 출근 버튼: 오늘 미출근이면 살짝 반짝(독촉), 출근 완료면 체크 표시 */
     @keyframes checkInPulse{
@@ -239,7 +240,55 @@
       font-size:12px;
       font-weight:900;
     }
-    .btnRow{display:flex; gap:8px;}
+    .btnRow{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:6px;
+    }
+    .btnRow button,
+    .btnRow a.ghost{
+      min-height:38px;
+      padding:8px 4px;
+      font-size:10px;
+      line-height:1;
+      letter-spacing:-.4px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      white-space:nowrap;
+    }
+    .btnRow .btnLabel{
+      font-size:10px;
+      letter-spacing:-.6px;
+    }
+
+
+    /* ✅ v42: 현황 카드 내부 '바로가기' 버튼은 v38처럼 길게(전체폭) */
+    .dashBox > .btnRow{
+      display:flex;
+      grid-template-columns:none;
+      gap:0;
+    }
+    .dashBox > .btnRow > button{
+      width:100%;
+      min-width:0;
+    }
+    .dashBox > .btnRow > button.dashGo{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px 12px;
+      font-size:13px;
+      letter-spacing:-.2px;
+    }
+
+    body:not(.joined) #dashShortcuts button{
+      opacity:.45;
+      filter:saturate(.8);
+    }
+
     .btnRow button{flex:1; min-width: 0}
     .dashGo{padding:8px 10px; font-size:12px; font-weight:1100}
     .dashFoot{font-size:11px;}
@@ -274,7 +323,7 @@
     }
     .chatJumpBtn:hover{ filter:brightness(1.05); }
     .msg{
-      display:flex; flex-direction:column; gap:4px;
+      display:flex; flex-direction:column; gap:2px;
       padding:8px 10px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,.10);
@@ -313,10 +362,10 @@
     }
     .grid{
       display:grid;
-      gap:10px;
+      gap:8px;
       grid-template-columns: repeat(auto-fill, minmax(var(--tileMin), var(--tileMax)));
       justify-content: center;
-      padding:4px 2px 14px;
+      padding:4px 0 12px;
       align-items:stretch;
           align-content:start;
     }
@@ -368,6 +417,8 @@
       align-items:center;
       flex-direction:column;
       gap:8px;
+    
+      font-weight: 900;
     }
     .grid.compact5 .missionBtn{display:none !important;}
     .grid.compact5 .bottomStack{
@@ -589,7 +640,7 @@
       width: var(--photoSize, 108px);
       height: var(--photoSize, 108px);
       border-radius:16px;
-      border:1px dashed rgba(255,255,255,.22);
+      border:none;
       background: rgba(0,0,0,.34);
       overflow:hidden;
       flex:0 0 auto;
@@ -833,14 +884,15 @@
     @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
     .chatEmoji{margin-right:6px;}
 
-@media (max-width: 520px){
-  /* Force at least 2 profile tiles on small screens */
-  .grid{grid-template-columns: repeat(2, minmax(0, 1fr));}
+@media (max-width: 460px){
+  /* Screen too narrow: keep only dashboard + chat (hide profile tiles area) */
+  main{display:none !important;}
+  .sidebar{max-width:none;}
+}
+@media (max-width: 820px){
   .tile{max-width:none; justify-self:stretch;}
   .rowTop{min-height: 156px;}
-  .dashRow{grid-template-columns: 1fr;}
 }
-
 
     /* Mini online button next to profile */
     .miniOnline{
@@ -1259,7 +1311,9 @@
             </div>
           </div>
 
-          <div class="btnRow">
+          <div class="btnRow" id="dashShortcuts">
+            <button id="goMacHelper" class="ghost" title="Mac 헬퍼">🍎<span class="btnLabel">Mac</span></button>
+            <button id="goWinHelper" class="ghost" title="Win 헬퍼">🪟<span class="btnLabel">Win</span></button>
             <button id="goChool" class="ghost" title="출근부">🔥<span class="btnLabel">출근부</span></button>
             <button id="goSheet" class="ghost" title="뽀모 시트">📎<span class="btnLabel">뽀모시트</span></button>
           </div>
@@ -1987,6 +2041,8 @@ function loadLocalProfile(){
       goSuda: $("goSuda"),
       goChool: $("goChool"),
       goSheet: $("goSheet"),
+      goMacHelper: $("goMacHelper"),
+      goWinHelper: $("goWinHelper"),
 
       chatList: $("chatList"),
       chatNewBar: $("chatNewBar"),
@@ -2617,9 +2673,17 @@ function seoulDateKey(){
       if(!lastSeenAtMs) return false;
       return (Date.now() - lastSeenAtMs) < ONLINE_TTL_MS;
     }
-    function openUrl(url){
+    const MAC_HELPER_URL = "https://drive.google.com/file/d/1tvpH2bOoAhAthgMyCzWDMX4d4JbpdY83/view?usp=sharing";
+    const WIN_HELPER_URL = "https://drive.google.com/file/d/1dvBW2Y5e6yg3IMPOpcULXee63sPkxr86/view?usp=sharing";
+
+function openUrl(url){
       if(!url){ showToast("설정된 링크가 없어! (☰에서 저장)"); return; }
       window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    function openUrlJoined(url){
+      if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
+      openUrl(url);
     }
 
     // -----------------------------
@@ -2834,6 +2898,12 @@ function dockRightRail(){
 
       els.chatInput.disabled = !joined;
       els.sendBtn.disabled = !joined;
+
+      // ✅ 대시보드 바로가기(헬퍼/출근부/시트): 입장 후에만 클릭 가능
+      if(els.goMacHelper) els.goMacHelper.disabled = !joined;
+      if(els.goWinHelper) els.goWinHelper.disabled = !joined;
+      if(els.goChool) els.goChool.disabled = !joined;
+      if(els.goSheet) els.goSheet.disabled = !joined;
 
       // lamp
       document.body.classList.toggle("joined", joined);
@@ -3582,10 +3652,10 @@ function helperPairKey(){
           text = "읽기권한 없음 (rules)";
         }else if(connected && active){
           cls = "helperDot on";
-          text = "연결됨 (활동중)";
+          text = "헬퍼 감지! 🚨▪️▪️▪️🔥";
         }else if(connected && !active){
           cls = "helperDot wait";
-          text = "연결됨 (대기)";
+          text = "연결됨 (대기) 💤";
         }
 
         els.helperStatusDot.className = cls;
@@ -4073,8 +4143,10 @@ function startHelperWatch(){
     if(els.goPomoMini){ els.goPomoMini.disabled = !d.pomoUrl; els.goPomoMini.onclick = ()=>openUrl(d.pomoUrl); }
     if(els.goSuda) els.goSuda.onclick = ()=>openUrl(d.sudaUrl);
     if(els.goSudaMini){ els.goSudaMini.disabled = !d.sudaUrl; els.goSudaMini.onclick = ()=>openUrl(d.sudaUrl); }
-    if(els.goChool) els.goChool.onclick = ()=>openUrl(d.choolUrl);
-    if(els.goSheet) els.goSheet.onclick = ()=>openUrl(d.sheetUrl);
+    if(els.goChool) els.goChool.onclick = ()=>openUrlJoined(d.choolUrl);
+    if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
+    if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(MAC_HELPER_URL);
+    if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(WIN_HELPER_URL);
 
     if(els.pomoUrl) els.pomoUrl.value = d.pomoUrl || "";
     if(els.sudaUrl) els.sudaUrl.value = d.sudaUrl || "";
