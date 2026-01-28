@@ -1659,7 +1659,8 @@ body.railFolded .railEdgeBtn{ display:flex !important; }
             <input id="emojiBgPicker" type="color" value="#2b2b2b" />
             <input id="emojiBgColor" value="#2b2b2b" style="width:110px" />
           </div>
-     
+          <span class="tiny">투명 없음(원색).</span>
+        </div>
 
         <div class="row">
           <label>이모지 배경 투명</label>
@@ -1669,7 +1670,8 @@ body.railFolded .railEdgeBtn{ display:flex !important; }
               <span class="tiny">투명</span>
             </label>
           </div>
-   
+          <span class="tiny">체크하면 이모지 뒤 배경을 투명 처리</span>
+        </div>
 
         <div class="row" style="align-items:flex-start;">
           <label>💓 배경색</label>
@@ -1704,7 +1706,10 @@ body.railFolded .railEdgeBtn{ display:flex !important; }
             <option value="papergrid">종이 그리드</option>
             <option value="waves">웨이브</option>
           </select>
-        
+          <span class="tiny">선택창 배경도 어둡게.</span>
+        </div>
+
+
 <div class="row">
   <label>패턴 색</label>
   <div class="colorControls">
@@ -2308,8 +2313,7 @@ function loadLocalProfile(){
     storageBucket: "magamm00-5baee.firebasestorage.app",
     messagingSenderId: "829544685832",
     appId: "1:829544685832:web:7ae0a5a2cd48cb62a6ccbd",
-    measurementId: "G-CFQ6KZ7R7B",
-    databaseURL: "https://magamm00-5baee-default-rtdb.asia-southeast1.firebasedatabase.app"
+    measurementId: "G-CFQ6KZ7R7B"
   };
 
     // Firebase imports (CDN)
@@ -2321,12 +2325,6 @@ function loadLocalProfile(){
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-    import {
-      getDatabase, ref as rRef, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
-      push as rPush, onValue as rOnValue, off as rOff, onDisconnect as rOnDisconnect,
-      query as rQuery, orderByChild as rOrderByChild, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
-      serverTimestamp as rServerTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 ; (async ()=>{
 
@@ -2338,7 +2336,6 @@ function loadLocalProfile(){
     try{ enableIndexedDbPersistence(db); }catch(e){ console.warn('[persistence] disabled', e?.code||e); }
 const auth = getAuth(app);
     const storage = getStorage(app);
-    const rtdb = getDatabase(app, firebaseConfig.databaseURL);
 
     // DOM
     const $ = (id) => document.getElementById(id);
@@ -2877,7 +2874,6 @@ function openMissionListModal(){
   }catch(e){}
 }
 
-
 function buildMissionEvent(action, m){
   const name = (state.nickname || els.name?.value || "").trim();
   const dayKey = (m?.dayKey) || seoulDateKey();
@@ -2893,54 +2889,61 @@ function buildMissionEvent(action, m){
 }
 
 async function emitMissionEvent(action, m){
-  // ✅ RTDB로 마이그레이션: /missions/{dayKey}/{uid} 에 성공만 저장(+내 presence.mission도 업데이트)
   try{
-    if(!state.roomId || !state.uid) return;
+    if(!state.roomId) return;
     const name = (state.nickname || els.name?.value || "").trim();
     if(!name) return;
-
-    const dayKey = (m?.dayKey) || seoulDateKey();
-    const text = (m?.text || "").trim().slice(0,60);
-
-    // 내 미션(로컬/프리즌스) 업데이트
-    const cur = state.myMission || loadMissionLocal();
-    const merged = {
-      dayKey,
-      text: text || (cur.text||""),
-      done: (String(action||"done") === "done"),
-      doneAt: (String(action||"done") === "done") ? (cur.doneAt || new Date().toISOString()) : ""
-    };
-    if(String(action||"set")==="set"){
-      merged.done = !!cur.done;
-      merged.doneAt = cur.doneAt || "";
-    }
-    state.myMission = merged;
-    saveMissionLocal(merged);
-    try{ setMissionButtonState(); }catch(e){}
-
-    // presence에 반영(타일 크라운/버튼)
-    try{
-      await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-        mission: merged,
-        updatedAt: Date.now(),
-        lastSeenAtMs: Date.now()
-      });
-    }catch(e){}
-
-    // 성공 명단은 missions에만 저장
-    const node = rRef(rtdb, `${rRoomBase(state.roomId)}/missions/${dayKey}/${state.uid}`);
-    if(String(action||"done")==="done"){
-      await rSet(node, { uid: state.uid, name: normalizeNick(name), text, doneAtMs: Date.now() });
-    }else if(String(action||"undo")==="undo"){
-      await rRemove(node);
-    }else{
-      // set만 한 경우: 성공명단은 건드리지 않음
-    }
+    // 메시지 컬렉션은 이미 채팅에서 쓰고 있으므로(룰 통과), 여기로 이벤트를 남긴다
+    await addDoc(chatCol(state.roomId), buildMissionEvent(action, m));
   }catch(e){
-    console.warn("[mission] write failed", e);
-    // UX는 유지 (로컬은 이미 저장됨)
+    console.warn("[mission] event write failed", e);
+    // 사용자 UX는 유지 (로컬은 이미 저장됨)
   }
 }
+
+function computeMissionSuccessFromMsgs(msgs, dayKey){
+  // 닉네임별 가장 "결정적인" 미션 상태(오늘 기준)
+  // - 동일 tsMs에서 'set'과 'done'이 충돌할 때도 안정적으로 'done'이 이기도록 우선순위 적용
+  // action: "set" | "done" | "undo"
+  const prio = (a)=>{
+    if(a==="done") return 3;
+    if(a==="undo") return 2;
+    return 1; // set or others
+  };
+
+  const bestByName = new Map();
+
+  for(let i=0;i<msgs.length;i++){
+    const m = msgs[i] || {};
+    if(m.type !== "mission") continue;
+    if(String(m.dayKey||"") !== String(dayKey)) continue;
+
+    const name = (typeof normalizeNick==="function") ? normalizeNick(m.name||"") : String(m.name||"").trim();
+    if(!name) continue;
+
+    const action = String(m.action||"set");
+    const tsMs = Number(m.tsMs||0);
+    const text = String(m.text||"").trim();
+
+    const prev = bestByName.get(name);
+    if(!prev){
+      bestByName.set(name, { action, text, tsMs });
+      continue;
+    }
+
+    // 더 최신 tsMs가 이김. tsMs가 같으면 action 우선순위가 높은 쪽이 이김.
+    if(tsMs > prev.tsMs || (tsMs === prev.tsMs && prio(action) > prio(prev.action))){
+      bestByName.set(name, { action, text, tsMs });
+    }
+  }
+
+  let doneCount = 0;
+  for(const v of bestByName.values()){
+    if(v && v.action === "done") doneCount++;
+  }
+  return { doneCount, lastByName: bestByName };
+}
+
 
 function subscribeMissionFeed(){
   try{
@@ -2950,36 +2953,25 @@ function subscribeMissionFeed(){
     const dayKey = seoulDateKey();
     state.missionDayKey = dayKey;
     if(!state.roomId) return;
-    if(!state.nonChatEnabled) return;
 
-    const mref = rMissionsRootRef(state.roomId, dayKey);
-    const onM = (snap)=>{
-      const v = (snap && snap.val) ? (snap.val() || {}) : {};
+    // ✅ where를 걸지 않고(인덱스/룰 이슈 최소화) 최근 600개에서 집계
+    const q = query(chatCol(state.roomId), orderBy("tsMs","desc"), limit(600));
+    state.unsubMissionFeed = safeOnSnapshot(q, (qs)=>{
+      const items = [];
+      qs.forEach(d=>items.push(d.data()));
+      // items는 tsMs desc
       const prevLastByName = state.missionLastByName;
-
-      const bestByName = new Map();
-      for(const [uid, info] of Object.entries(v)){
-        if(!info) continue;
-        const name = (typeof normalizeNick==="function") ? normalizeNick(info.name||"") : String(info.name||"").trim();
-        if(!name) continue;
-        bestByName.set(name, { action:"done", text: String(info.text||"").trim(), tsMs: Number(info.doneAtMs||0) });
-      }
-
-      let doneCount = 0;
-      for(const vv of bestByName.values()){
-        if(vv && vv.action==="done") doneCount++;
-      }
-
-      state.missionLastByName = bestByName;
+      const { doneCount, lastByName } = computeMissionSuccessFromMsgs(items, dayKey);
+      state.missionLastByName = lastByName;
       state.missionSuccessCount = doneCount;
       renderMissionSuccessCount(doneCount);
       refreshAllMissionButtons();
       refreshAllMissionMedals();
 
-      // 폭죽: 새로 done된 사람만 1회
+      // ✅ 누군가 '미션 성공'으로 바뀐 순간에만 폭죽(실시간, 1회)
       try{
         const prevMap = (prevLastByName && (prevLastByName instanceof Map)) ? prevLastByName : new Map();
-        for(const [n, info] of bestByName.entries()){
+        for(const [n, info] of lastByName.entries()){
           if(info && info.action==="done"){
             const prev = prevMap.get(n);
             if(!prev || prev.action!=="done"){
@@ -2990,24 +2982,31 @@ function subscribeMissionFeed(){
         }
       }catch(e){}
 
-      // 내 미션 상태 보정(uid 기준)
+      // 내 미션 상태도 원격 이벤트에서 보정(닉네임 기준)
       try{
-        if(state.uid){
-          const mine = v[state.uid];
-          const cur = state.myMission || loadMissionLocal();
-          if(mine){
-            const merged = { dayKey, text: (cur.text || mine.text || "").slice(0,60), done:true, doneAt: cur.doneAt || (mine.doneAtMs ? new Date(mine.doneAtMs).toISOString() : "") };
-            state.myMission = merged; saveMissionLocal(merged); setMissionButtonState();
+        const myName = (state.nickname || els.name?.value || "").trim();
+        if(myName){
+          for(const m of items){
+          if(!(m && m.type==="mission")) continue;
+            if(m?.type==="mission" && String(m.dayKey||"")===String(dayKey) && ( (typeof normalizeNick==="function") ? normalizeNick(m.name||"") : String(m.name||"").trim() ) === ( (typeof normalizeNick==="function") ? normalizeNick(myName) : myName )){
+              const cur = state.myMission || loadMissionLocal();
+              const merged = {
+                dayKey,
+                text: (cur.text || m.text || "").slice(0,60),
+                done: (String(m.action||"done")==="done"),
+                doneAt: (cur.doneAt || (m.tsMs ? new Date(m.tsMs).toISOString() : ""))
+              };
+              state.myMission = merged;
+              saveMissionLocal(merged);
+              setMissionButtonState();
+              break;
+            }
           }
         }
       }catch(e){}
-    };
-
-    rOnValue(mref, onM);
-    state.unsubMissionFeed = ()=>{ try{ rOff(mref, "value", onM); }catch(e){} };
+    });
   }catch(e){}
 }
-
 
 function scheduleMissionDayWatcher(){
   try{
@@ -3255,30 +3254,6 @@ function ensureDashPolling(){
         state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
       }
 
-
-// ✅ (옵션 A) 대시보드 현황을 RTDB로도 공유(읽기 절감/동기화)
-let __dashWriteAt = 0;
-let __dashWriteSig = "";
-const writeCountsToRTDB = (counts)=>{
-  try{
-    if(!state.roomId) return;
-    const now = Date.now();
-    const sig = `${counts.pomoCount ?? ""}|${counts.sudaCount ?? ""}`;
-    // 값 변화 없고 너무 자주면 스킵
-    if(sig === __dashWriteSig && (now - __dashWriteAt) < 15000) return;
-    if((now - __dashWriteAt) < 5000) return;
-    __dashWriteAt = now;
-    __dashWriteSig = sig;
-    rUpdate(rDashboardCountsRef(state.roomId), {
-      pomoCount: (counts.pomoCount==null? null : Number(counts.pomoCount)),
-      sudaCount: (counts.sudaCount==null? null : Number(counts.sudaCount)),
-      updatedAtMs: Number(counts.updatedAtMs||now),
-      writerUid: state.uid || "",
-      writerName: state.nickname || ""
-    }).catch(()=>{});
-  }catch(e){}
-};
-
       // ---- case A: 통합 counts API ----
       if(dashUrl){
         if(state.dashPollUrl === dashUrl && state.dashPollTimer) return;
@@ -3293,7 +3268,6 @@ const writeCountsToRTDB = (counts)=>{
             const upd  = (data.updatedAtMs != null) ? Number(data.updatedAtMs) : Date.now();
             state.localDashCounts = {pomoCount: coerceCount(c.pomo), sudaCount: coerceCount(c.suda), updatedAtMs: upd};
             renderDashboard();
-            writeCountsToRTDB(state.localDashCounts);
           });
         };
         tick();
@@ -3315,7 +3289,6 @@ const writeCountsToRTDB = (counts)=>{
         const [pc, sc] = await Promise.all([loadActiveCount(po), loadActiveCount(su)]);
         state.localDashCounts = {pomoCount: pc, sudaCount: sc, updatedAtMs: Date.now()};
         renderDashboard();
-        writeCountsToRTDB(state.localDashCounts);
       };
       tickDirect();
       state.dashPollTimer = setInterval(tickDirect, 10_000);
@@ -4173,19 +4146,6 @@ layers.push(base);
     function kicksCol(roomId){ return collection(db, "rooms", roomId, "kicks"); }
     function kickRef(roomId, uid){ return doc(db, "rooms", roomId, "kicks", uid); }
 
-
-// RTDB paths (migrated: presence/chat/dashboard/missions/profileUpdates)
-function rRoomBase(roomId){ return `rooms/${roomId}`; }
-function rSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/settings`); }
-function rDashboardSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/dashboard/settings`); }
-function rDashboardCountsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/dashboard/counts`); }
-function rPresenceRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/presence`); }
-function rMePresenceRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/presence/${uid}`); }
-function rMessagesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/messages`); }
-function rMessageRef(roomId, msgId){ return rRef(rtdb, `${rRoomBase(roomId)}/messages/${msgId}`); }
-function rMissionsRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId)}/missions/${dayKey}`); }
-function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profileUpdates`); }
-
     async function ensureRoom(roomId){
       const r = roomRef(roomId);
       const snap = await getDoc(r);
@@ -4223,101 +4183,66 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
       }
       return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
     }
-
-async function ensureMeDoc(){
-  // ✅ RTDB presence로 마이그레이션(프로필/상태/타이머/미션)
-  const pref = rMePresenceRef(state.roomId, state.uid);
-  const today = seoulDateKey();
-
-  const seed = {
-    name: (els.name?.value || "").trim(),
-    dateKey: today,
-    status: "break",
-    totalSecondsToday: focusLoadSeconds(),
-    sessionStartedAtMs: null,
-    bubbleText: (((loadLocalProfile()||{}).bubbleText || "").toString().trim().slice(0,15)),
-    theme: defaultTheme(),
-    mission: state.myMission || { dayKey: today, text:"", done:false, doneAt:"" },
-    lastSeenAtMs: Date.now(),
-    updatedAt: Date.now(),
-  };
-
-  try{
-    const snap = await rGet(pref);
-    const data = snap.exists() ? (snap.val() || {}) : null;
-
-    if(!data){
-      await rSet(pref, seed);
-    }else{
-      // day rollover
-      if(String(data.dateKey||"") !== String(today)){
-        focusSaveSeconds(0);
-        await rUpdate(pref, {
+    async function ensureMeDoc(){
+      const ref = meRef(state.roomId, state.uid);
+      const snap = await getDoc(ref);
+      const today = seoulDateKey();
+      if(!snap.exists()){
+        await setDoc(ref, {
+          name: els.name.value.trim(),
           dateKey: today,
-          totalSecondsToday: 0,
-          sessionStartedAtMs: null,
           status: "break",
-          updatedAt: Date.now(),
+          totalSecondsToday: focusLoadSeconds(),
+          sessionStartedAtMs: null,
+          bubbleText: (((loadLocalProfile()||{}).bubbleText || "").toString().trim().slice(0,15)),
+          theme: defaultTheme(),
+          mission: state.myMission || { dayKey: today, text:"", done:false, doneAt:"" },
           lastSeenAtMs: Date.now(),
+          updatedAt: Date.now(),
         });
+      } else {
+        const data = snap.data();
+        // ✅ 기존 데이터에도 미션 필드 동기화(구버전 호환)
+        try{
+          const m = state.myMission || loadMissionLocal();
+          const need = (!data.mission) || (data.mission?.dayKey !== today);
+          if(need){
+            const m2 = (m.dayKey===today) ? m : { dayKey: today, text:"", done:false, doneAt:"" };
+            state.myMission = m2;
+            saveMissionLocal(m2);
+            await updateDoc(ref, { mission: m2, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+          }
+        }catch(e){}
+
+        // ✅ bubbleText가 아예 없으면(구버전 데이터) 로컬에 저장된 말풍선을 1회 시드
+        if((data.bubbleText === undefined || data.bubbleText === null) ){
+          try{
+            const lp = loadLocalProfile() || {};
+            const bt = (lp.bubbleText || "").toString().trim().slice(0,15);
+            if(bt) await updateDoc(ref, { bubbleText: bt, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+          }catch(e){}
+        }
+        if(data.dateKey !== today){
+          focusSaveSeconds(0);
+          await updateDoc(ref, {
+            dateKey: today,
+            totalSecondsToday: 0,
+            sessionStartedAtMs: null,
+            status: "break",
+            updatedAt: Date.now(),
+          });
+        }
       }
-
-      // mission seed/rollover
+    }
+    async function heartbeat(){
+      if(!state.roomId || !state.uid) return;
       try{
-        const m = state.myMission || loadMissionLocal();
-        const need = (!data.mission) || (data.mission?.dayKey !== today);
-        if(need){
-          const m2 = (m.dayKey===today) ? m : { dayKey: today, text:"", done:false, doneAt:"" };
-          state.myMission = m2;
-          saveMissionLocal(m2);
-          await rUpdate(pref, { mission: m2, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
-        }
-      }catch(e){}
-
-      // bubbleText seed
-      try{
-        if(data.bubbleText === undefined || data.bubbleText === null){
-          const lp = loadLocalProfile() || {};
-          const bt = (lp.bubbleText || "").toString().trim().slice(0,15);
-          if(bt) await rUpdate(pref, { bubbleText: bt, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
-        }
-      }catch(e){}
-
-      // theme seed
-      try{
-        if(!data.theme){
-          await rUpdate(pref, { theme: defaultTheme(), updatedAt: Date.now(), lastSeenAtMs: Date.now() });
-        }
+        await updateDoc(meRef(state.roomId, state.uid), {
+          lastSeenAtMs: Date.now(),
+          updatedAt: Date.now(),
+        });
       }catch(e){}
     }
-
-    // ✅ presence onDisconnect (브라우저/네트워크 끊기면 자동 제거)
-    try{
-      if(state._rtdbOnDisc){
-        try{ state._rtdbOnDisc.cancel?.(); }catch(e){}
-        state._rtdbOnDisc = null;
-      }
-      state._rtdbOnDisc = rOnDisconnect(pref);
-      // 온라인 목록에서 깔끔하게 빠지도록 remove
-      state._rtdbOnDisc.remove();
-    }catch(e){}
-  }catch(e){
-    console.warn("[presence] ensure failed", e);
-    // 최소한은 기록
-    try{ await rUpdate(pref, { lastSeenAtMs: Date.now(), updatedAt: Date.now() }); }catch(e2){}
-  }
-}
-
-async function heartbeat(){
-  if(!state.roomId || !state.uid) return;
-  try{
-    await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-      lastSeenAtMs: Date.now(),
-      updatedAt: Date.now(),
-    });
-  }catch(e){}
-}
-
     function computeDisplayedTotal(p){
       const base = Number(p.totalSecondsToday || 0);
       if(p.status === "work" && p.sessionStartedAtMs){
@@ -4709,8 +4634,8 @@ function startHelperWatch(){
             focusSaveSeconds(0);
             // 내가 방에 들어와 있는 상태면 내 문서도 리셋
             if(state.uid && state.roomId){
-              const pref = rMePresenceRef(state.roomId, state.uid);
-              await rUpdate(pref, { dateKey: dk, status: "break", totalSecondsToday: 0, sessionStartedAtMs: null, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+              const ref = meRef(state.roomId, state.uid);
+              await updateDoc(ref, { dateKey: dk, status: "break", totalSecondsToday: 0, sessionStartedAtMs: null, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
             }
           }
         }catch(e){}
@@ -4718,37 +4643,27 @@ function startHelperWatch(){
 
     }
 
-    
-async function transitionTo(nextStatus, source="manual"){
-  // ✅ 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
-  persistMyFocusToLocal();
-  if(!state.roomId || !state.uid) return;
-  const now = Date.now();
+    async function transitionTo(nextStatus, source="manual"){
+      // ✅ 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
+      persistMyFocusToLocal();
+      const ref = meRef(state.roomId, state.uid);
+      const snap = await getDoc(ref);
+      if(!snap.exists()) return;
+      const p = snap.data();
+      const now = Date.now();
+      const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
+      if(nextStatus === "work") { state.lastActivityMs = now; }
 
-  const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
-  if(nextStatus === "work"){
-    patch.sessionStartedAtMs = now;
-  }else{
-    patch.sessionStartedAtMs = null;
-  }
-
-  // totalSecondsToday는 로컬 기준 누적을 올려줌(읽기 없이)
-  try{
-    patch.totalSecondsToday = Math.floor(Number(focusLoadSeconds()||0));
-    patch.dateKey = seoulDateKey();
-  }catch(e){}
-
-  try{
-    await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
-  }catch(e){
-    console.warn("[status] update failed", e);
-  }
-
-  // UI
-  state.myStatus = nextStatus;
-  syncMyStatusUI();
-}
-
+      if(p.status === "work" && p.sessionStartedAtMs){
+        const deltaSec = Math.max(0, Math.floor((now - p.sessionStartedAtMs)/1000));
+        patch.totalSecondsToday = (p.totalSecondsToday || 0) + deltaSec;
+        patch.sessionStartedAtMs = null;
+      }
+      if(nextStatus === "work" && p.status !== "work"){
+        patch.sessionStartedAtMs = now;
+      }
+      await updateDoc(ref, patch);
+    }
     async function applyProfile(){
       const theme = {
         emoji: ((window.firstEmojiGrapheme|| (typeof firstEmojiGrapheme==='function' ? firstEmojiGrapheme : null) || ((s)=>{ try{const a=Array.from(String(s||'').trim()); return a[0]||'';}catch(e){return '';} }))(els.emoji.value || "✍️")),
@@ -4811,19 +4726,8 @@ async function transitionTo(nextStatus, source="manual"){
         return;
       }
 
-      const pref = rMePresenceRef(state.roomId, state.uid);
-      await rUpdate(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), updatedAt: Date.now(), lastSeenAtMs: Date.now() });
-      try{
-        await rPush(rProfileUpdatesRootRef(state.roomId), {
-          uid: state.uid,
-          name: state.nickname || (els.name?.value||"").trim(),
-          tsMs: Date.now(),
-          type: "profile_update",
-          theme,
-          bubbleText
-        });
-      }catch(e){}
-
+      const ref = meRef(state.roomId, state.uid);
+      await updateDoc(ref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), updatedAt: Date.now(), lastSeenAtMs: Date.now() });
 
       // ✅ 즉시 반영(스냅샷 대기 없이 내 타일부터 갱신)
       try{
@@ -4879,8 +4783,8 @@ async function transitionTo(nextStatus, source="manual"){
           saveLocalProfile(lp);
           try{ localStorage.setItem("mk_photo_cache_url_v1", url); }catch(e){}
         }catch(e){}
-        await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-          "theme/photoUrl": url,
+        await updateDoc(meRef(state.roomId, state.uid), {
+          "theme.photoUrl": url,
           updatedAt: Date.now(),
           lastSeenAtMs: Date.now()
         });
@@ -4960,102 +4864,59 @@ async function transitionTo(nextStatus, source="manual"){
   }catch(e){}
 }
 
-    
-function subscribeRoom(){
-  // ✅ RTDB로 마이그레이션: 대시보드 링크/관리자해시 + (선택) 집계값
-  try{ if(state.unsubRoom) state.unsubRoom(); }catch(e){}
-  try{ if(state.unsubDashCounts) state.unsubDashCounts(); }catch(e){}
-  state.unsubRoom = null;
-  state.unsubDashCounts = null;
-  if(!state.nonChatEnabled){ return; }
-
-  const sref = rSettingsRef(state.roomId);
-  const onSettings = (snap)=>{
-    const r = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
-    const dash = Object.assign(
-      {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
-      (r.dashboard || {})
-    );
-    state.roomSettings.dashboard = dash;
-    state.roomSettings.adminHash = r.adminHash || null;
-    state.adminHash = state.roomSettings.adminHash;
-
-    // counts는 별도 구독이지만, settings에 들어있으면 fallback
-    if(r.dashCounts && !state.roomSettings.dashCounts) state.roomSettings.dashCounts = r.dashCounts;
-
-    ensureDashPolling();
-    renderDashboard();
-  };
-  try{
-    rOnValue(sref, onSettings);
-    state.unsubRoom = ()=>{ try{ rOff(sref, "value", onSettings); }catch(e){} };
-  }catch(e){
-    console.warn("[room] subscribe settings failed", e);
-  }
-
-  const cref = rDashboardCountsRef(state.roomId);
-  const onCounts = (snap)=>{
-    const v = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
-    state.roomSettings.dashCounts = v || {pomoCount:null, sudaCount:null, updatedAtMs:null};
-    renderDashboard();
-  };
-  try{
-    rOnValue(cref, onCounts);
-    state.unsubDashCounts = ()=>{ try{ rOff(cref, "value", onCounts); }catch(e){} };
-  }catch(e){}
-}
-
-// Admin settings
-async function unlockAdmin(){
-  const pass = (els.adminPass.value || "").trim();
-  if(!pass){ showToast("관리자 비번 입력"); return; }
-  const hash = await sha256Hex(pass);
-
-  // settings가 비어있으면 등록
-  if(!state.adminHash){
-    try{
-      await rUpdate(rSettingsRef(state.roomId), { adminHash: hash });
-      state.adminHash = hash;
-      state.adminOk = true;
-      els.adminArea.style.display = "block";
-      showToast("비번 등록!");
-      return;
-    }catch(e){
-      console.warn(e);
-      showToast("비번 등록 실패(권한/rules 확인)");
-      return;
+    function subscribeRoom(){
+      if(state.unsubRoom) state.unsubRoom();
+      state.unsubRoom = null;
+      if(!state.nonChatEnabled){ return; }
+state.unsubRoom = safeOnSnapshot(roomRef(state.roomId), (snap)=>{
+        if(!snap.exists()) return;
+        const r = snap.data();
+        const _dash = Object.assign({pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL}, (r.dashboard || {}));
+      state.roomSettings.dashboard = _dash;
+        ensureDashPolling();
+        state.roomSettings.dashCounts = r.dashCounts || {pomoCount:null, sudaCount:null, updatedAtMs:null};
+        state.roomSettings.adminHash = r.adminHash || null;
+        state.adminHash = state.roomSettings.adminHash;
+        renderDashboard();
+      });
     }
-  }
 
-  if(hash === state.adminHash){
-    state.adminOk = true;
-    els.adminArea.style.display = "block";
-    showToast("확인 완료!");
-  }else{
-    state.adminOk = false;
-    els.adminArea.style.display = "none";
-    showToast("비번이 달라…");
-  }
-}
+    // Admin settings
+    async function unlockAdmin(){
+      const pass = (els.adminPass.value || "").trim();
+      if(!pass){ showToast("관리자 비번 입력"); return; }
+      const hash = await sha256Hex(pass);
 
-async function saveDashboard(){
-  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
-  const dashboard = {
-    pomoUrl: (els.pomoUrl.value || "").trim(),
-    sudaUrl: (els.sudaUrl.value || "").trim(),
-    choolUrl: (els.choolUrl.value || "").trim(),
-    sheetUrl: (els.sheetUrl.value || "").trim(),
-    dashApiUrl: (els.dashApiUrl && els.dashApiUrl.value ? els.dashApiUrl.value : "").trim(),
-  };
-  try{
-    await rUpdate(rSettingsRef(state.roomId), { dashboard });
-    showToast("저장!");
-  }catch(e){
-    console.warn(e);
-    showToast("저장 실패(권한/rules 확인)");
-  }
-}
-
+      if(!state.adminHash){
+        await updateDoc(roomRef(state.roomId), { adminHash: hash });
+        state.adminHash = hash;
+        state.adminOk = true;
+        els.adminArea.style.display = "block";
+        showToast("비번 등록!");
+        return;
+      }
+      if(hash === state.adminHash){
+        state.adminOk = true;
+        els.adminArea.style.display = "block";
+        showToast("확인 완료!");
+      }else{
+        state.adminOk = false;
+        els.adminArea.style.display = "none";
+        showToast("비번이 달라…");
+      }
+    }
+    async function saveDashboard(){
+      if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+      const dashboard = {
+        pomoUrl: (els.pomoUrl.value || "").trim(),
+        sudaUrl: (els.sudaUrl.value || "").trim(),
+        choolUrl: (els.choolUrl.value || "").trim(),
+        sheetUrl: (els.sheetUrl.value || "").trim(),
+        dashApiUrl: (els.dashApiUrl && els.dashApiUrl.value ? els.dashApiUrl.value : "").trim(),
+      };
+      await updateDoc(roomRef(state.roomId), { dashboard });
+      showToast("저장!");
+    }
 
     // Chat
     function escapeHtml(s){
@@ -5076,60 +4937,82 @@ async function saveDashboard(){
       { k:"lol",   e:"😂" },
     ];
 
-    
-async function toggleReaction(msgId, key){
-  if(!state.joined || !state.roomId || !state.uid) return;
+    async function toggleReaction(msgId, key){
+      if(!state.joined || !state.roomId || !state.uid) return;
 
-  // ✅ Optimistic UI (바로 보이게) + 실패 시 롤백
-  let prevReact = null;
-  let didOptimistic = false;
-  try{
-    const m = state.chatCacheById && state.chatCacheById[msgId];
-    if(m){
-      prevReact = JSON.parse(JSON.stringify(m.reactions || {}));
-      const r = m.reactions || {};
-      const bucket = r[key] || {};
-      if(bucket[state.uid]){ delete bucket[state.uid]; }
-      else{ bucket[state.uid] = true; }
-      r[key] = bucket;
-      m.reactions = r;
-      didOptimistic = true;
-
-      // 해당 메시지 DOM만 교체
+      // ✅ Optimistic UI (바로 보이게) + 실패 시 롤백
+      let prevReact = null;
+      let didOptimistic = false;
       try{
-        const el = els.chatList;
-        const esc = (s)=>{ try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/["\\]/g,"\\$&"); }catch(e){ return String(s).replace(/["\\]/g,"\\$&"); } };
-        const oldNode = el && el.querySelector ? el.querySelector(`.msg[data-msg-id="${esc(msgId)}"]`) : null;
-        if(oldNode){
-          const newNode = makeMsgNode(m);
-          oldNode.replaceWith(newNode);
+        const cm = state.chatCacheById ? state.chatCacheById[msgId] : null;
+        if(cm){
+          const base = (cm.react && typeof cm.react==="object") ? JSON.parse(JSON.stringify(cm.react)) : {};
+          prevReact = JSON.parse(JSON.stringify(base));
+
+          const bucket = (base[key] && typeof base[key]==="object") ? Object.assign({}, base[key]) : {};
+          const has = !!bucket[state.uid];
+          if(has) delete bucket[state.uid];
+          else bucket[state.uid] = true;
+          base[key] = bucket;
+
+          // cache 업데이트
+          cm.react = base;
+
+          // DOM 교체
+          try{
+            const el = els.chatList;
+            if(el){
+              const esc = (s)=>{
+                try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/["\\]/g,"\\$&"); }
+                catch(e){ return String(s).replace(/["\\]/g,"\\$&"); }
+              };
+              const oldNode = el.querySelector(`.msg[data-msg-id="${esc(msgId)}"]`);
+              if(oldNode){
+                oldNode.replaceWith(makeMsgNode(cm));
+                didOptimistic = true;
+              }
+            }
+          }catch(e){}
         }
       }catch(e){}
-    }
-  }catch(e){}
 
-  try{
-    const leaf = rRef(rtdb, `${rRoomBase(state.roomId)}/messages/${msgId}/reactions/${key}/${state.uid}`);
-    await rRunTransaction(leaf, (cur)=> cur ? null : true);
-  }catch(e){
-    console.warn("[react] failed", e);
-    // rollback optimistic
-    if(didOptimistic && state.chatCacheById && state.chatCacheById[msgId]){
-      state.chatCacheById[msgId].reactions = prevReact || {};
       try{
-        const el = els.chatList;
-        const esc = (s)=>{ try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/["\\]/g,"\\$&"); }catch(e){ return String(s).replace(/["\\]/g,"\\$&"); } };
-        const oldNode = el && el.querySelector ? el.querySelector(`.msg[data-msg-id="${esc(msgId)}"]`) : null;
-        if(oldNode){
-          const newNode = makeMsgNode(state.chatCacheById[msgId]);
-          oldNode.replaceWith(newNode);
-        }
-      }catch(e2){}
+        const ref = doc(db, "rooms", state.roomId, "messages", msgId);
+        await runTransaction(db, async(tx)=>{
+          const snap = await tx.get(ref);
+          if(!snap.exists()) return;
+          const data = snap.data() || {};
+          const react = (data.react && typeof data.react==="object") ? JSON.parse(JSON.stringify(data.react)) : {};
+          const bucket = (react[key] && typeof react[key]==="object") ? Object.assign({}, react[key]) : {};
+          const has = !!bucket[state.uid];
+          if(has) delete bucket[state.uid];
+          else bucket[state.uid] = true;
+          react[key] = bucket;
+          tx.update(ref, { react });
+        });
+      }catch(e){
+        console.warn("[react] toggle failed", e);
+        showToast("반응 저장 실패 😭 (권한/네트워크 확인)");
+        // rollback
+        try{
+          if(didOptimistic && prevReact !== null){
+            const cm = state.chatCacheById ? state.chatCacheById[msgId] : null;
+            if(cm){
+              cm.react = prevReact;
+              const el = els.chatList;
+              if(el){
+                const esc = (s)=>{
+                  try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/["\\]/g,"\\$&"); }
+                  catch(e){ return String(s).replace(/["\\]/g,"\\$&"); }
+                };
+                const oldNode = el.querySelector(`.msg[data-msg-id="${esc(msgId)}"]`);
+                if(oldNode) oldNode.replaceWith(makeMsgNode(cm));
+              }
+            }
+          }
+        }catch(e2){}
+      }
     }
-    showToast("리액션 실패(권한/rules 확인)");
-  }
-}
-
 
 
     function makeMsgNode(m){
@@ -5271,95 +5154,189 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       if(els.chatNewBar) els.chatNewBar.style.display = "none";
     }
 
-    
-function subscribeChat(){
-  if(state.unsubChat) state.unsubChat();
-  state.chatDisplayIds = [];
+    function subscribeChat(){
+      if(state.unsubChat) state.unsubChat();
+      state.chatDisplayIds = [];
 
-  const q = rQuery(
-    rMessagesRootRef(state.roomId),
-    rOrderByChild("tsMs"),
-    rLimitToLast(CHAT_QUERY_LIMIT)
-  );
+      // ✅ DB에서 최대 70개만 가져오고(=CHAT_MAX_VIEW), 화면에서도 70개만 유지
+      //    ※ mission 이벤트가 같은 컬렉션에 섞여 있으면 실제 표시 개수는 70보다 적을 수 있음
+      const q = query(chatCol(state.roomId), orderBy("tsMs", "desc"), limit(CHAT_QUERY_LIMIT));
+      state.unsubChat = safeOnSnapshot(q, (qs)=>{
+        const docs = [];
+        qs.forEach(d=>{
+          const data = d.data();
+          docs.push({ id: d.id, ...data });
+        });
 
-  const onMsgs = (snap)=>{
-    const val = snap && snap.val ? (snap.val() || {}) : {};
-    const docs = [];
-    for(const [id, data] of Object.entries(val)){
-      if(!data) continue;
-      docs.push({ id, ...data });
+        // newest first(desc) -> oldest first(asc)
+// ✅ SFX(입장/퇴장) 이벤트 재생
+// - 최초 로드에서는 예전 이벤트를 재생하지 않고 기준(tsMs)만 잡아요.
+// - 이후부터는 새로 추가된 sfx만 재생합니다.
+try{
+  if(!state.sfxInitDone){
+    let maxTs = 0;
+    for(const m of docs){
+      if(m && m.type === "sfx") maxTs = Math.max(maxTs, Number(m.tsMs||0));
     }
+    state.lastSfxTs = Math.max(Number(state.lastSfxTs||0), maxTs);
+    state.sfxInitDone = true;
+  }else{
+    qs.docChanges().forEach((ch)=>{
+      if(ch.type !== "added") return;
+      const d = ch.doc.data() || {};
+      if(d.type !== "sfx") return;
+      const ts = Number(d.tsMs || 0);
+      if(!ts || ts <= (state.lastSfxTs || 0)) return;
+      state.lastSfxTs = ts;
 
-    // SFX 재생(초기 로드는 기준만 잡고 재생 안함)
-    try{
-      let maxTs = 0;
-      for(const m of docs){
-        if(m && m.type === "sfx") maxTs = Math.max(maxTs, Number(m.tsMs||0));
-      }
-      if(!state.sfxInitDone){
-        state.lastSfxTs = Math.max(Number(state.lastSfxTs||0), maxTs);
-        state.sfxInitDone = true;
-      }else{
-        for(const m of docs){
-          if(!(m && m.type==="sfx")) continue;
-          const ts = Number(m.tsMs||0);
-          if(!ts || ts <= (state.lastSfxTs||0)) continue;
-          state.lastSfxTs = ts;
-          if(m.uid && state.uid && m.uid === state.uid) continue;
-          playSfx(m.kind);
-        }
-      }
-    }catch(e){}
+      // 내 이벤트는 버튼 클릭 순간 이미 재생 -> 중복 방지
+      if(d.uid && state.uid && d.uid === state.uid) return;
 
-    // 정렬 안정화
-    docs.sort((a,b)=>{
-      const ta = Number(a.tsMs||0);
-      const tb = Number(b.tsMs||0);
-      if(ta !== tb) return ta - tb;
-      return String(a.id||"").localeCompare(String(b.id||""));
+      playSfx(d.kind);
     });
+  }
+}catch(e){}
 
-    // mission/sfx 제외, 최대 CHAT_MAX_VIEW 유지
-    const list = docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx"))).slice(-CHAT_MAX_VIEW);
+        docs.reverse();
 
-    // cache
-    try{
-      state.chatCache = list;
-      state.chatCacheById = {};
-      for(const mm of list){ if(mm && mm.id) state.chatCacheById[mm.id] = mm; }
-    }catch(e){}
-
-    const newIds = list.map(m=>m.id);
-    const oldIds = state.chatDisplayIds || [];
-    const nearBottom = isChatNearBottom();
-    state.chatUserNearBottom = nearBottom;
-
-    // unseen count
-    if(oldIds.length){
-      try{
-        const oldSet = new Set(oldIds);
-        const addCount = newIds.filter(id=>!oldSet.has(id)).length;
-        if(addCount > 0 && !nearBottom){
-          state.chatUnseen = (Number(state.chatUnseen)||0) + addCount;
-          showChatNewBar();
-        }else if(nearBottom){
-          hideChatNewBar(true);
+        // mission 이벤트는 채팅 렌더에서 제외
+        const list = docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx"))).slice(-CHAT_MAX_VIEW);
+        // ✅ reactions/부분 수정 UI 갱신을 위해 현재 리스트를 캐시
+        try{
+          state.chatCache = list;
+          state.chatCacheById = {};
+          for(const mm of list){ if(mm && mm.id) state.chatCacheById[mm.id] = mm; }
+        }catch(e){}
+        // ✅ 표시 순서 안정화: (서버 ts → 클라 tsMs → 문서id) 기준
+        function _msgTime(m){
+          try{
+            if(m && m.ts && typeof m.ts.toMillis === "function") return m.ts.toMillis();
+          }catch(e){}
+          return Number(m && m.tsMs || 0);
         }
-      }catch(e){}
+        list.sort((a,b)=>{
+          const ta = _msgTime(a);
+          const tb = _msgTime(b);
+          if(ta !== tb) return ta - tb;
+          return String(a.id||"").localeCompare(String(b.id||""));
+        });
+
+        const newIds = list.map(m => m.id);
+
+        // ✅ 사용자가 거의 바닥에 있을 때만 자동 스크롤
+        const nearBottom = (()=>{
+          try{
+            const el = els.chatList;
+            const threshold = 24;
+            return (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold);
+          }catch(e){ return true; }
+        })();
+
+        const oldIds = state.chatDisplayIds || [];
+
+        // ✅ 읽는 중이면(바닥이 아니면) 자동으로 내려가지 않고, 새 메시지 배너만 띄우기
+        state.chatUserNearBottom = nearBottom;
+
+        const same = (oldIds.length === newIds.length) && oldIds.every((id,i)=>id===newIds[i]);
+        if(same){
+          // ✅ reactions 같은 "수정(modified)"은 메시지 id 목록이 같아도 UI가 바뀌어야 해요.
+          //    (기존 최적화 로직이 id만 비교해서 반영이 안 되던 문제 해결)
+          try{
+            const mods = qs.docChanges().filter(ch=>ch.type==="modified").map(ch=>ch.doc.id);
+            if(mods && mods.length && els.chatList){
+              const el = els.chatList;
+              const wasNearBottom = nearBottom;
+              const prevTop = el.scrollTop;
+              const prevHeight = el.scrollHeight;
+
+              // selector escape
+              const esc = (s)=>{
+                try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/["\\]/g,"\\$&"); }
+                catch(e){ return String(s).replace(/["\\]/g,"\\$&"); }
+              };
+
+              const byId = {};
+              for(const m of list) byId[m.id] = m;
+
+              for(const id of mods){
+                if(!byId[id]) continue;
+                const oldNode = el.querySelector(`.msg[data-msg-id="${esc(id)}"]`);
+                if(!oldNode) continue;
+                const newNode = makeMsgNode(byId[id]);
+                oldNode.replaceWith(newNode);
+              }
+
+              // 사용자가 위에서 읽고 있으면(바닥 아님) 스크롤 위치를 최대한 유지
+              if(!wasNearBottom){
+                const newHeight = el.scrollHeight;
+                el.scrollTop = prevTop + (newHeight - prevHeight);
+              }
+            }
+          }catch(e){}
+
+          if(nearBottom){
+            // 레이아웃 변경으로 높이가 바뀌는 경우를 위해 한 번 더 보정
+            requestAnimationFrame(()=>{ try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){} });
+          }
+          return;
+        }
+
+        // ✅ 케이스 1) 최초/비정형 변화 → 전체 렌더(70개라 가벼움)
+        if(oldIds.length === 0){
+          renderChatFull(list, nearBottom);
+          state.chatDisplayIds = newIds;
+          // 첫 로드(입장 직후)는 항상 최신 채팅이 보이게
+          requestAnimationFrame(()=>{ scrollChatToBottom(); hideChatNewBar(true); });
+        }else{
+          // ✅ 케이스 2) 리스트가 1개 증가(70 미만일 때만 가능) → 맨 뒤 append
+          const canAppend = (newIds.length === oldIds.length + 1) && oldIds.every((id,i)=>id===newIds[i]);
+
+          // ✅ 케이스 3) 70개 윈도우가 1칸 밀림(맨 앞 1개 빠지고 맨 뒤 1개 추가) → DOM 1개 제거 + 1개 추가
+          const canSlide =
+            (oldIds.length === CHAT_MAX_VIEW) &&
+            (newIds.length === CHAT_MAX_VIEW) &&
+            (oldIds.slice(1).every((id,i)=>id===newIds[i]));
+
+          if(canSlide){
+            try{
+              if(els.chatList.firstChild) els.chatList.removeChild(els.chatList.firstChild);
+            }catch(e){}
+            const m = list[list.length-1];
+            els.chatList.appendChild(makeMsgNode(m));
+            state.chatDisplayIds = newIds;
+          }else if(canAppend){
+            const m = list[list.length-1];
+            els.chatList.appendChild(makeMsgNode(m));
+            state.chatDisplayIds = newIds;
+          }else{
+            renderChatFull(list, nearBottom);
+            state.chatDisplayIds = newIds;
+          }
+        }
+
+        // ✅ DOM 70개 유지(혹시나 방어)
+        try{
+          while(els.chatList.children.length > CHAT_MAX_VIEW){
+            els.chatList.removeChild(els.chatList.firstChild);
+          }
+        }catch(e){}
+
+        if(nearBottom){
+          hideChatNewBar(true);
+          requestAnimationFrame(()=>{ try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){} });
+        }else{
+          // 새 메시지 개수 누적 후 배너 표시
+          try{
+            const oldSet = new Set(oldIds || []);
+            const addCount = newIds.filter(id=>!oldSet.has(id)).length;
+            if(addCount > 0){
+              state.chatUnseen = (Number(state.chatUnseen)||0) + addCount;
+              showChatNewBar();
+            }
+          }catch(e){}
+        }
+      });
     }
-
-    // ✅ 70개라 전체 렌더가 가장 안전(리액션/수정 포함)
-    renderChatFull(list, nearBottom);
-    state.chatDisplayIds = newIds;
-
-    if(nearBottom){
-      requestAnimationFrame(()=>{ try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){} });
-    }
-  };
-
-  rOnValue(q, onMsgs);
-  state.unsubChat = ()=>{ try{ rOff(q, "value", onMsgs); }catch(e){} };
-}
 
 
 // ===== SFX(입장) : 모두에게 들리게(채팅 컬렉션에 'sfx' 이벤트로 브로드캐스트) =====
@@ -5440,11 +5417,10 @@ async function emitSfx(kind){
   if(kind !== "enter") return;
   try{
     if(!state.roomId) return;
-    await rPush(rMessagesRootRef(state.roomId), {
+    await addDoc(chatCol(state.roomId), {
       type: "sfx",
       kind: "enter",
       tsMs: Date.now(),
-      serverTs: rServerTimestamp(),
       uid: state.uid || "",
       name: state.nickname || (els.name ? (els.name.value||"").trim() : "")
     });
@@ -5461,7 +5437,7 @@ async function emitSys(text){
     const last = Number(sessionStorage.getItem("lastSysTs") || 0);
     if(now - last < 5000) return; // 5초 내 중복 방지
     sessionStorage.setItem("lastSysTs", String(now));
-    await rPush(rMessagesRootRef(state.roomId), { type:"sys", text: String(text||"").slice(0,120), tsMs: now });
+    await addDoc(chatCol(state.roomId), { type:"sys", text: String(text||"").slice(0,120), tsMs: now });
   }catch(e){}
 }
 
@@ -5550,39 +5526,44 @@ async function emitSys(text){
     // ✅ 네트워크 복구 시 대기열 재전송(한 번만 등록)
     window.addEventListener("online", ()=>{ try{ flushChatQueue(); }catch(e){} });
 
-    
-async function sendChatCore(text, isFlush=false){
-  __chatSending = true;
-  try{
-    // 버튼은 잠깐만 잠그고, 입력은 IME 때문에 계속 열어둠
-    els.sendBtn.disabled = true;
+    async function sendChatCore(text, isFlush=false){
+      __chatSending = true;
+      try{
+        // 버튼은 잠깐만 잠그고, 입력은 IME 때문에 계속 열어둠
+        els.sendBtn.disabled = true;
 
-    // 내 프로필 이름(로컬 기준) — RTDB에서 굳이 read하지 않음(읽기 절감)
-    let myName = (state.nickname || els.name.value || "").trim();
-    if(!myName) myName = "익명";
+        // 내 프로필 이름 확보
+        let myName = (els.name.value || "").trim();
+        try{
+          const meSnap = await getDoc(meRef(state.roomId, state.uid));
+          if(meSnap.exists()) myName = normalizeNick(meSnap.data().name || myName);
+        }catch(e){}
 
-    const payload = {
-      type: "chat",
-      uid: state.uid,
-      name: normalizeNick(myName),
-      text: String(text).slice(0,500),
-      tsMs: Date.now(),
-      // serverTs는 정렬 안정화 보조(원하면 활용)
-      serverTs: rServerTimestamp()
-    };
+        await addDoc(chatCol(state.roomId), {
+          uid: state.uid,
+          name: myName,
+          text: String(text).slice(0,500),
+          ts: serverTimestamp(),
+          tsMs: Date.now(),
+          clientTsMs: Date.now(),
+          kind: "chat"
+        });
 
-    await rPush(rMessagesRootRef(state.roomId), payload);
-    return true;
-  }catch(e){
-    console.warn("[chat] send failed", e);
-    showToast("전송 실패(권한/rules 확인)");
-    return false;
-  }finally{
-    __chatSending = false;
-    try{ els.sendBtn.disabled = false; }catch(e){}
-  }
-}
+        // 성공하면 대기열도 즉시 플러시
+        if(!isFlush) setTimeout(()=>{ try{ flushChatQueue(); }catch(e){} }, 0);
 
+        return true;
+      }catch(err){
+        console.error("sendChat error", err);
+        // 실패하면 대기열에 넣고 안내
+        if(!isFlush) queueChat(text);
+        showToast("전송 실패… 네트워크/권한 확인! (대기열에 저장했어)");
+        return false;
+      }finally{
+        __chatSending = false;
+        try{ els.sendBtn.disabled = false; }catch(e){}
+      }
+    }
 
     // Tiles
     function statusBadge(p){
@@ -5992,30 +5973,20 @@ t.appendChild(bg);
       if(state.unsubParticipants) state.unsubParticipants();
       state.unsubParticipants = null;
       if(!state.nonChatEnabled){ return; }
-
-      const q = rQuery(
-        rPresenceRootRef(state.roomId),
-        rOrderByChild("lastSeenAtMs"),
-        rLimitToLast(80)
-      );
-
-      const onP = (snap)=>{
-        const v = (snap && snap.val) ? (snap.val() || {}) : {};
+state.unsubParticipants = safeOnSnapshot(query(participantsCol(state.roomId), orderBy("lastSeenAtMs","desc"), limit(50)), (qs)=>{
         const arr = [];
         const map = new Map();
-        for(const [uid, data] of Object.entries(v)){
-          if(!data) continue;
-          const p = { id: uid, ...data };
+        qs.forEach(d=>{
+          const data = d.data();
+          const p = { id:d.id, ...data };
           arr.push(p);
-          map.set(uid, p);
-        }
-        // 정렬: lastSeen desc
-        arr.sort((a,b)=> Number(b.lastSeenAtMs||0) - Number(a.lastSeenAtMs||0));
-
+          map.set(p.id, p);
+        });
         state.currentParticipants = map;
         syncMyStatusUI();
 
         // ✅ (중요) "오늘 작업시간" 로컬 누적 복구/동기화 (브라우저 기준)
+        // - 탭 종료/재입장/퇴장 후 재입장에서도 로컬 누적이 유지되도록
         try{
           if(!state.didFocusMerge && state.uid){
             const meNow = map.get(state.uid);
@@ -6025,8 +5996,10 @@ t.appendChild(bg);
               let remoteSec = 0;
               try{ remoteSec = Math.floor(Number(computeDisplayedTotal(meNow)||0)); }catch(e){ remoteSec = Math.floor(Number(meNow.totalSecondsToday||0)); }
               const merged = Math.max(localSec, remoteSec);
+
               if(merged !== localSec) focusSaveSeconds(merged);
 
+              // 문서가 남아있는 경우(탭 종료) / 새로 생성된 경우(퇴장) 모두: 값만 정리 + 휴식중 시작
               const needsRemotePatch =
                 (Math.floor(Number(meNow.totalSecondsToday||0)) !== merged) ||
                 (meNow.sessionStartedAtMs != null) ||
@@ -6034,7 +6007,7 @@ t.appendChild(bg);
                 ((meNow.dateKey||today) !== today);
 
               if(needsRemotePatch){
-                rUpdate(rMePresenceRef(state.roomId, state.uid), {
+                updateDoc(meRef(state.roomId, state.uid), {
                   dateKey: today,
                   status: "break",
                   totalSecondsToday: merged,
@@ -6043,6 +6016,7 @@ t.appendChild(bg);
                   lastSeenAtMs: Date.now(),
                 }).catch(()=>{});
               }
+
               state.didFocusMerge = true;
             }
           }
@@ -6051,15 +6025,19 @@ t.appendChild(bg);
         // ✅ 오프라인은 "접속 종료"처럼 처리: 리스트/타일에서 제외
         const onlineArr = arr.filter(p=>isOnline(p.lastSeenAtMs));
 
-        // ✅ 미션 성공 인원: missions 구독값을 기본으로
+        // ✅ 미션 성공 인원: participants 문서의 mission 필드 기준(모두에게 보이게)
+        const todayKey = seoulDateKey();
         let successCount = 0;
         try{
-          successCount = Number(state.missionSuccessCount || 0);
-          if(!successCount){
-            const todayKey = seoulDateKey();
-            successCount = onlineArr.filter(p => p && p.mission && String(p.mission.dayKey||"")===String(todayKey) && !!p.mission.done).length;
-          }
+          successCount = onlineArr.filter(p => p && p.mission && String(p.mission.dayKey||"")===String(todayKey) && !!p.mission.done).length;
         }catch(e){ successCount = 0; }
+
+        // fallback: 미션 이벤트(채팅 컬렉션) 집계값이 더 크면 그쪽으로
+        try{
+          const feedCount = Number(state.missionSuccessCount || 0);
+          if(feedCount > successCount) successCount = feedCount;
+        }catch(e){}
+
         state.missionSuccessCount = successCount;
         renderMissionSuccessCount(successCount);
 
@@ -6071,12 +6049,9 @@ t.appendChild(bg);
         renderStatusRoster(onlineArr);
         renderGridTilesOrRoster(onlineArr);
         try{ setMissionButtonState(); }catch(e){}
-      };
 
-      rOnValue(q, onP);
-      state.unsubParticipants = ()=>{ try{ rOff(q, "value", onP); }catch(e){} };
+      });
     }
-
 
 
     // Join / Leave
@@ -6130,9 +6105,9 @@ async function joinRoom(){
       await ensureRoom(state.roomId);
       await ensureMeDoc();
 
-      const meSnap = await rGet(rMePresenceRef(state.roomId, state.uid));
-      if(meSnap && meSnap.exists && meSnap.exists()){
-        const me = meSnap.val() || {};
+      const meSnap = await getDoc(meRef(state.roomId, state.uid));
+      if(meSnap.exists()){
+        const me = meSnap.data();
         els.emoji.value = me.theme?.emoji || "✍️";
         els.bgColor.value = me.theme?.bgColor || "#ffd0e2";
         if(els.emojiBgColor) els.emojiBgColor.value = me.theme?.emojiBg || "#2b2b2b";
@@ -6247,15 +6222,14 @@ async function joinRoom(){
       if(state.unsubRoom) state.unsubRoom();
       if(state.unsubChat) state.unsubChat();
       if(state.unsubKick) state.unsubKick();
-      if(state.unsubMissionFeed) state.unsubMissionFeed();
+      if(state.unsubMissions) state.unsubMissions();
       state.unsubParticipants = null;
       state.unsubRoom = null;
       state.unsubChat = null;
       state.unsubKick = null;
-      state.unsubMissionFeed = null;
+      state.unsubMissions = null;
 
-      try{ await rRemove(rMePresenceRef(state.roomId, state.uid)); }catch(e){}
-      try{ if(state._rtdbOnDisc){ state._rtdbOnDisc.cancel?.(); state._rtdbOnDisc=null; } }catch(e){}
+      try{ await deleteDoc(meRef(state.roomId, state.uid)); }catch(e){}
 
       els.grid.innerHTML = "";
       els.chatList.innerHTML = "";
@@ -6739,8 +6713,8 @@ if(els.modeManualBtn) els.modeManualBtn.addEventListener("click", ()=>{
         // ✅ 가능하면 즉시 DB에도 반영해서 체크가 다시 풀리지 않게 하기
         try{
           if(state.uid && state.roomId){
-            rUpdate(rMePresenceRef(state.roomId, state.uid), {
-              "theme/emojiBgTransparent": !!els.emojiBgTransparent.checked,
+            updateDoc(meRef(state.roomId, state.uid), {
+              "theme.emojiBgTransparent": !!els.emojiBgTransparent.checked,
               updatedAt: Date.now(),
               lastSeenAtMs: Date.now()
             }).catch(()=>{});
@@ -6814,9 +6788,11 @@ try{
             fxFireworksAt(myTile || btn);
           }
 
-          // ✅ RTDB에 내 미션 반영(emitMissionEvent 사용)
+          // Firestore에 내 미션 저장(가능할 때만)
           try{
             if(state.roomId && state.uid){
+              const ref = meRef(state.roomId, state.uid);
+              await updateDoc(ref, { mission: m, lastSeenAtMs: Date.now() });
               // ✅ 로그아웃/재입장에도 유지되도록 '오늘 미션 성공'을 별도 컬렉션에 저장
               if(becameUndone) await emitMissionEvent('undo', m);
               else if(done) await emitMissionEvent('done', m);
@@ -7241,7 +7217,7 @@ joinRoom();
       // ✅ 탭 닫기/새로고침에서도 "오늘 작업시간" 로컬에 저장(24h 누적 유지용)
       try{ if(state && state.joined) persistMyFocusToLocal(); }catch(e){}
       if(state.roomId && state.uid){
-        try{ rUpdate(rMePresenceRef(state.roomId, state.uid), { lastSeenAtMs: Date.now(), updatedAt: Date.now() }); }catch(e){}
+        try{ updateDoc(meRef(state.roomId, state.uid), { lastSeenAtMs: Date.now(), updatedAt: Date.now() }); }catch(e){}
       }
     });
 
