@@ -1531,6 +1531,9 @@ body::before{
 .topbar{ position: relative; z-index: 3000; }
 .wrap{ position: relative; z-index: 1; }
 
+
+/* ✅ hide photo size slider (requested) */
+#photoSizeRow{display:none !important;}
 </style>
 </head>
 
@@ -1574,6 +1577,7 @@ body::before{
           <button id="btnHelperToggle" class="ghost" disabled>🤖 헬퍼 켜기</button>
           <button id="btnBreak" class="ghost" disabled>☕ 휴식중</button>
           <button id="btnIdle" class="ghost" disabled>🌙 자리비움</button>
+          <button id="btnTimerReset" class="ghost" disabled title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
         </div>
 
         
@@ -1595,6 +1599,7 @@ body::before{
       <button id="joinBtn" class="primary">입장</button>
       <button id="leaveBtn" class="primary" disabled>퇴장</button>
       <span class="meMini" id="meHint">—</span>
+      <button id="dataSaverBtn" class="ghost" disabled title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
       <button id="menuBtn" class="ghost" disabled title="작업방 설정">⚙️</button>
     </div>
   </div>
@@ -1714,25 +1719,25 @@ body::before{
       </div>
       <div class="modalBody">
         <div class="row">
-          <label>이모지</label>
-          <input id="emoji" placeholder="예: ✍️, 💓, 🧠" maxlength="4" style="width:120px">
+          <label>🎇이모지</label>
+          <input id="emoji" placeholder="예: 😍, ✍️, 💓, 💝, 💗," maxlength="4" style="width:120px">
           <span class="tiny">프로필 타일에 표시돼요.</span>
         </div>
 
         <div class="row">
-          <label>이모지 크기</label>
+          <label>🎇이모지 크기</label>
           <input id="emojiSize" type="range" min="26" max="100" value="40" style="flex:1">
           <input id="emojiSizeNum" type="number" min="26" max="100" value="40" style="width:76px">
         </div>
 
         <div class="row">
-          <label>사진 사용</label>
+          <label>🎇사진 사용</label>
           <input id="photoEnabled" type="checkbox" checked style="transform:scale(1.15); margin-right:8px;">
           <span class="tiny">끄면 타일에서 사진 칸이 사라져요.</span>
         </div>
 
         <div id="photoUploadRow" class="row">
-          <label>💓 사진 업로드</label>
+          <label>🎇사진 업로드</label>
           <input id="photoFile" type="file" accept="image/*,.gif" />
           <button id="uploadPhotoBtn" class="primary tight">업로드</button>
         </div>
@@ -1744,7 +1749,7 @@ body::before{
         </div>
 
         <div class="row">
-          <label>이모지 배경</label>
+          <label>🎇이모지 배경</label>
           <div class="colorControls">
             <input id="emojiBgPicker" type="color" value="#2b2b2b" />
             <input id="emojiBgColor" value="#2b2b2b" style="width:110px" />
@@ -1753,18 +1758,18 @@ body::before{
         </div>
 
         <div class="row">
-          <label>이모지 배경 투명</label>
+          <label>🎇이모지 배경 투명</label>
           <div style="display:flex; align-items:center; gap:10px;">
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
               <input id="emojiBgTransparent" type="checkbox" style="transform:scale(1.15);" />
-              <span class="tiny">투명</span>
+              <span class="tiny"></span>
             </label>
           </div>
           <span class="tiny"></span>
         </div>
 
         <div class="row" style="align-items:flex-start;">
-          <label>💓 배경색</label>
+          <label>🎇배경색</label>
           <div id="swatches" class="swatches" style="display:none"></div>
           <div class="colorControls">
             <input id="bgPicker" type="color" value="#ffd0e2" />
@@ -1773,14 +1778,14 @@ body::before{
         </div>
 
         <div class="row">
-          <label>닉네임</label>
+          <label>🎇닉네임</label>
           <input id="profileNick" type="text" maxlength="20" placeholder="닉네임 (최대 20자)">
           <span class="tiny">저장하면 상단/채팅/접속자 목록에 즉시 반영돼요.</span>
         </div>
 
 
         <div class="row">
-          <label>배경 패턴</label>
+          <label>🎇배경 패턴</label>
           <select id="bgPattern" class="ghost" style="flex:1; background:#111; color:#fff; border:1px solid rgba(255,255,255,.18);">
             <option value="none">없음</option>
             <option value="dots">도트</option>
@@ -1796,12 +1801,12 @@ body::before{
             <option value="papergrid">종이 그리드</option>
             <option value="waves">웨이브</option>
           </select>
-          <span class="tiny">선택창 배경도 어둡게.</span>
+          <span class="tiny"></span>
         </div>
 
 
 <div class="row">
-  <label>패턴 색</label>
+  <label>🎇패턴 색</label>
   <div class="colorControls">
     <input id="patternPicker" type="color" value="#ffffff" />
     <input id="patternColor" value="#ffffff" style="width:110px" />
@@ -1810,12 +1815,12 @@ body::before{
 </div>
 
 <div class="row">
-          <label>말풍선 글(최대 15자)</label>
+          <label>🎇말풍선(최대 15자)</label>
           <textarea id="bubbleText" placeholder="지금 상태 한 마디!" maxlength="15"></textarea>
         </div>
 
         <div class="row">
-          <label>말풍선 배경</label>
+          <label>🎇말풍선 배경</label>
           <div class="colorControls">
             <input id="bubblePicker" type="color" value="#ffd0e2" />
             <input id="bubbleColor" value="#ffd0e2" style="width:110px" />
@@ -1823,7 +1828,7 @@ body::before{
         </div>
 
         <div class="row">
-          <label>💓 시간 색</label>
+          <label>🎇타이머 색</label>
           <div class="colorControls">
             <input id="timePicker" type="color" value="#ffffff" />
             <input id="timeColor" value="#ffffff" style="width:110px" />
@@ -1834,25 +1839,25 @@ body::before{
         
 
         <div class="row">
-          <label>타일 닉네임 글씨 색</label>
+          <label>🎇타일 닉네임</label>
           <div class="colorControls">
             <input id="nameColorPicker" type="color" value="#ffffff" />
             <input id="nameColor" value="#ffffff" style="width:110px" />
           </div>
-          <span class="tiny">프로필 타일 닉네임 색</span>
+          <span class="tiny">🎇프로필 타일</span>
         </div>
 
         <div class="row">
-          <label>채팅 닉네임 글씨 색</label>
+          <label>🎇채팅 닉네임</label>
           <div class="colorControls">
             <input id="chatNameColorPicker" type="color" value="#ffffff" />
             <input id="chatNameColor" value="#ffffff" style="width:110px" />
           </div>
-          <span class="tiny">채팅 닉네임만 따로</span>
+          <span class="tiny"></span>
         </div>
 
         <div class="row">
-          <label>현재상태 글씨 색</label>
+          <label>🎇현재상태</label>
           <div class="colorControls">
             <input id="statusTextColorPicker" type="color" value="#ffffff" />
             <input id="statusTextColor" value="#ffffff" style="width:110px" />
@@ -1861,12 +1866,12 @@ body::before{
         </div>
 
         <div class="row">
-          <label>말풍선 글씨 색</label>
+          <label>🎇말풍선 글씨</label>
           <div class="colorControls">
             <input id="bubbleTextColorPicker" type="color" value="#ffffff" />
             <input id="bubbleTextColor" value="#ffffff" style="width:110px" />
           </div>
-          <span class="tiny">프로필 타일 말풍선(한 줄)</span>
+          <span class="tiny"></span>
         </div>
         <div class="row profileHelperHidden">
           <label>헬퍼 상태</label>
@@ -2418,8 +2423,8 @@ function loadLocalProfile(){
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
-      push as rPush, onValue as rOnValue, off as rOff, onDisconnect as rOnDisconnect,
-      query as rQuery, orderByChild as rOrderByChild, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
+      push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, off as rOff, onDisconnect as rOnDisconnect,
+      query as rQuery, orderByChild as rOrderByChild, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
       serverTimestamp as rServerTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -2498,6 +2503,7 @@ const auth = getAuth(app);
       btnWork: $("btnWork"),
       btnBreak: $("btnBreak"),
       btnIdle: $("btnIdle"),
+      btnTimerReset: $("btnTimerReset"),
       checkInBtn: $("checkInBtn"),
       statusBtn: $("statusBtn"),
       statusMenu: $("statusMenu"),
@@ -3605,6 +3611,7 @@ function dockRightRail(){
       els.joinBtn.disabled = joined;
       els.name.disabled = joined;
       els.menuBtn.disabled = !joined;
+      if(els.dataSaverBtn) els.dataSaverBtn.disabled = !joined;
 
       // hide/show nickname & pass area on join
       els.name.style.display = joined ? "none" : "";
@@ -3616,6 +3623,7 @@ function dockRightRail(){
       els.btnWork.disabled = !joined;
       els.btnBreak.disabled = !joined;
       els.btnIdle.disabled = !joined;
+      try{ if(els.btnTimerReset) els.btnTimerReset.disabled = !joined; }catch(e){}
       if(els.checkInBtn) els.checkInBtn.disabled = !joined;
       els.statusBtn.disabled = !joined;
       if(els.btnHelperToggle) els.btnHelperToggle.disabled = !joined;
@@ -4975,7 +4983,7 @@ async function transitionTo(nextStatus, source="manual"){
           // 캐시 무효화 후 재렌더
           try{ state.lastRendered?.delete?.(state.uid); }catch(e){}
           const arr = [...state.currentParticipants.values()];
-          const onlineArr = arr.filter(p=> (p && p.status !== "off" && isOnline(p.lastSeenAtMs)));
+          const onlineArr = arr.filter(p=> (p && p.status !== "off" && isOnline(p.lastSeenAtMs) && p.name && String(p.name).trim() !== "" && String(p.name).trim() !== "익명"));
           onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
           renderGridTilesOrRoster(onlineArr);
         }
@@ -5210,12 +5218,9 @@ async function saveDashboard(){
     const CHAT_KEEP_MAX = 50;   // ✅ while staying in room, keep up to 50 in memory/UI
     // ✅ Reactions (간단 이모지)
     const REACTS = [
-      { k:"heart", e:"💗" },
-      { k:"boom",  e:"🚀" },
-      { k:"cry",   e:"🥲" },
+      { k:"heart", e:"❤️" },
+      { k:"boom",  e:"👍" },
       { k:"fire",  e:"🔥" },
-      { k:"wow",   e:"😮" },
-      { k:"lol",   e:"😂" },
     ];
 
     
@@ -5388,24 +5393,37 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       const el = els.chatList;
       if(!el) return;
       const nearBottom = (typeof forceBottom === "boolean") ? forceBottom : isChatNearBottom();
+
+      // ✅ keep "more" bar (inside chatList) across full re-renders
+      let keepMore = null;
+      try{
+        keepMore = document.getElementById("chatMoreBar");
+        if(keepMore) keepMore.remove();
+      }catch(e){ keepMore = null; }
+
       const prevTop = el.scrollTop || 0;
       const prevH = el.scrollHeight || 0;
 
       el.innerHTML = "";
+      if(keepMore) el.appendChild(keepMore);
+
       const frag = document.createDocumentFragment();
       for(const m of list){
         frag.appendChild(makeMsgNode(m));
       }
       el.appendChild(frag);
 
-      // keep viewport stable when user is reading older msgs
-      if(!nearBottom){
+      if(nearBottom){
+        requestAnimationFrame(()=>{ try{ el.scrollTop = el.scrollHeight; }catch(e){} });
+      }else{
+        // keep scroll position roughly stable when older messages are prepended
         const newH = el.scrollHeight || 0;
-        el.scrollTop = prevTop + Math.max(0, newH - prevH);
-        return;
+        const delta = newH - prevH;
+        if(delta > 0 && (state.chatDidPrependOnce)){
+          try{ el.scrollTop = prevTop + delta; }catch(e){}
+          state.chatDidPrependOnce = false;
+        }
       }
-      // always land on the latest when near bottom
-      requestAnimationFrame(()=>{ try{ el.scrollTop = el.scrollHeight; }catch(e){} });
     }
 
     function isChatNearBottom(){
@@ -5436,123 +5454,331 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
 
     
 function subscribeChat(){
-  if(state.unsubChat) state.unsubChat();
+  // clean up existing listeners
+  try{ if(state.unsubChat) state.unsubChat(); }catch(e){}
+  try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
+  try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
   state.chatDisplayIds = [];
+  state.chatRollingById = {};
+  state.chatCache = [];
+  state.chatCacheById = {};
+  state.chatFirstLoadDone = false;
+  state.chatDidPrependOnce = false;
 
-  const q = rQuery(
-    rMessagesRootRef(state.roomId),
-    rOrderByChild("tsMs"),
-    rLimitToLast(CHAT_QUERY_LIMIT)
-  );
+  // limits (requested)
+  const INIT_LIMIT = 10;   // 입장 시
+  const STAY_LIMIT = 20;   // 입장 유지 시
+  const MORE_LIMIT = 20;   // 더보기 1회
+  const MAX_LIMIT  = 40;   // 총 최대(20+20)
 
-  const onMsgs = (snap)=>{
-    const val = snap && snap.val ? (snap.val() || {}) : {};
+  state.chatWindowMax = STAY_LIMIT;     // currently enforced visible window
+  state.chatMoreUsed = false;           // 더보기 사용 여부(1회)
+  state.chatStayExpanded = false;       // 10 -> 20 확장 완료 여부
+
+  const root = rMessagesRootRef(state.roomId);
+
+  function normalizeDocsFromSnapVal(valObj){
     const docs = [];
-    for(const [id, data] of Object.entries(val)){
+    for(const [id, data] of Object.entries(valObj || {})){
       if(!data) continue;
       docs.push({ id, ...data });
     }
-
-    // SFX 재생(초기 로드는 기준만 잡고 재생 안함)
-    try{
-      let maxTs = 0;
-      for(const m of docs){
-        if(m && m.type === "sfx") maxTs = Math.max(maxTs, Number(m.tsMs||0));
-      }
-      if(!state.sfxInitDone){
-        state.lastSfxTs = Math.max(Number(state.lastSfxTs||0), maxTs);
-        state.sfxInitDone = true;
-      }else{
-        for(const m of docs){
-          if(!(m && m.type==="sfx")) continue;
-          const ts = Number(m.tsMs||0);
-          if(!ts || ts <= (state.lastSfxTs||0)) continue;
-          state.lastSfxTs = ts;
-          if(m.uid && state.uid && m.uid === state.uid) continue;
-          playSfx(m.kind);
-        }
-      }
-    }catch(e){}
-
-    // 정렬 안정화
     docs.sort((a,b)=>{
       const ta = Number(a.tsMs||0);
       const tb = Number(b.tsMs||0);
       if(ta !== tb) return ta - tb;
       return String(a.id||"").localeCompare(String(b.id||""));
     });
+    // mission/sfx 제외(채팅만)
+    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx")));
+  }
 
-    // mission/sfx 제외(채팅만). 입장 시엔 10개만 로드하고,
-// 입장 후엔 새 메시지가 들어오면 최대 50개까지만 롤링으로 유지합니다.
-    const incoming = docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx")));
-    let list = incoming;
+  function rebuildCacheFromMap(){
+    let merged = Object.values(state.chatRollingById || {});
+    merged.sort((a,b)=>{
+      const ta = Number(a.tsMs||0);
+      const tb = Number(b.tsMs||0);
+      if(ta !== tb) return ta - tb;
+      return String(a.id||"").localeCompare(String(b.id||""));
+    });
+    // enforce window max (20 or 40)
+    const keep = Math.max(1, Number(state.chatWindowMax||STAY_LIMIT));
+    merged = merged.slice(-keep);
+    // rebuild map
+    const nextMap = {};
+    for(const mm of merged){
+      if(mm && mm.id) nextMap[mm.id] = mm;
+    }
+    state.chatRollingById = nextMap;
+    // cache
+    state.chatCache = merged;
+    state.chatCacheById = {};
+    for(const mm of merged){ if(mm && mm.id) state.chatCacheById[mm.id] = mm; }
+    return merged;
+  }
 
+  function ensureChatMoreUI(){
+    if(!els.chatList) return;
+    let bar = document.getElementById("chatMoreBar");
+    if(!bar){
+      bar = document.createElement("div");
+      bar.id = "chatMoreBar";
+      bar.className = "chatNewBar";
+      bar.style.marginTop = "0";
+      bar.style.marginBottom = "8px";
+      bar.style.display = "none";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "chatMoreBtn";
+      btn.className = "chatJumpBtn";
+      btn.textContent = "⬆️ 더보기(과거 20개)";
+      btn.addEventListener("click", async ()=>{
+        if(state.chatMoreUsed) return;
+        try{ btn.disabled = true; }catch(e){}
+        try{
+          await loadMoreOlderOnce();
+        }finally{
+          try{ btn.disabled = false; }catch(e){}
+          updateChatMoreUI();
+        }
+      });
+      bar.appendChild(btn);
+    }
+    // keep at top of chatList
     try{
-      if(!state.chatRollingById) state.chatRollingById = {};
-      for(const mm of incoming){
+      if(els.chatList.firstChild !== bar){
+        els.chatList.prepend(bar);
+      }
+    }catch(e){}
+  }
+
+  function updateChatMoreUI(){
+    const bar = document.getElementById("chatMoreBar");
+    if(!bar || !els.chatList) return;
+    const atTop = (els.chatList.scrollTop || 0) <= 2;
+    const can = state.chatStayExpanded && !state.chatMoreUsed;
+    bar.style.display = (can && atTop) ? "flex" : "none";
+  }
+
+  async function loadLastOnce(n){
+    const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(n));
+    const snap = await rGet(q);
+    const val = snap && snap.val ? (snap.val() || {}) : {};
+    return normalizeDocsFromSnapVal(val);
+  }
+
+  async function loadBeforeTs(ts, n){
+    // load older messages (endAt(ts-1)) up to n
+    const end = Number(ts||0) - 1;
+    if(!end || end < 0) return [];
+    const q = rQuery(root, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(n));
+    const snap = await rGet(q);
+    const val = snap && snap.val ? (snap.val() || {}) : {};
+    return normalizeDocsFromSnapVal(val);
+  }
+
+  async function expandToStayLimit(){
+    if(state.chatStayExpanded) return;
+    const current = rebuildCacheFromMap();
+    if(current.length >= STAY_LIMIT){
+      state.chatStayExpanded = true;
+      return;
+    }
+    const oldest = current[0];
+    const oldestTs = Number(oldest?.tsMs||0);
+    if(!oldestTs) { state.chatStayExpanded = true; return; }
+    const need = STAY_LIMIT - current.length;
+    const older = await loadBeforeTs(oldestTs, Math.min(need, STAY_LIMIT));
+    if(older && older.length){
+      // prepend older
+      for(const mm of older){
         if(mm && mm.id) state.chatRollingById[mm.id] = mm;
       }
-      let merged = Object.values(state.chatRollingById);
-
-      merged.sort((a,b)=>{
-        const ta = Number(a.tsMs||0);
-        const tb = Number(b.tsMs||0);
-        if(ta !== tb) return ta - tb;
-        return String(a.id||"").localeCompare(String(b.id||""));
-      });
-
-      merged = merged.slice(-CHAT_KEEP_MAX);
-
-      const nextMap = {};
-      for(const mm of merged){
-        if(mm && mm.id) nextMap[mm.id] = mm;
-      }
-      state.chatRollingById = nextMap;
-      list = merged;
-    }catch(e){}
-
-    // cache (for reactions lookup)
-    try{
-      state.chatCache = list;
-      state.chatCacheById = {};
-      for(const mm of list){ if(mm && mm.id) state.chatCacheById[mm.id] = mm; }
-    }catch(e){}
-    const newIds = list.map(m=>m.id);
-    const oldIds = state.chatDisplayIds || [];
-    const isFirstLoad = !state.chatFirstLoadDone;
-    const nearBottom = isFirstLoad ? true : isChatNearBottom();
-    state.chatUserNearBottom = nearBottom;
-
-    // unseen count
-    if(oldIds.length){
-      try{
-        const oldSet = new Set(oldIds);
-        const addCount = newIds.filter(id=>!oldSet.has(id)).length;
-        if(addCount > 0 && !nearBottom){
-          state.chatUnseen = (Number(state.chatUnseen)||0) + addCount;
-          showChatNewBar();
-        }else if(nearBottom){
-          hideChatNewBar(true);
-        }
-      }catch(e){}
+      // flag for scroll anchoring
+      state.chatDidPrependOnce = true;
     }
-
-    // ✅ 70개라 전체 렌더가 가장 안전(리액션/수정 포함)
+    state.chatStayExpanded = true;
+    const list = rebuildCacheFromMap();
+    const nearBottom = true;
     renderChatFull(list, nearBottom);
-    state.chatDisplayIds = newIds;
+    state.chatDisplayIds = list.map(m=>m.id);
+    try{
+      state.chatUnseen = 0; hideChatNewBar(true);
+    }catch(e){}
+  }
 
-    if(!state.chatFirstLoadDone){
+  async function loadMoreOlderOnce(){
+    if(state.chatMoreUsed) return;
+    const current = rebuildCacheFromMap();
+    if(!current.length) { state.chatMoreUsed = true; return; }
+    const oldestTs = Number(current[0]?.tsMs||0);
+    if(!oldestTs){ state.chatMoreUsed = true; return; }
+
+    const older = await loadBeforeTs(oldestTs, MORE_LIMIT);
+    if(older && older.length){
+      // increase window to 40
+      state.chatWindowMax = MAX_LIMIT;
+      for(const mm of older){
+        if(mm && mm.id) state.chatRollingById[mm.id] = mm;
+      }
+      state.chatDidPrependOnce = true;
+      const list = rebuildCacheFromMap();
+      // not force bottom; keep scroll anchored
+      renderChatFull(list, false);
+      state.chatDisplayIds = list.map(m=>m.id);
+    }
+    state.chatMoreUsed = true;
+  }
+
+  // initial load 10
+  (async ()=>{
+    try{
+      const initial = await loadLastOnce(INIT_LIMIT);
+      // seed map
+      for(const mm of initial){
+        if(mm && mm.id) state.chatRollingById[mm.id] = mm;
+      }
+      const list = rebuildCacheFromMap();
+      renderChatFull(list, true);
+      state.chatDisplayIds = list.map(m=>m.id);
       state.chatFirstLoadDone = true;
       try{ state.chatUnseen = 0; hideChatNewBar(true); }catch(e){}
-    }
+      // ensure UI bits
+      ensureChatMoreUI();
+      updateChatMoreUI();
 
-    if(nearBottom && !(state.chatScrollLockUntil && Date.now() < state.chatScrollLockUntil)){
-      requestAnimationFrame(()=>{ try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){} });
+      // auto expand to 20 after "stay"
+      setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 1200);
+
+      // live listener: only new items from latestTs+1
+      const latestTs = Number(list[list.length-1]?.tsMs||0) || 0;
+      const liveFrom = latestTs ? (latestTs + 1) : 0;
+      const qLive = liveFrom
+        ? rQuery(root, rOrderByChild("tsMs"), rStartAt(liveFrom))
+        : rQuery(root, rOrderByChild("tsMs"));
+
+      const onAdd = (snap)=>{
+        try{
+          const id = snap.key;
+          const data = snap.val ? snap.val() : null;
+          if(!id || !data) return;
+          const mm = { id, ...data };
+          // ✅ SFX는 렌더하지 않고 재생만
+          if(mm && mm.type==="sfx"){
+            try{
+              const ts = Number(mm.tsMs||0);
+              if(!state.sfxInitDone){
+                state.lastSfxTs = Math.max(Number(state.lastSfxTs||0), ts||0);
+                state.sfxInitDone = true;
+              }else if(ts && ts > (state.lastSfxTs||0)){
+                state.lastSfxTs = ts;
+                if(!(mm.uid && state.uid && mm.uid === state.uid)) playSfx(mm.kind);
+              }
+            }catch(e){}
+            return;
+          }
+          if(mm && mm.type==="mission") return;
+
+          // SFX 재생(초기 기준 없으면 잡아둠)
+          try{
+            if(mm.type === "sfx"){
+              const ts = Number(mm.tsMs||0);
+              if(ts && ts > (state.lastSfxTs||0)){
+                state.lastSfxTs = ts;
+                if(!(mm.uid && state.uid && mm.uid === state.uid)) playSfx(mm.kind);
+              }
+            }
+          }catch(e){}
+
+          const nearBottom = isChatNearBottom();
+          state.chatUserNearBottom = nearBottom;
+
+          // add & trim
+          state.chatRollingById[id] = mm;
+          const list2 = rebuildCacheFromMap();
+          const newIds = list2.map(m=>m.id);
+          const oldIds = state.chatDisplayIds || [];
+
+          if(oldIds.length){
+            const oldSet = new Set(oldIds);
+            const addCount = newIds.filter(x=>!oldSet.has(x)).length;
+            if(addCount > 0 && !nearBottom){
+              state.chatUnseen = (Number(state.chatUnseen)||0) + addCount;
+              showChatNewBar();
+            }else if(nearBottom){
+              hideChatNewBar(true);
+            }
+          }
+
+          renderChatFull(list2, nearBottom);
+          state.chatDisplayIds = newIds;
+
+          ensureChatMoreUI();
+          updateChatMoreUI();
+        }catch(e){}
+      };
+
+      rOnChildAdded(qLive, onAdd);
+      state.unsubChatLive = ()=>{ try{ rOff(qLive, "child_added", onAdd); }catch(e){} };
+
+      // change listener (reactions / edits)
+      const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(CHAT_MAX_VIEW));
+      const onChg = (snap)=>{
+        try{
+          const id = snap.key;
+          const data = snap.val ? snap.val() : null;
+          if(!id || !data) return;
+          const mm = { id, ...data };
+          if(mm && (mm.type==="mission" || mm.type==="sfx")) return;
+
+          // update only if we have it
+          if(state.chatRollingById && state.chatRollingById[id]){
+            state.chatRollingById[id] = mm;
+            const list3 = rebuildCacheFromMap();
+            renderChatFull(list3, state.chatUserNearBottom);
+            state.chatDisplayIds = list3.map(m=>m.id);
+            ensureChatMoreUI();
+            updateChatMoreUI();
+          }
+        }catch(e){}
+      };
+      rOnChildChanged(qChg, onChg);
+      state.unsubChatChg = ()=>{ try{ rOff(qChg, "child_changed", onChg); }catch(e){} };
+
+      // attach scroll-top watcher for "more" bar
+      if(els.chatList && !state._chatMoreScrollHooked){
+        state._chatMoreScrollHooked = true;
+        els.chatList.addEventListener("scroll", ()=>{ try{ updateChatMoreUI(); }catch(e){} }, { passive:true });
+      }
+
+    }catch(e){
+      console.error(e);
+      // fall back to old onValue if something blows up
+      try{
+        const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(INIT_LIMIT));
+        const onMsgs = (snap)=>{
+          const val = snap && snap.val ? (snap.val() || {}) : {};
+          const list = normalizeDocsFromSnapVal(val);
+          // enforce stay limit
+          state.chatRollingById = {};
+          for(const mm of list.slice(-STAY_LIMIT)){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
+          const merged = rebuildCacheFromMap();
+          renderChatFull(merged, true);
+          state.chatDisplayIds = merged.map(m=>m.id);
+          ensureChatMoreUI(); updateChatMoreUI();
+        };
+        rOnValue(q, onMsgs);
+        state.unsubChat = ()=>{ try{ rOff(q, "value", onMsgs); }catch(e){} };
+      }catch(e2){}
     }
+  })();
+
+  // unified unsubscribe
+  state.unsubChat = ()=>{
+    try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
+    try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
   };
-
-  rOnValue(q, onMsgs);
-  state.unsubChat = ()=>{ try{ rOff(q, "value", onMsgs); }catch(e){} };
 }
 
 
@@ -6313,6 +6539,7 @@ async function joinRoom(){
         setMyNickUI(name);
         try{ const lp = loadLocalProfile() || {}; lp.nickname = name; saveLocalProfile(lp); }catch(e){}
         if(!name){ showToast("닉네임 입력!"); return; }
+        if(name === "익명"){ showToast("‘익명’은 닉네임으로 사용할 수 없어 🙏"); return; }
         if(!(await requirePassOK())) return;
 
         const miss = validateFirebaseConfig();
@@ -6405,7 +6632,22 @@ async function joinRoom(){
           }
         }catch(e){}
       }
-
+// ✅ 재접속 복구: 이전 세션이 off로 남아 있으면 즉시 break로 되살리기
+try{
+  if(meSnap && meSnap.exists && meSnap.exists()){
+    const me = meSnap.val() || {};
+    if(me && (me.status === "off" || Number(me.lastSeenAtMs||0) === 0)){
+      await rUpdate(rMePresenceRef(state.roomId, state.uid), {
+        status: "break",
+        statusSource: "reconnectJoin",
+        sessionStartedAtMs: null,
+        updatedAt: Date.now(),
+        lastSeenAtMs: Date.now()
+      });
+      state.myStatus = "break";
+    }
+  }
+}catch(e){}
       // 🔁 브라우저 프리셋도 동기화(다음 접속 편의)
       try{
         const lp = loadLocalProfile() || {};
@@ -6452,7 +6694,7 @@ async function joinRoom(){
       // ✅ 입장 사운드(모두에게): 나는 즉시 재생, 다른 사람은 sfx 이벤트로 재생
       try{ playSfx("enter"); }catch(e){}
       try{ emitSfx("enter"); }catch(e){}
-      try{ emitSys(`${state.nickname} 입장🥰`); }catch(e){}
+      try{ emitSys(`❣️ ${state.nickname} 입장 🥰`); }catch(e){}
       }catch(e){
         console.error(e);
         const code = e?.code || "";
@@ -6651,7 +6893,37 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
 
     els.btnBreak.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("break","manual"); els.statusMenu.classList.add("hidden"); });
     els.btnIdle.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("idle","manual"); els.statusMenu.classList.add("hidden"); });
-
+// ✅ 타이머 초기화 (오늘 작업시간/상태/세션 시작시간)
+async function resetTodayTimer(){
+  try{
+    // 로컬 누적 0
+    try{ focusSaveSeconds(0); }catch(e){}
+    // 진행중 세션도 끊고 상태는 휴식으로
+    if(state.roomId && state.uid){
+      await rUpdate(rMePresenceRef(state.roomId, state.uid), {
+        totalSecondsToday: 0,
+        sessionStartedAtMs: null,
+        status: "break",
+        statusSource: "resetTimer",
+        dateKey: seoulDateKey(),
+        updatedAt: Date.now(),
+        lastSeenAtMs: Date.now(),
+      });
+    }
+    // UI 갱신
+    try{ state.myStatus = "break"; syncMyStatusUI(); }catch(e){}
+    showToast("⏱️ 오늘 작업 타이머를 초기화했어!");
+  }catch(e){
+    console.warn("[timerReset] failed", e);
+    showToast("타이머 초기화 실패(권한/연결 확인)");
+  }
+}
+try{
+  els.btnTimerReset?.addEventListener("click", ()=>{
+    if(!confirm("오늘 작업 타이머(누적시간)를 0으로 초기화할까?")) return;
+    resetTodayTimer();
+  });
+}catch(e){}
     // 상태 메뉴 토글
     
     if(els.checkInBtn){
@@ -7583,8 +7855,9 @@ if(!window.__MK_BOOT_OK__){
 👉헬퍼 사용 시
 ✅자동으로 전환될 시간 설정 가능(타이트한 작업 원할 시 짧게 세팅)
 🟥헬퍼를 설치하지 않아도 헬퍼 모드에서 자동 휴식을 설정하시면 그 시간에 맞춰 넘어갑니다만!
-🟥다시 작업하실 때 수동으로 작업 중 전환을 하셔야 하는 차이가 있습니다.
-🟥맥 버전은 감지와 반영 사이에 3-5초 정도의 딜레가 있어요!
+🟥브라우저 기준으로 활동을 감지하므로, 타이핑만 하시게 되면 혼자 휴식으로 넘어갑니다ㅜㅜ
+🟥그러니 헬퍼를 사용하실 때만 헬퍼 모드를 켜기!
+🟥맥 버전은 감지와 반영 사이에 3-5초 정도의 딜레가 있습니다.
 ✅사용하시는 운영체제에 맞는 로컬 헬퍼 다운 후 실행(대시보드 밑에 다운 버튼이 있어요)
 ✅작업방에 입장할 닉네임과 동일하게 설정
 ✅초기 설정후 재입력 불필요, 작업할 때 실행만 하면 됩니다
