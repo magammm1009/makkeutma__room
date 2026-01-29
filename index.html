@@ -353,7 +353,15 @@
       justify-content:center;
       align-items:center;
     }
-    .chatJumpBtn{
+    
+    /* ✅ 더보기(과거 20개) 바: 스크롤 컨테이너 상단에 붙어서 잘 보이게 */
+    .chatMoreBar{
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      margin-bottom: 8px;
+    }
+.chatJumpBtn{
       width:100%;
       border-radius:12px;
       padding:10px 12px;
@@ -1534,6 +1542,95 @@ body::before{
 
 /* ✅ hide photo size slider (requested) */
 #photoSizeRow{display:none !important;}
+
+/* ✅ PRE-JOIN LOCK: 입장 전에는 어떤 정보도 보이지 않게 */
+#preJoinCard{ display:none; max-width: 720px; margin: 22px auto 0; padding: 18px 18px; }
+#preJoinCard h3{ margin:0; font-size:16px; }
+#preJoinCard .hint{ margin-top:8px; opacity:.86; font-size:13px; line-height:1.35; }
+#preJoinCard .prePills{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+body:not(.joined) main,
+body:not(.joined) aside.sidebar{ display:none !important; }
+
+/* 입장 전에는 오른쪽 사이드/타일 관련 토글도 숨김 */
+body:not(.joined) #guideBtn,
+body:not(.joined) #layoutToggleBtn{ display:none !important; }
+
+/* 입장 전 안내 카드만 표시 */
+body:not(.joined) #preJoinCard{ display:block; }
+body.joined #preJoinCard{ display:none; }
+
+
+    /* ✅ Daily Notice (입장 공지/출근 유도) */
+    .dailyNoticeModal{
+      position:fixed; inset:0; z-index:10090;
+      display:block;
+    }
+    .dailyNoticeModal.hidden{ display:none; }
+    .dailyNoticeModal .backdrop{
+      position:absolute; inset:0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(6px);
+    }
+    .dailyNoticeModal .panel{
+      position:relative;
+      width:min(560px, 92vw);
+      margin: min(12vh, 90px) auto 0;
+      background: rgba(18,18,26,.92);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .dailyNoticeModal .head{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 14px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(90deg, rgba(255,119,184,.16), rgba(255,182,214,.06));
+    }
+    .dailyNoticeModal .ttl{
+      font-weight:1000; letter-spacing:-.3px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .dailyNoticeModal .body{
+      padding:14px;
+      color: rgba(255,255,255,.88);
+      line-height:1.55;
+      font-size: 14px;
+    }
+    .dailyNoticeModal .body .small{
+      margin-top:10px;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+    }
+    .dailyNoticeModal .btnRow{
+      display:flex; gap:10px; justify-content:flex-end;
+      padding: 0 14px 14px;
+    }
+    .dailyNoticeModal .btnRow button{
+      border-radius: 14px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.92);
+      cursor:pointer;
+      font-weight:800;
+    }
+    .dailyNoticeModal .btnRow button.primary{
+      border-color: rgba(255,119,184,.35);
+      background: linear-gradient(90deg, rgba(255,119,184,.40), rgba(255,182,214,.18));
+      box-shadow: 0 10px 24px rgba(255,119,184,.12);
+    }
+    .dailyNoticeModal .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+    .dailyNoticeModal .xBtn{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.88);
+      border-radius: 12px;
+      padding: 8px 10px;
+      cursor:pointer;
+      font-weight:900;
+    }
 </style>
 </head>
 
@@ -1605,6 +1702,15 @@ body::before{
   </div>
 
   <div class="wrap">
+
+    <div id="preJoinCard" class="card preJoinCard" aria-live="polite">
+      <h3>🔒 입장 전에는 내용이 표시되지 않아요</h3>
+      <div class="hint">상단에서 <b>닉네임</b>과 <b>입장키</b>를 입력하고 <b>입장</b>을 눌러줘!<br><span class="tiny">※ 접속 인원은 대략치로만 보여요.</span></div>
+      <div class="prePills">
+        <div class="pill">👥 현재 접속 <b id="approxOnlineText">—</b></div>
+      </div>
+    </div>
+
     <main>
       <div class="gridHead">
         <div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
@@ -2074,6 +2180,65 @@ body::before{
       }
     }
 
+
+    // ✅ (v4.2+) 매일 1회 '입장 공지' 팝업 (출근 유도)
+    const __LS_DAILY_NOTICE_DAY = "mk_daily_notice_day_v1";
+    function __dailyNoticeDayKey(){ try{ return __seoulDateKey(); }catch(e){ return ""; } }
+    function __hasSeenDailyNoticeToday(){
+      try{ return localStorage.getItem(__LS_DAILY_NOTICE_DAY) === __dailyNoticeDayKey(); }catch(e){ return false; }
+    }
+    function __markDailyNoticeSeen(){
+      try{ localStorage.setItem(__LS_DAILY_NOTICE_DAY, __dailyNoticeDayKey()); }catch(e){}
+    }
+    function __isAnyModalOpen(){
+      try{
+        const open1 = document.querySelector('#attModal:not(.hidden)');
+        const open2 = document.querySelector('#guideModal[aria-hidden="false"]');
+        const open3 = document.querySelector('#profileModal[aria-hidden="false"]');
+        const open4 = document.querySelector('#onlineModal[aria-hidden="false"]');
+        const open5 = document.querySelector('#dailyNoticeModal:not(.hidden)');
+        return !!(open1||open2||open3||open4||open5);
+      }catch(e){ return false; }
+    }
+    function showDailyNotice(){
+      const modal = document.getElementById("dailyNoticeModal");
+      if(!modal) return;
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden","false");
+      try{ modal.inert = false; }catch(e){}
+      // 포커스는 주요 버튼으로
+      setTimeout(()=>{ try{ document.getElementById("dailyNoticeGoBtn")?.focus?.(); }catch(e){} },0);
+    }
+    function hideDailyNotice(markSeen=true){
+      const modal = document.getElementById("dailyNoticeModal");
+      if(!modal) return;
+      if(markSeen) __markDailyNoticeSeen();
+      try{ document.activeElement?.blur?.(); }catch(e){}
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden","true");
+      try{ modal.inert = true; }catch(e){}
+      // 포커스 복귀(출근 버튼 쪽)
+      setTimeout(()=>{ try{ document.getElementById("checkInBtn")?.focus?.(); }catch(e){} },0);
+    }
+    function scheduleDailyNotice(){
+      // 입장 후 UI/리스너 안정화 뒤에, 모달 충돌 없을 때만 띄운다(재시도)
+      if(__hasSeenDailyNoticeToday()) return;
+      let tries = 0;
+      const tick = ()=>{
+        tries++;
+        if(__hasSeenDailyNoticeToday()) return;
+        const st = (typeof state!=='undefined') ? state : (window.__mk_state||null);
+        if(!st || !st.joined) return;
+        if(__isAnyModalOpen()){
+          if(tries < 8) return setTimeout(tick, 450);
+          return;
+        }
+        showDailyNotice();
+      };
+      setTimeout(tick, 900);
+    }
+
+
     // ✅ 출근(출석) 버튼 상태(로컬): 오늘 출근했는지 표시용
     const __LS_CHECKIN_DAY = "mk_checkin_day";
     let __lastCheckinUIKey = ""; // 날짜 바뀔 때 UI 갱신
@@ -2435,7 +2600,7 @@ function loadLocalProfile(){
     const db = getFirestore(app);
     
     // ✅ Offline cache (reduces repeated network reads; may be blocked in multi-tab)
-    try{ enableIndexedDbPersistence(db); }catch(e){ console.warn('[persistence] disabled', e?.code||e); }
+    /* Firestore persistence disabled (not needed). */
 const auth = getAuth(app);
     const storage = getStorage(app);
     const rtdb = getDatabase(app, firebaseConfig.databaseURL);
@@ -2450,6 +2615,7 @@ const auth = getAuth(app);
       menuBtn: $("menuBtn"),
       grid: $("grid"),
       countOnline: $("countOnline"),
+      approxOnlineText: $("approxOnlineText"),
       lastSync: $("lastSync"),
       nowClockMain: $("nowClockMain"),
       layoutToggleBtn: $("layoutToggleBtn"),
@@ -2675,6 +2841,7 @@ chatUnseen: 0,
       ctxTarget: { uid:null, name:null },
 
     };
+    window.__mk_state = state;
 
     // Helpers
 
@@ -2788,12 +2955,17 @@ function toast(msg, ms=1600){
         }, {merge:true});
         showToast("🚫 강퇴 처리했어");
       }catch(e){
+        // ✅ (v3.3) 이미 joined=true까지 갔다가 중간 초기화(채팅/리스너 등)에서 터진 경우에도 출석 자동팝업은 살린다
+        try{ if(state && state.joined){ setTimeout(()=>{ try{ autoOpenAttendanceIfNeeded(); }catch(_e){} }, 0); } }catch(_e){}
         console.error(e);
         showToast("강퇴 실패(권한/룰 확인)");
       }
     }
 
     function subscribeKicks(){
+      // 🔕 Firestore kick-listener disabled (prevents onSnapshot permission errors).
+      // If you need kick/ban later, we can migrate kicks to RTDB or add Firestore rules safely.
+      return;
       if(state.unsubKick) state.unsubKick();
       state.unsubKick = null;
       if(!state.roomId || !state.uid) return;
@@ -3174,11 +3346,20 @@ function seoulDateKey(){
       }).formatToParts(new Date()).reduce((a,p)=> (a[p.type]=p.value, a), {});
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
-    const ONLINE_TTL_MS = 5 * 60 * 1000; // 5분: 백그라운드 탭/타이머 쓰로틀링 대비
-    function isOnline(lastSeenAtMs){
-      if(!lastSeenAtMs) return false;
-      return (Date.now() - lastSeenAtMs) < ONLINE_TTL_MS;
-    }
+    const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off"로만 처리.
+function isOnlinePresence(p){
+  if(!p) return false;
+  const s = String(p.status||"").toLowerCase();
+  return s !== "off" && s !== "offline";
+}
+
+function hasValidNick(n){
+  const s = String(n||"").trim();
+  return !!s && s !== "익명";
+}
+function isDisplayablePresence(p){
+  return !!(p && isOnlinePresence(p) && hasValidNick(p.name));
+}
     const MAC_HELPER_URL = "https://drive.google.com/file/d/1tvpH2bOoAhAthgMyCzWDMX4d4JbpdY83/view?usp=sharing";
     const WIN_HELPER_URL = "https://drive.google.com/file/d/1dvBW2Y5e6yg3IMPOpcULXee63sPkxr86/view?usp=sharing";
 
@@ -3606,6 +3787,31 @@ function dockRightRail(){
 
 
 
+    
+    // ✅ 입장 전 정보 최소화: 접속 인원은 "대략치"로만 표시
+    function approxOnlineBucket(n){
+      n = Number(n||0);
+      if(!isFinite(n) || n<=0) return "0";
+      if(n<=3) return "1~3";
+      if(n<=7) return "4~7";
+      if(n<=12) return "8~12";
+      if(n<=20) return "13~20";
+      return "20+";
+    }
+    function updateOnlineCountUI(n){
+      const joined = !!state.joined;
+      const bucket = approxOnlineBucket(n);
+      // 상단 표시(입장 전: 대략치 / 입장 후: 정확치)
+      if(els.countOnline){
+        els.countOnline.textContent = joined ? String(n) : `약 ${bucket}`;
+      }
+      // 입장 전 안내 카드 표시
+      if(els.approxOnlineText){
+        els.approxOnlineText.textContent = joined ? `${n}명` : `약 ${bucket}명`;
+      }
+    }
+
+
     function setControlsEnabled(joined){
       els.leaveBtn.disabled = !joined;
       els.joinBtn.disabled = joined;
@@ -3628,9 +3834,15 @@ function dockRightRail(){
       els.statusBtn.disabled = !joined;
       if(els.btnHelperToggle) els.btnHelperToggle.disabled = !joined;
       try{ if(els.guideBtn) els.guideBtn.style.display = joined ? "" : "none"; }catch(e){}
-      // 프로필은 입장 전에도 꾸밀 수 있게 항상 활성
-      els.profileBtn.disabled = false;
+      // ✅ 입장 전에는 아무 것도 열지 못하게 잠금
+      els.profileBtn.disabled = !joined;
       if(els.onlineBtn) els.onlineBtn.disabled = !joined;
+
+      // ✅ 대시보드 외부 링크(공용뽀모/폭파수다): 입장 후에만
+      if(els.goPomo) els.goPomo.disabled = !joined;
+      if(els.goSuda) els.goSuda.disabled = !joined;
+      if(els.goPomoMini) els.goPomoMini.disabled = !joined;
+      if(els.goSudaMini) els.goSudaMini.disabled = !joined;
 
       els.chatInput.disabled = !joined;
       els.sendBtn.disabled = !joined;
@@ -3644,6 +3856,7 @@ function dockRightRail(){
       // lamp
       document.body.classList.toggle("joined", joined);
       state.joined = joined;
+      try{ if(joined){ scheduleDailyNotice && scheduleDailyNotice(); } }catch(e){}
       // keep dashboard positioned under ☰
       dockRightRail();
     }
@@ -3692,8 +3905,34 @@ function dockRightRail(){
       }catch(e){}
     }
 
-function showModal(el){ el.classList.add("show"); }
-    function hideModal(el){ el.classList.remove("show"); }
+function showModal(el){
+      try{
+        if(!el) return;
+        el.classList.add("show");
+        try{ el.setAttribute("aria-hidden","false"); }catch(e){}
+        try{ el.inert = false; }catch(e){}
+        // 가능한 첫 포커스 요소로 이동(접근성/키보드)
+        setTimeout(()=>{
+          try{
+            const f = el.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            (f || el).focus?.();
+          }catch(e){}
+        },0);
+      }catch(e){}
+    }
+    function hideModal(el){
+      try{
+        if(!el) return;
+        // aria-hidden=true 전에 포커스를 빼서 Chrome 경고/차단 방지
+        try{
+          const active = document.activeElement;
+          if(active && el.contains(active)) active.blur?.();
+        }catch(e){}
+        el.classList.remove("show");
+        try{ el.setAttribute("aria-hidden","true"); }catch(e){}
+        try{ el.inert = true; }catch(e){}
+      }catch(e){}
+    }
 
     async function sha256Hex(text){
       const enc = new TextEncoder().encode(text);
@@ -4983,7 +5222,7 @@ async function transitionTo(nextStatus, source="manual"){
           // 캐시 무효화 후 재렌더
           try{ state.lastRendered?.delete?.(state.uid); }catch(e){}
           const arr = [...state.currentParticipants.values()];
-          const onlineArr = arr.filter(p=> (p && p.status !== "off" && isOnline(p.lastSeenAtMs) && p.name && String(p.name).trim() !== "" && String(p.name).trim() !== "익명"));
+          const onlineArr = arr.filter(p=> isDisplayablePresence(p));
           onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
           renderGridTilesOrRoster(onlineArr);
         }
@@ -5073,6 +5312,19 @@ async function transitionTo(nextStatus, source="manual"){
 
     function renderDashboard(){
   try{
+    const joined = !!state.joined;
+    if(!joined){
+      try{ if(els.pomoCount) els.pomoCount.textContent = "—"; }catch(e){}
+      try{ if(els.sudaCount) els.sudaCount.textContent = "—"; }catch(e){}
+      try{ if(els.pomoOk) els.pomoOk.textContent = "—"; }catch(e){}
+      try{ if(els.sudaOk) els.sudaOk.textContent = "—"; }catch(e){}
+      try{ if(els.goPomo){ els.goPomo.disabled = true; els.goPomo.onclick = null; } }catch(e){}
+      try{ if(els.goSuda){ els.goSuda.disabled = true; els.goSuda.onclick = null; } }catch(e){}
+      try{ if(els.goPomoMini){ els.goPomoMini.disabled = true; els.goPomoMini.onclick = null; } }catch(e){}
+      try{ if(els.goSudaMini){ els.goSudaMini.disabled = true; els.goSudaMini.onclick = null; } }catch(e){}
+      return;
+    }
+
     const d = (state.roomSettings && state.roomSettings.dashboard) ? state.roomSettings.dashboard : {};
     const cRemote = (state.roomSettings && state.roomSettings.dashCounts) ? state.roomSettings.dashCounts : {};
     const cLocal = state.localDashCounts || {};
@@ -5091,11 +5343,23 @@ async function transitionTo(nextStatus, source="manual"){
     const updated = c.updatedAtMs ? new Date(c.updatedAtMs).toLocaleString("ko-KR") : "-";
     if(els.dashUpdated) els.dashUpdated.textContent = updated;
 
-    // 링크는 새 탭으로만 (앱스크립트/보안정책 때문에 내부 임베드 제거)
-    if(els.goPomo) els.goPomo.onclick = ()=>openUrl(d.pomoUrl);
-    if(els.goPomoMini){ els.goPomoMini.disabled = !d.pomoUrl; els.goPomoMini.onclick = ()=>openUrl(d.pomoUrl); }
-    if(els.goSuda) els.goSuda.onclick = ()=>openUrl(d.sudaUrl);
-    if(els.goSudaMini){ els.goSudaMini.disabled = !d.sudaUrl; els.goSudaMini.onclick = ()=>openUrl(d.sudaUrl); }
+    // 링크는 새 탭으로만 (입장 후에만 활성)
+    if(els.goPomo){
+      els.goPomo.disabled = !d.pomoUrl;
+      els.goPomo.onclick = d.pomoUrl ? ()=>openUrl(d.pomoUrl) : null;
+    }
+    if(els.goPomoMini){
+      els.goPomoMini.disabled = !d.pomoUrl;
+      els.goPomoMini.onclick = d.pomoUrl ? ()=>openUrl(d.pomoUrl) : null;
+    }
+    if(els.goSuda){
+      els.goSuda.disabled = !d.sudaUrl;
+      els.goSuda.onclick = d.sudaUrl ? ()=>openUrl(d.sudaUrl) : null;
+    }
+    if(els.goSudaMini){
+      els.goSudaMini.disabled = !d.sudaUrl;
+      els.goSudaMini.onclick = d.sudaUrl ? ()=>openUrl(d.sudaUrl) : null;
+    }
     if(els.goChool) els.goChool.onclick = ()=>openUrlJoined(d.choolUrl);
     if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
     if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(MAC_HELPER_URL);
@@ -5523,7 +5787,7 @@ function subscribeChat(){
     if(!bar){
       bar = document.createElement("div");
       bar.id = "chatMoreBar";
-      bar.className = "chatNewBar";
+      bar.className = "chatNewBar chatMoreBar";
       bar.style.marginTop = "0";
       bar.style.marginBottom = "8px";
       bar.style.display = "none";
@@ -5556,7 +5820,7 @@ function subscribeChat(){
   function updateChatMoreUI(){
     const bar = document.getElementById("chatMoreBar");
     if(!bar || !els.chatList) return;
-    const atTop = (els.chatList.scrollTop || 0) <= 2;
+    const atTop = (els.chatList.scrollTop || 0) <= 60; // ✅ 약간만 위로 올려도 더보기 노출
     const can = state.chatStayExpanded && !state.chatMoreUsed;
     bar.style.display = (can && atTop) ? "flex" : "none";
   }
@@ -6006,7 +6270,7 @@ async function sendChatCore(text, isFlush=false){
 
     // Tiles
     function statusBadge(p){
-      const online = isOnline(p.lastSeenAtMs);
+      const online = isOnlinePresence(p);
       if(!online) return { text: "offline", cls: "bOff", emoji:"🫥" };
       if(p.status === "work")  return { text:"Work", cls:"bWork recBadge", emoji:"" };
       if(p.status === "break") return { text:"휴식중", cls:"bBreak", emoji:"☕", emojiHtml:'<span class="coffeeSteam" aria-hidden="true">☕</span>' };
@@ -6021,7 +6285,7 @@ async function sendChatCore(text, isFlush=false){
         bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl, photoEnabled:p.theme?.photoEnabled,
         // ✅ text colors (added v47): must be part of key so tile rerenders when only text colors change
         nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
-        online:isOnline(p.lastSeenAtMs)
+        online:isOnlinePresence(p)
       });
     }
     function renderTile(p){
@@ -6079,11 +6343,11 @@ async function sendChatCore(text, isFlush=false){
       const _miniName = miniNick(_fullName);
       const _nameFull = document.createElement("span");
       _nameFull.className = "nameFull";
-      _nameFull.textContent = shortNick(_fullName, 4) + (!isOnline(p.lastSeenAtMs) ?"🚫":"");
+      _nameFull.textContent = shortNick(_fullName, 4) + (!isOnlinePresence(p) ?"🚫":"");
       namePill.title = _fullName;
       const _nameMini = document.createElement("span");
       _nameMini.className = "nameMini";
-      _nameMini.textContent = _miniName + (!isOnline(p.lastSeenAtMs) ?"🚫":"");
+      _nameMini.textContent = _miniName + (!isOnlinePresence(p) ?"🚫":"");
       namePill.appendChild(_nameFull);
       namePill.appendChild(_nameMini);
       const nameAccent = clampHexColor(p.theme?.bubbleColor || p.theme?.bgColor || "#ffd0e2");
@@ -6253,7 +6517,11 @@ t.appendChild(bg);
       try{
         if(g && g.getBoundingClientRect){
           const r = g.getBoundingClientRect();
-          if(r && r.width) w = Math.min(w || r.width, r.width);
+          // ✅ grid가 비어 있을 때 width가 0~아주 작게 잡히면서 compact가 '오작동'하는 케이스 방지
+          if(r && r.width){
+            const rw = r.width;
+            if(rw > 120) w = Math.min(w || rw, rw);
+          }
         }
       }catch(e){}
       if(!w) return false;
@@ -6320,7 +6588,7 @@ t.appendChild(bg);
 
         const nm = document.createElement("div");
         nm.className = "statusRosterName";
-        nm.textContent = (p.name || p.id) + (!isOnline(p.lastSeenAtMs) ?"🚫":"");
+        nm.textContent = (p.name || p.id) + (!isOnlinePresence(p) ?"🚫":"");
 
         left.appendChild(emo);
         left.appendChild(nm);
@@ -6398,9 +6666,8 @@ t.appendChild(bg);
       if(!els.grid) return;
       const compact = applyCompactMode();
       if(compact){
-        // ✅ compact에서는 메인(타일/접속자 목록) 렌더로 레이아웃이 무너지는 걸 방지하고,
-        //    채팅(사이드바)만 남기는 모드로 전환합니다.
-        els.grid.innerHTML = "";
+        // ✅ compact(아주 좁은 폭)에서도 '채팅만' 남기지 말고, 빠른 접속자 목록(로스터)로 대체
+        renderCompactRoster(onlineArr);
         return;
       }
 
@@ -6500,7 +6767,18 @@ t.appendChild(bg);
         }catch(e){}
 
         // ✅ 오프라인은 "접속 종료"처럼 처리: 리스트/타일에서 제외
-        const onlineArr = arr.filter(p=> (p && p.status !== "off" && isOnline(p.lastSeenAtMs)));
+        const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+
+        // ✅ 입장 전: 인원만 '대략치'로 보여주고, 타일/목록/상태 등은 렌더하지 않음
+        try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
+        try{ els.lastSync.textContent = new Date().toLocaleTimeString("ko-KR"); }catch(e){}
+        if(!state.joined){
+          try{ if(els.grid) els.grid.innerHTML = ""; }catch(e){}
+          try{ if(els.statusRosterList) els.statusRosterList.innerHTML = ""; }catch(e){}
+          try{ if(els.missionSuccessCount) els.missionSuccessCount.textContent = "0"; }catch(e){}
+          return;
+        }
+
 
         // ✅ 미션 성공 인원: missions 구독값을 기본으로
         let successCount = 0;
@@ -6516,7 +6794,8 @@ t.appendChild(bg);
 
         onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
 
-        els.countOnline.textContent = String(onlineArr.length);
+        // (joined) 상단 인원 표시 업데이트
+        try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
         els.lastSync.textContent = new Date().toLocaleTimeString("ko-KR");
 
         renderStatusRoster(onlineArr);
@@ -6686,8 +6965,8 @@ try{
       // ✅ 출근 팝업(iframe) 미리 웜업해서 버튼 반응 체감 속도 올리기
       try{ window.warmAttendanceFrame && window.warmAttendanceFrame(); }catch(e){}
       showToast("입장!");
-      // ✅ 24시간 기준 첫 입장 시 출근 팝업 자동 오픈
-      try{ autoOpenAttendanceIfNeeded(); }catch(e){}
+      // ✅ 출근(출석) 자동 팝업: 입장 UI가 안정된 뒤(클릭 이벤트 종료 후) 열기 + 1회 재시도
+      try{ scheduleAttendanceAutoOpenAfterJoin(); }catch(e){}
       // ✅ 30초마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
       try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, 30000); }catch(e){}
@@ -6788,7 +7067,7 @@ window.addEventListener("resize", ()=>{
   // ✅ 창 폭 변화 시: compact 모드/타일↔접속자목록 즉시 갱신
   try{
     const arr = [...state.currentParticipants.values()];
-    const onlineArr = arr.filter(p=> (p && p.status !== "off" && isOnline(p.lastSeenAtMs)));
+    const onlineArr = arr.filter(p=> isDisplayablePresence(p));
     onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
     renderGridTilesOrRoster(onlineArr);
   }catch(e){
@@ -6942,7 +7221,44 @@ try{
 
 
       // ✅ 출근(출석) 팝업: "열리는 반응"을 먼저 빠르게, 로딩은 뒤에서
-const ATTEND_KEEP_WARM = true; // 팝업을 닫아도 iframe을 유지해서 다음 오픈을 빠르게
+const ATTEND_KEEP_WARM = true; // 팝업을 닫아도 iframe을 유지해서 다
+const ATTEND_AUTO_OPEN_ON_JOIN = true;
+const ATTEND_DEBUG = false; // (production)
+
+
+window.__attDbgPanelPush = function(msg){
+  try{
+    const last = document.getElementById("attDbgLast");
+    const log = document.getElementById("attDbgLog");
+    if(last) last.textContent = msg;
+    if(log){
+      const line=document.createElement("div");
+      line.textContent = msg;
+      log.prepend(line);
+    }
+  }catch(e){}
+};
+// --- /ATTEND DEBUG PANEL ---
+
+const __attDbgSeen = Object.create(null);
+function __attDbg(msg, toast=false){
+  try{
+    if(!ATTEND_DEBUG) return;
+    console.log("[ATTEND]", msg);
+    try{ window.__attDbgPanelPush && window.__attDbgPanelPush(msg); }catch(e){}
+    if(toast && typeof showToast === "function") showToast("🐞 " + msg);
+  }catch(e){}
+}
+function __attDbgOnce(key, msg){
+  try{
+    if(!ATTEND_DEBUG) return;
+    if(__attDbgSeen[key]) return;
+    __attDbgSeen[key]=1;
+    __attDbg(msg, true);
+  }catch(e){}
+}
+ // 자정 이후 첫 입장/재입장 시, 출석 안 했고 모달도 안 열었으면 자동 팝업
+      // (fix) 출석 팝업을 빠르게 열기 위한 워밍업 로직
 let __attWarmAtMs = 0;
 
 function __buildAttendSrc(cacheBust=true){
@@ -6953,23 +7269,129 @@ function __buildAttendSrc(cacheBust=true){
 }
 
 const LS_ATTEND_OPEN_DAY = "mk_attend_open_day_v1";
+const LS_ATTEND_AUTO_SHOWN_DAY = "mk_attend_auto_shown_day_v1";
 function __hasOpenedAttendToday(){
   try{ return (localStorage.getItem(LS_ATTEND_OPEN_DAY) || "") === __seoulDateKey(); }catch(e){ return false; }
 }
 function __markOpenedAttendToday(){
   try{ localStorage.setItem(LS_ATTEND_OPEN_DAY, __seoulDateKey()); }catch(e){}
 }
+
+function __hasAutoShownAttendToday(){
+  try{ return (localStorage.getItem(LS_ATTEND_AUTO_SHOWN_DAY) || "") === __seoulDateKey(); }catch(e){ return false; }
+}
+function __markAutoShownAttendToday(){
+  try{ localStorage.setItem(LS_ATTEND_AUTO_SHOWN_DAY, __seoulDateKey()); }catch(e){}
+}
 // ✅ "오늘 출근 안했고, 오늘 한 번도 출근 모달을 안 열었으면" 자동 오픈
-function autoOpenAttendanceIfNeeded(){
+
+// ✅ 입장 직후 자동 출근 팝업 스케줄러(클릭/모달 토글 충돌 방지용)
+let __attAutoOpenLastMs = 0;
+function scheduleAttendanceAutoOpenAfterJoin(){
   try{
     if(!ATTEND_AUTO_OPEN_ON_JOIN) return;
-    if(!state.joined || !state.uid) return;
+    if(!state.joined) return;
     if(__isCheckedInToday()) return;
-    if(__hasOpenedAttendToday()) return;
-    __markOpenedAttendToday();
-    if(typeof window.openAttendanceModal === "function") window.openAttendanceModal();
+
+    const now = Date.now();
+    if(now - __attAutoOpenLastMs < 5000) return; // 과도한 중복 방지
+    __attAutoOpenLastMs = now;
+
+    // 1차: 입장 UI 안정화 후
+    setTimeout(()=>{ try{ autoOpenAttendanceIfNeeded(); }catch(e){} }, 1100);
+
+    // 2차: 혹시 다른 모달/포커스 충돌로 실패했으면 한 번 더
+    setTimeout(()=>{
+      try{
+        if(__isCheckedInToday()) return;
+        const m = document.getElementById("attModal");
+        const opened = !!(m && !m.classList.contains("hidden"));
+        if(!opened) autoOpenAttendanceIfNeeded();
+      }catch(e){}
+    }, 2300);
   }catch(e){}
 }
+
+function autoOpenAttendanceIfNeeded(){
+  try{
+    __attDbg("autoOpenAttendanceIfNeeded() called | joined=" + !!state.joined + " | uid=" + (state.uid||"") +
+      " | checkin=" + (localStorage.getItem("mk_checkin_day")||"null") +
+      " | autoShown=" + (localStorage.getItem("mk_attend_auto_shown_day_v1")||"null"), false);
+
+    if(!ATTEND_AUTO_OPEN_ON_JOIN){
+      __attDbgOnce("auto_disabled", "자동출석: ATTEND_AUTO_OPEN_ON_JOIN=false");
+      return;
+    }
+    if(!state.joined){
+      __attDbgOnce("not_joined", "자동출석: 아직 입장(joined) 전이라 스킵");
+      return;
+    }
+
+    // ✅ 오늘 이미 '출근완료'로 찍혀있으면 자동 팝업 X
+    if(__isCheckedInToday()){
+      __attDbgOnce("checked_today", "자동출석: 오늘 출근완료로 판정되어 스킵");
+      return;
+    }
+    // ✅ 자동 팝업은 필요하면 매번 시도(중복은 '모달 이미 열림' 체크로 방지)
+
+
+    // ✅ 이미 모달이 열려있으면 중복 오픈 방지
+    try{
+      const m = document.getElementById("attModal");
+      if(m && !m.classList.contains("hidden")){
+        __attDbgOnce("already_open", "자동출석: 모달이 이미 열려있어서 스킵");
+        return;
+      }
+    }catch(e){}
+
+    // ✅ openAttendanceModal이 window에 안 붙어있는 환경(스코프/번들)도 대비
+    const fn = (typeof window.openAttendanceModal === "function")
+      ? window.openAttendanceModal
+      : (typeof openAttendanceModal === "function" ? openAttendanceModal : null);
+
+    if(!fn){
+      __attDbgOnce("no_fn", "자동출석: openAttendanceModal 함수를 찾지 못함");
+      return;
+    }
+
+    // ✅ DOM이 아직 준비되지 않았거나(초기 join 직후) 모달 엘리먼트가 없으면 잠깐 재시도
+    let tries = 0;
+    setTimeout(()=>{ (function tryOpen(){
+      tries++;
+      const modal = document.getElementById("attModal");
+      const frame = document.getElementById("attFrame");
+
+      if(!modal || !frame){
+        if(tries === 1) __attDbgOnce("dom_not_ready", "자동출석: 모달 DOM 준비 대기중…");
+        if(tries <= 40) return setTimeout(tryOpen, 150);
+        __attDbgOnce("dom_timeout", "자동출석: 모달 DOM을 끝내 찾지 못함(타임아웃)");
+        return;
+      }
+
+      __attDbg("tryOpen #" + tries + " | modal=" + !!modal + " frame=" + !!frame, false);
+
+      try{ fn(); }catch(e){
+        __attDbgOnce("fn_throw", "자동출석: openAttendanceModal 호출 중 예외(" + (e && e.message ? e.message : "unknown") + ")");
+      }
+
+      // ✅ 실제로 열렸는지 확인 후에만 '자동 표시' 기록
+      setTimeout(()=>{
+        try{
+          const m2 = document.getElementById("attModal");
+          const opened = !!(m2 && !m2.classList.contains("hidden"));
+          if(opened){
+            __attDbgOnce("opened_ok", "자동출석: ✅ 모달이 열렸어!");
+          }else{
+            __attDbgOnce("opened_fail", "자동출석: ⚠️ 열기 시도했지만 hidden 상태(다른 모달/포커스 충돌 가능)");
+          }
+        }catch(e){}
+      }, 120);
+    })(); }, 380);
+  }catch(e){
+    try{ __attDbgOnce("outer_throw", "자동출석: 바깥 try에서 예외(" + (e && e.message ? e.message : "unknown") + ")"); }catch(_e){}
+  }
+}
+
 
 window.warmAttendanceFrame = function warmAttendanceFrame(){
   try{
@@ -6986,11 +7408,12 @@ window.warmAttendanceFrame = function warmAttendanceFrame(){
 }
 
 function openAttendanceModal(){
-  try{ __markOpenedAttendToday && __markOpenedAttendToday(); }catch(e){}
   __resetAttendFlow();
   const modal = document.getElementById("attModal");
   const frame = document.getElementById("attFrame");
   if(!modal || !frame) return;
+  // ✅ '실제로' 모달을 열 수 있을 때만 오늘 오픈 기록을 찍는다
+  try{ __markOpenedAttendToday && __markOpenedAttendToday(); }catch(e){}
 
   if(!ATTEND_WEBAPP_URL || ATTEND_WEBAPP_URL.includes("PASTE_YOUR")) {
     showToast("⚠️ 출근 웹앱 URL을 아직 안 넣었어!");
@@ -7000,6 +7423,9 @@ function openAttendanceModal(){
   // ✅ 먼저 모달을 즉시 보여주고(체감 반응 개선), iframe 로딩은 다음 프레임에서
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden","false");
+  try{ modal.inert = false; }catch(e){}
+  // 포커스는 닫기 버튼으로
+  setTimeout(()=>{ try{ document.getElementById("attCloseBtn")?.focus?.(); }catch(e){} },0);
 
   // 이미 웜업되어 있거나(about:blank가 아님) 최근에 로딩했다면 그대로 사용
   const hasWarm = (frame.src && frame.src !== "about:blank");
@@ -7019,30 +7445,48 @@ function openAttendanceModal(){
   });
 }
 
+// ✅ 자동팝업/외부호출을 위해 전역(window)에 확실히 연결
+try{ window.openAttendanceModal = openAttendanceModal; }catch(e){}
+
 function closeAttendanceModal(opts={}){
-        const modal = document.getElementById("attModal");
-        const frame = document.getElementById("attFrame");
-        if(!modal || !frame) return;
+  const modal = document.getElementById("attModal");
+  const frame = document.getElementById("attFrame");
+  if(!modal || !frame) return;
 
-        modal.classList.add("hidden");
-        modal.setAttribute("aria-hidden","true");
+  // ✅ Chrome 'aria-hidden + focus' 경고/차단 방지: 먼저 포커스 빼기
+  try{
+    const active = document.activeElement;
+    if(active && modal.contains(active)) active.blur?.();
+  }catch(e){}
 
-        // ✅ 사용자가 '완료 화면(2번째 로드 이후)'까지 보고 닫는 경우 → 그 시점에 출근완료 처리
-        try{
-          const fromUser = !!opts.fromUser;
-          if(fromUser && __attDoneReady){
-            __markCheckedInToday();
-            if(els && els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn);
-            showToast("✅ 출근 기록 완료!");
-          }
-        }catch(e){}
+  // 숨김 처리
+  modal.classList.add("hidden");
+  try{ modal.setAttribute("aria-hidden","true"); }catch(e){}
+  try{ modal.inert = true; }catch(e){}
 
-        // iframe reset (기본은 웜업 유지로 다음 오픈을 빠르게)
-        try{
-          const resetFrame = (opts && typeof opts.resetFrame !== "undefined") ? !!opts.resetFrame : !ATTEND_KEEP_WARM;
-          if(resetFrame) frame.src = "about:blank";
-        }catch(e){}
-      }
+  // ✅ 사용자가 '완료 화면(2번째 로드 이후)'까지 보고 닫는 경우 → 그 시점에 출근완료 처리
+  try{
+    const fromUser = !!opts.fromUser;
+    if(fromUser && __attDoneReady){
+      __markCheckedInToday();
+      if(els && els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn);
+      showToast("✅ 출근 기록 완료!");
+    }
+  }catch(e){}
+
+  // iframe reset (기본은 웜업 유지, 옵션에 따라 초기화)
+  try{
+    const keepWarm = (typeof opts.keepWarm === "boolean") ? opts.keepWarm : true;
+    if(!keepWarm){
+      frame.src = "about:blank";
+    }
+  }catch(e){}
+
+  // 포커스 복귀(출근 버튼) → 접근성 + 다음 키보드 조작 안정화
+  setTimeout(()=>{
+    try{ document.getElementById("checkInBtn")?.focus?.(); }catch(e){}
+  }, 0);
+}
 
       // 닫기 버튼/배경 클릭
       (function wireAttendanceModal(){
@@ -7071,6 +7515,40 @@ function closeAttendanceModal(opts={}){
           });
         }
         if(closeBtn) closeBtn.addEventListener("click", ()=>closeAttendanceModal({fromUser:true}));
+        const doneBtn = document.getElementById("attDoneBtn");
+        if(doneBtn) doneBtn.addEventListener("click", ()=>{
+          try{ __markCheckedInToday(); if(els && els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
+          showToast("✅ 출근완료로 표시했어!");
+          closeAttendanceModal({fromUser:true});
+          // 출근하면 자동 '작업중'으로 변경(기존 의도 유지)
+          try{ if(state && state.uid) setStatus("work"); }catch(e){}
+        });
+
+        // ✅ Daily Notice(입장 공지) 버튼 연결
+        const dn = document.getElementById("dailyNoticeModal");
+        const dnGo = document.getElementById("dailyNoticeGoBtn");
+        const dnLater = document.getElementById("dailyNoticeLaterBtn");
+        const dnCloseX = document.getElementById("dailyNoticeCloseX");
+        if(dn){
+          // backdrop 클릭 닫기
+          dn.addEventListener("click", (e)=>{
+            try{
+              const t = e.target;
+              if(t && (t.getAttribute?.("data-close")==="1" || t.classList?.contains("backdrop"))){
+                hideDailyNotice(true);
+              }
+            }catch(err){}
+          });
+
+          if(dnGo) dnGo.addEventListener("click", ()=>{
+            hideDailyNotice(true);
+            // 출근 모달은 사용자가 눌렀을 때만 열어(충돌 방지)
+            setTimeout(()=>{ try{ openAttendanceModal(); }catch(e){} }, 80);
+          });
+          if(dnLater) dnLater.addEventListener("click", ()=>hideDailyNotice(true));
+          if(dnCloseX) dnCloseX.addEventListener("click", ()=>hideDailyNotice(true));
+        }
+
         if(modal) modal.addEventListener("click", (ev)=>{
           const t = ev.target;
           if(t && t.dataset && t.dataset.close) closeAttendanceModal({fromUser:true});
@@ -7116,7 +7594,7 @@ function closeAttendanceModal(opts={}){
 
       els.checkInBtn.addEventListener("click", async ()=>{
         try{
-          if(!state.uid) return;
+          try{ if(!state.uid){ state.uid = (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : state.uid; } }catch(_e){}
           openAttendanceModal();
         }catch(e){}
       });
@@ -7133,6 +7611,8 @@ els.statusBtn.addEventListener("click", (ev)=>{
     // 메뉴 클릭은 버블링 막기
     els.statusMenu.addEventListener("click", (ev)=>ev.stopPropagation());
     els.profileBtn.addEventListener("click", ()=>{
+      if(!state.joined){ showToast("🔒 입장 후에만 사용할 수 있어!"); return; }
+
       // ✅ 모달 열 때 현재 저장된 값들을 다시 채워넣기
       try{
         const lp = loadLocalProfile() || {};
@@ -7535,7 +8015,7 @@ try{
         if(state.currentParticipants){
           state.currentParticipants.forEach((p)=>{
             if(!p) return;
-            if(p.status==="off" || !isOnline(p.lastSeenAtMs)) return;
+            if(p.status==="off" || !isOnlinePresence(p)) return;
             arr.push(p);
           });
         }
@@ -7818,13 +8298,38 @@ if(!window.__MK_BOOT_OK__){
   </script>
 
 
-  <!-- ✅ 출근(출석) 팝업 -->
+  
+
+  <!-- ✅ 입장 공지(매일 1회) : 출근 유도 팝업 -->
+  <div id="dailyNoticeModal" class="dailyNoticeModal hidden" aria-hidden="true">
+    <div class="backdrop" data-close="1"></div>
+    <div class="panel" role="dialog" aria-modal="true" aria-label="오늘의 공지">
+      <div class="head">
+        <div class="ttl">📌 오늘의 공지</div>
+        <button id="dailyNoticeCloseX" class="xBtn" type="button" aria-label="닫기">닫기 ✖</button>
+      </div>
+      <div class="body">
+        <div style="font-weight:900; font-size:15px; margin-bottom:6px;">출근 체크 잊지 말기 💗</div>
+        <div>작업방 입장 후 <b>출근(출석)</b>만 한 번 눌러주면, <b>출석 현황</b>에는 하루 1회만 반영되고, 나머지 기록은 <b>AttendanceLog</b>로 남아요!</div>
+        <div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요!)</div>
+      </div>
+      <div class="btnRow">
+        <button id="dailyNoticeLaterBtn" type="button">나중에</button>
+        <button id="dailyNoticeGoBtn" class="primary" type="button">💌 출근 체크하러 가기</button>
+      </div>
+    </div>
+  </div>
+
+<!-- ✅ 출근(출석) 팝업 -->
   <div id="attModal" class="attModal hidden" aria-hidden="true">
     <div class="backdrop" data-close="1"></div>
     <div class="panel" role="dialog" aria-modal="true" aria-label="출근">
       <div class="head">
         <div class="ttl">💌 출근(출석) 체크</div>
-        <button id="attCloseBtn" class="xBtn" type="button">닫기 ✖</button>
+        <div class="attHeadBtns">
+          <button id="attDoneBtn" class="ghost tight" type="button" title="출근을 완료했다면 눌러서 표시할 수 있어요">✅ 완료</button>
+          <button id="attCloseBtn" class="xBtn" type="button">닫기 ✖</button>
+        </div>
       </div>
       <iframe id="attFrame" title="출근(출석)" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
     </div>
