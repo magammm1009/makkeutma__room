@@ -3346,11 +3346,17 @@ function seoulDateKey(){
       }).formatToParts(new Date()).reduce((a,p)=> (a[p.type]=p.value, a), {});
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
-    const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off"로만 처리.
-function isOnlinePresence(p){
-  if(!p) return false;
+    const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off" 또는 퇴장 버튼에서만 처리.
+// ✅ 온라인/오프라인 판정 규칙
+// - 입장하면 온라인 유지(heartbeat 사용 여부와 무관)
+// - '진짜 오프라인'만 타일에서 숨김: status가 'off'/'offline'일 때만
+function isOfflinePresence(p){
+  if(!p) return true;
   const s = String(p.status||"").toLowerCase();
-  return s !== "off" && s !== "offline";
+  return (s === "off" || s === "offline");
+}
+function isOnlinePresence(p){
+  return !isOfflinePresence(p);
 }
 
 function hasValidNick(n){
@@ -4674,12 +4680,56 @@ async function ensureMeDoc(){
 async function heartbeat(){
   if(!state.roomId || !state.uid) return;
   try{
-    await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-      lastSeenAtMs: Date.now(),
-      updatedAt: Date.now(),
-    });
+    const now = Date.now();
+    const st = (state.myStatus || "break");
+    const patch = { lastSeenAtMs: now, updatedAt: now };
+
+    // ✅ 재접속/일시 끊김으로 status가 "off"에 고정되는 현상 방지:
+    // - joined 상태에서는 heartbeat마다 내 status를 함께 올려줌
+    if(state.joined){
+      patch.status = st;
+      patch.statusSource = "hb";
+      patch.sessionStartedAtMs = (st === "work") ? (state._workSessionStartedAtMs || now) : null;
+    }
+
+    await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
   }catch(e){}
 }
+
+function startRtdbConnectionWatch(){
+  try{
+    if(state._infoConnUnsub) return;
+    const infoRef = rRef(rtdb, ".info/connected");
+    let prev = null;
+    const onC = (snap)=>{
+      const connected = !!(snap && snap.val && snap.val());
+      if(prev === null){ prev = connected; return; }
+
+      // false → true (재연결)
+      if(!prev && connected){
+        try{
+          if(state && state.joined && state.roomId && state.uid){
+            const now = Date.now();
+            const st = (state.myStatus || "break");
+            const patch = {
+              status: st,
+              statusSource: "reconnectNet",
+              lastSeenAtMs: now,
+              updatedAt: now,
+              sessionStartedAtMs: (st === "work") ? (state._workSessionStartedAtMs || now) : null
+            };
+            rUpdate(rMePresenceRef(state.roomId, state.uid), patch).catch(()=>{});
+            heartbeat();
+          }
+        }catch(e){}
+      }
+      prev = connected;
+    };
+    rOnValue(infoRef, onC);
+    state._infoConnUnsub = ()=>{ try{ rOff(infoRef, "value", onC); }catch(e){}; state._infoConnUnsub = null; };
+  }catch(e){}
+}
+
 
     function computeDisplayedTotal(p){
       const base = Number(p.totalSecondsToday || 0);
@@ -5116,8 +5166,10 @@ async function transitionTo(nextStatus, source="manual"){
   const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
   if(nextStatus === "work"){
     patch.sessionStartedAtMs = now;
+    state._workSessionStartedAtMs = now;
   }else{
     patch.sessionStartedAtMs = null;
+    state._workSessionStartedAtMs = 0;
   }
 
   // totalSecondsToday는 로컬 기준 누적을 올려줌(읽기 없이)
@@ -6869,6 +6921,8 @@ async function joinRoom(){
       setControlsEnabled(true);
       await ensureRoom(state.roomId);
       await ensureMeDoc();
+      // ✅ RTDB 재연결 감지(일시 끊김 후 status/off 고정 방지)
+      try{ startRtdbConnectionWatch(); }catch(e){}
 
       const meSnap = await rGet(rMePresenceRef(state.roomId, state.uid));
       if(meSnap && meSnap.exists && meSnap.exists()){
@@ -6888,6 +6942,17 @@ async function joinRoom(){
         els.bubbleText.value = me.bubbleText || "";
         state.myPhotoUrl = me.theme?.photoUrl || "";
         try{ if(els.photoEnabled) els.photoEnabled.checked = (me.theme?.photoEnabled !== false); }catch(e){}
+        // ✅ 글씨 색(닉네임/채팅 닉네임/상태/말풍선) 복원
+        try{
+          if(els.nameColor){ els.nameColor.value = clampHexColor(me.theme?.nameColor || "#ffffff"); }
+          if(els.nameColorPicker){ els.nameColorPicker.value = (els.nameColor ? els.nameColor.value : clampHexColor(me.theme?.nameColor || "#ffffff")); }
+          if(els.chatNameColor){ els.chatNameColor.value = clampHexColor(me.theme?.chatNameColor || me.theme?.nameColor || "#ffffff"); }
+          if(els.chatNameColorPicker){ els.chatNameColorPicker.value = (els.chatNameColor ? els.chatNameColor.value : clampHexColor(me.theme?.chatNameColor || me.theme?.nameColor || "#ffffff")); }
+          if(els.statusTextColor){ els.statusTextColor.value = clampHexColor(me.theme?.statusTextColor || "#ffffff"); }
+          if(els.statusTextColorPicker){ els.statusTextColorPicker.value = (els.statusTextColor ? els.statusTextColor.value : clampHexColor(me.theme?.statusTextColor || "#ffffff")); }
+          if(els.bubbleTextColor){ els.bubbleTextColor.value = clampHexColor(me.theme?.bubbleTextColor || "#ffffff"); }
+          if(els.bubbleTextColorPicker){ els.bubbleTextColorPicker.value = (els.bubbleTextColor ? els.bubbleTextColor.value : clampHexColor(me.theme?.bubbleTextColor || "#ffffff")); }
+        }catch(e){}
       } else {
         // 신규/테마없음: 브라우저 프리셋을 UI에 반영
         try{
@@ -6908,6 +6973,19 @@ async function joinRoom(){
             els.bubbleText.value = lp.bubbleText || (els.bubbleText.value||"");
             state.myPhotoUrl = lp.theme.photoUrl || state.myPhotoUrl;
             try{ if(els.photoEnabled) els.photoEnabled.checked = (lp.theme.photoEnabled !== false); }catch(e){}
+            // ✅ 글씨 색(닉네임/채팅 닉네임/상태/말풍선) 복원 (브라우저 저장값)
+            try{
+              if(els.nameColor){ els.nameColor.value = clampHexColor(lp.theme.nameColor || "#ffffff"); }
+              if(els.nameColorPicker){ els.nameColorPicker.value = (els.nameColor ? els.nameColor.value : clampHexColor(lp.theme.nameColor || "#ffffff")); }
+              if(els.chatNameColor){ els.chatNameColor.value = clampHexColor(lp.theme.chatNameColor || lp.theme.nameColor || "#ffffff"); }
+              if(els.chatNameColorPicker){ els.chatNameColorPicker.value = (els.chatNameColor ? els.chatNameColor.value : clampHexColor(lp.theme.chatNameColor || lp.theme.nameColor || "#ffffff")); }
+              if(els.statusTextColor){ els.statusTextColor.value = clampHexColor(lp.theme.statusTextColor || "#ffffff"); }
+              if(els.statusTextColorPicker){ els.statusTextColorPicker.value = (els.statusTextColor ? els.statusTextColor.value : clampHexColor(lp.theme.statusTextColor || "#ffffff")); }
+              if(els.bubbleTextColor){ els.bubbleTextColor.value = clampHexColor(lp.theme.bubbleTextColor || "#ffffff"); }
+              if(els.bubbleTextColorPicker){ els.bubbleTextColorPicker.value = (els.bubbleTextColor ? els.bubbleTextColor.value : clampHexColor(lp.theme.bubbleTextColor || "#ffffff")); }
+              if(els.chatNameColor){ els.chatNameColor.value = clampHexColor(lp.theme.chatNameColor || lp.theme.nameColor || "#ffffff"); }
+              if(els.chatNameColorPicker){ els.chatNameColorPicker.value = (els.chatNameColor ? els.chatNameColor.value : clampHexColor(lp.theme.chatNameColor || lp.theme.nameColor || "#ffffff")); }
+            }catch(e){}
           }
         }catch(e){}
       }
@@ -6931,7 +7009,10 @@ try{
       try{
         const lp = loadLocalProfile() || {};
         lp.theme = { emoji: els.emoji.value, bgColor: els.bgColor.value, pattern: (els.bgPattern?els.bgPattern.value:"none"), patternColor: (els.patternColor?els.patternColor.value:"#ffffff"), photoUrl: state.myPhotoUrl||"", photoEnabled: (els.photoEnabled ? !!els.photoEnabled.checked : true), emojiBg: (els.emojiBgColor?els.emojiBgColor.value:"#2b2b2b"),
-            emojiBgTransparent: (els.emojiBgTransparent ? !!els.emojiBgTransparent.checked : false), bubbleColor: (els.bubbleColor?els.bubbleColor.value:els.bgColor.value), timeColor: (els.timeColor?els.timeColor.value:"#ffffff"), emojiSize: (els.emojiSize?Number(els.emojiSize.value):40), photoSize: (els.photoSize?Number(els.photoSize.value):68) };
+            emojiBgTransparent: (els.emojiBgTransparent ? !!els.emojiBgTransparent.checked : false), bubbleColor: (els.bubbleColor?els.bubbleColor.value:els.bgColor.value), timeColor: (els.timeColor?els.timeColor.value:"#ffffff"),
+            nameColor: (els.nameColor ? els.nameColor.value : "#ffffff"), chatNameColor: (els.chatNameColor ? els.chatNameColor.value : ((els.nameColor?els.nameColor.value:"#ffffff"))),
+            statusTextColor: (els.statusTextColor ? els.statusTextColor.value : "#ffffff"), bubbleTextColor: (els.bubbleTextColor ? els.bubbleTextColor.value : "#ffffff"),
+            emojiSize: (els.emojiSize?Number(els.emojiSize.value):40), photoSize: (els.photoSize?Number(els.photoSize.value):68) };
         lp.bubbleText = (els.bubbleText.value||"");
         saveLocalProfile(lp);
       }catch(e){}
@@ -8311,7 +8392,7 @@ if(!window.__MK_BOOT_OK__){
       <div class="body">
         <div style="font-weight:900; font-size:15px; margin-bottom:6px;">출근 체크 잊지 말기 💗</div>
         <div>작업방 입장 후 <b>출근(출석)</b>만 한 번 눌러주면, <b>출석 현황</b>에는 하루 1회만 반영되고, 나머지 기록은 <b>AttendanceLog</b>로 남아요!</div>
-        <div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요!)</div>
+        <div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요)</div>
       </div>
       <div class="btnRow">
         <button id="dailyNoticeLaterBtn" type="button">나중에</button>
