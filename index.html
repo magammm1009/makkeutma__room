@@ -5128,9 +5128,9 @@ async function pollHelperHeartbeat(){
       }
     }
 function startHelperWatch(){
-      // helper는 5초마다 올리도록 설계(헬퍼 기본 ping_seconds=5)
+      // helper는 1초마다 폴링(헬퍼 ping_seconds 권장=1~2)
       if(state.helperWatchTimer) clearInterval(state.helperWatchTimer);
-      state.helperWatchTimer = setInterval(pollHelperHeartbeat, 5000);
+      state.helperWatchTimer = setInterval(pollHelperHeartbeat, 1000);
       // 즉시 1회
       pollHelperHeartbeat();
     }
