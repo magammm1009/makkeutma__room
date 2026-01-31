@@ -1447,6 +1447,7 @@ body.railFolded .railEdgeBtn{ display:flex !important; opacity:1; pointer-events
   padding:10px 12px;
   background: rgba(255,255,255,.06);
 }
+.attModal .attHeadBtns{display:flex; align-items:center; gap:8px; flex-wrap:nowrap;}
 .attModal iframe{flex:1; width:100%; border:0; background:#fff;}
 
 
@@ -8512,8 +8513,8 @@ if(!window.__MK_BOOT_OK__){
       <div class="head">
         <div class="ttl">💌 출근(출석) 체크</div>
         <div class="attHeadBtns">
-          <button id="attDoneBtn" class="ghost tight" type="button" title="출근을 완료했다면 눌러서 표시할 수 있어요">✅ 완료</button>
           <button id="attCloseBtn" class="xBtn" type="button">닫기 ✖</button>
+          <button id="attDoneBtn" class="ghost tight" type="button" title="출근을 완료했다면 눌러서 표시할 수 있어요">✅ 완료</button>
         </div>
       </div>
       <iframe id="attFrame" title="출근(출석)" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
