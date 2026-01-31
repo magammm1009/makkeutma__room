@@ -4897,9 +4897,13 @@ function helperPairKey(){
           text = "연결됨 (대기) 💤";
         }
 
-        for(const [dotEl, textEl] of targets){
-          dotEl.className = cls;
-          textEl.textContent = text;
+        if(state._helperUiCls !== cls || state._helperUiText !== text){
+          for(const [dotEl, textEl] of targets){
+            dotEl.className = cls;
+            textEl.textContent = text;
+          }
+          state._helperUiCls = cls;
+          state._helperUiText = text;
         }
 
         // ✅ 디버그(문제 진단용): active/idleSec/mode 표시
@@ -4924,7 +4928,7 @@ function helperPairKey(){
                 }
               }
             }
-            els.helperDebugText.textContent = extra;
+            if(els.helperDebugText.textContent !== extra) els.helperDebugText.textContent = extra;
           }
         }catch(e){}
 
@@ -4960,8 +4964,10 @@ function helperPairKey(){
     }
 
 async function pollHelperHeartbeat(){
+      if(!state.joined) return;
+      if(state._helperPollInFlight) return;
+      state._helperPollInFlight = true;
       try{
-        if(!state.joined) return;
 
         const key = helperPairKey();
         if(!key){
@@ -5127,6 +5133,7 @@ async function pollHelperHeartbeat(){
         if(!connected) state.helperActive = false;
         updateHelperStatusUI();
       }
+      finally{ state._helperPollInFlight = false; }
     }
 function startHelperWatch(){
       // helper는 1초마다 폴링(헬퍼 ping_seconds 권장=1~2)
@@ -6564,6 +6571,8 @@ if(photoEnabled){
     const img = document.createElement("img");
     img.src = photoUrl;
     img.loading = "lazy";
+     img.decoding = "async";
+     try{ img.fetchPriority = "low"; }catch(e){}
     img.onerror = ()=>{ idPhoto.textContent = "사진"; };
     idPhoto.appendChild(img);
   }else{
@@ -6729,7 +6738,7 @@ t.appendChild(bg);
 
     function renderStatusRoster(onlineArr){
       if(!els.statusRosterList) return;
-      els.statusRosterList.innerHTML = "";
+      const frag = document.createDocumentFragment();
       for(const p of onlineArr){
         const item = document.createElement("div");
         item.className = "statusRosterItem";
@@ -6758,9 +6767,25 @@ t.appendChild(bg);
 
         item.appendChild(left);
         item.appendChild(st);
-        els.statusRosterList.appendChild(item);
+        frag.appendChild(item);
       }
+      els.statusRosterList.replaceChildren(frag);
     }
+
+    // ✅ Presence 렌더를 프레임 단위로 합치기(입장 직후 버벅임/중복 렌더 방지)
+    function schedulePresenceRender(onlineArr){
+      state._pendingPresenceArr = onlineArr;
+      if(state._presenceRenderQueued) return;
+      state._presenceRenderQueued = true;
+      requestAnimationFrame(()=>{
+        state._presenceRenderQueued = false;
+        const arr = state._pendingPresenceArr || [];
+        try{ renderStatusRoster(arr); }catch(e){}
+        try{ renderGridTilesOrRoster(arr); }catch(e){}
+        try{ setMissionButtonState(); }catch(e){}
+      });
+    }
+
 
     function renderCompactRoster(onlineArr){
       if(!els.grid) return;
@@ -6829,12 +6854,12 @@ t.appendChild(bg);
         return;
       }
 
-      // normal tiles
-      els.grid.innerHTML = "";
+      // normal tiles (프래그먼트로 한 번에 교체 → 리플로우 최소화)
+      const frag = document.createDocumentFragment();
       for(const p of onlineArr){
         try{
           const t = renderTile(p);
-          if(t) els.grid.appendChild(t);
+          if(t) frag.appendChild(t);
         }catch(err){
           console.warn("[tile] renderTile failed, fallback tile used:", err);
           // ✅ 렌더 실패해도 전체가 비지 않도록 안전 타일
@@ -6858,10 +6883,12 @@ t.appendChild(bg);
           inner.appendChild(top);
           fallback.appendChild(bg);
           fallback.appendChild(inner);
-          els.grid.appendChild(fallback);
+          frag.appendChild(fallback);
         }
       }
+      els.grid.replaceChildren(frag);
     }
+
 
     // Join / Leave
     async function subscribeParticipants(){
@@ -6956,9 +6983,7 @@ t.appendChild(bg);
         try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
         els.lastSync.textContent = new Date().toLocaleTimeString("ko-KR");
 
-        renderStatusRoster(onlineArr);
-        renderGridTilesOrRoster(onlineArr);
-        try{ setMissionButtonState(); }catch(e){}
+        schedulePresenceRender(onlineArr);
       };
 
       rOnValue(q, onP);
