@@ -147,10 +147,22 @@
       width:100%;
       max-width:none;
       margin:0;
+      height: calc(100vh - 92px);
+      max-height: calc(100vh - 92px);
+      overflow: hidden;
     }
 
     /* ✅ Main(타일) 영역 오른쪽 여백: 대시보드와 딱 붙는 느낌 완화 */
     .wrap > main{ padding-right:10px; }
+
+    /* ✅ 타일 그리드가 길어져도 페이지 전체 높이가 늘지 않도록: 메인은 고정 높이 + 내부 스크롤 */
+    .wrap > main{ display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+    .gridScroll{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding-right:2px; }
+    .gridScroll{ scrollbar-width: thin; }
+    .gridScroll::-webkit-scrollbar{width:10px;}
+    .gridScroll::-webkit-scrollbar-thumb{background: rgba(255,255,255,.16); border-radius:999px; border:3px solid rgba(0,0,0,.20);}
+    .gridScroll::-webkit-scrollbar-track{background: rgba(0,0,0,.12); border-radius:999px;}
+
     @media (max-width: 920px){
       /* ✅ 브라우저가 좁아져 3타일 유지가 어려우면: 타일(메인) 접고, 채팅/대시보드 폭 고정 */
       .wrap{grid-template-columns: 1fr !important;}
@@ -501,6 +513,39 @@
     .gridHead .title{font-size:18px; font-weight:1100; letter-spacing:-.6px; display:flex; align-items:baseline; gap:10px;}
     .titleSub{font-size:12px; color:var(--muted); font-weight:900;}
     .gridHead .right{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; margin-right:10px;}
+
+    /* ✅ 입장 알림: 시간과 가이드 버튼 사이에서 한 줄 공지처럼 스르륵 */
+    .joinTicker{
+      flex:1;
+      min-width:0;
+      align-self:center;
+      height:40px;
+      display:flex;
+      align-items:center;
+      overflow:hidden;
+      border:1px solid rgba(255,182,214,.22);
+      background: rgba(255,182,214,.08);
+      border-radius:999px;
+      padding:0 12px;
+      box-shadow: 0 10px 22px rgba(255,119,184,.08);
+    }
+    .joinTicker.hidden{display:none !important;}
+    .joinTickerTrack{
+      display:inline-block;
+      white-space:nowrap;
+      padding-left:100%;
+      will-change: transform;
+    }
+    .joinTickerText{
+      font-weight:1000;
+      font-size:13px;
+      color:rgba(255,255,255,.92);
+      letter-spacing:-.2px;
+    }
+    @keyframes joinMarquee{
+      0%{ transform: translateX(0); }
+      100%{ transform: translateX(-100%); }
+    }
     .pill{
       padding:8px 10px;
       border-radius:999px;
@@ -1714,11 +1759,17 @@ body.joined #preJoinCard{ display:none; }
     <main>
       <div class="gridHead">
         <div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
-        <div class="right"><button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩 가이드</button>
+        <div id="joinTicker" class="joinTicker hidden" aria-live="polite" aria-atomic="true">
+        <div id="joinTickerTrack" class="joinTickerTrack"><span id="joinTickerText" class="joinTickerText"></span></div>
+      </div>
+
+      <div class="right"><button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩 가이드</button>
         <button id="layoutToggleBtn" class="ghost layoutToggle" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">미니 보기</button></div>
       </div>
 
+      <div id="gridScroll" class="gridScroll">
       <div id="grid" class="grid"></div>
+    </div>
     </main>
 
     <aside class="sidebar">
@@ -5806,7 +5857,7 @@ function subscribeChat(){
       return String(a.id||"").localeCompare(String(b.id||""));
     });
     // mission/sfx 제외(채팅만)
-    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx")));
+    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "ticker")));
   }
 
   function rebuildCacheFromMap(){
@@ -5980,6 +6031,19 @@ function subscribeChat(){
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
           const mm = { id, ...data };
+          // ✅ Ticker(입장 알림 등): 채팅에 렌더하지 않고 상단 띠로만 표시
+          if(mm && mm.type==="ticker"){
+            try{
+              const ts = Number(mm.tsMs||0);
+              // 중복 방지(같은 세션에서 빠르게 여러 번 들어올 때)
+              const last = Number(sessionStorage.getItem("lastTickerTs") || 0);
+              if(!ts || ts > last){
+                sessionStorage.setItem("lastTickerTs", String(ts||Date.now()));
+                showJoinTicker(mm.text||"");
+              }
+            }catch(e){}
+            return;
+          }
           // ✅ SFX는 렌더하지 않고 재생만
           if(mm && mm.type==="sfx"){
             try{
@@ -6046,7 +6110,7 @@ function subscribeChat(){
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
           const mm = { id, ...data };
-          if(mm && (mm.type==="mission" || mm.type==="sfx")) return;
+          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker")) return;
 
           // update only if we have it
           if(state.chatRollingById && state.chatRollingById[id]){
@@ -6197,12 +6261,52 @@ async function emitSys(text){
     const last = Number(sessionStorage.getItem("lastSysTs") || 0);
     if(now - last < 5000) return; // 5초 내 중복 방지
     sessionStorage.setItem("lastSysTs", String(now));
-    await rPush(rMessagesRootRef(state.roomId), { type:"sys", text: String(text||"").slice(0,120), tsMs: now });
+    try{ showJoinTicker(String(text||"").slice(0,120)); }catch(e){}
+    await rPush(rMessagesRootRef(state.roomId), { type:"ticker", kind:"join", uid: state.uid||null, text: String(text||"").slice(0,120), tsMs: now });
   }catch(e){}
 }
 
 
 
+
+function showJoinTicker(msg){
+  try{
+    const box = document.getElementById("joinTicker");
+    const track = document.getElementById("joinTickerTrack");
+    const textEl = document.getElementById("joinTickerText");
+    if(!box || !track || !textEl) return;
+    const s = String(msg||"").trim();
+    if(!s) return;
+
+    // show + set text
+    box.classList.remove("hidden");
+    textEl.textContent = s;
+
+    // compute duration based on distance (px) / speed
+    // speed: 70px/s (feels '스으으윽' but not too slow)
+    const boxW = box.clientWidth || 320;
+    const textW = textEl.scrollWidth || 320;
+    const distance = boxW + textW;
+    const speed = 70; // px per sec
+    const dur = Math.max(6, Math.min(18, distance / speed)); // 6~18s
+
+    // restart animation
+    track.style.animation = "none";
+    track.offsetHeight; // reflow
+    track.style.animation = `joinMarquee ${dur}s linear 1`;
+
+    // auto-hide after run
+    const onEnd = ()=>{
+      try{
+        track.style.animation = "none";
+        box.classList.add("hidden");
+        textEl.textContent = "";
+        track.removeEventListener("animationend", onEnd);
+      }catch(e){}
+    };
+    track.addEventListener("animationend", onEnd);
+  }catch(e){}
+}
 
 
     // ✅ 중복 전송 방지(Enter/Click 등 이벤트가 겹칠 때)
@@ -7238,7 +7342,7 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       els.layoutToggleBtn.addEventListener("click", toggleLayoutMode);
     }
 
-    els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); els.statusMenu.classList.add("hidden"); });
+    els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); });
     if(els.btnHelperToggle) els.btnHelperToggle.addEventListener("click", ()=>{
       if(!state.joined) return;
       const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
@@ -7251,8 +7355,8 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       try{ updateHelperStatusUI(); }catch(e){}
     });
 
-    els.btnBreak.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("break","manual"); els.statusMenu.classList.add("hidden"); });
-    els.btnIdle.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("idle","manual"); els.statusMenu.classList.add("hidden"); });
+    els.btnBreak.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("break","manual"); });
+    els.btnIdle.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("idle","manual"); });
 // ✅ 타이머 초기화 (오늘 작업시간/상태/세션 시작시간)
 async function resetTodayTimer(){
   try{
