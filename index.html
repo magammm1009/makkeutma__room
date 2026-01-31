@@ -5104,8 +5104,8 @@ async function pollHelperHeartbeat(){
         state._prevHelperActive = !!state.helperActive;
 
         const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
-        const status = me?.status || "idle";
-        const src = String(me?.statusSource || "");
+        const status = (state.myStatus || me?.status || "idle");
+        const src = String(state.myStatusSource || me?.statusSource || "");
 
         // 1) 작업중이면: 헬퍼 active 동안은 마지막 활동을 갱신(자동 break/idle 방지)
         if(status === "work" && state.helperActive){
@@ -5214,6 +5214,7 @@ async function transitionTo(nextStatus, source="manual"){
 
   // ✅ 구독이 꺼져 있어도 UI는 즉시 반영
   state.myStatus = nextStatus;
+  state.myStatusSource = source;
 
   const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
   if(nextStatus === "work"){
