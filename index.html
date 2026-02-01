@@ -1764,7 +1764,8 @@ body.joined #preJoinCard{ display:none; }
         <div id="joinTickerTrack" class="joinTickerTrack"><span id="joinTickerText" class="joinTickerText"></span></div>
       </div>
 
-      <div class="right"><button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩 가이드</button>
+      <div class="right"><button id="updateBtn" class="ghost layoutToggle" type="button" title="업데이트 안내" aria-label="업데이트 안내">💖Update</button>
+        <button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩 가이드</button>
         <button id="layoutToggleBtn" class="ghost layoutToggle" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">미니 보기</button></div>
       </div>
 
@@ -1856,16 +1857,40 @@ body.joined #preJoinCard{ display:none; }
   </div>
 
   <!-- Profile Modal -->
-  
+
   <div id="missionListModal" class="modalOverlay" aria-hidden="true">
     <div class="modal">
       <div class="modalHeader">
-        <h4>👑 오늘 미션 완료자</h4>
-        <button class="ghost" data-close="missionListModal" type="button">닫기</button>
+        <h4 id="missionModalTitle">👑 오늘 미션 완료자</h4>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="missionTodayBtn" class="ghost" type="button" style="display:none;">👑 오늘</button>
+          <button id="missionMonthlyBtn" class="ghost" type="button">📊 한달</button>
+          <button class="ghost" data-close="missionListModal" type="button">닫기</button>
+        </div>
       </div>
-      <div class="modalBody" style="max-height:60vh; overflow:auto;">
-        <div id="missionListBody" class="tiny" style="line-height:1.7; white-space:pre-wrap;"></div>
+      <div class="modalBody" style="max-height:70vh; overflow:auto;">
+        <div id="missionTodayPanel">
+          <div id="missionListBody" class="tiny" style="line-height:1.7; white-space:pre-wrap;"></div>
+        </div>
+
+        <div id="missionMonthlyPanel" style="display:none;">
+          <div class="row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="tiny" style="opacity:.92;">월 선택</span>
+              <select id="missionMonthSelect" style="min-width:140px;"></select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button id="missionMonthReloadBtn" class="ghost" type="button">새로고침</button>
+              <button id="missionMonthCopyBtn" class="ghost" type="button">복사</button>
+            </div>
+          </div>
+          <div id="missionMonthlySummary" class="tiny" style="margin-top:6px; opacity:.92;"></div>
+          <div id="missionMonthlyBody" style="margin-top:10px;"></div>
+        </div>
       </div>
+    </div>
+  </div>
+
     </div>
   </div>
 
@@ -1957,6 +1982,8 @@ body.joined #preJoinCard{ display:none; }
             <option value="stripes">스트라이프</option>
             <option value="grid">그리드</option>
             <option value="waves">웨이브</option>
+            <option value="sparkles">반짝이</option>
+            <option value="confetti">콘페티</option>
           </select>
           <span class="tiny"></span>
         </div>
@@ -2074,6 +2101,42 @@ body.joined #preJoinCard{ display:none; }
     </div>
   </div>
 
+  
+  <!-- Update Modal -->
+  <div id="updateModal" class="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHeader">
+        <div class="t">💖 Update</div>
+        <button id="closeUpdate" class="ghost">닫기</button>
+      </div>
+      <div class="modalBody">
+        <div class="hint">
+        </div>
+
+        <div id="updateMeta" class="tiny" style="opacity:.8; margin-bottom:10px;"></div>
+
+        <div id="updateView" style="width:100%; min-height:120px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.06); line-height:1.55;"></div>
+
+        <div class="hr" style="margin:14px 0;"></div>
+
+        <div id="updateUnlockRow" class="row" style="display:flex; gap:8px; align-items:center;">
+          <input id="updateAdminPass" type="password" placeholder="관리자 비번" style="flex:1;" />
+          <button id="updateUnlock" class="primary tight">확인</button>
+        </div>
+
+        <div id="updateEditArea" style="display:none;">
+          <div class="hint">✍️ 관리자용 편집</div>
+          <textarea id="updateTextArea" placeholder="업데이트 내용을 적어주세요 (줄바꿈 가능)" style="width:100%; min-height:160px; resize:vertical; padding:12px; border-radius:14px;"></textarea>
+          <div class="row" style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+            <button id="updateClear" class="ghost">비우기</button>
+            <button id="updateSave" class="primary">저장</button>
+          </div>
+          <div class="tiny" style="opacity:.75; margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Room Settings Modal (Admin) -->
   <div id="settingsModal" class="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -2123,6 +2186,10 @@ body.joined #preJoinCard{ display:none; }
 
   <div id="ctxMenu" class="ctxMenu hidden" role="menu" aria-hidden="true">
     <div class="title" id="ctxTitle">프로필</div>
+    <button id="ctxStatusWork" type="button">✍️ 작업중</button>
+    <button id="ctxStatusBreak" type="button">☕ 휴식중</button>
+    <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
+    <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>
     <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
     <button id="ctxClose" type="button">닫기</button>
   </div>
@@ -2640,7 +2707,7 @@ function loadLocalProfile(){
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, off as rOff, onDisconnect as rOnDisconnect,
-      query as rQuery, orderByChild as rOrderByChild, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
+      query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
       serverTimestamp as rServerTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -2670,6 +2737,7 @@ const auth = getAuth(app);
       lastSync: $("lastSync"),
       nowClockMain: $("nowClockMain"),
       layoutToggleBtn: $("layoutToggleBtn"),
+      updateBtn: $("updateBtn"),
       guideBtn: $("guideBtn"),
       dataSaverBtn: $("dataSaverBtn"),
 
@@ -2677,6 +2745,9 @@ const auth = getAuth(app);
       ctxTitle: $("ctxTitle"),
       ctxKick: $("ctxKick"),
       ctxClose: $("ctxClose"),
+      ctxStatusWork: $("ctxStatusWork"),
+      ctxStatusBreak: $("ctxStatusBreak"),
+      ctxStatusIdle: $("ctxStatusIdle"),
 
       dashUpdated: $("dashUpdated"),
       pomoCount: $("pomoCount"),
@@ -2786,6 +2857,18 @@ onlineBtn: $("onlineBtn"),
 
       dashboardCard: $("dashboardCard"),
       chatCard: $("chatCard"),
+
+      updateModal: $("updateModal"),
+      closeUpdate: $("closeUpdate"),
+      updateView: $("updateView"),
+      updateMeta: $("updateMeta"),
+      updateAdminPass: $("updateAdminPass"),
+      updateUnlock: $("updateUnlock"),
+      updateUnlockRow: $("updateUnlockRow"),
+      updateEditArea: $("updateEditArea"),
+      updateTextArea: $("updateTextArea"),
+      updateSave: $("updateSave"),
+      updateClear: $("updateClear"),
 
       settingsModal: $("settingsModal"),
       closeSettings: $("closeSettings"),
@@ -2965,9 +3048,41 @@ function toast(msg, ms=1600){
       els.ctxMenu.setAttribute("aria-hidden","true");
       state.ctxTarget = {uid:null, name:null};
     }
+    
+    function setCtxMenuMode(mode="kick"){
+      const isStatus = (mode === "status");
+      if(els.ctxStatusWork) els.ctxStatusWork.style.display = isStatus ? "" : "none";
+      if(els.ctxStatusBreak) els.ctxStatusBreak.style.display = isStatus ? "" : "none";
+      if(els.ctxStatusIdle) els.ctxStatusIdle.style.display = isStatus ? "" : "none";
+      const div = document.getElementById("ctxDivider");
+      if(div) div.style.display = isStatus ? "" : "none";
+      if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
+      // Close button is always visible
+    }
+
+    function openStatusCtxMenu(x, y){
+      if(!els.ctxMenu) return;
+      // reuse existing positioning logic via openCtxMenu
+      openCtxMenu(x, y, { id: state.uid, name: (els.meHint?.textContent || "나") });
+      setCtxMenuMode("status");
+      if(els.ctxTitle) els.ctxTitle.textContent = "내 상태 선택";
+
+      // mark current
+      const st = (state.myStatus || "idle");
+      const mark = (btn, on)=>{
+        if(!btn) return;
+        btn.style.borderColor = on ? "rgba(255,182,214,.55)" : "";
+        btn.style.background = on ? "rgba(255,182,214,.14)" : "";
+      };
+      mark(els.ctxStatusWork, st==="work");
+      mark(els.ctxStatusBreak, st==="break");
+      mark(els.ctxStatusIdle, st==="idle");
+    }
+
     function openCtxMenu(x, y, p){
       if(!els.ctxMenu) return;
-      state.ctxTarget = { uid: p.id, name: p.name || p.id };
+      setCtxMenuMode("kick");
+state.ctxTarget = { uid: p.id, name: p.name || p.id };
       els.ctxTitle.textContent = `${state.ctxTarget.name}`;
       const canKick = !!(state.joined && state.uid && p.id && p.id !== state.uid);
       els.ctxKick.disabled = !canKick;
@@ -3179,8 +3294,189 @@ function renderMissionSuccessCount(n){
   }catch(e){}
 }
 
+
+// ✅ 미션 모달 안에서 "오늘 ↔ 한달" 탭 전환 (기존 기능/설정 변경 없음)
+function setMissionPanel(mode){
+  try{
+    const title = document.getElementById("missionModalTitle");
+    const todayBtn = document.getElementById("missionTodayBtn");
+    const monthBtn = document.getElementById("missionMonthlyBtn");
+    const today = document.getElementById("missionTodayPanel");
+    const month = document.getElementById("missionMonthlyPanel");
+    if(!today || !month) return;
+
+    const isMonthly = (mode === "monthly");
+    today.style.display = isMonthly ? "none" : "";
+    month.style.display = isMonthly ? "" : "none";
+
+    if(title) title.textContent = isMonthly ? "📊 미션 월간 통계" : "👑 오늘 미션 완료자";
+    if(todayBtn) todayBtn.style.display = isMonthly ? "" : "none";
+    if(monthBtn) monthBtn.style.display = isMonthly ? "none" : "";
+
+    if(isMonthly){
+      const sel = document.getElementById("missionMonthSelect");
+      if(sel){
+        if(!sel.options || sel.options.length === 0){
+          const keys = monthKeysRecent(12);
+          const cur = seoulMonthKey();
+          sel.innerHTML = keys.map(k=>{
+            const s = String(k);
+            const selected = (k===cur) ? " selected" : "";
+            return `<option value="${s.replace(/"/g,"&quot;")}"${selected}>${s}</option>`;
+          }).join("");
+        }
+        const mk = sel.value || seoulMonthKey();
+        loadAndRenderMissionMonthly(mk);
+      }
+    }
+  }catch(e){}
+}
+
+// ✅ 월간 통계: YYYY-MM 키 계산
+function seoulMonthKey(){
+  try{ return String(seoulDateKey()||"").slice(0,7); }catch(e){ return ""; }
+}
+function monthKeysRecent(n){
+  try{
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit"
+    }).formatToParts(new Date()).reduce((a,p)=> (a[p.type]=p.value, a), {});
+    let y = Number(parts.year||0);
+    let m = Number(parts.month||0);
+    if(!y || !m) return [];
+    const out = [];
+    for(let i=0;i<n;i++){
+      const mm = m - i;
+      const yy = y + Math.floor((mm-1)/12);
+      const m2 = ((mm-1)%12 + 12) % 12 + 1;
+      out.push(`${String(yy).padStart(4,"0")}-${String(m2).padStart(2,"0")}`);
+    }
+    return out;
+  }catch(e){ return []; }
+}
+
+// ✅ 미션 월간 통계 (추가 기능: 기존 데이터/설정 변경 없음)
+// - RTDB: rooms/{roomId}/missions/{dayKey}/{uid}
+// - monthKey = "YYYY-MM"
+async function fetchMissionsByMonth(roomId, monthKey){
+  try{
+    if(!roomId || !monthKey) return {};
+    const root = rRef(rtdb, `${rRoomBase(roomId)}/missions`);
+    const q = rQuery(root, rOrderByKey(), rStartAt(`${monthKey}-01`), rEndAt(`${monthKey}-31\uf8ff`));
+    const snap = await rGet(q);
+    const v = (snap && snap.val) ? (snap.val() || {}) : {};
+    return v && typeof v === "object" ? v : {};
+  }catch(e){
+    console.warn("[missionMonthly] fetch failed", e);
+    throw e;
+  }
+}
+
+function computeMissionMonthAgg(monthObj){
+  const perName = new Map();
+  let totalCompletions = 0;
+  const days = [];
+  try{
+    for(const [dayKey, dayV] of Object.entries(monthObj || {})){
+      if(!dayV || typeof dayV !== "object") continue;
+      let dayCount = 0;
+      for(const [uid, info] of Object.entries(dayV)){
+        if(!info) continue;
+        const nm = (typeof normalizeNick==="function") ? normalizeNick(info.name||"") : String(info.name||"").trim();
+        if(!nm) continue;
+        const rec = perName.get(nm) || { name:nm, count:0, days:new Set(), lastDay:"", lastText:"" };
+        rec.count += 1;
+        rec.days.add(dayKey);
+        rec.lastDay = rec.lastDay && rec.lastDay > dayKey ? rec.lastDay : dayKey;
+        const tx = String(info.text||"").trim();
+        if(tx) rec.lastText = tx;
+        perName.set(nm, rec);
+        totalCompletions += 1;
+        dayCount += 1;
+      }
+      if(dayCount>0) days.push(dayKey);
+    }
+  }catch(e){}
+  const arr = Array.from(perName.values()).map(r=>({
+    name:r.name,
+    count:r.count,
+    uniqueDays:r.days.size,
+    lastDay:r.lastDay,
+    lastText:r.lastText || ""
+  }));
+  arr.sort((a,b)=> (b.count-a.count) || String(a.name).localeCompare(String(b.name),"ko"));
+  days.sort();
+  return { rows: arr, totalCompletions, uniquePeople: arr.length, activeDays: days.length, days };
+}
+
+function renderMissionMonthlyTable(agg, monthKey){
+  const sum = document.getElementById("missionMonthlySummary");
+  const body = document.getElementById("missionMonthlyBody");
+  if(!sum || !body) return;
+
+  sum.textContent = `${monthKey} · 완료 ${agg.totalCompletions}회 · 완료자 ${agg.uniquePeople}명 · 활동일 ${agg.activeDays}일`;
+
+  if(!agg.rows.length){
+    body.innerHTML = `<div class="tiny statMuted">이 달에는 미션 완료 기록이 없어요 🥲</div>`;
+    return;
+  }
+
+  const head = `
+    <div class="tiny" style="opacity:.92; margin-bottom:8px;">(정렬: 완료 횟수 ↓ / 이름 ↑)</div>
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead><tr>
+        <th style="width:52px; text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.12);">순위</th>
+        <th style="text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.12);">닉네임</th>
+        <th style="width:84px; text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.12);">완료</th>
+        <th style="width:84px; text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.12);">일수</th>
+        <th style="width:110px; text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.12);">최근</th>
+      </tr></thead>
+      <tbody>
+  `;
+  const rows = agg.rows.map((r, i)=>{
+    const safeName = (typeof escapeHtml==="function") ? escapeHtml(r.name) : String(r.name);
+    const safeLast = (typeof escapeHtml==="function") ? escapeHtml(r.lastText||"") : String(r.lastText||"");
+    return `<tr>
+      <td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">${i+1}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">${safeName}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">${r.count}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">${r.uniqueDays}</td>
+      <td class="tiny" style="opacity:.92; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);">${r.lastDay || ""}${safeLast ? `<div class="tiny" style="opacity:.75;">${safeLast}</div>` : ""}</td>
+    </tr>`;
+  }).join("");
+  const tail = `</tbody></table>`;
+  body.innerHTML = head + rows + tail;
+}
+
+async function loadAndRenderMissionMonthly(monthKey){
+  const sum = document.getElementById("missionMonthlySummary");
+  const body = document.getElementById("missionMonthlyBody");
+  try{
+    if(!state.roomId || !state.nonChatEnabled){
+      if(sum) sum.textContent = "입장 후에만 확인할 수 있어요.";
+      if(body) body.innerHTML = "";
+      return;
+    }
+    if(sum) sum.textContent = "불러오는 중…";
+    if(body) body.innerHTML = `<div class="tiny statMuted">잠깐만! 데이터 읽는 중이에요…</div>`;
+    const v = await fetchMissionsByMonth(state.roomId, monthKey);
+    const agg = computeMissionMonthAgg(v);
+    state._missionMonthlyAgg = { monthKey, agg, raw: v };
+    renderMissionMonthlyTable(agg, monthKey);
+  }catch(e){
+    if(sum) sum.textContent = "월간 통계를 불러오지 못했어요.";
+    if(body) body.innerHTML = `<div class="tiny statMuted" style="line-height:1.6; white-space:pre-wrap;">읽기 권한/네트워크 문제일 수 있어요.\n콘솔에 [missionMonthly] 로그가 있는지 확인해줘!</div>`;
+  }
+}
+
+function openMissionMonthlyModal(){
+  try{ setMissionPanel("monthly"); }catch(e){}
+}
+
+
 function openMissionListModal(){
   try{
+    try{ setMissionPanel("today"); }catch(e){}
     const body = document.getElementById("missionListBody");
     const modal = document.getElementById("missionListModal");
     if(!body || !modal) return;
@@ -3891,6 +4187,7 @@ function dockRightRail(){
       els.statusBtn.disabled = !joined;
       if(els.btnHelperToggle) els.btnHelperToggle.disabled = !joined;
       try{ if(els.guideBtn) els.guideBtn.style.display = joined ? "" : "none"; }catch(e){}
+      try{ if(els.updateBtn) els.updateBtn.style.display = joined ? "" : "none"; }catch(e){}
       // ✅ 입장 전에는 아무 것도 열지 못하게 잠금
       els.profileBtn.disabled = !joined;
       if(els.onlineBtn) els.onlineBtn.disabled = !joined;
@@ -4669,15 +4966,23 @@ async function ensureMeDoc(){
     }else{
       // day rollover
       if(String(data.dateKey||"") !== String(today)){
+        // ✅ 날짜가 바뀌어도 "현재 상태"는 유지하고, 누적 타이머만 초기화
+        const keepStatus = (data.status === "work" || data.status === "break" || data.status === "away") ? data.status : "break";
+        const now = Date.now();
         focusSaveSeconds(0);
+
+        // 로컬 상태도 함께 맞춰서, 자정 지나도 타이머/상태가 끊기지 않게
+        state.myStatus = keepStatus;
+        state._workSessionStartedAtMs = (keepStatus === "work") ? now : null;
+
         await rUpdate(pref, {
           dateKey: today,
           totalSecondsToday: 0,
-          sessionStartedAtMs: null,
-          status: "break",
-          statusSource: "manualMidnight",
-          updatedAt: Date.now(),
-          lastSeenAtMs: Date.now(),
+          sessionStartedAtMs: (keepStatus === "work") ? now : null,
+          status: keepStatus,
+          statusSource: "midnightRollover",
+          updatedAt: now,
+          lastSeenAtMs: now,
         });
       }
 
@@ -5503,6 +5808,10 @@ function subscribeRoom(){
     state.roomSettings.dashboard = dash;
     state.roomSettings.adminHash = r.adminHash || null;
     state.adminHash = state.roomSettings.adminHash;
+
+    // ✅ update notice (room shared)
+    state.roomSettings.updateNotice = (r && r.updateNotice) ? r.updateNotice : (state.roomSettings.updateNotice || {text:"", updatedAt:0});
+    try{ renderUpdateNotice && renderUpdateNotice(); }catch(e){}
 
     // counts는 별도 구독이지만, settings에 들어있으면 fallback
     if(r.dashCounts && !state.roomSettings.dashCounts) state.roomSettings.dashCounts = r.dashCounts;
@@ -6463,6 +6772,16 @@ async function sendChatCore(text, isFlush=false){
       t.dataset.name = normalizeNick(p?.name || p?.id || "");
       // 우클릭 메뉴(강퇴)
       t.addEventListener("contextmenu", (ev)=>{
+        // ✅ 내 타일의 '현재 상태 배지'를 우클릭하면 상태 선택 메뉴
+        const isMine = !!(state.uid && p?.id && (p.id === state.uid));
+        const hitBadge = !!(ev.target && ev.target.closest && ev.target.closest(".badge"));
+        if(isMine && hitBadge){
+          ev.preventDefault();
+          ev.stopPropagation();
+          openStatusCtxMenu(ev.clientX, ev.clientY);
+          return;
+        }
+        // 기본: 프로필 우클릭 메뉴(강퇴)
         ev.preventDefault();
         ev.stopPropagation();
         openCtxMenu(ev.clientX, ev.clientY, p);
@@ -7888,6 +8207,144 @@ els.statusBtn.addEventListener("click", (ev)=>{
     els.closeProfile.addEventListener("click", ()=>hideModal(els.profileModal));
     if(els.guideBtn){
       els.guideBtn.addEventListener("click", ()=>{ if(!state.joined){ showToast("입장하고 읽어줘! 💗"); return; } showModal(els.guideModal); try{ els.guideModal.querySelector('.modalBody')?.scrollTo(0,0);}catch(e){} });
+
+/* ============================
+ * 💖 Update Notice (room shared)
+ * - View: everyone
+ * - Edit: admin password required (same as settings adminHash)
+ * - Stored in RTDB: rooms/{roomId}/settings/updateNotice
+ * ============================ */
+function __fmtKST(ts){
+  try{
+    const d = new Date(ts||0);
+    if(!ts || isNaN(d.getTime())) return "";
+    return d.toLocaleString("ko-KR", { hour12:false });
+  }catch(e){ return ""; }
+}
+
+function renderUpdateNotice(){
+  try{
+    if(!els.updateView) return;
+    const n = (state.roomSettings && state.roomSettings.updateNotice) ? state.roomSettings.updateNotice : null;
+    const txt = (n && typeof n.text === "string") ? n.text : "";
+    const t = (n && n.updatedAt) ? Number(n.updatedAt) : 0;
+
+    // view
+    els.updateView.innerHTML = txt
+      ? escapeHtml(txt).replace(/\n/g, "<br>")
+      : '<span style="opacity:.7;">아직 업데이트가 없어요.</span>';
+
+    // meta
+    if(els.updateMeta){
+      const s = t ? ("마지막 업데이트: " + __fmtKST(t)) : "";
+      els.updateMeta.textContent = s;
+      els.updateMeta.style.display = s ? "" : "none";
+    }
+
+    // edit textarea (only when open)
+    if(els.updateTextArea){
+      els.updateTextArea.value = txt || "";
+    }
+  }catch(e){}
+}
+
+async function verifyAdminPass(pass){
+  const p = (pass || "").trim();
+  if(!p) return false;
+  const hash = await sha256Hex(p);
+
+  // settings가 비어있으면 등록 (update 모달에서도 가능)
+  if(!state.adminHash){
+    try{
+      await rUpdate(rSettingsRef(state.roomId), { adminHash: hash });
+      state.adminHash = hash;
+      state.adminOk = true;
+      return true;
+    }catch(e){
+      console.warn(e);
+      return false;
+    }
+  }
+
+  if(hash === state.adminHash){
+    state.adminOk = true;
+    return true;
+  }
+  state.adminOk = false;
+  return false;
+}
+
+function setUpdateAdminUI(ok){
+  try{
+    if(els.updateEditArea) els.updateEditArea.style.display = ok ? "" : "none";
+    if(els.updateUnlockRow) els.updateUnlockRow.style.display = ok ? "none" : "";
+    if(!ok && els.updateAdminPass) els.updateAdminPass.value = "";
+  }catch(e){}
+}
+
+async function saveUpdateNotice(){
+  if(!state.joined){ showToast("입장하고 써줘! 💗"); return; }
+  if(!state.adminOk){ showToast("관리자 비번 확인부터!"); return; }
+
+  const txt = (els.updateTextArea ? String(els.updateTextArea.value || "") : "").replace(/\r\n/g,"\n");
+  const payload = { text: txt, updatedAt: Date.now() };
+  try{
+    await rUpdate(rSettingsRef(state.roomId), { updateNotice: payload });
+    showToast("업데이트 저장!");
+  }catch(e){
+    console.warn(e);
+    showToast("저장 실패(권한/rules 확인)");
+  }
+}
+
+function openUpdateModal(){
+  if(!state.joined){ showToast("입장하고 확인해줘! 💗"); return; }
+  renderUpdateNotice();
+  setUpdateAdminUI(!!state.adminOk);
+  showModal(els.updateModal);
+}
+
+function closeUpdateModal(){
+  hideModal(els.updateModal);
+}
+
+// Button wiring
+try{
+  if(els.updateBtn){
+    els.updateBtn.addEventListener("click", openUpdateModal);
+  }
+  if(els.closeUpdate){
+    els.closeUpdate.addEventListener("click", closeUpdateModal);
+  }
+  if(els.updateUnlock){
+    els.updateUnlock.addEventListener("click", async ()=>{
+      const ok = await verifyAdminPass(els.updateAdminPass ? els.updateAdminPass.value : "");
+      if(ok){
+        setUpdateAdminUI(true);
+        showToast("관리자 확인 완료!");
+      }else{
+        showToast("비번이 달라…");
+        setUpdateAdminUI(false);
+      }
+    });
+  }
+  if(els.updateSave){
+    els.updateSave.addEventListener("click", saveUpdateNotice);
+  }
+  if(els.updateClear){
+    els.updateClear.addEventListener("click", ()=>{
+      if(els.updateTextArea) els.updateTextArea.value = "";
+    });
+  }
+
+  // overlay click to close (same pattern as others)
+  if(els.updateModal){
+    els.updateModal.addEventListener("click", (e)=>{
+      if(e && e.target === els.updateModal) closeUpdateModal();
+    });
+  }
+}catch(e){}
+
     }
     if(els.dataSaverBtn){
       els.dataSaverBtn.addEventListener("click", ()=>{
@@ -8082,6 +8539,84 @@ try{
         box.style.cursor = "pointer";
         box.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); openMissionListModal(); });
       }
+
+      // ✅ 모달 탭 버튼(👑 오늘 / 📊 한달) — 모달이 닫히지 않고 전환
+      try{
+        const mmodal = document.getElementById("missionListModal");
+        const mbtn = document.getElementById("missionMonthlyBtn");
+        const tbtn = document.getElementById("missionTodayBtn");
+        const sel  = document.getElementById("missionMonthSelect");
+        const reload = document.getElementById("missionMonthReloadBtn");
+        const copy = document.getElementById("missionMonthCopyBtn");
+
+        if(mbtn){
+          mbtn.addEventListener("click", (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            openMissionMonthlyModal();
+          });
+        }
+        if(tbtn){
+          tbtn.addEventListener("click", (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            setMissionPanel("today");
+          });
+        }
+
+        // (안전장치) 이벤트 위임: 텍스트 노드 클릭도 잡기
+        if(mmodal && !mmodal.__missionTabDelegation){
+          mmodal.__missionTabDelegation = true;
+          mmodal.addEventListener("click", (ev)=>{
+            try{
+              let tg = ev.target;
+              if(tg && tg.nodeType === 3) tg = tg.parentElement; // Text → Element
+              if(!tg || !tg.closest) return;
+
+              const mb = tg.closest("#missionMonthlyBtn");
+              if(mb){ ev.preventDefault(); ev.stopPropagation(); openMissionMonthlyModal(); return; }
+
+              const tb = tg.closest("#missionTodayBtn");
+              if(tb){ ev.preventDefault(); ev.stopPropagation(); setMissionPanel("today"); return; }
+            }catch(e){}
+          }, true);
+        }
+
+        // 월간 패널: 월 변경/새로고침/복사
+        if(sel){
+          sel.addEventListener("change", ()=>{
+            const mk = sel.value || seoulMonthKey();
+            loadAndRenderMissionMonthly(mk);
+          });
+        }
+        if(reload){
+          reload.addEventListener("click", ()=>{
+            const mk = (sel && sel.value) ? sel.value : seoulMonthKey();
+            loadAndRenderMissionMonthly(mk);
+          });
+        }
+        if(copy){
+          copy.addEventListener("click", async ()=>{
+            try{
+              const saved = state._missionMonthlyAgg;
+              if(!saved || !saved.agg) { showToast("복사할 통계가 없어!"); return; }
+              const mk = saved.monthKey || (sel && sel.value) || seoulMonthKey();
+              const a = saved.agg;
+              const lines = [];
+              lines.push(`📊 미션 월간 통계 (${mk})`);
+              lines.push(`- 완료 ${a.totalCompletions}회 / 완료자 ${a.uniquePeople}명 / 활동일 ${a.activeDays}일`);
+              lines.push("");
+              a.rows.slice(0, 50).forEach((r,i)=>{
+                lines.push(`${i+1}. ${r.name} — ${r.count}회 (${r.uniqueDays}일)${r.lastDay ? " · 최근 " + r.lastDay : ""}`);
+              });
+              const txt = lines.join("\n");
+              await navigator.clipboard.writeText(txt);
+              showToast("복사 완료! ✨");
+            }catch(e){
+              showToast("복사 실패 🥲");
+            }
+          });
+        }
+      }catch(e){}
+
       // close buttons
       document.addEventListener("click", (ev)=>{
         const t = ev.target;
@@ -8319,7 +8854,29 @@ try{
         if(t.uid) await requestKick(t.uid, t.name);
       });
     }
-    // 메뉴 안에서 클릭은 바깥 클릭 닫기 트리거를 막기
+    
+    if(els.ctxStatusWork){
+      els.ctxStatusWork.addEventListener("click", (e)=>{
+        e.preventDefault();
+        hideCtxMenu();
+        try{ transitionTo("work","manual"); }catch(err){ console.warn("[ctxStatus] work failed", err); }
+      });
+    }
+    if(els.ctxStatusBreak){
+      els.ctxStatusBreak.addEventListener("click", (e)=>{
+        e.preventDefault();
+        hideCtxMenu();
+        try{ transitionTo("break","manual"); }catch(err){ console.warn("[ctxStatus] break failed", err); }
+      });
+    }
+    if(els.ctxStatusIdle){
+      els.ctxStatusIdle.addEventListener("click", (e)=>{
+        e.preventDefault();
+        hideCtxMenu();
+        try{ transitionTo("idle","manual"); }catch(err){ console.warn("[ctxStatus] idle failed", err); }
+      });
+    }
+// 메뉴 안에서 클릭은 바깥 클릭 닫기 트리거를 막기
     if(els.ctxMenu){
       els.ctxMenu.addEventListener("click", (e)=>e.stopPropagation());
       els.ctxMenu.addEventListener("contextmenu", (e)=>e.preventDefault());
