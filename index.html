@@ -1601,6 +1601,7 @@ body:not(.joined) aside.sidebar{ display:none !important; }
 /* 입장 전에는 오른쪽 사이드/타일 관련 토글도 숨김 */
 body:not(.joined) #guideBtn,
 body:not(.joined) #layoutToggleBtn{ display:none !important; }
+body:not(.joined) #sortModeBtn{ display:none !important; }
 
 /* 입장 전 안내 카드만 표시 */
 body:not(.joined) #preJoinCard{ display:block; }
@@ -1766,6 +1767,7 @@ body.joined #preJoinCard{ display:none; }
 
       <div class="right"><button id="updateBtn" class="ghost layoutToggle" type="button" title="업데이트 안내" aria-label="업데이트 안내">💖Update</button>
         <button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩 가이드</button>
+        <button id="sortModeBtn" class="ghost layoutToggle" type="button" title="타일 정렬 방식" aria-label="타일 정렬 방식">정렬: 닉네임</button>
         <button id="layoutToggleBtn" class="ghost layoutToggle" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">미니 보기</button></div>
       </div>
 
@@ -2614,6 +2616,69 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
       applyLayoutMode(next);
     }
 
+    // -----------------------------
+// ✅ Tile sort modes (nickname / status&nickname)
+// -----------------------------
+const LS_TILE_SORT_MODE = "mk_tile_sort_mode_v1";
+const TILE_SORT_MODES = ["name","status"];
+
+function getTileSortMode(){
+  try{
+    const m = localStorage.getItem(LS_TILE_SORT_MODE) || "name";
+    return (m === "status" || m === "name") ? m : "name";
+  }catch(e){ return "name"; }
+}
+function setTileSortMode(mode){
+  try{ localStorage.setItem(LS_TILE_SORT_MODE, mode); }catch(e){}
+}
+function tileSortLabel(mode){
+  if(mode === "status") return "정렬: 상태&닉네임";
+  return "정렬: 닉네임";
+}
+function statusRank(st){
+  if(st === "work") return 0;
+  if(st === "break") return 1;
+  if(st === "away") return 2;
+  return 9;
+}
+function sortPresenceArr(arr){
+  if(!Array.isArray(arr)) return arr;
+  const mode = getTileSortMode();
+  if(mode === "status"){
+    // 상태순(작업중→휴식중→자리비움) + 닉네임(가나다)
+    arr.sort((a,b)=> (statusRank(a?.status) - statusRank(b?.status))
+      || String(a?.name||"").localeCompare(String(b?.name||""), "ko")
+    );
+  }else{
+    // 기본: 닉네임 가나다
+    arr.sort((a,b)=> String(a?.name||"").localeCompare(String(b?.name||""), "ko"));
+  }
+  return arr;
+}
+function syncSortModeBtn(){
+  if(!els.sortModeBtn) return;
+  els.sortModeBtn.textContent = tileSortLabel(getTileSortMode());
+}
+function cycleSortMode(){
+  const cur = getTileSortMode();
+  const idx = TILE_SORT_MODES.indexOf(cur);
+  const next = TILE_SORT_MODES[(idx < 0 ? 0 : (idx + 1) % TILE_SORT_MODES.length)];
+  setTileSortMode(next);
+  syncSortModeBtn();
+
+  // ✅ 즉시 재정렬/재렌더 (state TDZ 회피: window.__mk_state 사용)
+  try{
+    const st = window.__mk_state;
+    if(st && Array.isArray(st._lastPresenceArrBase)){
+      const base = st._lastPresenceArrBase.slice();
+      sortPresenceArr(base);
+      const ordered = applyPinnedOrder(base);
+      st._lastPresenceArr = ordered;
+      schedulePresenceRender(ordered);
+    }
+  }catch(e){}
+}
+
     function loadPassOK(){
       try{
         const ok = (localStorage.getItem(LS_PASS_OK) === "1");
@@ -2753,6 +2818,7 @@ const auth = getAuth(app);
       lastSync: $("lastSync"),
       nowClockMain: $("nowClockMain"),
       layoutToggleBtn: $("layoutToggleBtn"),
+      sortModeBtn: $("sortModeBtn"),
       updateBtn: $("updateBtn"),
       guideBtn: $("guideBtn"),
       dataSaverBtn: $("dataSaverBtn"),
@@ -5886,7 +5952,7 @@ async function transitionTo(nextStatus, source="manual"){
           try{ state.lastRendered?.delete?.(state.uid); }catch(e){}
           const arr = [...state.currentParticipants.values()];
           const onlineArr = arr.filter(p=> isDisplayablePresence(p));
-          onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
+            sortPresenceArr(onlineArr);
           renderGridTilesOrRoster(onlineArr);
         }
       }catch(e){}
@@ -7604,7 +7670,7 @@ t.appendChild(bg);
             state.missionSuccessCount = successCount;
             renderMissionSuccessCount(successCount);
 
-            onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
+            sortPresenceArr(onlineArr);
 
             // (joined) 상단 인원 표시 업데이트
             try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
@@ -7964,7 +8030,7 @@ window.addEventListener("resize", ()=>{
   try{
     const arr = [...state.currentParticipants.values()];
     const onlineArr = arr.filter(p=> isDisplayablePresence(p));
-    onlineArr.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
+            sortPresenceArr(onlineArr);
     renderGridTilesOrRoster(onlineArr);
   }catch(e){
     applyCompactMode();
@@ -8051,6 +8117,12 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     if(els.layoutToggleBtn){
       applyLayoutMode(getLayoutMode());
       els.layoutToggleBtn.addEventListener("click", toggleLayoutMode);
+    }
+
+    // ✅ Tile sort mode button (local only)
+    if(els.sortModeBtn){
+      syncSortModeBtn();
+      els.sortModeBtn.addEventListener("click", cycleSortMode);
     }
     els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); });
     if(els.btnHelperToggle) els.btnHelperToggle.addEventListener("click", ()=>{
