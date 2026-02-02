@@ -28,6 +28,29 @@
       background:#000;
       min-height:100vh;
     }
+    /* ✅ Scrollbar theme (dark/black) */
+    :root{
+      --sb-track: rgba(0,0,0,.18);
+      --sb-thumb: rgba(0,0,0,.55);
+    }
+    /* Firefox */
+    *{
+      scrollbar-width: thin;
+      scrollbar-color: var(--sb-thumb) var(--sb-track);
+    }
+    /* WebKit (Chrome/Edge/Safari) */
+    *::-webkit-scrollbar{width:10px; height:10px;}
+    *::-webkit-scrollbar-thumb{
+      background: var(--sb-thumb);
+      border-radius:999px;
+      border:3px solid var(--sb-track);
+    }
+    *::-webkit-scrollbar-track{
+      background: var(--sb-track);
+      border-radius:999px;
+    }
+
+
 
     /* Topbar */
     .topbar{
@@ -160,8 +183,8 @@
     .gridScroll{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding-right:2px; }
     .gridScroll{ scrollbar-width: thin; }
     .gridScroll::-webkit-scrollbar{width:10px;}
-    .gridScroll::-webkit-scrollbar-thumb{background: rgba(255,255,255,.16); border-radius:999px; border:3px solid rgba(0,0,0,.20);}
-    .gridScroll::-webkit-scrollbar-track{background: rgba(0,0,0,.12); border-radius:999px;}
+    .gridScroll::-webkit-scrollbar-thumb{background: var(--sb-thumb); border-radius:999px; border:3px solid var(--sb-track);}
+    .gridScroll::-webkit-scrollbar-track{background: var(--sb-track); border-radius:999px;}
 
     @media (max-width: 920px){
       /* ✅ 브라우저가 좁아져 3타일 유지가 어려우면: 타일(메인) 접고, 채팅/대시보드 폭 고정 */
@@ -356,8 +379,8 @@
     }
     .chatList{scrollbar-width: thin;}
     .chatList::-webkit-scrollbar{width:10px;}
-    .chatList::-webkit-scrollbar-thumb{background: rgba(255,255,255,.16); border-radius:999px; border:3px solid rgba(0,0,0,.20);}
-    .chatList::-webkit-scrollbar-track{background: rgba(0,0,0,.12); border-radius:999px;}
+    .chatList::-webkit-scrollbar-thumb{background: var(--sb-thumb); border-radius:999px; border:3px solid var(--sb-track);}
+    .chatList::-webkit-scrollbar-track{background: var(--sb-track); border-radius:999px;}
 
     .chatNewBar{
       margin-top:8px;
