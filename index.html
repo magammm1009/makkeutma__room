@@ -2189,7 +2189,8 @@ body.joined #preJoinCard{ display:none; }
     <button id="ctxStatusWork" type="button">✍️ 작업중</button>
     <button id="ctxStatusBreak" type="button">☕ 휴식중</button>
     <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
-    <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>
+    <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>    <button id="ctxPinToggle" type="button">📌 상단 고정</button>
+
     <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
     <button id="ctxClose" type="button">닫기</button>
   </div>
@@ -2758,6 +2759,7 @@ const auth = getAuth(app);
 
       ctxMenu: $("ctxMenu"),
       ctxTitle: $("ctxTitle"),
+      ctxPinToggle: $("ctxPinToggle"),
       ctxKick: $("ctxKick"),
       ctxClose: $("ctxClose"),
       ctxStatusWork: $("ctxStatusWork"),
@@ -3057,6 +3059,98 @@ function toast(msg, ms=1600){
 
 
     // --- 우클릭 컨텍스트 메뉴 ---
+
+    // ✅ 상단 고정(내 타일 1 + 즐겨찾기 2): 브라우저 로컬에만 저장(localStorage)
+    const PIN_KEY = "mk_pins_v1";
+    function _safeJsonParse(str, fallback){
+      try{ return JSON.parse(str); }catch(e){ return fallback; }
+    }
+    function getPinnedUids(){
+      const raw = _safeJsonParse(localStorage.getItem(PIN_KEY) || "[]", []);
+      const arr = Array.isArray(raw) ? raw : [];
+      const seen = new Set();
+      const out = [];
+      for(const v of arr){
+        const uid = (typeof v === "string") ? v : "";
+        if(!uid) continue;
+        if(state.uid && uid === state.uid) continue; // self는 항상 고정이라 제외
+        if(seen.has(uid)) continue;
+        seen.add(uid);
+        out.push(uid);
+        if(out.length >= 2) break;
+      }
+      return out;
+    }
+    function setPinnedUids(uids){
+      try{
+        const clean = Array.isArray(uids) ? uids.filter(Boolean).slice(0,2) : [];
+        localStorage.setItem(PIN_KEY, JSON.stringify(clean));
+      }catch(e){}
+    }
+    function isPinnedUid(uid){
+      const pins = getPinnedUids();
+      return pins.includes(uid);
+    }
+    function togglePinnedUid(uid){
+      if(!uid) return;
+      if(state.uid && uid === state.uid) return; // self는 항상 top
+      const pins = getPinnedUids();
+      const idx = pins.indexOf(uid);
+      if(idx >= 0){
+        pins.splice(idx, 1);
+        setPinnedUids(pins);
+        try{ showToast("📍 상단 고정 해제!"); }catch(e){}
+      }else{
+        pins.push(uid);
+        // 2명 초과면 오래된 것부터 제거
+        const trimmed = pins.slice(-2);
+        const dropped = (pins.length > 2);
+        setPinnedUids(trimmed);
+        try{ showToast(dropped ? "📌 상단 고정! (2명 초과라 오래된 고정은 해제됐어)" : "📌 상단 고정!"); }catch(e){}
+      }
+      // 즉시 재렌더(현재 화면에 보이는 목록 기준)
+      try{
+        if(Array.isArray(state._lastPresenceArrBase)){
+          const ordered = applyPinnedOrder(state._lastPresenceArrBase);
+          state._lastPresenceArr = ordered;
+          schedulePresenceRender(ordered);
+        }
+      }catch(e){}
+    }
+    function applyPinnedOrder(arr){
+      try{
+        if(!Array.isArray(arr) || arr.length <= 1) return arr;
+        const pins = getPinnedUids();
+        const byId = new Map(arr.map(p => [p && p.id, p]));
+        const out = [];
+        const used = new Set();
+
+        // 1) 나(항상 1등)
+        if(state.uid && byId.has(state.uid)){
+          out.push(byId.get(state.uid));
+          used.add(state.uid);
+        }
+
+        // 2) 즐겨찾기 2명
+        for(const uid of pins){
+          if(byId.has(uid) && !used.has(uid)){
+            out.push(byId.get(uid));
+            used.add(uid);
+          }
+        }
+
+        // 3) 나머지(기존 순서 유지)
+        for(const p of arr){
+          const id = p && p.id;
+          if(!id || used.has(id)) continue;
+          out.push(p);
+        }
+        return out;
+      }catch(e){
+        return arr;
+      }
+    }
+
     function hideCtxMenu(){
       if(!els.ctxMenu) return;
       els.ctxMenu.classList.add("hidden");
@@ -3071,6 +3165,7 @@ function toast(msg, ms=1600){
       if(els.ctxStatusIdle) els.ctxStatusIdle.style.display = isStatus ? "" : "none";
       const div = document.getElementById("ctxDivider");
       if(div) div.style.display = isStatus ? "" : "none";
+      if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
       if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
       // Close button is always visible
     }
@@ -3101,6 +3196,15 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       els.ctxTitle.textContent = `${state.ctxTarget.name}`;
       const canKick = !!(state.joined && state.uid && p.id && p.id !== state.uid);
       els.ctxKick.disabled = !canKick;
+
+      // ✅ Pin(상단 고정) 버튼 라벨/활성화
+      if(els.ctxPinToggle){
+        const canPin = !!(state.joined && state.uid && p.id && p.id !== state.uid);
+        els.ctxPinToggle.disabled = !canPin;
+        const pins = getPinnedUids();
+        const isPinned = !!(p && p.id && pins.includes(p.id));
+        els.ctxPinToggle.textContent = isPinned ? "📍 고정 해제" : `📌 상단 고정 (${pins.length}/2)`;
+      }
 
       const m = els.ctxMenu;
       m.classList.remove("hidden");
@@ -7479,7 +7583,10 @@ t.appendChild(bg);
             try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
             try{ els.lastSync.textContent = new Date().toLocaleTimeString("ko-KR"); }catch(e){}
 
-            schedulePresenceRender(onlineArr);
+            state._lastPresenceArrBase = onlineArr.slice();
+            const orderedArr = applyPinnedOrder(onlineArr);
+            state._lastPresenceArr = orderedArr;
+            schedulePresenceRender(orderedArr);
           }catch(e){}
         });
       };
@@ -9086,7 +9193,16 @@ try{
         if(t.uid) await requestKick(t.uid, t.name);
       });
     }
-    
+
+    if(els.ctxPinToggle){
+      els.ctxPinToggle.addEventListener("click", (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) togglePinnedUid(t.uid);
+      });
+    }
+
     if(els.ctxStatusWork){
       els.ctxStatusWork.addEventListener("click", (e)=>{
         e.preventDefault();
