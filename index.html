@@ -2189,6 +2189,7 @@ body.joined #preJoinCard{ display:none; }
     <button id="ctxStatusWork" type="button">✍️ 작업중</button>
     <button id="ctxStatusBreak" type="button">☕ 휴식중</button>
     <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
+    <button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
     <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>    <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 
     <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
@@ -2612,7 +2613,6 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
       setLayoutMode(next);
       applyLayoutMode(next);
     }
-    
 
     function loadPassOK(){
       try{
@@ -2765,6 +2765,7 @@ const auth = getAuth(app);
       ctxStatusWork: $("ctxStatusWork"),
       ctxStatusBreak: $("ctxStatusBreak"),
       ctxStatusIdle: $("ctxStatusIdle"),
+      ctxTimerPrivacyToggle: $("ctxTimerPrivacyToggle"),
 
       dashUpdated: $("dashUpdated"),
       pomoCount: $("pomoCount"),
@@ -3163,6 +3164,7 @@ function toast(msg, ms=1600){
       if(els.ctxStatusWork) els.ctxStatusWork.style.display = isStatus ? "" : "none";
       if(els.ctxStatusBreak) els.ctxStatusBreak.style.display = isStatus ? "" : "none";
       if(els.ctxStatusIdle) els.ctxStatusIdle.style.display = isStatus ? "" : "none";
+      if(els.ctxTimerPrivacyToggle) els.ctxTimerPrivacyToggle.style.display = isStatus ? "" : "none";
       const div = document.getElementById("ctxDivider");
       if(div) div.style.display = isStatus ? "" : "none";
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
@@ -3187,6 +3189,18 @@ function toast(msg, ms=1600){
       mark(els.ctxStatusWork, st==="work");
       mark(els.ctxStatusBreak, st==="break");
       mark(els.ctxStatusIdle, st==="idle");
+      // ✅ 내 타이머(누적) 공개/숨김 토글 라벨 동기화
+      try{
+        const me = state.currentParticipants.get(state.uid) || {};
+        const hidden = !!me.timerHidden;
+        if(els.ctxTimerPrivacyToggle){
+          els.ctxTimerPrivacyToggle.textContent = hidden ? "⏱️ 내 타이머 공개하기" : "🙈 내 타이머 숨기기";
+          // 살짝 표시(선택 느낌)
+          els.ctxTimerPrivacyToggle.style.borderColor = hidden ? "rgba(255,182,214,.55)" : "";
+          els.ctxTimerPrivacyToggle.style.background = hidden ? "rgba(255,182,214,.14)" : "";
+        }
+      }catch(e){}
+
     }
 
     function openCtxMenu(x, y, p){
@@ -5178,6 +5192,7 @@ async function ensureMeDoc(){
     bubbleText: (((loadLocalProfile()||{}).bubbleText || "").toString().trim().slice(0,15)),
     theme: defaultTheme(),
     mission: state.myMission || { dayKey: today, text:"", done:false, doneAt:"" },
+    timerHidden: 0,
     lastSeenAtMs: Date.now(),
     updatedAt: Date.now(),
   };
@@ -5231,6 +5246,13 @@ async function ensureMeDoc(){
           if(bt) await rUpdate(pref, { bubbleText: bt, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
         }
       }catch(e){}
+      // ✅ timerHidden seed (기본: 공개)
+      try{
+        if(data.timerHidden === undefined || data.timerHidden === null){
+          await rUpdate(pref, { timerHidden: 0, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+        }
+      }catch(e){}
+
 
       // theme seed
       try{
@@ -7192,7 +7214,7 @@ if(photoEnabled){
 const timer = document.createElement("div");
 timer.className = "bigTimer";
       const isMeTile = (p && p.id && state.uid) ? (p.id === state.uid) : false;
-timer.innerHTML = `<span class="time">--:--:--</span>` + `<button class="missionBtn" type="button" data-owner="${escapeHtml(p.id||'')}" data-name="${escapeHtml(normalizeNick(p.name||p.id||''))}" data-me="${isMeTile?'1':'0'}" title="오늘의 미션" aria-label="오늘의 미션"></button>`;
+timer.innerHTML = `<span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--:--"}</span>` + `<button class="missionBtn" type="button" data-owner="${escapeHtml(p.id||'')}" data-name="${escapeHtml(normalizeNick(p.name||p.id||''))}" data-me="${isMeTile?'1':'0'}" title="오늘의 미션" aria-label="오늘의 미션"></button>`;
       const mbtn = timer.querySelector(".missionBtn");
       if(mbtn) updateMissionBtnForTile(mbtn, p);
 
@@ -7239,7 +7261,12 @@ t.appendChild(bg);
         const timeEl = rec.el.querySelector(".time");
         if(!timeEl) continue;
         const __disp = computeDisplayedTotal(p);
-        timeEl.textContent = fmtHMS(__disp);
+        // ✅ 내 타이머 숨김(개별 프로필 설정)이면 시간 대신 잠금 표시
+        if(p.timerHidden){
+          timeEl.textContent = "⌨️";
+        }else{
+          timeEl.textContent = fmtHMS(__disp);
+        }
         // ✅ 로컬(브라우저) "오늘 작업시간" 24h 누적 저장 (타이머가 실제로 도는 지점에서 확실히 저장)
         try{
           if(p.id === state.uid){
@@ -8025,7 +8052,6 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       applyLayoutMode(getLayoutMode());
       els.layoutToggleBtn.addEventListener("click", toggleLayoutMode);
     }
-
     els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); });
     if(els.btnHelperToggle) els.btnHelperToggle.addEventListener("click", ()=>{
       if(!state.joined) return;
@@ -9222,6 +9248,30 @@ try{
         e.preventDefault();
         hideCtxMenu();
         try{ transitionTo("idle","manual"); }catch(err){ console.warn("[ctxStatus] idle failed", err); }
+      });
+    }
+
+    // ✅ 내 누적 타이머(프로필 타일) 공개/숨김 (나/타인 모두에게 적용)
+    if(els.ctxTimerPrivacyToggle){
+      els.ctxTimerPrivacyToggle.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        hideCtxMenu();
+        try{
+          const me = state.currentParticipants.get(state.uid) || {};
+          const cur = !!me.timerHidden;
+          const next = !cur;
+          // optimistic local mirror
+          try{ me.timerHidden = next; state.currentParticipants.set(state.uid, me); }catch(_e){}
+          await rUpdate(rMePresenceRef(state.roomId, state.uid), {
+            timerHidden: next ? 1 : 0,
+            updatedAt: Date.now(),
+            lastSeenAtMs: Date.now()
+          });
+          // UI refresh
+          try{ render(); }catch(_e){}
+        }catch(err){
+          console.warn("[ctxTimerPrivacy] failed", err);
+        }
       });
     }
 // 메뉴 안에서 클릭은 바깥 클릭 닫기 트리거를 막기
