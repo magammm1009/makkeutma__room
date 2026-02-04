@@ -2218,6 +2218,7 @@ body.joined #preJoinCard{ display:none; }
     <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>    <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 
     <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
+    <button id="ctxForceOff" class="danger" type="button">🫥 로그아웃 처리</button>
     <button id="ctxClose" type="button">닫기</button>
   </div>
 
@@ -2850,6 +2851,7 @@ const auth = getAuth(app);
       ctxTitle: $("ctxTitle"),
       ctxPinToggle: $("ctxPinToggle"),
       ctxKick: $("ctxKick"),
+      ctxForceOff: $("ctxForceOff"),
       ctxClose: $("ctxClose"),
       ctxStatusWork: $("ctxStatusWork"),
       ctxStatusBreak: $("ctxStatusBreak"),
@@ -3301,6 +3303,15 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       const canKick = !!(state.joined && state.uid && state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid && p.id && p.id !== state.uid);
       els.ctxKick.disabled = !canKick;
 
+      // ✅ (관리자) 고스트 타일 정리: 강제 로그아웃 처리 버튼
+      try{
+        if(els.ctxForceOff){
+          const canForceOff = !!(state.joined && state.uid && state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid && p.id && p.id !== state.uid);
+          els.ctxForceOff.disabled = !canForceOff;
+          els.ctxForceOff.textContent = "🫥 로그아웃 처리";
+        }
+      }catch(e){}
+
       // ✅ Pin(상단 고정) 버튼 라벨/활성화
       if(els.ctxPinToggle){
         const canPin = !!(state.joined && state.uid && p.id && p.id !== state.uid);
@@ -3357,7 +3368,43 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       }
     }
 
-    function subscribeKicks(){
+    
+    const FORCE_OFF_BLOCK_MS = 12 * 60 * 60 * 1000; // 12시간(원하면 조절)
+
+    // ✅ 고스트/유령 타일 정리용: 관리자가 해당 유저를 '로그아웃(오프라인)' 처리
+    async function requestForceOff(targetUid, targetName){
+      if(!state.roomId || !state.uid || !targetUid) return;
+
+      // ✅ 로그아웃 처리는 "방의 ownerUid(리로)"만 가능
+      if(!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid)){
+        showToast("🚫 로그아웃 처리는 리로(관리자)만 가능해");
+        return;
+      }
+      if(targetUid === state.uid){
+        showToast("내 타일은 직접 로그아웃 해줘! 😅");
+        return;
+      }
+
+      const now = Date.now();
+      try{
+        await rUpdate(rMePresenceRef(state.roomId, targetUid), {
+          status: "off",
+          sessionStartedAtMs: null,
+          updatedAt: now,
+          lastSeenAtMs: now,
+          forcedOffAtMs: now,
+          forcedOffBy: state.uid,
+          forcedOffUntilMs: now + FORCE_OFF_BLOCK_MS,
+          forcedOffTargetName: targetName || ""
+        });
+        showToast("🫥 로그아웃 처리했어");
+      }catch(e){
+        console.error(e);
+        showToast("로그아웃 처리 실패(권한/rules 확인)");
+      }
+    }
+
+function subscribeKicks(){
       // ✅ kick listener: 안전하게(onSnapshot 에러는 무시) 붙인다
       if(state.unsubKick) state.unsubKick();
       state.unsubKick = null;
@@ -5374,6 +5421,25 @@ async function ensureMeDoc(){
   }
 }
 
+    // ✅ 자정 롤오버 안전망(절전/탭 닫힘 등으로 스케줄을 놓치는 경우 보강)
+    // - 서버/전체에 부담 주지 않기 위해 "날짜가 바뀐 경우에만" ensureMeDoc()를 호출한다.
+    let __lastEnsureDayKey = "";
+    function ensureMidnightRollover(){
+      try{
+        const dk = seoulDateKey();
+        if(!dk) return;
+        if(!__lastEnsureDayKey) __lastEnsureDayKey = dk;
+        if(dk !== __lastEnsureDayKey){
+          __lastEnsureDayKey = dk;
+          if(state && state.joined){
+            ensureMeDoc().catch(()=>{});
+          }
+        }
+      }catch(e){}
+    }
+
+
+
 async function heartbeat(){
   if(!state.roomId || !state.uid) return;
   try{
@@ -5430,8 +5496,20 @@ function startRtdbConnectionWatch(){
 
     function computeDisplayedTotal(p){
       const base = Number(p.totalSecondsToday || 0);
+
+      // ✅ 고스트(work) 타이머 방지:
+      // - work 상태인데 lastSeen(heartbeat)가 멈춘 상태면, 그 시점에서 타이머를 "정지"시켜 표시
+      // - 절전/탭 종료/네트워크 단절로 lastSeenAtMs가 더 이상 갱신되지 않을 때 계속 증가하는 문제를 막는다
+      const STALE_MS = 3 * 60 * 1000;      // 3분 이상 lastSeen이 멈추면 stale로 판단
+      const GRACE_MS = 30 * 1000;          // 마지막 하트비트 이후 30초는 정상 지연으로 허용
+
       if(p.status === "work" && p.sessionStartedAtMs){
-        return base + Math.max(0, (Date.now() - p.sessionStartedAtMs)/1000);
+        const now = Date.now();
+        const lastSeen = Number(p.lastSeenAtMs || 0);
+        const isStale = !!(lastSeen && (now - lastSeen) > STALE_MS);
+
+        const effectiveNow = isStale ? Math.min(now, lastSeen + GRACE_MS) : now;
+        return base + Math.max(0, (effectiveNow - p.sessionStartedAtMs)/1000);
       }
       return base;
     }
@@ -5454,8 +5532,18 @@ function startRtdbConnectionWatch(){
           if(state && state.joined) persistMyFocusToLocal();
         }else if(document.visibilityState === "visible"){
           bumpActivity();
+          // ✅ 자정 롤오버 보강(복귀 순간 체크)
+          try{ ensureMidnightRollover(); }catch(e){}
         }
       }catch(e){}
+
+    // ✅ 포커스/복귀 시에도 자정 롤오버 체크
+    window.addEventListener("focus", ()=>{ try{ if(state && state.joined) ensureMidnightRollover(); }catch(e){} }, {passive:true});
+    window.addEventListener("pageshow", ()=>{ try{ if(state && state.joined) ensureMidnightRollover(); }catch(e){} }, {passive:true});
+
+    // ✅ 안전망: 60초마다(가볍게) 날짜 변경만 확인 -> 변경된 날에만 ensureMeDoc 호출
+    setInterval(()=>{ try{ if(state && state.joined) ensureMidnightRollover(); }catch(e){} }, 60*1000);
+
     });
     // ✅ 탭 종료/뒤로가기/닫기에서도 최대한 빨리 OFFLINE 처리(누적시간 멈춤)
     (function(){
@@ -7800,6 +7888,19 @@ t.appendChild(bg);
             const map = (state.currentParticipants instanceof Map) ? state.currentParticipants : new Map();
             const arr = Array.from(map.values()).filter(Boolean);
 
+            // ✅ (관리자) 강제 로그아웃 처리 감지: 내 데이터에 forcedOffUntilMs가 있으면 즉시 퇴장
+            try{
+              if(state.joined && state.uid){
+                const meNow2 = map.get(state.uid);
+                const until = meNow2 ? Number(meNow2.forcedOffUntilMs||0) : 0;
+                if(until && until > Date.now()){
+                  showToast("🫥 관리자가 로그아웃 처리했어");
+                  setTimeout(()=>{ try{ if(state.joined) leaveRoom(); }catch(_e){} }, 350);
+                  return;
+                }
+              }
+            }catch(e){}
+
             // 정렬: lastSeen desc
             arr.sort((a,b)=> Number(b.lastSeenAtMs||0) - Number(a.lastSeenAtMs||0));
 
@@ -9483,6 +9584,15 @@ try{
         const t = state.ctxTarget || {};
         hideCtxMenu();
         if(t.uid) await requestKick(t.uid, t.name);
+      });
+    }
+
+    if(els.ctxForceOff){
+      els.ctxForceOff.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) await requestForceOff(t.uid, t.name);
       });
     }
 
