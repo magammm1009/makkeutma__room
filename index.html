@@ -3059,7 +3059,8 @@ chatUnseen: 0,
       roomSettings: {
         dashboard: {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
-        adminHash: null
+        adminHash: null,
+        ownerUid: null
       },
       localDashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
       dashPollTimer: null,
@@ -3297,7 +3298,7 @@ function toast(msg, ms=1600){
       setCtxMenuMode("kick");
 state.ctxTarget = { uid: p.id, name: p.name || p.id };
       els.ctxTitle.textContent = `${state.ctxTarget.name}`;
-      const canKick = !!(state.joined && state.uid && p.id && p.id !== state.uid);
+      const canKick = !!(state.joined && state.uid && state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid && p.id && p.id !== state.uid);
       els.ctxKick.disabled = !canKick;
 
       // ✅ Pin(상단 고정) 버튼 라벨/활성화
@@ -3331,6 +3332,12 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
 
     async function requestKick(targetUid, targetName){
       if(!state.roomId || !state.uid || !targetUid) return;
+
+      // ✅ 강퇴는 "방의 ownerUid(리로)"만 가능
+      if(!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid)){
+        showToast("🚫 강퇴는 리로(관리자)만 가능해");
+        return;
+      }
       try{
         const now = Date.now();
 
@@ -3351,9 +3358,7 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
     }
 
     function subscribeKicks(){
-      // 🔕 Firestore kick-listener disabled (prevents onSnapshot permission errors).
-      // If you need kick/ban later, we can migrate kicks to RTDB or add Firestore rules safely.
-      return;
+      // ✅ kick listener: 안전하게(onSnapshot 에러는 무시) 붙인다
       if(state.unsubKick) state.unsubKick();
       state.unsubKick = null;
       if(!state.roomId || !state.uid) return;
@@ -6204,6 +6209,8 @@ function subscribeRoom(){
     state.roomSettings.adminHash = r.adminHash || null;
     state.adminHash = state.roomSettings.adminHash;
 
+    // ✅ kick owner (only this UID can use kick)
+    state.roomSettings.ownerUid = (r && r.ownerUid) ? r.ownerUid : (state.roomSettings.ownerUid || null);
     // ✅ update notice (room shared)
     state.roomSettings.updateNotice = (r && r.updateNotice) ? r.updateNotice : (state.roomSettings.updateNotice || {text:"", updatedAt:0});
     try{ renderUpdateNotice && renderUpdateNotice(); }catch(e){}
@@ -6247,6 +6254,21 @@ async function unlockAdmin(){
       state.adminOk = true;
       els.adminArea.style.display = "block";
       showToast("비번 등록!");
+      // ✅ 최초 등록 시, 강퇴 권한(Owner UID)도 현재 UID로 고정
+      try{
+        if(state.uid && !(state.roomSettings && state.roomSettings.ownerUid)){
+          await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid });
+          state.roomSettings.ownerUid = state.uid;
+        
+          // 🔒 Firestore에도 방 ownerUid 기록(보안 규칙용)
+          try{
+            await setDoc(doc(db, "rooms", state.roomId), {
+              ownerUid: state.uid,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+          }catch(_e){}
+}
+      }catch(_e){}
       return;
     }catch(e){
       console.warn(e);
@@ -6257,6 +6279,22 @@ async function unlockAdmin(){
 
   if(hash === state.adminHash){
     state.adminOk = true;
+
+    // ✅ ownerUid가 아직 없으면(초기 세팅), 현재 UID를 owner로 저장
+    try{
+      if(state.uid && !(state.roomSettings && state.roomSettings.ownerUid)){
+        await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid });
+        state.roomSettings.ownerUid = state.uid;
+      
+          // 🔒 Firestore에도 방 ownerUid 기록(보안 규칙용)
+          try{
+            await setDoc(doc(db, "rooms", state.roomId), {
+              ownerUid: state.uid,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+          }catch(_e){}
+}
+    }catch(_e){}
     els.adminArea.style.display = "block";
     showToast("확인 완료!");
   }else{
