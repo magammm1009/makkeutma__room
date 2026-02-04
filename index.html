@@ -1763,6 +1763,7 @@ body.joined #preJoinCard{ display:none; }
     <div class="actions">
       <input id="name" placeholder="닉네임" maxlength="7" style="width:180px">
       <input id="roomPass" placeholder="입장키" type="password" style="width:120px">
+      <input id="adminPassJoin" placeholder="관리자비번(선택)" type="password" style="width:150px">
       <button id="joinBtn" class="primary">입장</button>
       <button id="leaveBtn" class="primary" disabled>퇴장</button>
       <span class="meMini" id="meHint">—</span>
@@ -2832,6 +2833,7 @@ const auth = getAuth(app);
     els = {
       name: $("name"),
       roomPass: $("roomPass"),
+      adminPassJoin: $("adminPassJoin"),
       joinBtn: $("joinBtn"),
       leaveBtn: $("leaveBtn"),
       menuBtn: $("menuBtn"),
@@ -8021,6 +8023,35 @@ async function joinRoom(){
       setControlsEnabled(true);
       await ensureRoom(state.roomId);
       await ensureMeDoc();
+      // ✅ (A) 입장 시 관리자 비번(선택) 입력하면 즉시 관리자 모드 언락
+      try{
+        const ap = (els.adminPassJoin && els.adminPassJoin.value) ? String(els.adminPassJoin.value).trim() : "";
+        if(ap){
+          const ok = await verifyAdminPass(ap);
+          try{ els.adminPassJoin.value = ""; }catch(e){}
+          if(ok){
+            // ✅ 비번 언락 = 관리자 권한. 강퇴/관리 기능이 즉시 활성화되도록 ownerUid 재클레임(RTDB + Firestore)
+            try{
+              if(state.roomId && state.uid){
+                try{ await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid }); }catch(_e){}
+                if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
+
+                try{
+                  await setDoc(doc(db, "rooms", state.roomId), {
+                    ownerUid: state.uid,
+                    updatedAt: serverTimestamp()
+                  }, { merge: true });
+                }catch(_e){}
+              }
+            }catch(_e){}
+            try{ if(els.adminArea) els.adminArea.style.display = "block"; }catch(e){}
+            showToast("🔑 관리자 모드로 입장!");
+          }else{
+            showToast("관리자 비번이 달라…");
+          }
+        }
+      }catch(e){}
+
       // ✅ RTDB 재연결 감지(일시 끊김 후 status/off 고정 방지)
       try{ startRtdbConnectionWatch(); }catch(e){}
 
