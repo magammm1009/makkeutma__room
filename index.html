@@ -2219,6 +2219,7 @@ body.joined #preJoinCard{ display:none; }
     <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>    <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 
     <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
+    <button id="ctxForceOff" class="danger" type="button">🫥 로그아웃 처리</button>
     <button id="ctxClose" type="button">닫기</button>
   </div>
 
@@ -2852,6 +2853,7 @@ const auth = getAuth(app);
       ctxTitle: $("ctxTitle"),
       ctxPinToggle: $("ctxPinToggle"),
       ctxKick: $("ctxKick"),
+      ctxForceOff: $("ctxForceOff"),
       ctxClose: $("ctxClose"),
       ctxStatusWork: $("ctxStatusWork"),
       ctxStatusBreak: $("ctxStatusBreak"),
@@ -3261,6 +3263,7 @@ function toast(msg, ms=1600){
       if(div) div.style.display = isStatus ? "" : "none";
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
       if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
+      if(els.ctxForceOff) els.ctxForceOff.style.display = isStatus ? "none" : "";
       // Close button is always visible
     }
 
@@ -3305,6 +3308,7 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
         !!state.adminOk
       ));
       els.ctxKick.disabled = !canKick;
+      if(els.ctxForceOff) els.ctxForceOff.disabled = !canKick;
 
       // ✅ Pin(상단 고정) 버튼 라벨/활성화
       if(els.ctxPinToggle){
@@ -3350,13 +3354,13 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       try{
         const now = Date.now();
 
-        await setDoc(kickRef(state.roomId, targetUid), {
+        await rSet(rKickRef(state.roomId, targetUid), {
           kickedAtMs: now,
           expiresAtMs: now + KICK_BLOCK_MS,
           byUid: state.uid,
           byName: (els.meHint?.textContent || "익명"),
           targetName: targetName || ""
-        }, {merge:true});
+        });
         showToast("🚫 강퇴 처리했어");
       }catch(e){
         // ✅ (v3.3) 이미 joined=true까지 갔다가 중간 초기화(채팅/리스너 등)에서 터진 경우에도 출석 자동팝업은 살린다
@@ -3367,26 +3371,34 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
     }
 
     function subscribeKicks(){
-      // ✅ kick listener: 안전하게(onSnapshot 에러는 무시) 붙인다
-      if(state.unsubKick) state.unsubKick();
-      state.unsubKick = null;
-      if(!state.roomId || !state.uid) return;
+  // ✅ kick listener (RTDB): /rooms/{roomId}/kicks/{uid}
+  if(state.unsubKick) state.unsubKick();
+  state.unsubKick = null;
+  if(!state.roomId || !state.uid) return;
 
-      // 룰에 /kicks 매치가 없으면 여기서 권한 에러가 날 수 있어.
-      // 그 경우에도 입장/채팅 등 나머지는 정상 동작하도록 '안전'하게 붙인다.
-      state.unsubKick = safeOnSnapshot(kickRef(state.roomId, state.uid), (snap)=>{
-        if(!snap.exists()) return;
-        const k = snap.data() || {};
-        const exp = Number(k.expiresAtMs || 0);
-        const now = Date.now();
-        if(exp && exp < now) return; // 만료
-        const by = k.byName || "누군가";
-        if(state.joined){
-          showToast(`🚫 ${by}님이 강퇴했어`);
-          setTimeout(()=>{ if(state.joined) leaveRoom(); }, 350);
-        }
-      });
-    }
+  const kref = rKickRef(state.roomId, state.uid);
+  const onKick = (snap)=>{
+    try{
+      if(!snap || (snap.exists && !snap.exists())) return;
+      const k = (snap && snap.val) ? (snap.val()||{}) : (snap?.val?.()||{});
+      const exp = Number(k.expiresAtMs || 0);
+      const now = Date.now();
+      if(exp && exp < now) return; // 만료
+      const by = k.byName || "누군가";
+      if(state.joined){
+        showToast(`🚫 ${by}님이 강퇴했어`);
+        setTimeout(()=>{ if(state.joined) leaveRoom(); }, 350);
+      }
+    }catch(e){}
+  };
+
+  try{
+    rOnValue(kref, onKick);
+    state.unsubKick = ()=>{ try{ rOff(kref, "value", onKick); }catch(e){} };
+  }catch(e){
+    console.warn("[kick] subscribe failed", e);
+  }
+}
 
     function pad2(n){ return String(n).padStart(2,"0"); }
     function fmtHMS(sec){
@@ -3594,6 +3606,32 @@ function monthKeysRecent(n){
 // ✅ 미션 월간 통계 (추가 기능: 기존 데이터/설정 변경 없음)
 // - RTDB: rooms/{roomId}/missions/{dayKey}/{uid}
 // - monthKey = "YYYY-MM"
+
+// ✅ 관리자: 유령 타일 정리용 '로그아웃 처리' (RTDB presence를 off로 마킹)
+async function requestForceOff(targetUid, targetName){
+  if(!state.roomId || !state.uid || !targetUid) return;
+  const isOwner = !!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid);
+  const isAdmin = !!state.adminOk;
+  if(!(isOwner || isAdmin)){
+    showToast("🫥 로그아웃 처리는 관리자만 가능해");
+    return;
+  }
+  try{
+    // 고스트(비활성) 타일 정리 목적: status만 off로 바꿔도 UI에서 즉시 숨김/오프라인 처리됨
+    const patch = {
+      status: "off",
+      // 마지막으로 관리자가 손댄 시간 기록
+      lastSeenAtMs: rServerTimestamp(),
+    };
+    await rUpdate(rMePresenceRef(state.roomId, targetUid), patch);
+    showToast(`🫥 ${targetName || targetUid} 로그아웃 처리 완료`);
+  }catch(e){
+    console.warn("[forceOff] failed", e);
+    showToast("🫥 로그아웃 처리 실패(권한/rules 확인)");
+  }
+}
+
+
 async function fetchMissionsByMonth(roomId, monthKey){
   try{
     if(!roomId || !monthKey) return {};
@@ -5228,6 +5266,8 @@ layers.push(base);
 // RTDB paths (migrated: presence/chat/dashboard/missions/profileUpdates)
 function rRoomBase(roomId){ return `rooms/${roomId}`; }
 function rSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/settings`); }
+function rKicksRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/kicks`); }
+function rKickRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/kicks/${uid}`); }
 function rDashboardSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/dashboard/settings`); }
 function rDashboardCountsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/dashboard/counts`); }
 function rPresenceRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/presence`); }
@@ -8008,7 +8048,7 @@ async function joinRoom(){
       
       // 강퇴 상태(시간 제한)면 입장 막기
       try{
-        const ks = await getDoc(kickRef(state.roomId, state.uid));
+        const ks = await rGet(rKickRef(state.roomId, state.uid));
         if(ks.exists()){
           const k = ks.data() || {};
           const exp = Number(k.expiresAtMs || 0);
@@ -9539,6 +9579,15 @@ try{
         const t = state.ctxTarget || {};
         hideCtxMenu();
         if(t.uid) await requestKick(t.uid, t.name);
+      });
+    }
+
+    if(els.ctxForceOff){
+      els.ctxForceOff.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) await requestForceOff(t.uid, t.name);
       });
     }
 
