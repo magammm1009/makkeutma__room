@@ -1702,6 +1702,20 @@ body.joined #preJoinCard{ display:none; }
       font-weight:900;
     }
 </style>
+
+<style id="sudaModalStyle">
+  /* Suda modal (keeps dashboard alive) */
+  #sudaModalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:999999; display:none; align-items:center; justify-content:center; padding:16px; }
+  #sudaModalBox{ width:min(1100px, 96vw); height:min(760px, 92vh); background:rgba(20,20,24,.92); border:1px solid rgba(255,255,255,.12); border-radius:18px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45); display:flex; flex-direction:column; }
+  #sudaModalTop{ display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.10); }
+  #sudaModalTop .title{ font-weight:700; font-size:14px; opacity:.92; }
+  #sudaModalTop .sp{ flex:1; }
+  #sudaModalTop button{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; border-radius:12px; padding:8px 10px; cursor:pointer; font-size:13px; }
+  #sudaModalTop button:hover{ background:rgba(255,255,255,.12); }
+  #sudaModalFrameWrap{ flex:1; background:#111; }
+  #sudaModalFrame{ width:100%; height:100%; border:0; background:#111; }
+</style>
+
 </head>
 
 <body>
@@ -4182,8 +4196,8 @@ async function openSudaWithTicket(baseUrl){
         u.searchParams.set("ticket", tid);
         u.searchParams.set("back", location.href);
 
-        // 같은 탭 이동
-        location.assign(u.toString());
+        // ✅ 작업방은 유지하고, 수다방은 모달(iframe)로 열기
+        openSudaModal_(u.toString());
       }catch(err){
         console.error("openSudaWithTicket failed:", err);
         const msg = (err && err.message) ? err.message : String(err);
@@ -4386,7 +4400,89 @@ const writeCountsToRTDB = (counts)=>{
       writerName: state.nickname || ""
     }).catch(()=>{});
   }catch(e){}
-};
+}
+
+    // ---------- 수다방 모달 ----------
+    let __sudaModalUrl = "";
+    let __sudaModalOpenPromise = null;
+
+    function openSudaModal_(url){
+      try{
+        __sudaModalUrl = String(url||"");
+        const ov = document.getElementById("sudaModalOverlay");
+        const fr = document.getElementById("sudaModalFrame");
+        const info = document.getElementById("sudaModalInfo");
+        if(!ov){
+          console.warn("suda modal overlay missing; navigating instead");
+          location.assign(__sudaModalUrl);
+          return;
+        }
+
+        // ✅ 모달만 띄우고(작업방 유지), 수다방은 버튼으로 '새 탭'에서 열게 함
+        // (iframe 로드는 티켓 검증/샌드박스 경고/중복 실행 이슈가 있어서 사용 안 함)
+        if(fr){
+          fr.src = "about:blank";
+          fr.style.display = "none";
+        }
+        if(info){
+          info.textContent = "티켓을 만들었어! 아래 버튼으로 수다방을 열어줘 💬";
+        }
+
+        // 버튼 표시/숨김
+        const btnClose = document.getElementById("sudaModalClose");
+        const btnReload = document.getElementById("sudaModalReload");
+        const btnOpen = document.getElementById("sudaModalOpenNewTab");
+        if(btnReload) btnReload.style.display = "none";
+        if(btnOpen) btnOpen.style.display = "inline-flex";
+
+        ov.style.display = "flex";
+
+        if(!ov.__bound){
+          ov.__bound = true;
+
+          document.addEventListener("keydown", (e)=>{
+            if(e.key === "Escape"){
+              const o = document.getElementById("sudaModalOverlay");
+              if(o && o.style.display === "flex") closeSudaModal_();
+            }
+          });
+
+          btnClose?.addEventListener("click", closeSudaModal_);
+
+          btnOpen?.addEventListener("click", ()=>{
+            // 새 탭 링크는 '사용자 클릭' 이벤트에서 실행 → 팝업 차단에 가장 강함
+            window.open(__sudaModalUrl, "_blank", "noopener,noreferrer");
+          });
+
+          // overlay click closes (but not clicks inside box)
+          ov.addEventListener("click", (e)=>{
+            if(e.target === ov) closeSudaModal_();
+          });
+        }
+      }catch(err){
+        console.error("openSudaModal_ failed:", err);
+        try{ location.assign(String(url||"")); }catch(_){}
+      }
+    }
+
+    function closeSudaModal_(){
+      const ov = document.getElementById("sudaModalOverlay");
+      const fr = document.getElementById("sudaModalFrame");
+      if(ov) ov.style.display = "none";
+      if(fr) fr.src = "about:blank";
+    }
+
+    // expose modal helpers to global (needed because some handlers call from window scope)
+    try{
+      window.openSudaModal_ = openSudaModal_;
+      window.closeSudaModal_ = closeSudaModal_;
+      // alias (for safety)
+      window.openSudaModal = openSudaModal_;
+      window.closeSudaModal = closeSudaModal_;
+    }catch(e){}
+
+    // ---------- /수다방 모달 ----------
+;
 
       // ---- case A: 통합 counts API ----
       if(dashUrl){
@@ -10032,6 +10128,23 @@ if(!window.__MK_BOOT_OK__){
       <div class="modalBody">
         <div id="onlineList" class="onlineList"></div>
         <div class="tiny" style="margin-top:8px; opacity:.75;">※ 오프라인(마지막 접속 오래됨)은 제외했어.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Suda modal -->
+  <div id="sudaModalOverlay" role="dialog" aria-modal="true" aria-label="수다방">
+    <div id="sudaModalBox">
+      <div id="sudaModalTop">
+        <div class="title">💬 수다방</div>
+        <div class="sp"></div>
+        <button id="sudaModalOpenNewTab" type="button">새 탭으로 열기</button>
+        <button id="sudaModalReload" type="button">새로고침</button>
+        <button id="sudaModalClose" type="button">닫기</button>
+      </div>
+      <div id="sudaModalFrameWrap">
+        <iframe id="sudaModalFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads" referrerpolicy="no-referrer"></iframe>
       </div>
     </div>
   </div>
