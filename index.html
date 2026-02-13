@@ -4134,13 +4134,23 @@ async function openSudaWithTicket(baseUrl){
 
       try{
         // 방 정보 준비
-        let roomIdVal = state.roomId;
-        if(roomIdVal && typeof roomIdVal.then === 'function') roomIdVal = await roomIdVal;
-        const roomId = String(roomIdVal || "").trim();
-        let uidVal = state.uid;
-        if(uidVal && typeof uidVal.then === 'function') uidVal = await uidVal;
-        const uid = String(uidVal || "").trim();
-        if(!roomId || !uid) throw new Error("missing roomId/uid");
+        // - 어떤 이유로든 roomId/uid가 Promise로 들어오는 케이스를 확실히 방어
+        let roomIdVal = await Promise.resolve(state.roomId);
+        let uidVal    = await Promise.resolve(state.uid);
+
+        let roomId = String(roomIdVal ?? "").trim();
+        let uid    = String(uidVal ?? "").trim();
+
+        // Promise가 문자열로 강제 변환돼 '[object Promise]'가 되어버린 경우 방어
+        if(roomId === "[object Promise]" || /Promise/i.test(roomId)){
+          roomId = String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim();
+        }
+        if(uid === "[object Promise]" || /Promise/i.test(uid)){
+          // uid는 auth에서 다시 잡힐 수 있으니 일단 비워두고 아래에서 auth currentUser로 보정
+          uid = "";
+        }
+
+        if(!roomId) throw new Error("missing roomId");
         const gateKey = __toRoomKey(roomId);
 
         // 1회용 티켓(5분) 발급
@@ -4153,6 +4163,9 @@ async function openSudaWithTicket(baseUrl){
           showToast("수다방 로그인 중…");
           await withTimeout(signInAnonymously(sudaAuth), 15000, "signInAnonymously");
         }
+        // uid 보정: sudaAuth의 익명 uid를 우선 사용
+        if(!uid){ uid = String(sudaAuth.currentUser?.uid || "").trim(); }
+        if(!uid) throw new Error("missing uid");
 
         // 티켓 저장
         const ticketPath = `rooms/${gateKey}/access/sudaTickets/${tid}`;
