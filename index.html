@@ -4822,13 +4822,33 @@ function dockRightRail(){
           const now = Date.now();
           let count = 0;
 
-          // ✅ presenceConn 구조: { pushKey: { uid, name, ts } ... }
-          for(const k in raw){
-            const it = raw[k] || {};
-            const ts = Number(it.ts || it.tsMs || it.lastSeenAtMs || it.lastSeenAt || 0);
-            // 너무 오래된 연결(탭 강종/네트워크 끊김) 더미는 제외 (2분)
-            if(!ts || (now - ts) < 120000) count++;
-          }
+// ✅ presenceConn 구조(수다방):
+//   rooms/<room>/presenceConn/<uid>/<connPushKey> = { name, ts, cid }
+// (구버전 호환) rooms/<room>/presenceConn/<pushKey> = { uid, name, ts }
+const activeUids = new Set();
+for(const k in raw){
+  const v = raw[k];
+  if(!v || typeof v !== "object") continue;
+
+  // Case A) flat: { uid, ts }
+  const flatTs = Number(v.ts || v.tsMs || v.lastSeenAtMs || v.lastSeenAt || 0);
+  const flatUid = (v.uid ? String(v.uid) : "");
+  if(flatUid && flatTs){
+    if((now - flatTs) < 120000) activeUids.add(flatUid);
+    continue;
+  }
+
+  // Case B) nested by uid: { <connKey>: { ts, ... } }
+  // k is uid
+  let anyRecent = false;
+  for(const ck in v){
+    const it = v[ck] || {};
+    const ts = Number(it.ts || it.tsMs || it.lastSeenAtMs || it.lastSeenAt || 0);
+    if(ts && (now - ts) < 120000){ anyRecent = true; break; }
+  }
+  if(anyRecent) activeUids.add(String(k));
+}
+count = activeUids.size;
 
           if(els.sudaCount) els.sudaCount.textContent = String(count);
           if(els.sudaOk) els.sudaOk.textContent = "연결됨";
