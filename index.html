@@ -4125,16 +4125,22 @@ function openUrl(url){
 async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
+
+      // ✅ 팝업 차단 회피: 사용자 클릭 순간에 새 창을 먼저 열어둠
+      const win = window.open("about:blank", "_blank", "noopener,noreferrer");
+      if(!win){ showToast("팝업이 차단됐어! (브라우저에서 이 사이트 팝업 허용)"); return; }
+
       try{
         // 방 정보 준비
         const roomId = String(state.roomId || "").trim();
         const uid = String(state.uid || "").trim();
         if(!roomId || !uid) throw new Error("missing roomId/uid");
         const gateKey = __toRoomKey(roomId);
+
         // 1회용 티켓(5분) 발급
         const tid = "T" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,8).toUpperCase();
         const now = Date.now();
-        const expAt = now + 5*60*1000;
+        const expAtMs = now + 5*60*1000;
 
         // boomboom 프로젝트에도 익명 로그인(프로젝트별로 토큰이 달라서 필요)
         if(!sudaAuth.currentUser){ await signInAnonymously(sudaAuth); }
@@ -4142,10 +4148,8 @@ async function openSudaWithTicket(baseUrl){
         await rSet(rRef(sudaRtdb, `rooms/${gateKey}/access/sudaTickets/${tid}`), {
           uid,
           createdAtMs: now,
-          expAtMs: expAt,
+          expAtMs,
           usedAtMs: 0,
-          createdAt: now,
-          expAt,
           by: (state.nick || ""),
           ua: (navigator.userAgent || "").slice(0,120)
         });
@@ -4157,11 +4161,11 @@ async function openSudaWithTicket(baseUrl){
         u.searchParams.set("ticket", tid);
         u.searchParams.set("back", location.href);
 
-        window.open(u.toString(), "_blank", "noopener,noreferrer");
+        win.location.href = u.toString();
       }catch(err){
         console.error(err);
-        showToast("티켓 발급이 실패해서 그냥 링크로 열었어 😭 (F12→Console 확인)");
-        openUrl(baseUrl);
+        try{ win.close(); }catch(e){}
+        showToast("수다방 티켓 발급에 실패했어. (룰/익명로그인 확인) 😢");
       }
     }
 
