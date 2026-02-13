@@ -4126,9 +4126,11 @@ async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
 
-      // ✅ 팝업 차단 회피: 사용자 클릭 순간에 새 창을 먼저 열어둠
-      const win = window.open("about:blank", "_blank", "noopener,noreferrer");
-      if(!win){ showToast("팝업이 차단됐어! (브라우저에서 이 사이트 팝업 허용)"); return; }
+      // ✅ 팝업 없이 "같은 탭"으로 이동 (팝업 차단 0%)
+      const withTimeout = (p, ms, label) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(()=>rej(new Error(`timeout:${label}:${ms}ms`)), ms))
+      ]);
 
       try{
         // 방 정보 준비
@@ -4143,29 +4145,40 @@ async function openSudaWithTicket(baseUrl){
         const expAtMs = now + 5*60*1000;
 
         // boomboom 프로젝트에도 익명 로그인(프로젝트별로 토큰이 달라서 필요)
-        if(!sudaAuth.currentUser){ await signInAnonymously(sudaAuth); }
+        if(!sudaAuth.currentUser){
+          showToast("수다방 로그인 중…");
+          await withTimeout(signInAnonymously(sudaAuth), 15000, "signInAnonymously");
+        }
 
-        await rSet(rRef(sudaRtdb, `rooms/${gateKey}/access/sudaTickets/${tid}`), {
-          uid,
-          createdAtMs: now,
-          expAtMs,
-          usedAtMs: 0,
-          by: (state.nick || ""),
-          ua: (navigator.userAgent || "").slice(0,120)
-        });
+        // 티켓 저장
+        const ticketPath = `rooms/${gateKey}/access/sudaTickets/${tid}`;
+        showToast("수다방 여는 중…(티켓 발급)");
+        await withTimeout(
+          rSet(rRef(sudaRtdb, ticketPath), {
+            uid,
+            createdAtMs: now,
+            expAtMs,
+            usedAtMs: 0,
+            by: (state.nick || ""),
+            ua: (navigator.userAgent || "").slice(0,120)
+          }),
+          15000,
+          "rtdbSet"
+        );
 
-        // URL 조립(+ back 파라미터로 되돌아오기 제공)
+        // URL 조립 (+ back 파라미터로 되돌아오기 제공)
         const u = new URL(baseUrl, location.href);
         u.searchParams.set("gateRoom", roomId);
         u.searchParams.set("room", roomId); // backward-compat
         u.searchParams.set("ticket", tid);
         u.searchParams.set("back", location.href);
 
-        win.location.href = u.toString();
+        // 같은 탭 이동
+        location.assign(u.toString());
       }catch(err){
-        console.error(err);
-        try{ win.close(); }catch(e){}
-        showToast("수다방 티켓 발급에 실패했어. (룰/익명로그인 확인) 😢");
+        console.error("openSudaWithTicket failed:", err);
+        const msg = (err && err.message) ? err.message : String(err);
+        alert("수다방을 여는 중 문제가 생겼어 😢\n\n" + msg + "\n\n- boomboom 프로젝트: Anonymous 로그인 활성화\n- boomboom RTDB rules: auth!=null로 write 허용\n을 확인해줘!");
       }
     }
 
