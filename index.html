@@ -1,4 +1,4 @@
-<!doctype html>
+=<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -4162,6 +4162,22 @@ async function openSudaWithTicket(baseUrl){
 
         const gateKey = __toRoomKey(roomId);
 
+        // ✅ Session-key(브라우저 고정) 생성/저장: uid가 바뀌어도 같은 브라우저면 유지됨
+        // - 수다방 티켓은 uid 대신 sk로 세션을 묶어서 'ticket uid mismatch'를 근본적으로 회피
+        const skKey = `sudaSessionKey:${gateKey}`;
+        let sk = "";
+        try{ sk = String(localStorage.getItem(skKey) || ""); }catch(_){}
+        if(!sk){
+          try{
+            const buf = new Uint8Array(16);
+            crypto.getRandomValues(buf);
+            sk = Array.from(buf).map(b=>b.toString(16).padStart(2,'0')).join('');
+          }catch(_){
+            sk = (Math.random().toString(36).slice(2) + Date.now().toString(36)).toUpperCase();
+          }
+          try{ localStorage.setItem(skKey, sk); }catch(_){}
+        }
+
         // 1회용 티켓(5분) 발급
         const tid = "T" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,8).toUpperCase();
         const now = Date.now();
@@ -4181,7 +4197,10 @@ async function openSudaWithTicket(baseUrl){
         showToast("수다방 여는 중…(티켓 발급)");
         await withTimeout(
           rSet(rRef(sudaRtdb, ticketPath), {
-            uid,
+            // ✅ 세션키 방식: 수다방에서 ticket.sk === localStorage(skKey) 일 때만 통과
+            sk,
+            // uid는 레거시/디버그용(있으면 넣고 없어도 됨)
+            uid: (uid || ""),
             createdAtMs: now,
             expAtMs,
             usedAtMs: 0,
