@@ -4134,8 +4134,12 @@ async function openSudaWithTicket(baseUrl){
 
       try{
         // 방 정보 준비
-        const roomId = String(state.roomId || "").trim();
-        const uid = String(state.uid || "").trim();
+        let roomIdVal = state.roomId;
+        if(roomIdVal && typeof roomIdVal.then === 'function') roomIdVal = await roomIdVal;
+        const roomId = String(roomIdVal || "").trim();
+        let uidVal = state.uid;
+        if(uidVal && typeof uidVal.then === 'function') uidVal = await uidVal;
+        const uid = String(uidVal || "").trim();
         if(!roomId || !uid) throw new Error("missing roomId/uid");
         const gateKey = __toRoomKey(roomId);
 
