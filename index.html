@@ -1706,13 +1706,16 @@ body.joined #preJoinCard{ display:none; }
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
   #sudaModalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:999999; display:none; align-items:center; justify-content:center; padding:16px; }
-  #sudaModalBox{ width:min(1100px, 96vw); height:min(760px, 92vh); background:rgba(20,20,24,.92); border:1px solid rgba(255,255,255,.12); border-radius:18px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45); display:flex; flex-direction:column; }
+  #sudaModalBox{ width:min(520px, 92vw); background:rgba(20,20,24,.92); border:1px solid rgba(255,255,255,.12); border-radius:18px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45); display:flex; flex-direction:column; }
   #sudaModalTop{ display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.10); }
   #sudaModalTop .title{ font-weight:700; font-size:14px; opacity:.92; }
   #sudaModalTop .sp{ flex:1; }
+  #sudaModalTop .btnPrimary{ display:inline-flex; align-items:center; justify-content:center; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.10); color:#fff; font-weight:700; cursor:pointer; text-decoration:none; }
   #sudaModalTop button{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; border-radius:12px; padding:8px 10px; cursor:pointer; font-size:13px; }
   #sudaModalTop button:hover{ background:rgba(255,255,255,.12); }
-  #sudaModalFrameWrap{ flex:1; background:#111; }
+  #sudaModalFrameWrap{ display:none; }
+  #sudaModalBody{ padding:18px 16px 22px; display:flex; align-items:center; justify-content:center; }
+  #sudaModalBody .hint{ color:rgba(255,255,255,.9); line-height:1.5; text-align:center; }
   #sudaModalFrame{ width:100%; height:100%; border:0; background:#111; }
 </style>
 
@@ -4174,7 +4177,9 @@ async function openSudaWithTicket(baseUrl){
         if(!uid) throw new Error("missing uid");
 
         // 티켓 저장
-        const ticketPath = `rooms/${gateKey}/access/sudaTickets/${tid}`;
+        const ticketPathPrimary = `${gateKey}/access/sudaTickets/${tid}`; // root/<gateKey>/access/...
+        const ticketPathAlt = `rooms/${gateKey}/access/sudaTickets/${tid}`;      // rooms/<gateKey>/access/...
+        const ticketPath = ticketPathPrimary;
         showToast("수다방 여는 중…(티켓 발급)");
         await withTimeout(
           rSet(rRef(sudaRtdb, ticketPath), {
@@ -4188,6 +4193,22 @@ async function openSudaWithTicket(baseUrl){
           15000,
           "rtdbSet"
         );
+
+        // 호환: 예전 경로(rooms/...)도 같이 써두기 (실패해도 무시)
+        try{
+          await withTimeout(
+            rSet(rRef(sudaRtdb, ticketPathAlt), {
+              uid,
+              createdAtMs: now,
+              expAtMs,
+              usedAtMs: 0,
+              by: (state.nick || ""),
+              ua: (navigator.userAgent || "").slice(0,120)
+            }),
+            8000,
+            "rtdbSetAlt"
+          );
+        }catch(_e){ /* ignore */ }
 
         // URL 조립 (+ back 파라미터로 되돌아오기 제공)
         const u = new URL(baseUrl, location.href);
@@ -4406,64 +4427,101 @@ const writeCountsToRTDB = (counts)=>{
     let __sudaModalUrl = "";
     let __sudaModalOpenPromise = null;
 
-    function openSudaModal_(url){
-      try{
-        __sudaModalUrl = String(url||"");
-        const ov = document.getElementById("sudaModalOverlay");
-        const fr = document.getElementById("sudaModalFrame");
-        const info = document.getElementById("sudaModalInfo");
-        if(!ov){
-          console.warn("suda modal overlay missing; navigating instead");
-          location.assign(__sudaModalUrl);
-          return;
-        }
+    function openSudaModal_(finalUrl){
+  try{
+    const url = String(finalUrl||'');
+    // Ensure modal shell
+    let overlay = document.getElementById('sudaGateOverlay');
+    if(!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'sudaGateOverlay';
+      overlay.style.cssText = `
+        position:fixed; inset:0; z-index:2147483000;
+        background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center;
+        padding:16px;
+      `;
+      overlay.innerHTML = `
+        <div id="sudaGateModal" style="
+          width:min(420px, 92vw);
+          background:rgba(20,20,24,.92);
+          border:1px solid rgba(255,255,255,.14);
+          border-radius:18px;
+          box-shadow:0 18px 60px rgba(0,0,0,.55);
+          color:#fff;
+          overflow:hidden;
+        ">
+          <div style="padding:16px 16px 8px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:700; font-size:15px;">💬 수다방 열기</div>
+            <button id="sudaGateCloseX" style="
+              width:34px; height:34px; border-radius:10px;
+              border:1px solid rgba(255,255,255,.14);
+              background:rgba(255,255,255,.06); color:#fff;
+              cursor:pointer;
+            ">✕</button>
+          </div>
+          <div style="padding:0 16px 14px; font-size:13px; opacity:.92; line-height:1.35;">
+            대시보드에서 발급한 <b>입장 티켓</b>으로 수다방을 열어요.
+          </div>
+          <div style="padding:0 16px 16px;">
+            <button id="sudaGateOpenBtn" style="
+              width:100%;
+              height:44px;
+              border-radius:14px;
+              border:1px solid rgba(255,255,255,.18);
+              background:rgba(255,255,255,.10);
+              color:#fff;
+              cursor:pointer;
+              font-weight:700;
+            ">새 탭으로 열기</button>
+            <button id="sudaGateCloseBtn" style="
+              width:100%;
+              height:42px;
+              margin-top:10px;
+              border-radius:14px;
+              border:1px solid rgba(255,255,255,.12);
+              background:rgba(0,0,0,.00);
+              color:#fff;
+              cursor:pointer;
+              opacity:.9;
+            ">닫기</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
 
-        // ✅ 모달만 띄우고(작업방 유지), 수다방은 버튼으로 '새 탭'에서 열게 함
-        // (iframe 로드는 티켓 검증/샌드박스 경고/중복 실행 이슈가 있어서 사용 안 함)
-        if(fr){
-          fr.src = "about:blank";
-          fr.style.display = "none";
-        }
-        if(info){
-          info.textContent = "티켓을 만들었어! 아래 버튼으로 수다방을 열어줘 💬";
-        }
+      const close = ()=>{ overlay.remove(); };
+      overlay.addEventListener('click', (e)=>{ if(e.target===overlay) close(); });
+      overlay.querySelector('#sudaGateCloseX').addEventListener('click', close);
+      overlay.querySelector('#sudaGateCloseBtn').addEventListener('click', close);
 
-        // 버튼 표시/숨김
-        const btnClose = document.getElementById("sudaModalClose");
-        const btnReload = document.getElementById("sudaModalReload");
-        const btnOpen = document.getElementById("sudaModalOpenNewTab");
-        if(btnReload) btnReload.style.display = "none";
-        if(btnOpen) btnOpen.style.display = "inline-flex";
-
-        ov.style.display = "flex";
-
-        if(!ov.__bound){
-          ov.__bound = true;
-
-          document.addEventListener("keydown", (e)=>{
-            if(e.key === "Escape"){
-              const o = document.getElementById("sudaModalOverlay");
-              if(o && o.style.display === "flex") closeSudaModal_();
-            }
-          });
-
-          btnClose?.addEventListener("click", closeSudaModal_);
-
-          btnOpen?.addEventListener("click", ()=>{
-            // 새 탭 링크는 '사용자 클릭' 이벤트에서 실행 → 팝업 차단에 가장 강함
-            window.open(__sudaModalUrl, "_blank", "noopener,noreferrer");
-          });
-
-          // overlay click closes (but not clicks inside box)
-          ov.addEventListener("click", (e)=>{
-            if(e.target === ov) closeSudaModal_();
-          });
-        }
-      }catch(err){
-        console.error("openSudaModal_ failed:", err);
-        try{ location.assign(String(url||"")); }catch(_){}
+      overlay.querySelector('#sudaGateOpenBtn').addEventListener('click', ()=>{
+        if(!url) return;
+        // Prefer anchor-click (less likely to be blocked)
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    }else{
+      // if already open, just update the open action closure by resetting handler
+      const btn = overlay.querySelector('#sudaGateOpenBtn');
+      if(btn){
+        btn.onclick = ()=>{
+          if(!url) return;
+          const a = document.createElement('a');
+          a.href = url; a.target='_blank'; a.rel='noopener noreferrer';
+          document.body.appendChild(a); a.click(); a.remove();
+        };
       }
+      overlay.style.display = 'flex';
     }
+  }catch(e){
+    alert('수다방 모달 오류: '+(e?.message||e));
+  }
+}
 
     function closeSudaModal_(){
       const ov = document.getElementById("sudaModalOverlay");
@@ -10139,13 +10197,11 @@ if(!window.__MK_BOOT_OK__){
       <div id="sudaModalTop">
         <div class="title">💬 수다방</div>
         <div class="sp"></div>
-        <button id="sudaModalOpenNewTab" type="button">새 탭으로 열기</button>
+        <a id="sudaModalOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" class="btnPrimary">새 탭으로 열기</a>
         <button id="sudaModalReload" type="button">새로고침</button>
         <button id="sudaModalClose" type="button">닫기</button>
       </div>
-      <div id="sudaModalFrameWrap">
-        <iframe id="sudaModalFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads" referrerpolicy="no-referrer"></iframe>
-      </div>
+      <div id="sudaModalBody"><div class="hint">수다방은 <b>새 탭</b>에서 열려요.<br/>버튼을 눌러 입장해 주세요 🥨</div></div>
     </div>
   </div>
 
