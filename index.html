@@ -4177,9 +4177,7 @@ async function openSudaWithTicket(baseUrl){
         if(!uid) throw new Error("missing uid");
 
         // 티켓 저장
-        const ticketPathPrimary = `${gateKey}/access/sudaTickets/${tid}`; // root/<gateKey>/access/...
-        const ticketPathAlt = `rooms/${gateKey}/access/sudaTickets/${tid}`;      // rooms/<gateKey>/access/...
-        const ticketPath = ticketPathPrimary;
+        const ticketPath = `rooms/${gateKey}/access/sudaTickets/${tid}`;
         showToast("수다방 여는 중…(티켓 발급)");
         await withTimeout(
           rSet(rRef(sudaRtdb, ticketPath), {
@@ -4193,22 +4191,6 @@ async function openSudaWithTicket(baseUrl){
           15000,
           "rtdbSet"
         );
-
-        // 호환: 예전 경로(rooms/...)도 같이 써두기 (실패해도 무시)
-        try{
-          await withTimeout(
-            rSet(rRef(sudaRtdb, ticketPathAlt), {
-              uid,
-              createdAtMs: now,
-              expAtMs,
-              usedAtMs: 0,
-              by: (state.nick || ""),
-              ua: (navigator.userAgent || "").slice(0,120)
-            }),
-            8000,
-            "rtdbSetAlt"
-          );
-        }catch(_e){ /* ignore */ }
 
         // URL 조립 (+ back 파라미터로 되돌아오기 제공)
         const u = new URL(baseUrl, location.href);
