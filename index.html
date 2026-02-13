@@ -4121,7 +4121,7 @@ function openUrl(url){
     // ✅ 수다방은 '대시보드에서만' 열리게: 5분짜리 1회용 티켓을 발급해서 URL에 붙여 보냄
     // - 정적 호스팅(GitHub Pages)라 '완전한 보안'은 불가능하지만,
     //   최소한 직접 URL만 알고 들어오는 케이스는 대부분 차단 가능.
-    async function __toRoomKey(v){return String(v||'').replace(/[.#$\[\]\/]/g,'_');}
+    function __toRoomKey(v){return String(v||'').replace(/[.#$\[\]\/]/g,'_');}
 async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
@@ -4133,24 +4133,16 @@ async function openSudaWithTicket(baseUrl){
       ]);
 
       try{
-        // 방 정보 준비
-        // - 어떤 이유로든 roomId/uid가 Promise로 들어오는 케이스를 확실히 방어
-        let roomIdVal = await Promise.resolve(state.roomId);
-        let uidVal    = await Promise.resolve(state.uid);
+        // 방 정보 준비 (✅ gateRoom은 항상 문자열이어야 함)
+        const fallbackRoomId = String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim();
 
-        let roomId = String(roomIdVal ?? "").trim();
-        let uid    = String(uidVal ?? "").trim();
+        // 이 앱은 고정 룸(=FIXED_ROOM_ID)을 사용하므로 gateRoom도 그 값을 사용
+        // (Promise/thenable 혼입 방지)
+        const roomId = fallbackRoomId;
 
-        // Promise가 문자열로 강제 변환돼 '[object Promise]'가 되어버린 경우 방어
-        if(roomId === "[object Promise]" || /Promise/i.test(roomId)){
-          roomId = String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim();
-        }
-        if(uid === "[object Promise]" || /Promise/i.test(uid)){
-          // uid는 auth에서 다시 잡힐 수 있으니 일단 비워두고 아래에서 auth currentUser로 보정
-          uid = "";
-        }
+        // uid는 있으면 넣고, 없으면 빈값(수다방 쪽에서 익명로그인 uid로 보정 가능)
+        let uid = (typeof state?.uid === "string") ? state.uid.trim() : "";
 
-        if(!roomId) throw new Error("missing roomId");
         const gateKey = __toRoomKey(roomId);
 
         // 1회용 티켓(5분) 발급
