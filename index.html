@@ -4807,57 +4807,131 @@ function dockRightRail(){
     function startSudaPresenceWatch_(){
       try{
         stopSudaPresenceWatch_();
-        // roomId/gateKey는 작업방의 FIXED_ROOM_ID를 따라감
-        const roomId = String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim();
-        const gateKey = __toRoomKey(roomId);
 
-        // boomboom RTDB가 준비되지 않았으면 스킵
-        if(!sudaRtdb){ 
+        // ✅ 수다방은 "자정 폭파"로 매일 세션(roomId)이 바뀜.
+        // 수다방이 사용하는 현재 세션은 /sudaHub/currentSessionV1 (또는 /sudahub/currentSessionV1)에 있음.
+        // 따라서:
+        // 1) currentSessionV1에서 sessionId를 읽고
+        // 2) rooms/<sessionId>/presenceConn 를 읽어서 접속자 수를 계산한다.
+        // (갱신 주기는 뽀모방처럼 15초 폴링으로 맞춤)
+
+        if(!sudaRtdb){
           if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+          if(els.sudaCount) els.sudaCount.textContent = "—";
           return;
         }
 
-        const connRef = rRef(sudaRtdb, `rooms/${gateKey}/presenceConn`);
-        __sudaPresenceUnsub = rOnValue(connRef, (snap)=>{
-          const raw = snap.exists() ? (snap.val() || {}) : {};
+        const HUB_PATHS = ["sudaHub/currentSessionV1", "sudahub/currentSessionV1"];
+
+        let __pollTimer = null;
+        let __pollSessionTimer = null;
+        let __activeSessionId = "";
+        let __presenceRef = null;
+
+        async function readFirstExisting_(paths){
+          for(const p of paths){
+            try{
+              const s = await rGet(rRef(sudaRtdb, p));
+              if(s.exists()) return { path: p, val: (s.val()||{}) };
+            }catch(e){}
+          }
+          return null;
+        }
+
+        function computeCountFromPresence_(raw){
           const now = Date.now();
-          let count = 0;
+          const activeUids = new Set();
 
-// ✅ presenceConn 구조(수다방):
-//   rooms/<room>/presenceConn/<uid>/<connPushKey> = { name, ts, cid }
-// (구버전 호환) rooms/<room>/presenceConn/<pushKey> = { uid, name, ts }
-const activeUids = new Set();
-for(const k in raw){
-  const v = raw[k];
-  if(!v || typeof v !== "object") continue;
+          for(const k in (raw||{})){
+            const v = raw[k];
+            if(!v || typeof v !== "object") continue;
 
-  // Case A) flat: { uid, ts }
-  const flatTs = Number(v.ts || v.tsMs || v.lastSeenAtMs || v.lastSeenAt || 0);
-  const flatUid = (v.uid ? String(v.uid) : "");
-  if(flatUid && flatTs){
-    if((now - flatTs) < 120000) activeUids.add(flatUid);
-    continue;
-  }
+            // Case A) flat: { uid, ts }
+            const flatTs = Number(v.ts || v.tsMs || v.lastSeenAtMs || v.lastSeenAt || 0);
+            const flatUid = (v.uid ? String(v.uid) : "");
+            if(flatUid && flatTs){
+              // presence heartbeat is 15s, allow 60s window
+              if((now - flatTs) < 60000) activeUids.add(flatUid);
+              continue;
+            }
 
-  // Case B) nested by uid: { <connKey>: { ts, ... } }
-  // k is uid
-  let anyRecent = false;
-  for(const ck in v){
-    const it = v[ck] || {};
-    const ts = Number(it.ts || it.tsMs || it.lastSeenAtMs || it.lastSeenAt || 0);
-    if(ts && (now - ts) < 120000){ anyRecent = true; break; }
-  }
-  if(anyRecent) activeUids.add(String(k));
-}
-count = activeUids.size;
+            // Case B) nested by uid: { <connKey>: { ts, ... } }
+            let anyRecent = false;
+            for(const ck in v){
+              const it = v[ck] || {};
+              const ts = Number(it.ts || it.tsMs || it.lastSeenAtMs || it.lastSeenAt || 0);
+              if(ts && (now - ts) < 60000){ anyRecent = true; break; }
+            }
+            if(anyRecent) activeUids.add(String(k));
+          }
 
-                    try{ state.liveSudaCount = count; }catch(e){}
-if(els.sudaCount) els.sudaCount.textContent = String(count);
-          if(els.sudaOk) els.sudaOk.textContent = "연결됨";
-        }, (err)=>{
-          console.warn("[suda presence] onValue error", err);
-          if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
-        });
+          return activeUids.size;
+        }
+
+        async function refreshPresenceOnce_(){
+          if(!__presenceRef) return;
+          try{
+            const s = await rGet(__presenceRef);
+            const raw = s.exists() ? (s.val() || {}) : {};
+            const count = computeCountFromPresence_(raw);
+            try{ state.liveSudaCount = count; }catch(e){}
+            if(els.sudaCount) els.sudaCount.textContent = String(count);
+            if(els.sudaOk) els.sudaOk.textContent = "연결됨";
+          }catch(e){
+            console.warn("[suda presence] poll error", e);
+            if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
+          }
+        }
+
+        async function refreshSessionAndMaybeSwap_(){
+          try{
+            const res = await readFirstExisting_(HUB_PATHS);
+            if(!res){
+              if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+              if(els.sudaCount) els.sudaCount.textContent = "—";
+              return;
+            }
+            const hub = res.val || {};
+            const sid = String(hub.sessionId || hub.id || hub.roomId || "").trim();
+            if(!sid){
+              if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+              if(els.sudaCount) els.sudaCount.textContent = "—";
+              return;
+            }
+
+            if(sid !== __activeSessionId){
+              __activeSessionId = sid;
+              __presenceRef = rRef(sudaRtdb, `rooms/${__toRoomKey(sid)}/presenceConn`);
+
+              // 즉시 1회 갱신
+              await refreshPresenceOnce_();
+
+              // presence 폴링(15초)
+              try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
+              __pollTimer = setInterval(refreshPresenceOnce_, 15000);
+            }
+          }catch(e){
+            console.warn("[suda presence] session poll error", e);
+            if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
+          }
+        }
+
+        // 세션 폴링: 15초마다 확인 (자정 폭파 대응)
+        __pollSessionTimer = setInterval(refreshSessionAndMaybeSwap_, 15000);
+
+        // 첫 실행
+        refreshSessionAndMaybeSwap_();
+
+        // stop 함수에 타이머 정리 훅 추가
+        __sudaPresenceUnsub = ()=>{
+          try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
+          __pollTimer = null;
+          try{ if(__pollSessionTimer) clearInterval(__pollSessionTimer); }catch(_){}
+          __pollSessionTimer = null;
+          __presenceRef = null;
+          __activeSessionId = "";
+        };
+
       }catch(e){
         console.warn("[suda presence] start failed", e);
         try{ if(els.sudaOk) els.sudaOk.textContent = "연결 안됨"; }catch(_){}
