@@ -3068,7 +3068,8 @@ onlineBtn: $("onlineBtn"),
       myMission: null,
       uid: null,
       roomId: FIXED_ROOM_ID,
-      sfxEnabled: true,
+            liveSudaCount: null,
+sfxEnabled: true,
       unsubParticipants: null,
       _lastDayKey: null,
       unsubRoom: null,
@@ -4850,7 +4851,8 @@ for(const k in raw){
 }
 count = activeUids.size;
 
-          if(els.sudaCount) els.sudaCount.textContent = String(count);
+                    try{ state.liveSudaCount = count; }catch(e){}
+if(els.sudaCount) els.sudaCount.textContent = String(count);
           if(els.sudaOk) els.sudaOk.textContent = "연결됨";
         }, (err)=>{
           console.warn("[suda presence] onValue error", err);
@@ -6518,13 +6520,14 @@ async function transitionTo(nextStatus, source="manual"){
 
     const pomoVal = coerceCount(c.pomoCount);
     const sudaVal = coerceCount(c.sudaCount);
+    const liveSudaVal = (state.liveSudaCount!=null ? Number(state.liveSudaCount) : null);
 
     if(els.pomoCount) els.pomoCount.textContent = (pomoVal!=null ? pomoVal : "—");
-    if(els.sudaCount) els.sudaCount.textContent = (sudaVal!=null ? sudaVal : "—");
+    if(els.sudaCount) els.sudaCount.textContent = (liveSudaVal!=null && isFinite(liveSudaVal) ? liveSudaVal : (sudaVal!=null ? sudaVal : "—"));
 
     // raw 값이 객체면 툴팁으로 확인 가능하게
     if(els.pomoCount) els.pomoCount.title = (typeof c.pomoCount==="object" ? JSON.stringify(c.pomoCount) : "");
-    if(els.sudaCount) els.sudaCount.title = (typeof c.sudaCount==="object" ? JSON.stringify(c.sudaCount) : "");
+    if(els.sudaCount) els.sudaCount.title = (state.liveSudaCount!=null ? `LIVE:${state.liveSudaCount}` : (typeof c.sudaCount==="object" ? JSON.stringify(c.sudaCount) : ""));
 
     const updated = c.updatedAtMs ? new Date(c.updatedAtMs).toLocaleString("ko-KR") : "-";
     if(els.dashUpdated) els.dashUpdated.textContent = updated;
