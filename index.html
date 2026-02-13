@@ -2801,6 +2801,21 @@ function loadLocalProfile(){
     databaseURL: "https://magamm00-5baee-default-rtdb.asia-southeast1.firebasedatabase.app"
   };
 
+  // -----------------------------
+  // 수다방(boomboom) Firebase 설정 (분리)
+  // -----------------------------
+  const sudaFirebaseConfig = {
+    apiKey: "AIzaSyAQYp8_sfgHMnH7KsTOdGgpMc1niarZiSs",
+    authDomain: "boomboom1009-ae518.firebaseapp.com",
+    databaseURL: "https://boomboom1009-ae518-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "boomboom1009-ae518",
+    storageBucket: "boomboom1009-ae518.firebasestorage.app",
+    messagingSenderId: "954818391824",
+    appId: "1:954818391824:web:477eb52436aafdb5d67f95",
+    measurementId: "G-JNBR17YE6B"
+  };
+
+
     // Firebase imports (CDN)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
@@ -2827,7 +2842,11 @@ function loadLocalProfile(){
     /* Firestore persistence disabled (not needed). */
 const auth = getAuth(app);
     const storage = getStorage(app);
-    const rtdb = getDatabase(app, firebaseConfig.databaseURL);
+    const rtdb = getDatabase(app);
+    // ✅ 수다방 DB(boomboom)도 함께 초기화 (티켓 발급/검증용)
+    const sudaApp = initializeApp(sudaFirebaseConfig, "sudaApp");
+    const sudaAuth = getAuth(sudaApp);
+    const sudaRtdb = getDatabase(sudaApp, sudaFirebaseConfig.databaseURL);
 
     // DOM
     const $ = (id) => document.getElementById(id);
@@ -4098,6 +4117,48 @@ function openUrl(url){
       if(!url){ showToast("설정된 링크가 없어! (☰에서 저장)"); return; }
       window.open(url, "_blank", "noopener,noreferrer");
     }
+
+    // ✅ 수다방은 '대시보드에서만' 열리게: 5분짜리 1회용 티켓을 발급해서 URL에 붙여 보냄
+    // - 정적 호스팅(GitHub Pages)라 '완전한 보안'은 불가능하지만,
+    //   최소한 직접 URL만 알고 들어오는 케이스는 대부분 차단 가능.
+    async function openSudaWithTicket(baseUrl){
+      if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
+      if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
+      try{
+        // 방 정보 준비
+        const roomId = String(state.roomId || "").trim();
+        const uid = String(state.uid || "").trim();
+        if(!roomId || !uid) throw new Error("missing roomId/uid");
+
+        // 1회용 티켓(5분) 발급
+        const tid = "T" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,8).toUpperCase();
+        const now = Date.now();
+        const expAt = now + 5*60*1000;
+
+        // boomboom 프로젝트에도 익명 로그인(프로젝트별로 토큰이 달라서 필요)
+        if(!sudaAuth.currentUser){ await signInAnonymously(sudaAuth); }
+
+        await rSet(rRef(sudaRtdb, `rooms/${roomId}/access/sudaTickets/${tid}`), {
+          uid, createdAt: now, expAt,
+          by: (state.nick || ""),
+          ua: (navigator.userAgent || "").slice(0,120)
+        });
+
+        // URL 조립(+ back 파라미터로 되돌아오기 제공)
+        const u = new URL(baseUrl, location.href);
+        u.searchParams.set("gateRoom", roomId);
+        u.searchParams.set("room", roomId); // backward-compat
+        u.searchParams.set("ticket", tid);
+        u.searchParams.set("back", location.href);
+
+        window.open(u.toString(), "_blank", "noopener,noreferrer");
+      }catch(err){
+        console.error(err);
+        showToast("티켓 발급이 실패해서 그냥 링크로 열었어 😭 (F12→Console 확인)");
+        openUrl(baseUrl);
+      }
+    }
+
 
     function openUrlJoined(url){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
@@ -6219,11 +6280,11 @@ async function transitionTo(nextStatus, source="manual"){
     }
     if(els.goSuda){
       els.goSuda.disabled = !d.sudaUrl;
-      els.goSuda.onclick = d.sudaUrl ? ()=>openUrl(d.sudaUrl) : null;
+      els.goSuda.onclick = d.sudaUrl ? ()=>openSudaWithTicket(d.sudaUrl) : null;
     }
     if(els.goSudaMini){
       els.goSudaMini.disabled = !d.sudaUrl;
-      els.goSudaMini.onclick = d.sudaUrl ? ()=>openUrl(d.sudaUrl) : null;
+      els.goSudaMini.onclick = d.sudaUrl ? ()=>openSudaWithTicket(d.sudaUrl) : null;
     }
     if(els.goChool) els.goChool.onclick = ()=>openUrlJoined(d.choolUrl);
     if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
