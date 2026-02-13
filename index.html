@@ -4121,7 +4121,8 @@ function openUrl(url){
     // ✅ 수다방은 '대시보드에서만' 열리게: 5분짜리 1회용 티켓을 발급해서 URL에 붙여 보냄
     // - 정적 호스팅(GitHub Pages)라 '완전한 보안'은 불가능하지만,
     //   최소한 직접 URL만 알고 들어오는 케이스는 대부분 차단 가능.
-    async function openSudaWithTicket(baseUrl){
+    async function __toRoomKey(v){return String(v||'').replace(/[.#$\[\]\/]/g,'_');}
+async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
       try{
@@ -4129,7 +4130,7 @@ function openUrl(url){
         const roomId = String(state.roomId || "").trim();
         const uid = String(state.uid || "").trim();
         if(!roomId || !uid) throw new Error("missing roomId/uid");
-
+        const gateKey = __toRoomKey(roomId);
         // 1회용 티켓(5분) 발급
         const tid = "T" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,8).toUpperCase();
         const now = Date.now();
@@ -4138,8 +4139,13 @@ function openUrl(url){
         // boomboom 프로젝트에도 익명 로그인(프로젝트별로 토큰이 달라서 필요)
         if(!sudaAuth.currentUser){ await signInAnonymously(sudaAuth); }
 
-        await rSet(rRef(sudaRtdb, `rooms/${roomId}/access/sudaTickets/${tid}`), {
-          uid, createdAt: now, expAt,
+        await rSet(rRef(sudaRtdb, `rooms/${gateKey}/access/sudaTickets/${tid}`), {
+          uid,
+          createdAtMs: now,
+          expAtMs: expAt,
+          usedAtMs: 0,
+          createdAt: now,
+          expAt,
           by: (state.nick || ""),
           ua: (navigator.userAgent || "").slice(0,120)
         });
