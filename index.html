@@ -1,4 +1,4 @@
-=<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -4791,7 +4791,58 @@ function dockRightRail(){
     }
 
 
-    function setControlsEnabled(joined){
+    
+    // ✅ 수다방 접속 현황(LIVE): boomboom RTDB의 rooms/<gateKey>/presenceConn 를 읽어서 '명' 표시
+    // - Apps Script 대시보드 API가 비어있거나 실패해도, 수다방 인원은 여기서 바로 계산됨
+    let __sudaPresenceUnsub = null;
+    function stopSudaPresenceWatch_(){
+      try{ if(__sudaPresenceUnsub) __sudaPresenceUnsub(); }catch(e){}
+      __sudaPresenceUnsub = null;
+      try{
+        if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+        if(els.sudaCount) els.sudaCount.textContent = "—";
+      }catch(e){}
+    }
+    function startSudaPresenceWatch_(){
+      try{
+        stopSudaPresenceWatch_();
+        // roomId/gateKey는 작업방의 FIXED_ROOM_ID를 따라감
+        const roomId = String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim();
+        const gateKey = __toRoomKey(roomId);
+
+        // boomboom RTDB가 준비되지 않았으면 스킵
+        if(!sudaRtdb){ 
+          if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+          return;
+        }
+
+        const connRef = rRef(sudaRtdb, `rooms/${gateKey}/presenceConn`);
+        __sudaPresenceUnsub = rOnValue(connRef, (snap)=>{
+          const raw = snap.exists() ? (snap.val() || {}) : {};
+          const now = Date.now();
+          let count = 0;
+
+          // ✅ presenceConn 구조: { pushKey: { uid, name, ts } ... }
+          for(const k in raw){
+            const it = raw[k] || {};
+            const ts = Number(it.ts || it.tsMs || it.lastSeenAtMs || it.lastSeenAt || 0);
+            // 너무 오래된 연결(탭 강종/네트워크 끊김) 더미는 제외 (2분)
+            if(!ts || (now - ts) < 120000) count++;
+          }
+
+          if(els.sudaCount) els.sudaCount.textContent = String(count);
+          if(els.sudaOk) els.sudaOk.textContent = "연결됨";
+        }, (err)=>{
+          console.warn("[suda presence] onValue error", err);
+          if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
+        });
+      }catch(e){
+        console.warn("[suda presence] start failed", e);
+        try{ if(els.sudaOk) els.sudaOk.textContent = "연결 안됨"; }catch(_){}
+      }
+    }
+
+function setControlsEnabled(joined){
       els.leaveBtn.disabled = !joined;
       els.joinBtn.disabled = joined;
       els.name.disabled = joined;
@@ -4835,6 +4886,8 @@ function dockRightRail(){
 
       // lamp
       document.body.classList.toggle("joined", joined);
+      // ✅ 수다방 LIVE 접속 현황 업데이트(대시보드)
+      try{ if(joined) startSudaPresenceWatch_(); else stopSudaPresenceWatch_(); }catch(e){}
       state.joined = joined;
       try{ if(joined){ scheduleDailyNotice && scheduleDailyNotice(); } }catch(e){}
       // keep dashboard positioned under ☰
