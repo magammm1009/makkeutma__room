@@ -2675,7 +2675,12 @@ body.joined #preJoinCard{ display:none; }
     }
 
     function persistMyFocusToLocal(){
-      try{ focusSaveSeconds((state && state.focusSecondsTotal) || 0); }catch(e){}
+      try{
+        const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
+        if(!me) return;
+        const totalNow = computeDisplayedTotal(me);
+        focusSaveSeconds(totalNow);
+      }catch(e){}
     }
 
 const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
