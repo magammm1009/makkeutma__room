@@ -6106,6 +6106,18 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
       }catch(e){}
       return "none";
     }
+    function normalizePublicPetLevel(theme){
+      try{
+        const t = theme || {};
+        const id = String(t.petSlotId || 'cat');
+        const lv = Math.max(0, Math.min(30, Number(t.petSlotLv || 0)));
+        const ver = String(t.petSlotVersion || '');
+        const verNum = Number((ver.match(/\d+/) || [0])[0] || 0);
+        // ✅ V51: V50 기본 고양이 Lv.15가 RTDB 공개 프로필에 남아 있으면 0으로 보정 표시
+        if(id === 'cat' && lv === 15 && verNum < 51) return 0;
+        return lv;
+      }catch(e){ return 0; }
+    }
     function getProfilePetDisplaySlot(){
       try{
         const v = els.petDisplaySlot ? String(els.petDisplaySlot.value || "none") : "none";
@@ -6117,7 +6129,7 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
         const isMeTilePet = (p && p.id && state.uid) ? (p.id === state.uid) : false;
         const localPet = isMeTilePet ? getLocalPetSlotInfo() : null;
         const petId = String((localPet && localPet.id) || p?.theme?.petSlotId || "cat");
-        const petLv = Math.max(0, Math.min(30, Number((localPet && localPet.lv) ?? p?.theme?.petSlotLv ?? 0)));
+        const petLv = Math.max(0, Math.min(30, Number((localPet && localPet.lv) ?? normalizePublicPetLevel(p?.theme) ?? 0)));
         const petName = String((localPet && localPet.name) || p?.theme?.petSlotName || "").trim();
         box.classList.add("petSlotOn");
         const petBg = clampHexColor(p?.theme?.petSlotBgColor || "#1b1720");
@@ -6154,11 +6166,13 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
         theme.petSlotId = info.id;
         theme.petSlotLv = info.lv;
         theme.petSlotName = info.name || "";
+        theme.petSlotVersion = "v51";
       }catch(e){
         theme.petDisplaySlot = normalizePetDisplaySlot(theme);
         theme.showPetInPhotoSlot = (theme.petDisplaySlot === "photo");
         theme.petSlotId = theme.petSlotId || "cat";
-        theme.petSlotLv = Number(theme.petSlotLv || 0);
+        theme.petSlotLv = normalizePublicPetLevel(theme);
+        theme.petSlotVersion = theme.petSlotVersion || "v51";
       }
       return theme;
     }
@@ -6176,11 +6190,12 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
           "theme/petSlotId": info.id,
           "theme/petSlotLv": info.lv,
           "theme/petSlotName": info.name || "",
+          "theme/petSlotVersion": "v51",
           updatedAt: Date.now(),
           lastSeenAtMs: Date.now()
         });
         if(me){
-          me.theme = Object.assign({}, me.theme || {}, { petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"" });
+          me.theme = Object.assign({}, me.theme || {}, { petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"", petSlotVersion:"v51" });
           state.currentParticipants.set(state.uid, me);
         }
       }catch(e){}
@@ -6201,7 +6216,7 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
           petSlotBgColor: clampHexColor(lp.theme.petSlotBgColor || "#1b1720"),
           petSlotBgTransparent: !!(lp.theme.petSlotBgTransparent === true || lp.theme.petSlotBgTransparent === "true"),
           petSlotId: lp.theme.petSlotId || getLocalPetSlotInfo().id,
-          petSlotLv: Number(lp.theme.petSlotLv ?? getLocalPetSlotInfo().lv),
+          petSlotLv: normalizePublicPetLevel(lp.theme) || getLocalPetSlotInfo().lv,
           petSlotName: lp.theme.petSlotName || getLocalPetSlotInfo().name || "",
           emojiBg: clampHexColor(lp.theme.emojiBg || "#2b2b2b"),
           emojiBgTransparent: (lp.theme.emojiBgTransparent === true || lp.theme.emojiBgTransparent === "true"),
@@ -9111,7 +9126,7 @@ try{
       // 🔁 브라우저 프리셋도 동기화(다음 접속 편의)
       try{
         const lp = loadLocalProfile() || {};
-        lp.theme = { emoji: els.emoji.value, bgColor: els.bgColor.value, pattern: (els.bgPattern?els.bgPattern.value:"none"), patternColor: (els.patternColor?els.patternColor.value:"#ffffff"), photoUrl: state.myPhotoUrl||"", photoEnabled: (els.photoEnabled ? !!els.photoEnabled.checked : true), petDisplaySlot: getProfilePetDisplaySlot(), showPetInPhotoSlot: getProfilePetDisplaySlot() === "photo", petSlotBgColor: (els.petSlotBgColor?clampHexColor(els.petSlotBgColor.value):"#1b1720"), petSlotBgTransparent: (els.petSlotBgTransparent ? !!els.petSlotBgTransparent.checked : false), petSlotId: getLocalPetSlotInfo().id, petSlotLv: getLocalPetSlotInfo().lv, petSlotName: getLocalPetSlotInfo().name || "", emojiBg: (els.emojiBgColor?els.emojiBgColor.value:"#2b2b2b"),
+        lp.theme = { emoji: els.emoji.value, bgColor: els.bgColor.value, pattern: (els.bgPattern?els.bgPattern.value:"none"), patternColor: (els.patternColor?els.patternColor.value:"#ffffff"), photoUrl: state.myPhotoUrl||"", photoEnabled: (els.photoEnabled ? !!els.photoEnabled.checked : true), petDisplaySlot: getProfilePetDisplaySlot(), showPetInPhotoSlot: getProfilePetDisplaySlot() === "photo", petSlotBgColor: (els.petSlotBgColor?clampHexColor(els.petSlotBgColor.value):"#1b1720"), petSlotBgTransparent: (els.petSlotBgTransparent ? !!els.petSlotBgTransparent.checked : false), petSlotId: getLocalPetSlotInfo().id, petSlotLv: getLocalPetSlotInfo().lv, petSlotName: getLocalPetSlotInfo().name || "", petSlotVersion:"v51", emojiBg: (els.emojiBgColor?els.emojiBgColor.value:"#2b2b2b"),
             emojiBgTransparent: (els.emojiBgTransparent ? !!els.emojiBgTransparent.checked : false), bubbleColor: (els.bubbleColor?els.bubbleColor.value:els.bgColor.value), timeColor: (els.timeColor?els.timeColor.value:"#ffffff"),
             nameColor: (els.nameColor ? els.nameColor.value : "#ffffff"), chatNameColor: (els.chatNameColor ? els.chatNameColor.value : ((els.nameColor?els.nameColor.value:"#ffffff"))),
             statusTextColor: (els.statusTextColor ? els.statusTextColor.value : "#ffffff"), bubbleTextColor: (els.bubbleTextColor ? els.bubbleTextColor.value : "#ffffff"),
@@ -11096,6 +11111,9 @@ if(!window.__MK_BOOT_OK__){
   const MAX_LEVEL = 30;
   const LEVEL_SEC = MAX_SEC / MAX_LEVEL;
   const OLD_MAX_SEC = 300 * 3600;
+  // ✅ V51: V50에서 테스트용 기본 고양이 Lv.15가 모든 사용자에게 깔리던 문제 보정
+  // 새 사용자는 전 펫 0초로 시작하고, 기존 V50 사용자의 고양이 기본 50시간 시드값은 제거한다.
+  const V50_CAT_SEED_SEC = 15 * LEVEL_SEC;
   const PETS = [
     {id:'stone', name:'평범한 돌', body:'#b8b0ba', accent:'#eee4ee', dark:'#827887'},
     {id:'star', name:'작은 별', body:'#ffd85c', accent:'#fff3b2', dark:'#f2a94b'},
@@ -11132,8 +11150,8 @@ if(!window.__MK_BOOT_OK__){
 
   function baseState(){
     const pets={};
-    PETS.forEach(p => pets[p.id] = { totalSec: p.id === 'cat' ? 15 * LEVEL_SEC : 0 });
-    return { petSystemVersion:'v50', activePetId:'cat', growingPetId:'cat', growthEnabled:true, pets, customNames:{} };
+    PETS.forEach(p => pets[p.id] = { totalSec: 0 });
+    return { petSystemVersion:'v51', activePetId:'cat', growingPetId:'cat', growthEnabled:true, pets, customNames:{} };
   }
   function loadState(){
     const base = baseState();
@@ -11145,6 +11163,11 @@ if(!window.__MK_BOOT_OK__){
       const st = Object.assign(base, raw);
       st.pets = Object.assign(base.pets, raw.pets || {});
       st.customNames = Object.assign({}, raw.customNames || {});
+      const shouldRemoveV50CatSeed = rawVersionNum > 0 && rawVersionNum < 51 && Number(st.pets?.cat?.totalSec || 0) >= V50_CAT_SEED_SEC;
+      if(shouldRemoveV50CatSeed){
+        st.pets.cat = st.pets.cat || { totalSec:0 };
+        st.pets.cat.totalSec = Math.max(0, Number(st.pets.cat.totalSec || 0) - V50_CAT_SEED_SEC);
+      }
       PETS.forEach(p => {
         st.pets[p.id] = st.pets[p.id] || {totalSec:0};
         let total = Number(st.pets[p.id].totalSec) || 0;
@@ -11154,8 +11177,8 @@ if(!window.__MK_BOOT_OK__){
       if(!isPetId(st.activePetId)) st.activePetId = 'cat';
       if(!isPetId(st.growingPetId)) st.growingPetId = st.activePetId || 'cat';
       st.growthEnabled = st.growthEnabled !== false;
-      st.petSystemVersion = 'v50';
-      if(hadOldPets) saveState(st);
+      st.petSystemVersion = 'v51';
+      if(hadOldPets || shouldRemoveV50CatSeed) saveState(st);
       return st;
     }catch(e){ return base; }
   }
@@ -11437,7 +11460,7 @@ if(!window.__MK_BOOT_OK__){
       petGrowthCarrySec = 0;
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v50]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 </script>
