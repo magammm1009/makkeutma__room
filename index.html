@@ -10119,7 +10119,7 @@ t.appendChild(bg);
         window.__MK_PET_PLAY_WB_ON__ = next;
         if(pg) pg.classList.toggle("whiteboardOn", next);
         if(ctr) ctr.classList.toggle("show", next);
-        if(btn) btn.textContent = next ? "🖍️ 화이트보드 ON" : "🖍️ 화이트보드";
+        if(btn) btn.textContent = next ? "🖍️ 화이트보드 ON" : "👀 화이트보드 보기";
         try{ showToast(next ? "화이트보드 ON" : "화이트보드 OFF"); }catch(_){}
       }catch(e){ console.warn("[petPlay] whiteboard toggle failed", e); }
     }
@@ -11057,7 +11057,9 @@ function stopPetPlaygroundRealtimeV67(){
 }
 function ensurePetPlaygroundWhiteboardRealtimeV67(){
   try{
-    if(!state.roomId || getLayoutMode() !== "playground" || !window.__MK_PET_PLAY_WB_ON__) return;
+    // V68: 화이트보드 리스너는 놀이터에 들어온 동안 계속 유지합니다.
+    // OFF 상태는 그리기 입력만 막고, 다른 사람의 낙서는 실시간으로 따라옵니다.
+    if(!state.roomId || getLayoutMode() !== "playground") return;
     const wbDay = seoulDateKey();
     if(window.__MK_PET_PLAY_WB_UNSUB__ && window.__MK_PET_PLAY_WB_ROOM__ === state.roomId && window.__MK_PET_PLAY_WB_DAY__ === wbDay) return;
     if(window.__MK_PET_PLAY_WB_UNSUB__) try{ window.__MK_PET_PLAY_WB_UNSUB__(); }catch(e){}
@@ -11195,13 +11197,11 @@ togglePetPlayWhiteboard = function(on){
     window.__MK_PET_PLAY_WB_ON__ = next;
     if(pg) pg.classList.toggle("whiteboardOn", next);
     if(ctr) ctr.classList.toggle("show", next);
-    if(btn) btn.textContent = next ? "🖍️ 화이트보드 ON" : "🖍️ 화이트보드";
-    if(next){ ensurePetPlaygroundWhiteboardRealtimeV67(); try{ renderPetPlayWhiteboard(); wirePetPlayWhiteboard(); }catch(_e){} }
-    else{
-      try{ if(window.__MK_PET_PLAY_WB_UNSUB__) window.__MK_PET_PLAY_WB_UNSUB__(); }catch(e){}
-      window.__MK_PET_PLAY_WB_UNSUB__ = null;
-    }
-    try{ showToast(next ? "화이트보드 ON" : "화이트보드 OFF"); }catch(_){}
+    if(btn) btn.textContent = next ? "🖍️ 화이트보드 ON" : "👀 화이트보드 보기";
+    // V68: OFF는 그리기 모드만 끄고, 리스너는 유지해서 놀이터 사람들의 장난/낙서를 계속 볼 수 있게 합니다.
+    ensurePetPlaygroundWhiteboardRealtimeV67();
+    try{ renderPetPlayWhiteboard(); wirePetPlayWhiteboard(); }catch(_e){}
+    try{ showToast(next ? "화이트보드 그리기 ON" : "화이트보드 보기 모드"); }catch(_){}
   }catch(e){ console.warn("[petPlay] whiteboard toggle failed", e); }
 };
 const __wirePetPlayWhiteboardV66 = wirePetPlayWhiteboard;
