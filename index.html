@@ -1128,18 +1128,35 @@
     .petPlayFx.poke{animation: petPlayPokeHand .9s ease-out forwards; font-size:26px;}
     .petPlayFx.spark{animation: petPlaySparkUp 1.4s ease-out forwards;}
     .petPlayFx.bubble{
-      max-width:180px;
-      padding:8px 10px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(20,16,28,.78);
-      backdrop-filter:blur(8px);
-      color:rgba(255,255,255,.94);
+      max-width:210px;
+      min-width:42px;
+      padding:9px 12px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.20);
+      background:rgba(24,18,32,.84);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      color:rgba(255,255,255,.96);
       font-size:12px;
-      font-weight:900;
-      line-height:1.25;
+      font-weight:1000;
+      line-height:1.28;
+      text-align:center;
       word-break:break-word;
-      animation: petPlayBubble 3.2s ease-out forwards;
+      box-shadow:0 14px 28px rgba(0,0,0,.28), 0 0 0 1px rgba(255,182,214,.08) inset;
+      animation: petPlayBubble 3s ease-out forwards;
+    }
+    .petPlayFx.bubble::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      bottom:-6px;
+      width:12px;
+      height:12px;
+      transform:translateX(-50%) rotate(45deg);
+      background:rgba(24,18,32,.84);
+      border-right:1px solid rgba(255,255,255,.16);
+      border-bottom:1px solid rgba(255,255,255,.16);
+      border-radius:0 0 4px 0;
     }
     @keyframes petPlayHeartUp{
       0%{opacity:0; transform:translate(-50%, -30%) scale(.8) rotate(-6deg);}
@@ -1158,10 +1175,10 @@
       100%{opacity:0; transform:translate(-50%, -96px) scale(1.25) rotate(12deg);}
     }
     @keyframes petPlayBubble{
-      0%{opacity:0; transform:translate(-50%, -30%) scale(.92);}
-      12%{opacity:1; transform:translate(-50%, -54%) scale(1);}
-      82%{opacity:1; transform:translate(-50%, -58%) scale(1);}
-      100%{opacity:0; transform:translate(-50%, -74%) scale(.96);}
+      0%{opacity:0; transform:translate(-50%, -112%) scale(.92);}
+      10%{opacity:1; transform:translate(-50%, -128%) scale(1);}
+      84%{opacity:1; transform:translate(-50%, -128%) scale(1);}
+      100%{opacity:0; transform:translate(-50%, -142%) scale(.96);}
     }
     @media (max-width: 640px){
       .petPlayControls{left:12px; bottom:12px; width:calc(100% - 24px); min-width:calc(100% - 24px);}
@@ -9717,7 +9734,8 @@ t.appendChild(bg);
           arr.push(msg);
           window.__MK_PET_PLAY_CHAT_ITEMS__ = arr.slice(-30);
           try{ renderPetPlayChatList(); }catch(e){}
-          if(Date.now() - Number(msg.tsMs || 0) < 15000) try{ showPetPlayChatBubble(msg); }catch(e){}
+          const __recentSelfPetPlayChat = String(msg.uid || "") === String(state.uid || "") && (Date.now() - Number(msg.tsMs || 0) < 2500);
+          if(!__recentSelfPetPlayChat && Date.now() - Number(msg.tsMs || 0) < 15000) try{ showPetPlayChatBubble(msg); }catch(e){}
         });
         window.__MK_PET_PLAY_SETTINGS_UNSUB__ = rOnValue(rPlaygroundSettingsRef(state.roomId), (snap)=>{
           const v = snap.val() || {};
@@ -9939,11 +9957,14 @@ t.appendChild(bg);
         const pos = petPlayElementCenterPct(el);
         const fx = document.createElement("div");
         fx.className = "petPlayFx bubble";
+        fx.dataset.uid = String(msg.uid || "");
+        // 같은 펫의 이전 말풍선은 정리해서 겹치지 않게 함
+        try{ stage.querySelectorAll(`.petPlayFx.bubble[data-uid="${CSS.escape(String(msg.uid || ""))}"]`).forEach(x=>x.remove()); }catch(_e){}
         fx.style.setProperty("--fx-x", pos.x + "%");
-        fx.style.setProperty("--fx-y", pos.y + "%");
+        fx.style.setProperty("--fx-y", Math.max(10, pos.y - 10) + "%");
         fx.textContent = String(msg.text || "").slice(0,80);
         stage.appendChild(fx);
-        setTimeout(()=>{ try{ fx.remove(); }catch(e){} }, 3400);
+        setTimeout(()=>{ try{ fx.remove(); }catch(e){} }, 3200);
       }catch(e){}
     }
     async function sendPetPlayChat(){
@@ -9954,6 +9975,8 @@ t.appendChild(bg);
         if(!text) return;
         input.value = "";
         const payload = { uid:String(state.uid), name:normalizeNick(state.nickname || els.name?.value || "익명"), text, tsMs:Date.now(), serverTs:rServerTimestamp() };
+        // 내 메시지는 전송 버튼을 누른 즉시 내 펫 위에 먼저 띄움
+        try{ showPetPlayChatBubble(payload); }catch(_e){}
         await rPush(rPlaygroundChatRootRef(state.roomId), payload);
       }catch(e){ try{ showToast("놀이터 채팅 전송 실패"); }catch(_){} }
     }
