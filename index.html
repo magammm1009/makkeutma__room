@@ -11133,7 +11133,7 @@ if(!window.__MK_BOOT_OK__){
   function baseState(){
     const pets={};
     PETS.forEach(p => pets[p.id] = { totalSec: p.id === 'cat' ? 15 * LEVEL_SEC : 0 });
-    return { petSystemVersion:'v49', activePetId:'cat', growingPetId:'cat', growthEnabled:true, pets, customNames:{} };
+    return { petSystemVersion:'v50', activePetId:'cat', growingPetId:'cat', growthEnabled:true, pets, customNames:{} };
   }
   function loadState(){
     const base = baseState();
@@ -11154,7 +11154,7 @@ if(!window.__MK_BOOT_OK__){
       if(!isPetId(st.activePetId)) st.activePetId = 'cat';
       if(!isPetId(st.growingPetId)) st.growingPetId = st.activePetId || 'cat';
       st.growthEnabled = st.growthEnabled !== false;
-      st.petSystemVersion = 'v49';
+      st.petSystemVersion = 'v50';
       if(hadOldPets) saveState(st);
       return st;
     }catch(e){ return base; }
@@ -11297,10 +11297,11 @@ if(!window.__MK_BOOT_OK__){
     if(!ov){ ov = document.createElement('div'); ov.id='petModal'; document.body.appendChild(ov); }
     if(ov.dataset.petV2 === 'v24') return;
     ov.dataset.petV2 = 'v24'; ov.className = 'modalOverlay petModalV2'; ov.setAttribute('aria-hidden','true');
-    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="펫 상세 정보"><div class="modalHeader"><div class="t">펫 상세 정보</div><button id="petCloseBtn" class="ghost" type="button">×</button></div><div class="petV24Body"><div class="petSection"><div class="petSectionTitle"><span>펫 종류</span><span class="tiny">원하는 펫을 선택해 주세요</span></div><div id="petLibrary" class="petLibrary"></div></div><div class="petSection"><div class="petSectionTitle">현재 펫</div><div class="petCurrentPanel"><div id="petCurrentArt" class="petCurrentArt"></div><div class="petCurrentInfo"><div class="lv" id="petCurrentLv">Lv.0 / 30</div><h4 id="petCurrentName">작은 고양이</h4><div class="meta"><span>성장 경험치</span><b id="petCurrentExp">0 / 100시간</b></div><div class="petHeroProgress"><i id="petCurrentBar"></i></div><div class="meta"><span>다음 성장까지</span><b id="petCurrentNext">-</b></div><div class="tip">✨ 작업중 상태일 때만 펫 성장 시간이 누적돼요.<br>총 100시간에 Lv.30까지 성장하고, Lv.5 단위로 외형 변화가 또렷하게 바뀝니다.</div></div></div></div><div class="petSection"><div class="petSectionTitle">펫 설정</div><div class="petSelectLine"><div class="petSelectMini"><label>성장 중인 펫</label><select id="petGrowingSelect"></select></div><div class="petSelectMini"><label>활성 펫</label><select id="petActiveSelect"></select></div></div><div class="petNameEditV24"><input id="petNameEditInput" placeholder="선택한 펫 별명" maxlength="16"><button id="petNameSaveBtn" class="primary" type="button">별명 저장</button><button id="petNameResetBtn" class="ghost" type="button">초기화</button></div><div class="petGrowthSwitchLine"><div class="tiny">펫 성장 누적 ON/OFF</div><button id="petGrowthSwitch" class="petSwitchV2" type="button" aria-label="펫 성장 누적"></button></div></div></div></div>`;
+    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="펫 상세 정보"><div class="modalHeader"><div class="t">펫 상세 정보</div><button id="petCloseBtn" class="ghost" type="button">×</button></div><div class="petV24Body"><div class="petSection"><div class="petSectionTitle"><span>펫 종류</span><span class="tiny">원하는 펫을 선택해 주세요</span></div><div id="petLibrary" class="petLibrary"></div></div><div class="petSection"><div class="petSectionTitle">현재 펫</div><div class="petCurrentPanel"><div id="petCurrentArt" class="petCurrentArt"></div><div class="petCurrentInfo"><div class="lv" id="petCurrentLv">Lv.0 / 30</div><h4 id="petCurrentName">작은 고양이</h4><div class="meta"><span>성장 경험치</span><b id="petCurrentExp">0 / 100시간</b></div><div class="petHeroProgress"><i id="petCurrentBar"></i></div><div class="meta"><span>다음 성장까지</span><b id="petCurrentNext">-</b></div><div class="tip">✨ 작업중 상태일 때만 펫 성장 시간이 누적돼요.<br>총 100시간에 Lv.30까지 성장하고, Lv.5 단위로 외형 변화가 또렷하게 바뀝니다.</div></div></div></div><div class="petSection"><div class="petSectionTitle">펫 설정</div><div class="petSelectLine"><div class="petSelectMini"><label>성장 중인 펫</label><select id="petGrowingSelect"></select></div><div class="petSelectMini"><label>활성 펫</label><select id="petActiveSelect"></select></div></div><div class="petNameEditV24"><input id="petNameEditInput" placeholder="선택한 펫 별명" maxlength="16"><button id="petNameSaveBtn" class="primary" type="button">별명 저장</button><button id="petNameResetBtn" class="ghost" type="button">초기화</button></div><div class="petGrowthSwitchLine"><div class="tiny">펫 성장 누적 ON/OFF</div><button id="petGrowthSwitch" class="petSwitchV2" type="button" aria-label="펫 성장 누적"></button></div><div class="petGrowthSwitchLine"><div class="tiny">현재 펫 성장 경험치</div><button id="petGrowthResetBtn" class="ghost" type="button">성장 초기화</button></div></div></div></div>`;
     ov.addEventListener('click', e => { if(e.target === ov) closeModal(); });
     ov.querySelector('#petCloseBtn')?.addEventListener('click', closeModal);
     ov.querySelector('#petGrowthSwitch')?.addEventListener('click', () => { const st=loadState(); st.growthEnabled=!st.growthEnabled; saveState(st); renderAll(); });
+    ov.querySelector('#petGrowthResetBtn')?.addEventListener('click', () => { const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); const name=(st.customNames&&st.customNames[id])||byId(id).name; if(!confirm(`${name}의 성장 경험치를 0으로 초기화할까?\n펫 별명과 선택 상태는 유지돼.`)) return; st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; window.__MK_PET_DEBUG__ = Object.assign({}, window.__MK_PET_DEBUG__||{}, { resetPetId:id, afterReset:0, at:new Date().toISOString() }); toast(`${name}의 성장 경험치를 초기화했어 🐾`); renderAll(); });
     ov.querySelector('#petNameSaveBtn')?.addEventListener('click', () => { const st=loadState(); const input=document.getElementById('petNameEditInput'); const v=(input?.value||'').trim(); st.customNames=st.customNames||{}; if(v) st.customNames[st.activePetId]=v; else delete st.customNames[st.activePetId]; saveState(st); toast('펫 별명을 저장했어 🐾'); renderAll(); });
     ov.querySelector('#petNameResetBtn')?.addEventListener('click', () => { const st=loadState(); st.customNames=st.customNames||{}; delete st.customNames[st.activePetId]; saveState(st); renderAll(); });
   }
@@ -11436,7 +11437,7 @@ if(!window.__MK_BOOT_OK__){
       petGrowthCarrySec = 0;
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v49]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v50]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 </script>
