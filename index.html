@@ -723,6 +723,25 @@
         linear-gradient(135deg, rgba(24,20,32,.92), rgba(9,10,18,.94));
       box-shadow: 0 22px 60px rgba(0,0,0,.32);
     }
+
+
+    /* ===== V63 펫 놀이터 모드 전환 최적화 ===== */
+    .grid.modeSwitching{
+      contain: layout paint;
+    }
+    .grid.modeSwitching .petPlayFriend,
+    .grid.modeSwitching .petPlayPet img,
+    .grid.modeSwitching .petPlayPet::after{
+      transition:none !important;
+      animation-play-state:paused !important;
+    }
+    .petPlayground{
+      contain: layout paint size;
+      transform: translateZ(0);
+    }
+    .petPlayStage{ contain: layout paint; }
+    .petPlayFriend{ will-change:left, top, transform; }
+
     .petPlayground::before{
       content:"";
       position:absolute;
@@ -3801,11 +3820,62 @@ function setSortModeDirect(mode){
 }
 function setLayoutModeDirect(mode){
   const safe = (mode==="compact5" || mode==="playground") ? mode : "default";
+  const prev = getLayoutMode();
+  if(prev === safe){
+    syncViewMenuUI();
+    return;
+  }
+
+  // ✅ V63: 먼저 UI를 즉시 바꾸고, 무거운 RTDB 동기화는 다음 프레임/타임아웃으로 분리
+  const arr = (window.__mk_state && Array.isArray(window.__mk_state._lastPresenceArr))
+    ? window.__mk_state._lastPresenceArr
+    : (state._lastPresenceArr || []);
+
+  try{ els.grid?.classList.add("modeSwitching"); }catch(e){}
   setLayoutMode(safe);
   applyLayoutMode(safe);
-  try{ syncPetPlaygroundActive && syncPetPlaygroundActive(safe === "playground"); }catch(e){}
   syncViewMenuUI();
-  try{ if(window.__mk_state && Array.isArray(window.__mk_state._lastPresenceArr)) schedulePresenceRender(window.__mk_state._lastPresenceArr); }catch(e){}
+
+  // 놀이터에서 빠져나갈 때는 로컬 표시값을 먼저 끄고, 기본/미니 타일을 즉시 그려 화면 깨짐을 줄임
+  try{
+    if(prev === "playground" && safe !== "playground"){
+      window.__MK_PET_PLAY_SELECTED_UID__ = "";
+      window.__MK_PET_PLAY_TARGET_UID__ = "";
+      const uid = String(state.uid || "");
+      if(uid){
+        const m = window.__MK_PET_PLAY_ACTIVE_MAP__ || new Map();
+        m.delete(uid);
+        window.__MK_PET_PLAY_ACTIVE_MAP__ = m;
+        const me = state.currentParticipants?.get?.(uid);
+        if(me){
+          me.theme = Object.assign({}, me.theme || {}, {
+            petPlayActive:false,
+            petPlayMode:"default",
+            petPlayUpdatedAt:Date.now()
+          });
+          state.currentParticipants.set(uid, me);
+        }
+      }
+    }
+  }catch(e){}
+
+  // 실제 렌더는 requestAnimationFrame을 기다리지 않고 즉시 1회 수행
+  try{ renderGridTilesOrRoster(arr); }catch(e){ try{ schedulePresenceRender(arr); }catch(_e){} }
+
+  // RTDB active sync가 내부에서 중복 렌더하지 않도록 잠깐 막고 비동기로 처리
+  try{
+    window.__MK_PET_PLAY_SUPPRESS_SYNC_RENDER__ = true;
+    setTimeout(()=>{
+      try{ syncPetPlaygroundActive && syncPetPlaygroundActive(safe === "playground"); }catch(e){}
+      setTimeout(()=>{ try{ window.__MK_PET_PLAY_SUPPRESS_SYNC_RENDER__ = false; }catch(e){} }, 160);
+    }, 0);
+  }catch(e){
+    try{ window.__MK_PET_PLAY_SUPPRESS_SYNC_RENDER__ = false; }catch(_e){}
+  }
+
+  requestAnimationFrame(()=>{
+    try{ els.grid?.classList.remove("modeSwitching"); }catch(e){}
+  });
 }
 
 
@@ -9630,7 +9700,7 @@ t.appendChild(bg);
           });
           window.__MK_PET_PLAY_ACTIVE_MAP__ = m;
           window.__MK_PET_PLAY_ACTIVE_READY__ = true;
-          try{ if(getLayoutMode() === "playground") renderGridTilesOrRoster(state._lastPresenceArr || []); }catch(e){}
+          try{ if(getLayoutMode() === "playground" && !window.__MK_PET_PLAY_SUPPRESS_SYNC_RENDER__) renderGridTilesOrRoster(state._lastPresenceArr || []); }catch(e){}
         });
         window.__MK_PET_PLAY_ACTION_UNSUB__ = rOnChildAdded(rQuery(rPlaygroundActionsRootRef(state.roomId), rLimitToLast(35)), (snap)=>{
           const id = snap.key || "";
@@ -10027,6 +10097,26 @@ t.appendChild(bg);
       }catch(e){}
     }
 
+
+    // ✅ V63: 펫 놀이터 전환 최적화 - SVG dataURL 재생성 캐시
+    function getPetPlaySvgCached(petId, lv){
+      try{
+        const id = String(petId || "cat");
+        const level = Math.max(0, Math.min(30, Math.floor(Number(lv)||0)));
+        const key = id + ":" + level;
+        const m = window.__MK_PET_PLAY_SVG_CACHE__ || new Map();
+        window.__MK_PET_PLAY_SVG_CACHE__ = m;
+        if(m.has(key)) return m.get(key);
+        const src = window.__MK_PET_V24__?.petSvg?.(id, level) || "";
+        // 너무 커지지 않게 최근 120개 정도만 유지
+        if(m.size > 120){
+          try{ m.delete(m.keys().next().value); }catch(_e){}
+        }
+        m.set(key, src);
+        return src;
+      }catch(e){ return ""; }
+    }
+
     function renderPetPlayground(onlineArr){
       if(!els.grid) return;
       ensurePetPlaygroundRealtime();
@@ -10050,11 +10140,12 @@ t.appendChild(bg);
         if(state.uid && p.id === state.uid) return getLayoutMode() === "playground";
         return isPetPlayActivePresence(p);
       });
+      const stageFrag = document.createDocumentFragment();
       if(!arr.length){
         const empty = document.createElement("div");
         empty.className = "petPlayEmpty";
         empty.textContent = "아직 놀이터 모드를 켠 펫이 없어 🐾";
-        stage.appendChild(empty);
+        stageFrag.appendChild(empty);
       }
       arr.forEach((p, idx)=>{
         const info = getPetPlayInfo(p);
@@ -10067,7 +10158,7 @@ t.appendChild(bg);
         const pet = document.createElement("div");
         pet.className = "petPlayPet";
         const img = document.createElement("img");
-        try{ img.src = window.__MK_PET_V24__?.petSvg?.(info.id, info.lv) || ""; }catch(e){ img.src = ""; }
+        try{ img.src = getPetPlaySvgCached(info.id, info.lv); }catch(e){ img.src = ""; }
         img.alt = info.name || "펫";
         img.onerror = ()=>{ pet.textContent = "🐾"; };
         if(img.src) pet.appendChild(img); else pet.textContent = "🐾";
@@ -10087,8 +10178,9 @@ t.appendChild(bg);
           item.title = "클릭해서 상대 펫 타깃 설정";
           item.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); selectPetPlayTarget(p.id); });
         }
-        stage.appendChild(item);
+        stageFrag.appendChild(item);
       });
+      stage.appendChild(stageFrag);
       const controls = document.createElement("div");
       controls.className = "petPlayControls";
       const targetName = (()=>{
