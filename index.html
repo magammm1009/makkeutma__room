@@ -10119,6 +10119,27 @@ t.appendChild(bg);
 
     function renderPetPlayground(onlineArr){
       if(!els.grid) return;
+      // ✅ V64: 놀이터가 자주 리렌더되어도 시크릿 채팅 입력 중인 글자가 사라지지 않게 보존
+      const __petPlayInputSnapshot = (()=>{
+        try{
+          const input = document.getElementById("petPlayChatInput");
+          if(!input) return null;
+          const active = document.activeElement === input;
+          return {
+            value: input.value || "",
+            active,
+            start: Number(input.selectionStart || 0),
+            end: Number(input.selectionEnd || 0)
+          };
+        }catch(e){ return null; }
+      })();
+      const __petPlayChatScrollSnapshot = (()=>{
+        try{
+          const list = document.getElementById("petPlayChatList");
+          if(!list) return null;
+          return { top: list.scrollTop, nearBottom: (list.scrollHeight - list.scrollTop - list.clientHeight) < 24 };
+        }catch(e){ return null; }
+      })();
       ensurePetPlaygroundRealtime();
       ensurePetPlaygroundKeyBinding();
       const wrap = document.createElement("div");
@@ -10217,6 +10238,22 @@ t.appendChild(bg);
       wrap.appendChild(controls);
       els.grid.replaceChildren(wrap);
       wirePetPlayControls();
+      // ✅ V64: 리렌더 직후 입력값/커서/스크롤 복구
+      try{
+        const input = document.getElementById("petPlayChatInput");
+        if(input && __petPlayInputSnapshot && __petPlayInputSnapshot.value){
+          input.value = __petPlayInputSnapshot.value;
+          if(__petPlayInputSnapshot.active){
+            input.focus({preventScroll:true});
+            try{ input.setSelectionRange(__petPlayInputSnapshot.start, __petPlayInputSnapshot.end); }catch(_e){}
+          }
+        }
+        const list = document.getElementById("petPlayChatList");
+        if(list && __petPlayChatScrollSnapshot){
+          if(__petPlayChatScrollSnapshot.nearBottom) list.scrollTop = list.scrollHeight;
+          else list.scrollTop = __petPlayChatScrollSnapshot.top;
+        }
+      }catch(e){}
     }
 
     function renderGridTilesOrRoster(onlineArr){
