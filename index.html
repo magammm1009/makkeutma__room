@@ -932,7 +932,7 @@
       text-overflow:ellipsis;
       pointer-events:none;
     }
-    /* ✅ v54: 빙글 모션 제거 + 차분한 펫 움직임 유지 */
+    /* ✅ v55: 빙글 모션 제거 + 차분한 펫 움직임 유지 */
     @keyframes petSlotBouncePause{
       0%{ transform:translateY(-2%) rotate(0deg) scale(1); }
       3%{ transform:translateY(calc(-2% - 7px)) rotate(-1.1deg) scale(1.01); }
@@ -953,7 +953,7 @@
       20%{ transform:scaleX(1); opacity:.70; }
       100%{ transform:scaleX(1); opacity:.70; }
     }
-    /* ✅ v54: 펫 표시 모션 선택(빙글 제거) */
+    /* ✅ v55: 펫 표시 모션 선택(빙글 제거) */
     .petSlotOn.petMotionBounce img{ animation: petSlotBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite !important; }
     .petSlotOn.petMotionBounce::after{ animation: petSlotShadowBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite !important; }
     .petSlotOn.petMotionSway img{ animation: petSlotSwayPause 17.6s ease-in-out infinite !important; }
@@ -6236,14 +6236,14 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
         theme.petSlotLv = info.lv;
         theme.petSlotName = info.name || "";
         theme.petSlotMotion = getProfilePetSlotMotion();
-        theme.petSlotVersion = "v54";
+        theme.petSlotVersion = "v55";
       }catch(e){
         theme.petDisplaySlot = normalizePetDisplaySlot(theme);
         theme.showPetInPhotoSlot = (theme.petDisplaySlot === "photo");
         theme.petSlotId = theme.petSlotId || "cat";
         theme.petSlotLv = normalizePublicPetLevel(theme);
         theme.petSlotMotion = normalizePetSlotMotion(theme.petSlotMotion || "bounce");
-        theme.petSlotVersion = theme.petSlotVersion || "v54";
+        theme.petSlotVersion = theme.petSlotVersion || "v55";
       }
       return theme;
     }
@@ -6262,12 +6262,12 @@ function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
           "theme/petSlotLv": info.lv,
           "theme/petSlotName": info.name || "",
           "theme/petSlotMotion": normalizePetSlotMotion(me?.theme?.petSlotMotion || "bounce"),
-          "theme/petSlotVersion": "v54",
+          "theme/petSlotVersion": "v55",
           updatedAt: Date.now(),
           lastSeenAtMs: Date.now()
         });
         if(me){
-          me.theme = Object.assign({}, me.theme || {}, { petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"", petSlotVersion:"v54" });
+          me.theme = Object.assign({}, me.theme || {}, { petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"", petSlotVersion:"v55" });
           state.currentParticipants.set(state.uid, me);
         }
       }catch(e){}
@@ -9201,7 +9201,7 @@ try{
       // 🔁 브라우저 프리셋도 동기화(다음 접속 편의)
       try{
         const lp = loadLocalProfile() || {};
-        lp.theme = { emoji: els.emoji.value, bgColor: els.bgColor.value, pattern: (els.bgPattern?els.bgPattern.value:"none"), patternColor: (els.patternColor?els.patternColor.value:"#ffffff"), photoUrl: state.myPhotoUrl||"", photoEnabled: (els.photoEnabled ? !!els.photoEnabled.checked : true), petDisplaySlot: getProfilePetDisplaySlot(), showPetInPhotoSlot: getProfilePetDisplaySlot() === "photo", petSlotBgColor: (els.petSlotBgColor?clampHexColor(els.petSlotBgColor.value):"#1b1720"), petSlotBgTransparent: (els.petSlotBgTransparent ? !!els.petSlotBgTransparent.checked : false), petSlotMotion: getProfilePetSlotMotion(), petSlotId: getLocalPetSlotInfo().id, petSlotLv: getLocalPetSlotInfo().lv, petSlotName: getLocalPetSlotInfo().name || "", petSlotVersion:"v54", emojiBg: (els.emojiBgColor?els.emojiBgColor.value:"#2b2b2b"),
+        lp.theme = { emoji: els.emoji.value, bgColor: els.bgColor.value, pattern: (els.bgPattern?els.bgPattern.value:"none"), patternColor: (els.patternColor?els.patternColor.value:"#ffffff"), photoUrl: state.myPhotoUrl||"", photoEnabled: (els.photoEnabled ? !!els.photoEnabled.checked : true), petDisplaySlot: getProfilePetDisplaySlot(), showPetInPhotoSlot: getProfilePetDisplaySlot() === "photo", petSlotBgColor: (els.petSlotBgColor?clampHexColor(els.petSlotBgColor.value):"#1b1720"), petSlotBgTransparent: (els.petSlotBgTransparent ? !!els.petSlotBgTransparent.checked : false), petSlotMotion: getProfilePetSlotMotion(), petSlotId: getLocalPetSlotInfo().id, petSlotLv: getLocalPetSlotInfo().lv, petSlotName: getLocalPetSlotInfo().name || "", petSlotVersion:"v55", emojiBg: (els.emojiBgColor?els.emojiBgColor.value:"#2b2b2b"),
             emojiBgTransparent: (els.emojiBgTransparent ? !!els.emojiBgTransparent.checked : false), bubbleColor: (els.bubbleColor?els.bubbleColor.value:els.bgColor.value), timeColor: (els.timeColor?els.timeColor.value:"#ffffff"),
             nameColor: (els.nameColor ? els.nameColor.value : "#ffffff"), chatNameColor: (els.chatNameColor ? els.chatNameColor.value : ((els.nameColor?els.nameColor.value:"#ffffff"))),
             statusTextColor: (els.statusTextColor ? els.statusTextColor.value : "#ffffff"), bubbleTextColor: (els.bubbleTextColor ? els.bubbleTextColor.value : "#ffffff"),
@@ -11330,7 +11330,7 @@ if(!window.__MK_BOOT_OK__){
       case 'dog': return `<path d="M78 96 C50 79 49 141 82 135" fill="${c.dark}"/><path d="M162 96 C190 79 191 141 158 135" fill="${c.dark}"/><ellipse cx="120" cy="134" rx="58" ry="52" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><ellipse cx="120" cy="143" rx="27" ry="18" fill="${c.accent}" opacity=".88"/>${stage>=10?`<path d="M174 155 C201 160 198 188 170 176" fill="none" stroke="${c.dark}" stroke-width="8" stroke-linecap="round"/>`:''}${stage>=20?`<path d="M91 169 Q120 191 149 169" fill="none" stroke="#8ee6ff" stroke-width="7" stroke-linecap="round" opacity=".9"/>`:''}${face(stage,{noMouth:true})}<ellipse cx="120" cy="129" rx="10" ry="7" fill="#4b3140"/>`;
       case 'fox': return `${stage>=5?`<path d="M86 90 C65 62 54 43 57 28 C77 34 91 51 101 75" fill="${c.body}" stroke="${c.dark}" stroke-width="6" stroke-linejoin="round"/>`:''}${stage>=5?`<path d="M154 90 C175 62 186 43 183 28 C163 34 149 51 139 75" fill="${c.body}" stroke="${c.dark}" stroke-width="6" stroke-linejoin="round"/>`:''}<ellipse cx="120" cy="132" rx="58" ry="53" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><path d="M79 117 C91 78 149 78 161 117 C147 107 133 104 120 104 C107 104 93 107 79 117Z" fill="${c.accent}" opacity=".95"/><path d="M96 146 Q120 167 144 146 Q134 183 120 187 Q106 183 96 146Z" fill="${c.accent}" opacity=".95"/><ellipse cx="120" cy="148" rx="9" ry="7" fill="#4b3140"/>${stage>=15?`<path d="M169 157 C205 148 208 101 169 91 C188 121 183 145 159 154" fill="${c.accent}" stroke="${c.dark}" stroke-width="6" stroke-linejoin="round"/>`:''}${face(stage,{noMouth:true})}`;
       case 'chick': return `${stage>=5?`<path d="M93 73 C88 53 98 42 112 51" fill="none" stroke="${c.dark}" stroke-width="5" stroke-linecap="round"/><path d="M121 70 C120 48 134 39 146 51" fill="none" stroke="${c.dark}" stroke-width="5" stroke-linecap="round"/>`:''}<ellipse cx="120" cy="132" rx="57" ry="55" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><path d="M111 130 L120 138 L129 130" fill="#f39a3b" stroke="${c.dark}" stroke-width="4" stroke-linejoin="round"/>${stage>=10?`<path d="M67 129 C43 134 39 153 60 164" fill="none" stroke="${c.accent}" stroke-width="8" stroke-linecap="round" opacity=".82"/><path d="M173 129 C197 134 201 153 180 164" fill="none" stroke="${c.accent}" stroke-width="8" stroke-linecap="round" opacity=".82"/>`:''}${stage>=20?`<path d="M93 187 Q107 195 121 187 Q136 195 151 187" fill="none" stroke="#f39a3b" stroke-width="6" stroke-linecap="round"/>`:''}${face(stage,{tiny:true,noMouth:true})}`;
-      case 'whale': return `<path d="M58 129 C66 88 101 68 144 82 C172 92 189 112 190 135 C211 123 216 99 207 80 C232 94 235 128 213 151 C233 166 226 196 201 202 C205 181 197 162 184 151 C173 176 144 192 108 186 C73 180 52 158 58 129Z" fill="${c.body}" stroke="${c.dark}" stroke-width="6" stroke-linejoin="round"/><path d="M77 146 C99 169 141 172 171 148 C154 184 101 190 71 160" fill="${c.accent}" opacity=".95"/><circle cx="97" cy="115" r="6" fill="#4b3140"><animate attributeName="ry" values="6;6;.7;6;6" keyTimes="0;.86;.89;.92;1" dur="4.6s" repeatCount="indefinite"/></circle>${stage>=10?`<path d="M115 73 C109 52 123 42 136 59" fill="none" stroke="#dff7ff" stroke-width="5" stroke-linecap="round" opacity=".85"/><path d="M137 75 C143 54 160 50 166 70" fill="none" stroke="#dff7ff" stroke-width="5" stroke-linecap="round" opacity=".85"/>`:''}${stage>=20?`<circle cx="151" cy="59" r="5" fill="#e7f8ff" opacity=".9"/><circle cx="171" cy="71" r="4" fill="#e7f8ff" opacity=".75"/>`:''}`;
+      case 'whale': return `<path d="M58 129 C66 88 101 68 144 82 C172 92 189 112 190 135 C211 123 216 99 207 80 C232 94 235 128 213 151 C233 166 226 196 201 202 C205 181 197 162 184 151 C173 176 144 192 108 186 C73 180 52 158 58 129Z" fill="${c.body}" stroke="${c.dark}" stroke-width="6" stroke-linejoin="round"/><path d="M77 146 C99 169 141 172 171 148 C154 184 101 190 71 160" fill="${c.accent}" opacity=".95"/><ellipse cx="97" cy="115" rx="6" ry="6" fill="#4b3140"><animate attributeName="ry" values="6;6;.7;6;6" keyTimes="0;.86;.89;.92;1" dur="4.6s" repeatCount="indefinite"/></ellipse>${stage>=10?`<path d="M115 73 C109 52 123 42 136 59" fill="none" stroke="#dff7ff" stroke-width="5" stroke-linecap="round" opacity=".85"/><path d="M137 75 C143 54 160 50 166 70" fill="none" stroke="#dff7ff" stroke-width="5" stroke-linecap="round" opacity=".85"/>`:''}${stage>=20?`<circle cx="151" cy="59" r="5" fill="#e7f8ff" opacity=".9"/><circle cx="171" cy="71" r="4" fill="#e7f8ff" opacity=".75"/>`:''}`;
       case 'bear': return `<circle cx="83" cy="81" r="23" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><circle cx="157" cy="81" r="23" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><circle cx="83" cy="81" r="11" fill="${c.accent}" opacity=".9"/><circle cx="157" cy="81" r="11" fill="${c.accent}" opacity=".9"/><ellipse cx="120" cy="133" rx="59" ry="56" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><ellipse cx="120" cy="145" rx="25" ry="19" fill="${c.accent}" opacity=".95"/><ellipse cx="120" cy="137" rx="8" ry="6" fill="#4b3140"/>${stage>=15?`<path d="M77 168 C61 184 42 181 35 164" fill="none" stroke="${c.accent}" stroke-width="7" stroke-linecap="round" opacity=".78"/><path d="M163 168 C179 184 198 181 205 164" fill="none" stroke="${c.accent}" stroke-width="7" stroke-linecap="round" opacity=".78"/>`:''}${face(stage,{noMouth:true})}`;
       case 'octopus': return `<path d="M68 126 C68 84 91 57 121 57 C153 57 174 84 174 126 C174 153 159 168 137 171 C126 173 114 173 102 171 C81 167 68 152 68 126Z" fill="${c.body}" stroke="${c.dark}" stroke-width="6"/><g fill="none" stroke="${c.dark}" stroke-width="7" stroke-linecap="round"><path d="M77 159 C57 178 46 169 43 151"/><path d="M96 169 C82 197 65 193 64 173"/><path d="M120 172 C112 200 92 199 95 178"/><path d="M144 169 C158 197 175 193 176 173"/><path d="M163 159 C183 178 194 169 197 151"/></g><g fill="none" stroke="${c.accent}" stroke-width="4" stroke-linecap="round" opacity=".82"><path d="M80 159 C61 171 55 165 54 154"/><path d="M160 159 C179 171 185 165 186 154"/></g>${stage>=15?`<circle cx="77" cy="145" r="4" fill="${c.accent}"/><circle cx="165" cy="141" r="4" fill="${c.accent}"/><circle cx="142" cy="69" r="4" fill="${c.accent}" opacity=".9"/>`:''}${face(stage)}`;
       case 'flower': return `<path d="M120 167 C120 142 119 121 120 101" stroke="${c.dark}" stroke-width="9" stroke-linecap="round"/><path d="M121 148 C96 132 80 139 72 156 C94 160 108 157 121 148Z" fill="#7bd884" stroke="${c.dark}" stroke-width="4"/><g>${[0,60,120,180,240,300].map(a=>{const rad=a*Math.PI/180,x=120+Math.cos(rad)*34,y=98+Math.sin(rad)*34;return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="24" ry="31" fill="${c.body}" stroke="#d96e9c" stroke-width="5" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`}).join('')}</g><circle cx="120" cy="98" r="28" fill="${c.accent}" stroke="#d5a647" stroke-width="5"/>${face(stage,{tiny:true})}`;
