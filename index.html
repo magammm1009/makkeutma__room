@@ -2731,7 +2731,63 @@ body.joined #preJoinCard{ display:none; }
     .petPlayChatInputRow input::placeholder{ color: rgba(255,255,255,.48); }
     .petPlayWhiteboardSvg path{ vector-effect: non-scaling-stroke; }
 
-  </style>
+  
+
+  /* ===== V86: 대시보드 펫 독립 애니메이션 안정화 =====
+     - renderDash()가 더 이상 같은 펫/같은 레벨의 SVG DOM을 반복 교체하지 않도록 JS를 보강했습니다.
+     - 이 CSS는 대시보드 펫 본체와 하트만 부드럽게 보정합니다.
+     - 펫 상세보기/펫 놀이터/프로필 슬롯/성장/채팅/화이트보드는 건드리지 않습니다. */
+  #petHeroArt{ overflow:visible !important; contain:layout paint; }
+  #petHeroArt .petStageArt.hero{
+    animation:petDashAliveFloatV86 12.8s cubic-bezier(.37,0,.23,1) infinite !important;
+    transform-origin:50% 78% !important;
+    will-change:transform;
+    backface-visibility:hidden;
+    transform:translate3d(0,0,0);
+  }
+  #petHeroArt .petStageArt.hero img{
+    position:relative;
+    z-index:2;
+    transform:translate3d(0,0,0);
+    will-change:transform;
+    backface-visibility:hidden;
+  }
+  #petHeroArt .petStageArt.hero::after{
+    content:"♡" !important;
+    position:absolute !important;
+    left:64% !important;
+    top:8% !important;
+    z-index:30 !important;
+    font-size:24px !important;
+    line-height:1 !important;
+    font-weight:1000 !important;
+    color:rgba(255,201,230,.98) !important;
+    text-shadow:0 0 12px rgba(255,116,184,.66), 0 8px 18px rgba(0,0,0,.28) !important;
+    opacity:0;
+    pointer-events:none;
+    transform-origin:50% 80%;
+    will-change:transform, opacity;
+    backface-visibility:hidden;
+    animation:petDashHeartPopV86 6.2s ease-in-out infinite !important;
+  }
+  @keyframes petDashAliveFloatV86{
+    0%,100%{ transform:translate3d(0,0,0) rotate(0deg) scale(1); }
+    10%{ transform:translate3d(.12px,-.8px,0) rotate(-.05deg) scale(1.0002); }
+    22%{ transform:translate3d(.35px,-2.4px,0) rotate(-.16deg) scale(1.0009); }
+    35%{ transform:translate3d(.42px,-4.2px,0) rotate(-.24deg) scale(1.0016); }
+    48%{ transform:translate3d(.16px,-5.0px,0) rotate(.10deg) scale(1.002); }
+    61%{ transform:translate3d(-.28px,-3.8px,0) rotate(.22deg) scale(1.0014); }
+    74%{ transform:translate3d(-.18px,-1.6px,0) rotate(.06deg) scale(1.0005); }
+    87%{ transform:translate3d(0,.15px,0) rotate(-.04deg) scale(1); }
+  }
+  @keyframes petDashHeartPopV86{
+    0%, 38%, 100%{ opacity:0; transform:translate3d(0,10px,0) scale(.68) rotate(-10deg); }
+    44%{ opacity:.98; transform:translate3d(0,1px,0) scale(1.02) rotate(-4deg); }
+    58%{ opacity:.94; transform:translate3d(5px,-13px,0) scale(1.16) rotate(6deg); }
+    74%{ opacity:0; transform:translate3d(10px,-31px,0) scale(.94) rotate(14deg); }
+  }
+
+</style>
 
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
@@ -13237,15 +13293,30 @@ if(!window.__MK_BOOT_OK__){
 
   .petStageArt{position:relative; overflow:visible !important; background:transparent !important; isolation:isolate; display:flex; align-items:center; justify-content:center;}
   .petStageArt img{display:block; width:100%; height:100%; object-fit:contain !important; object-position:center center !important; border-radius:0 !important; background:transparent !important;}
-  .petStageArt.hero{width:108px; height:108px; animation:petDashboardGentleSway 17.6s ease-in-out infinite; transform-origin:50% 72%; filter:drop-shadow(0 13px 15px rgba(0,0,0,.36)) drop-shadow(0 0 10px rgba(255,166,211,.24));}
-  .petStageArt.current{width:var(--petViewSizeV24, 230px); height:var(--petViewSizeV24, 230px); animation:petModalGentleSway 17.6s ease-in-out infinite !important; transform-origin:50% 72%; filter:drop-shadow(0 17px 18px rgba(0,0,0,.38)) drop-shadow(0 0 14px rgba(255,166,211,.28));}
+  .petStageArt.hero{
+    width:108px; height:108px;
+    animation:petDashboardGentleSway 24s cubic-bezier(.42,0,.24,1) infinite;
+    transform-origin:50% 74%;
+    will-change:transform;
+    backface-visibility:hidden;
+    filter:drop-shadow(0 13px 15px rgba(0,0,0,.36)) drop-shadow(0 0 10px rgba(255,166,211,.24));
+  }
+  .petStageArt.current{
+    width:var(--petViewSizeV24, 230px); height:var(--petViewSizeV24, 230px);
+    animation:petModalGentleSway 24s cubic-bezier(.42,0,.24,1) infinite !important;
+    transform-origin:50% 74%;
+    will-change:transform;
+    backface-visibility:hidden;
+    filter:drop-shadow(0 17px 18px rgba(0,0,0,.38)) drop-shadow(0 0 14px rgba(255,166,211,.28));
+  }
   @keyframes petModalGentleSway{
-    0%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
-    7%{ transform:translateY(-2px) rotate(-2.4deg) scale(1.002); }
-    14%{ transform:translateY(0) rotate(2.1deg) scale(1.001); }
-    21%{ transform:translateY(-1px) rotate(-1.3deg) scale(1.001); }
-    28%{ transform:translateY(0) rotate(.8deg) scale(1); }
-    35%{ transform:translateY(0) rotate(0deg) scale(1); }
+    0%, 58%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    62%{ transform:translateY(-.7px) rotate(-.85deg) scale(1.001); }
+    66%{ transform:translateY(-1.4px) rotate(-1.65deg) scale(1.002); }
+    70%{ transform:translateY(-.8px) rotate(.95deg) scale(1.0015); }
+    74%{ transform:translateY(-.3px) rotate(-.55deg) scale(1.001); }
+    78%{ transform:translateY(0) rotate(.25deg) scale(1); }
+    82%{ transform:translateY(0) rotate(0deg) scale(1); }
   }
   .petStageArt.pick{width:58px; height:58px; filter:drop-shadow(0 8px 8px rgba(0,0,0,.28));}
   .petStageArt.preview{width:78px; height:78px; filter:drop-shadow(0 8px 8px rgba(0,0,0,.28));}
@@ -13294,12 +13365,13 @@ if(!window.__MK_BOOT_OK__){
   @keyframes petV24Float{0%,100%{transform:translateY(0) scale(.985)}50%{transform:translateY(-5px) scale(1)}}
   @keyframes petDashCalmFloat{0%,100%{transform:translateY(0) scale(.992)}50%{transform:translateY(-2px) scale(1)}}
   @keyframes petDashboardGentleSway{
-    0%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
-    7%{ transform:translateY(-1px) rotate(-2.1deg) scale(1.002); }
-    14%{ transform:translateY(0) rotate(1.8deg) scale(1.001); }
-    21%{ transform:translateY(-1px) rotate(-1.1deg) scale(1.001); }
-    28%{ transform:translateY(0) rotate(.7deg) scale(1); }
-    35%{ transform:translateY(0) rotate(0deg) scale(1); }
+    0%, 60%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    64%{ transform:translateY(-.45px) rotate(-.55deg) scale(1.0008); }
+    68%{ transform:translateY(-.9px) rotate(-1.05deg) scale(1.001); }
+    72%{ transform:translateY(-.45px) rotate(.72deg) scale(1.0008); }
+    76%{ transform:translateY(-.15px) rotate(-.36deg) scale(1.0004); }
+    80%{ transform:translateY(0) rotate(.16deg) scale(1); }
+    84%{ transform:translateY(0) rotate(0deg) scale(1); }
   }
   @keyframes petV24FloorPulse{0%,100%{transform:scaleX(.90); opacity:.55}50%{transform:scaleX(1.08); opacity:.86}}
 
@@ -13344,6 +13416,310 @@ if(!window.__MK_BOOT_OK__){
 
   @media (max-width:760px){.petLibrary{grid-template-columns:repeat(4,minmax(0,1fr));}.petCurrentPanel{grid-template-columns:1fr;gap:14px}.petCurrentArt{height:250px;min-height:250px}.petSelectLine,.petNameEditV24{grid-template-columns:1fr}.petDashRowReady{grid-template-columns:1fr!important}.petDashInner{grid-template-columns:106px minmax(0,1fr);min-height:132px}.petHeroArtWrap{width:106px;height:104px}.petStageArt.hero{width:98px;height:98px}}
   @media (max-width:460px){.petLibrary{grid-template-columns:repeat(3,minmax(0,1fr));}.petV24Body{padding:14px}.petHeroBottom{display:none}.petHeroName{font-size:16px}}
+
+
+  /* ===== V80: 대시보드/펫 상세보기 전용 액션 모션 ===== */
+  /* 기존 펫 성장/놀이터/프로필 슬롯 모션과 분리된 장식성 모션입니다. */
+  .petStageArt.hero img,
+  .petStageArt.current img{
+    position:relative;
+    z-index:1;
+    transform:translateZ(0);
+    backface-visibility:hidden;
+  }
+  .petStageArt.hero::before,
+  .petStageArt.hero::after,
+  .petStageArt.current::before,
+  .petStageArt.current::after{
+    pointer-events:none;
+    position:absolute;
+    z-index:3;
+    backface-visibility:hidden;
+    transform:translateZ(0);
+  }
+
+  /* 대시보드: 얌전한 기본 움직임 + 더 자주 작은 하트 퐁 */
+  .petStageArt.hero{
+    animation:petDashboardSoftIdle 18s cubic-bezier(.42,0,.24,1) infinite !important;
+  }
+  .petStageArt.hero::after{
+    content:"♡";
+    right:13%;
+    top:12%;
+    font-size:18px;
+    font-weight:1000;
+    color:rgba(255,205,229,.96);
+    text-shadow:0 0 8px rgba(255,116,184,.55), 0 6px 14px rgba(0,0,0,.24);
+    opacity:0;
+    transform-origin:50% 70%;
+    animation:petDashTinyHeart 9.5s ease-in-out infinite;
+  }
+  @keyframes petDashboardSoftIdle{
+    0%, 54%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    58%{ transform:translateY(-.4px) rotate(-.45deg) scale(1.0008); }
+    62%{ transform:translateY(-.7px) rotate(.55deg) scale(1.001); }
+    66%{ transform:translateY(-.25px) rotate(-.25deg) scale(1.0005); }
+    70%{ transform:translateY(0) rotate(0deg) scale(1); }
+  }
+  @keyframes petDashTinyHeart{
+    0%, 50%, 100%{ opacity:0; transform:translateY(5px) scale(.68) rotate(-8deg); }
+    54%{ opacity:0; transform:translateY(5px) scale(.68) rotate(-8deg); }
+    58%{ opacity:.96; transform:translateY(0) scale(.98) rotate(-4deg); }
+    68%{ opacity:.9; transform:translateY(-9px) scale(1.10) rotate(6deg); }
+    78%{ opacity:0; transform:translateY(-22px) scale(.92) rotate(12deg); }
+  }
+
+  /* 펫 상세보기: 머리 긁기 제거, 하트 액션을 더 자주 표시 */
+  .petStageArt.current{
+    animation:petModalSoftIdle 18s cubic-bezier(.42,0,.24,1) infinite !important;
+  }
+  .petStageArt.current::before{
+    content:none !important;
+    display:none !important;
+    animation:none !important;
+  }
+  .petStageArt.current::after{
+    content:"♡";
+    left:64%;
+    top:12%;
+    font-size:27px;
+    font-weight:1000;
+    color:rgba(255,198,228,.98);
+    text-shadow:0 0 10px rgba(255,116,184,.58), 0 8px 18px rgba(0,0,0,.28);
+    opacity:0;
+    transform-origin:50% 70%;
+    animation:petModalHeartAction 8.8s ease-in-out infinite;
+  }
+  @keyframes petModalSoftIdle{
+    0%, 22%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    25%{ transform:translateY(-.5px) rotate(-.35deg) scale(1.0008); }
+    28%{ transform:translateY(-.8px) rotate(.45deg) scale(1.001); }
+    31%{ transform:translateY(-.25px) rotate(-.18deg) scale(1.0004); }
+    34%{ transform:translateY(0) rotate(0deg) scale(1); }
+    68%{ transform:translateY(-.4px) rotate(.28deg) scale(1.0006); }
+    72%{ transform:translateY(0) rotate(0deg) scale(1); }
+  }
+  @keyframes petModalScratchArm{
+    0%, 20%, 39%, 100%{ opacity:0; transform:translate(4px,10px) rotate(24deg) scale(.88); }
+    22%{ opacity:.0; transform:translate(4px,10px) rotate(24deg) scale(.88); }
+    24%{ opacity:1; transform:translate(0,3px) rotate(8deg) scale(1); }
+    26%{ opacity:1; transform:translate(-2px,1px) rotate(-10deg) scale(1.02); }
+    28%{ opacity:1; transform:translate(1px,2px) rotate(12deg) scale(1); }
+    30%{ opacity:1; transform:translate(-1px,1px) rotate(-8deg) scale(1.02); }
+    32%{ opacity:.95; transform:translate(0,3px) rotate(5deg) scale(1); }
+    35%{ opacity:0; transform:translate(4px,9px) rotate(22deg) scale(.9); }
+  }
+  @keyframes petModalHeartAction{
+    0%, 42%, 100%{ opacity:0; transform:translateY(9px) scale(.72) rotate(-10deg); }
+    46%{ opacity:0; transform:translateY(9px) scale(.72) rotate(-10deg); }
+    51%{ opacity:.98; transform:translateY(0) scale(1) rotate(-4deg); }
+    64%{ opacity:.92; transform:translateY(-15px) scale(1.14) rotate(7deg); }
+    78%{ opacity:0; transform:translateY(-36px) scale(.94) rotate(16deg); }
+  }
+
+
+  /* ===== V83: 대시보드 하트 = 펫 상세보기 하트와 동일 감성 =====
+     - V82의 좌우 번갈아 하트는 제거합니다.
+     - 대시보드 펫도 상세보기와 같은 단일 하트 퐁 모션을 사용합니다.
+     - 펫 본체/놀이터/성장/채팅 로직은 건드리지 않습니다. */
+  .petStageArt.hero{
+    overflow:visible !important;
+  }
+  .petStageArt.hero::before{
+    content:none !important;
+    display:none !important;
+    animation:none !important;
+  }
+  .petStageArt.hero::after{
+    content:"♡" !important;
+    position:absolute !important;
+    left:64% !important;
+    right:auto !important;
+    top:12% !important;
+    width:auto !important;
+    height:auto !important;
+    display:block !important;
+    z-index:8 !important;
+    font-size:24px !important;
+    font-weight:1000 !important;
+    line-height:1 !important;
+    color:rgba(255,198,228,.98) !important;
+    text-shadow:0 0 10px rgba(255,116,184,.58), 0 8px 18px rgba(0,0,0,.28) !important;
+    opacity:0;
+    pointer-events:none;
+    transform-origin:50% 70%;
+    backface-visibility:hidden;
+    will-change:transform, opacity;
+    animation:petModalHeartAction 8.8s ease-in-out infinite !important;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .petStageArt.hero,
+    .petStageArt.current,
+    .petStageArt.hero::before,
+    .petStageArt.hero::after,
+    .petStageArt.current::before,
+    .petStageArt.current::after{
+      animation:none !important;
+    }
+  }
+
+
+  /* ===== V84: 대시보드/펫 상세보기 살아있는 둥둥 모션 복구 ===== */
+  /* V83의 하트 연출은 유지하되, 펫 본체가 너무 정적으로 보이지 않도록 아주 부드러운 float를 추가합니다. */
+  .petStageArt.hero{
+    animation:petDashAliveFloat 16s cubic-bezier(.45,0,.2,1) infinite !important;
+    transform-origin:50% 76%;
+    will-change:transform;
+    backface-visibility:hidden;
+  }
+  .petStageArt.current{
+    animation:petModalAliveFloat 14s cubic-bezier(.45,0,.2,1) infinite !important;
+    transform-origin:50% 76%;
+    will-change:transform;
+    backface-visibility:hidden;
+  }
+  .petStageArt.hero img,
+  .petStageArt.current img{
+    will-change:transform;
+    backface-visibility:hidden;
+    transform:translateZ(0);
+  }
+  @keyframes petDashAliveFloat{
+    0%,100%{ transform:translate3d(0,0,0) rotate(0deg) scale(1); }
+    12%{ transform:translate3d(0,-.7px,0) rotate(-.10deg) scale(1.0003); }
+    25%{ transform:translate3d(0,-1.8px,0) rotate(-.22deg) scale(1.001); }
+    38%{ transform:translate3d(0,-2.4px,0) rotate(.12deg) scale(1.0014); }
+    50%{ transform:translate3d(0,-2.0px,0) rotate(.22deg) scale(1.001); }
+    63%{ transform:translate3d(0,-1.0px,0) rotate(.08deg) scale(1.0004); }
+    76%{ transform:translate3d(0,.2px,0) rotate(-.06deg) scale(1); }
+    88%{ transform:translate3d(0,-.35px,0) rotate(0deg) scale(1.0002); }
+  }
+  @keyframes petModalAliveFloat{
+    0%,100%{ transform:translate3d(0,0,0) rotate(0deg) scale(1); }
+    10%{ transform:translate3d(0,-1px,0) rotate(-.12deg) scale(1.0004); }
+    23%{ transform:translate3d(0,-3px,0) rotate(-.28deg) scale(1.0012); }
+    36%{ transform:translate3d(0,-3.8px,0) rotate(.18deg) scale(1.0016); }
+    49%{ transform:translate3d(0,-2.6px,0) rotate(.30deg) scale(1.001); }
+    62%{ transform:translate3d(0,-1.2px,0) rotate(.08deg) scale(1.0005); }
+    75%{ transform:translate3d(0,.25px,0) rotate(-.08deg) scale(1); }
+    88%{ transform:translate3d(0,-.6px,0) rotate(0deg) scale(1.0002); }
+  }
+  /* 하트는 V83과 같은 계열 유지. float와 따로 움직여서 살아있는 느낌만 살짝 보강합니다. */
+  .petStageArt.hero::after{ animation:petDashTinyHeart 9.5s ease-in-out infinite !important; }
+  .petStageArt.current::after{ animation:petModalHeartAction 8.8s ease-in-out infinite !important; }
+
+
+
+  /* ===== V85: 대시보드/상세보기 펫 하트 + 살아있는 자연 둥둥 최종 보정 =====
+     - V84의 움직임이 너무 미세해 멈춘 것처럼 보이던 문제를 보정합니다.
+     - 대시보드 하트가 레이어/타이밍 문제로 잘 안 보이던 문제를 강제로 안정화합니다.
+     - 펫 놀이터/프로필 슬롯/성장/채팅/화이트보드 로직은 건드리지 않습니다. */
+  .petHeroArtWrap,
+  .petCurrentArt,
+  .petStageArt.hero,
+  .petStageArt.current{
+    overflow:visible !important;
+  }
+  .petStageArt.hero{
+    animation:petDashAliveFloatV85 8.8s ease-in-out infinite !important;
+    transform-origin:50% 78% !important;
+    will-change:transform;
+    backface-visibility:hidden;
+    transform:translateZ(0);
+  }
+  .petStageArt.current{
+    animation:petModalAliveFloatV85 10.5s ease-in-out infinite !important;
+    transform-origin:50% 78% !important;
+    will-change:transform;
+    backface-visibility:hidden;
+    transform:translateZ(0);
+  }
+  .petStageArt.hero img,
+  .petStageArt.current img{
+    position:relative;
+    z-index:2;
+    transform:translateZ(0);
+    backface-visibility:hidden;
+    will-change:transform;
+  }
+  .petStageArt.hero::before,
+  .petStageArt.current::before{
+    content:none !important;
+    display:none !important;
+    animation:none !important;
+  }
+  .petStageArt.hero::after{
+    content:"♡" !important;
+    position:absolute !important;
+    left:62% !important;
+    right:auto !important;
+    top:7% !important;
+    display:block !important;
+    width:auto !important;
+    height:auto !important;
+    z-index:30 !important;
+    font-size:24px !important;
+    line-height:1 !important;
+    font-weight:1000 !important;
+    color:rgba(255,201,230,.98) !important;
+    text-shadow:0 0 12px rgba(255,116,184,.66), 0 8px 18px rgba(0,0,0,.28) !important;
+    opacity:0;
+    pointer-events:none;
+    transform-origin:50% 80%;
+    will-change:transform, opacity;
+    backface-visibility:hidden;
+    animation:petDashHeartPopV85 5.6s ease-in-out infinite !important;
+  }
+  .petStageArt.current::after{
+    content:"♡" !important;
+    position:absolute !important;
+    left:64% !important;
+    top:10% !important;
+    z-index:30 !important;
+    font-size:29px !important;
+    line-height:1 !important;
+    font-weight:1000 !important;
+    color:rgba(255,201,230,.98) !important;
+    text-shadow:0 0 13px rgba(255,116,184,.66), 0 8px 20px rgba(0,0,0,.30) !important;
+    opacity:0;
+    pointer-events:none;
+    transform-origin:50% 80%;
+    will-change:transform, opacity;
+    backface-visibility:hidden;
+    animation:petModalHeartPopV85 6.8s ease-in-out infinite !important;
+  }
+  @keyframes petDashAliveFloatV85{
+    0%,100%{ transform:translate3d(0,0,0) rotate(0deg) scale(1); }
+    14%{ transform:translate3d(.25px,-1.6px,0) rotate(-.18deg) scale(1.0008); }
+    28%{ transform:translate3d(.5px,-3.7px,0) rotate(-.34deg) scale(1.002); }
+    42%{ transform:translate3d(.15px,-4.5px,0) rotate(.22deg) scale(1.0025); }
+    56%{ transform:translate3d(-.35px,-3.2px,0) rotate(.34deg) scale(1.0015); }
+    70%{ transform:translate3d(-.2px,-1.15px,0) rotate(.08deg) scale(1.0005); }
+    84%{ transform:translate3d(0,.25px,0) rotate(-.08deg) scale(1); }
+  }
+  @keyframes petModalAliveFloatV85{
+    0%,100%{ transform:translate3d(0,0,0) rotate(0deg) scale(1); }
+    13%{ transform:translate3d(.35px,-2px,0) rotate(-.18deg) scale(1.0008); }
+    27%{ transform:translate3d(.65px,-4.8px,0) rotate(-.36deg) scale(1.002); }
+    41%{ transform:translate3d(.15px,-5.9px,0) rotate(.24deg) scale(1.0028); }
+    55%{ transform:translate3d(-.45px,-4.1px,0) rotate(.40deg) scale(1.0018); }
+    69%{ transform:translate3d(-.25px,-1.55px,0) rotate(.10deg) scale(1.0005); }
+    83%{ transform:translate3d(0,.35px,0) rotate(-.08deg) scale(1); }
+  }
+  @keyframes petDashHeartPopV85{
+    0%, 37%, 100%{ opacity:0; transform:translate3d(0,10px,0) scale(.68) rotate(-10deg); }
+    43%{ opacity:.98; transform:translate3d(0,1px,0) scale(1.02) rotate(-4deg); }
+    57%{ opacity:.94; transform:translate3d(5px,-13px,0) scale(1.16) rotate(6deg); }
+    72%{ opacity:0; transform:translate3d(10px,-31px,0) scale(.94) rotate(14deg); }
+  }
+  @keyframes petModalHeartPopV85{
+    0%, 32%, 100%{ opacity:0; transform:translate3d(0,11px,0) scale(.70) rotate(-10deg); }
+    39%{ opacity:.98; transform:translate3d(0,1px,0) scale(1.03) rotate(-4deg); }
+    55%{ opacity:.94; transform:translate3d(6px,-18px,0) scale(1.18) rotate(7deg); }
+    73%{ opacity:0; transform:translate3d(12px,-40px,0) scale(.95) rotate(16deg); }
+  }
+
 </style>
 <script id="petReworkV24Script">
 (function(){
@@ -13536,9 +13912,26 @@ if(!window.__MK_BOOT_OK__){
   }
   function renderDash(){
     replaceDashCard();
-    const st = loadState(); const id = st.activePetId; const sec = clampSec(st.pets[id]?.totalSec); const lv = levelOf(sec);
-    const art = document.getElementById('petHeroArt'); if(art) art.innerHTML = petArt(id, lv, 'hero');
-    const name = document.getElementById('petHeroName'); if(name) name.textContent = displayName(id);
+    const st = loadState();
+    const id = isPetId(st.activePetId) ? st.activePetId : 'cat';
+    const sec = clampSec(st.pets[id]?.totalSec);
+    const lv = levelOf(sec);
+
+    // ✅ V86: 대시보드 펫 애니메이션 끊김 방지
+    // 기존에는 renderDash()가 5초 주기/성장 tick마다 petHeroArt.innerHTML을 다시 넣어서
+    // CSS animation이 계속 0초부터 재시작될 수 있었다. 펫 종류/레벨이 바뀔 때만 SVG DOM을 교체한다.
+    const art = document.getElementById('petHeroArt');
+    if(art){
+      const key = `${id}:${lv}`;
+      if(art.dataset.petHeroKey !== key || !art.firstElementChild){
+        art.dataset.petHeroKey = key;
+        art.innerHTML = petArt(id, lv, 'hero');
+      }
+    }
+
+    const name = document.getElementById('petHeroName');
+    const nextName = displayName(id);
+    if(name && name.textContent !== nextName) name.textContent = nextName;
     const status = document.getElementById('petHeroStatus'); if(status) status.textContent = '';
     const exp = document.getElementById('petHeroExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
     const bar = document.getElementById('petHeroBar'); if(bar) bar.style.width = pctOfLevel(sec) + '%';
