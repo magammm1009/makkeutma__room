@@ -964,7 +964,7 @@
       animation: petPlayShadow 9.5s ease-in-out infinite;
     }
     .petPlayNameTag{
-      max-width:110px;
+      max-width:9.8em;
       padding:5px 9px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
@@ -975,7 +975,7 @@
       color:rgba(255,255,255,.92);
       white-space:nowrap;
       overflow:hidden;
-      text-overflow:ellipsis;
+      text-overflow:clip;
       box-shadow:0 10px 20px rgba(0,0,0,.18);
     }
     .petPlayOwner{
@@ -1567,7 +1567,8 @@
       padding: 4px;
       transform:translateY(-2%);
       filter:drop-shadow(0 8px 10px rgba(0,0,0,.32));
-      animation: petSlotBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite;
+      animation: petSlotBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite;
+      animation-delay:var(--pet-motion-delay, 0ms);
       transform-origin:50% 70%;
       position:relative;
       z-index:2;
@@ -1581,7 +1582,8 @@
       background:radial-gradient(ellipse, rgba(255,158,209,.42), rgba(255,158,209,.12) 58%, transparent 80%);
       filter:blur(.7px);
       pointer-events:none;
-      animation: petSlotShadowBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite;
+      animation: petSlotShadowBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite;
+      animation-delay:var(--pet-motion-delay, 0ms);
       z-index:1;
     }
     .idPhoto.petSlotTransparent::after{
@@ -1612,32 +1614,78 @@
       text-overflow:ellipsis;
       pointer-events:none;
     }
-    /* ✅ v55: 빙글 모션 제거 + 차분한 펫 움직임 유지 */
+
+    /* ✅ v78: 사진칸 펫 명찰은 부모 사진칸 폭에 잘리지 않게 9글자 기준 폭 확보 */
+    .idPhoto.petSlotOn .petSlotNameTag{
+      max-width:min(118px, 42vw);
+      width:max-content;
+      min-width:42px;
+      overflow:visible;
+      text-overflow:clip;
+      white-space:nowrap;
+      padding-left:9px;
+      padding-right:9px;
+    }
+
+    /* ✅ v75: 프로필 펫 모션 자연화 — 접속 시점별 시작 오프셋 + 비정형 통통 리듬 */
     @keyframes petSlotBouncePause{
-      0%{ transform:translateY(-2%) rotate(0deg) scale(1); }
-      3%{ transform:translateY(calc(-2% - 7px)) rotate(-1.1deg) scale(1.01); }
-      6%{ transform:translateY(-2%) rotate(.7deg) scale(.998); }
-      9%{ transform:translateY(calc(-2% - 4px)) rotate(.8deg) scale(1.006); }
-      12%{ transform:translateY(-2%) rotate(-.4deg) scale(1); }
-      16%{ transform:translateY(calc(-2% - 2px)) rotate(.25deg) scale(1.002); }
-      20%{ transform:translateY(-2%) rotate(0deg) scale(1); }
-      100%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+      /* 통통통 → 약 4초 휴식 → 통 → 약 5초 휴식 → 통통 → 약 3초 휴식 → 통통통 */
+      0%, 22%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+      1.6%{ transform:translateY(calc(-2% - 7px)) rotate(-1.0deg) scale(1.012); }
+      3.2%{ transform:translateY(-2%) rotate(.65deg) scale(.997); }
+      4.9%{ transform:translateY(calc(-2% - 5px)) rotate(.85deg) scale(1.008); }
+      6.7%{ transform:translateY(-2%) rotate(-.35deg) scale(1); }
+      8.4%{ transform:translateY(calc(-2% - 3px)) rotate(.25deg) scale(1.003); }
+      10.2%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+
+      33%, 55%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+      35.6%{ transform:translateY(calc(-2% - 5px)) rotate(-.55deg) scale(1.006); }
+      38.4%{ transform:translateY(-2%) rotate(.35deg) scale(1); }
+
+      66%, 81%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+      68.2%{ transform:translateY(calc(-2% - 6px)) rotate(.85deg) scale(1.01); }
+      70.4%{ transform:translateY(-2%) rotate(-.45deg) scale(.999); }
+      73.0%{ transform:translateY(calc(-2% - 4px)) rotate(-.65deg) scale(1.006); }
+      75.6%{ transform:translateY(-2%) rotate(.25deg) scale(1); }
+
+      89%, 100%{ transform:translateY(-2%) rotate(0deg) scale(1); }
+      91.0%{ transform:translateY(calc(-2% - 7px)) rotate(-.9deg) scale(1.012); }
+      92.8%{ transform:translateY(-2%) rotate(.55deg) scale(.998); }
+      94.6%{ transform:translateY(calc(-2% - 5px)) rotate(.75deg) scale(1.008); }
+      96.4%{ transform:translateY(-2%) rotate(-.3deg) scale(1); }
+      98.0%{ transform:translateY(calc(-2% - 3px)) rotate(.2deg) scale(1.003); }
     }
     @keyframes petSlotShadowBouncePause{
-      0%{ transform:scaleX(1); opacity:.70; }
-      3%{ transform:scaleX(.86) translateX(-.8px); opacity:.50; }
-      6%{ transform:scaleX(1.04) translateX(.6px); opacity:.74; }
-      9%{ transform:scaleX(.91) translateX(.8px); opacity:.56; }
-      12%{ transform:scaleX(1.02) translateX(-.4px); opacity:.72; }
-      16%{ transform:scaleX(.96) translateX(.3px); opacity:.62; }
-      20%{ transform:scaleX(1); opacity:.70; }
-      100%{ transform:scaleX(1); opacity:.70; }
+      0%,22%{ transform:scaleX(1); opacity:.70; }
+      1.6%{ transform:scaleX(.86) translateX(-.7px); opacity:.50; }
+      3.2%{ transform:scaleX(1.04) translateX(.5px); opacity:.74; }
+      4.9%{ transform:scaleX(.91) translateX(.7px); opacity:.56; }
+      6.7%{ transform:scaleX(1.02) translateX(-.35px); opacity:.72; }
+      8.4%{ transform:scaleX(.96) translateX(.25px); opacity:.62; }
+      10.2%{ transform:scaleX(1); opacity:.70; }
+
+      33%,55%{ transform:scaleX(1); opacity:.70; }
+      35.6%{ transform:scaleX(.90) translateX(-.45px); opacity:.54; }
+      38.4%{ transform:scaleX(1); opacity:.70; }
+
+      66%,81%{ transform:scaleX(1); opacity:.70; }
+      68.2%{ transform:scaleX(.86) translateX(.65px); opacity:.50; }
+      70.4%{ transform:scaleX(1.04) translateX(-.35px); opacity:.73; }
+      73.0%{ transform:scaleX(.92) translateX(-.55px); opacity:.57; }
+      75.6%{ transform:scaleX(1); opacity:.70; }
+
+      89%,100%{ transform:scaleX(1); opacity:.70; }
+      91.0%{ transform:scaleX(.86) translateX(-.7px); opacity:.50; }
+      92.8%{ transform:scaleX(1.04) translateX(.5px); opacity:.74; }
+      94.6%{ transform:scaleX(.91) translateX(.7px); opacity:.56; }
+      96.4%{ transform:scaleX(1.02) translateX(-.35px); opacity:.72; }
+      98.0%{ transform:scaleX(.96) translateX(.25px); opacity:.62; }
     }
-    /* ✅ v55: 펫 표시 모션 선택(빙글 제거) */
-    .petSlotOn.petMotionBounce img{ animation: petSlotBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite !important; }
-    .petSlotOn.petMotionBounce::after{ animation: petSlotShadowBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite !important; }
-    .petSlotOn.petMotionSway img{ animation: petSlotSwayPause 17.6s ease-in-out infinite !important; }
-    .petSlotOn.petMotionSway::after{ animation: petSlotSwayShadowPause 17.6s ease-in-out infinite !important; }
+    /* ✅ v75: 펫 표시 모션 선택(빙글 제거 유지) */
+    .petSlotOn.petMotionBounce img{ animation: petSlotBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite !important; animation-delay:var(--pet-motion-delay, 0ms) !important; }
+    .petSlotOn.petMotionBounce::after{ animation: petSlotShadowBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite !important; animation-delay:var(--pet-motion-delay, 0ms) !important; }
+    .petSlotOn.petMotionSway img{ animation: petSlotSwayPause 17.6s ease-in-out infinite !important; animation-delay:var(--pet-motion-delay, 0ms) !important; }
+    .petSlotOn.petMotionSway::after{ animation: petSlotSwayShadowPause 17.6s ease-in-out infinite !important; animation-delay:var(--pet-motion-delay, 0ms) !important; }
     .petSlotOn.petMotionNone img,
     .petSlotOn.petMotionNone::after{ animation:none !important; }
     @keyframes petSlotSwayPause{
@@ -1699,7 +1747,8 @@
       padding:2px;
       transform:translateY(-2%);
       filter:drop-shadow(0 6px 8px rgba(0,0,0,.28));
-      animation: petSlotBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite;
+      animation: petSlotBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite;
+      animation-delay:var(--pet-motion-delay, 0ms);
       transform-origin:50% 70%;
       position:relative;
       z-index:2;
@@ -1713,7 +1762,8 @@
       background:radial-gradient(ellipse, rgba(255,158,209,.34), rgba(255,158,209,.10) 58%, transparent 80%);
       filter:blur(.6px);
       pointer-events:none;
-      animation: petSlotShadowBouncePause 21s cubic-bezier(.22,.8,.28,1) infinite;
+      animation: petSlotShadowBouncePause 18.7s cubic-bezier(.25,.86,.32,1) infinite;
+      animation-delay:var(--pet-motion-delay, 0ms);
       z-index:1;
     }
     .avatar.petSlotTransparent::after{
@@ -4384,6 +4434,17 @@ chatUnseen: 0,
       return arr.slice(0, maxChars).join("") + "…";
     }
 
+    // ✅ Pet name tag rules: display up to 9 chars, remove spaces only in labels
+    const PET_NAME_TAG_MAX = 9;
+    function formatPetNameTag(raw, fallback="이름없는펫"){
+      try{
+        const s = (raw ?? fallback ?? "").toString().trim().replace(/\s+/g, "");
+        const arr = Array.from(s || fallback || "");
+        if(arr.length <= PET_NAME_TAG_MAX) return arr.join("");
+        return arr.slice(0, PET_NAME_TAG_MAX).join("") + "…";
+      }catch(e){ return "이름없는펫"; }
+    }
+
 
     
 
@@ -6997,6 +7058,23 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         return (v === "bounce" || v === "sway" || v === "none") ? v : "bounce";
       }catch(e){ return "bounce"; }
     }
+    function petMotionSeedOf(p){
+      try{
+        const n = Number(p?.petMotionSeedMs || p?.theme?.petMotionSeedMs || 0);
+        if(Number.isFinite(n) && n > 0) return n;
+        const id = String(p?.id || p?.name || "pet");
+        let h = 2166136261;
+        for(let i=0;i<id.length;i++){ h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return Math.abs(h >>> 0);
+      }catch(e){ return 0; }
+    }
+    function petMotionDelayMs(p, durationMs){
+      try{
+        const d = Math.max(1000, Number(durationMs || 18700));
+        const seed = petMotionSeedOf(p);
+        return -1 * (Math.abs(seed) % d);
+      }catch(e){ return 0; }
+    }
     function getProfilePetSlotMotion(){
       try{
         return normalizePetSlotMotion(els.petSlotMotion ? els.petSlotMotion.value : "bounce");
@@ -7018,6 +7096,10 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         box.classList.add("petSlotOn");
         const petMotion = normalizePetSlotMotion(p?.theme?.petSlotMotion || "bounce");
         box.classList.add("petMotion" + petMotion.charAt(0).toUpperCase() + petMotion.slice(1));
+        try{
+          const dur = petMotion === "sway" ? 17600 : 18700;
+          box.style.setProperty("--pet-motion-delay", petMotionDelayMs(p, dur) + "ms");
+        }catch(e){}
         const petBg = clampHexColor(p?.theme?.petSlotBgColor || "#1b1720");
         const petBgTransparent = !!(p?.theme?.petSlotBgTransparent === true || p?.theme?.petSlotBgTransparent === "true");
         box.style.setProperty("--petSlotBg", petBg);
@@ -7039,7 +7121,7 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         if(opts.nameTag && petName){
           const tag = document.createElement("span");
           tag.className = "petSlotNameTag";
-          tag.textContent = petName.length > 10 ? (petName.slice(0, 10) + "…") : petName;
+          tag.textContent = formatPetNameTag(petName);
           box.appendChild(tag);
         }
       }catch(e){
@@ -7142,6 +7224,7 @@ async function ensureMeDoc(){
     timerHidden: 0,
     lastSeenAtMs: Date.now(),
     updatedAt: Date.now(),
+    petMotionSeedMs: Date.now(),
   };
 
   try{
@@ -9212,6 +9295,7 @@ async function sendChatCore(text, isFlush=false){
         timerHidden:p.theme?.timerHidden,
         emoBgTransparent:p.theme?.emoBgTransparent,
         petSlotMotion:p.theme?.petSlotMotion,
+        petMotionSeedMs:p.petMotionSeedMs,
         petSlotBgColor:p.theme?.petSlotBgColor,
         petSlotBgTransparent:p.theme?.petSlotBgTransparent,
         bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl, photoEnabled:p.theme?.photoEnabled, showPet:p.theme?.showPetInPhotoSlot, petDisplaySlot:p.theme?.petDisplaySlot, petId:p.theme?.petSlotId, petLv:p.theme?.petSlotLv,
@@ -10268,7 +10352,7 @@ t.appendChild(bg);
         if(img.src) pet.appendChild(img); else pet.textContent = "🐾";
         const tag = document.createElement("div");
         tag.className = "petPlayNameTag";
-        tag.textContent = (info.name || "이름 없는 펫").slice(0, 12);
+        tag.textContent = formatPetNameTag(info.name, "이름없는펫");
         const owner = document.createElement("div");
         owner.className = "petPlayOwner";
         owner.textContent = normalizeNick(p.name || p.id || "익명");
@@ -10375,7 +10459,7 @@ t.appendChild(bg);
         if(img.src) pet.appendChild(img); else pet.textContent = "🐾";
         const tag = document.createElement("div");
         tag.className = "petPlayNameTag";
-        tag.textContent = (info.name || "이름 없는 펫").slice(0, 12);
+        tag.textContent = formatPetNameTag(info.name, "이름없는펫");
         const owner = document.createElement("div");
         owner.className = "petPlayOwner";
         owner.textContent = normalizeNick(p.name || p.id || "익명");
@@ -10751,6 +10835,8 @@ async function joinRoom(){
       setControlsEnabled(true);
       await ensureRoom(state.roomId);
       await ensureMeDoc();
+      // ✅ v75: 이번 접속 시점 기준으로 프로필 펫 모션 시작점을 분산
+      try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }); }catch(_e){}
       // ✅ (A) 입장 시 관리자 비번(선택) 입력하면 즉시 관리자 모드 언락
       try{
         const ap = (els.adminPassJoin && els.adminPassJoin.value) ? String(els.adminPassJoin.value).trim() : "";
@@ -13151,8 +13237,16 @@ if(!window.__MK_BOOT_OK__){
 
   .petStageArt{position:relative; overflow:visible !important; background:transparent !important; isolation:isolate; display:flex; align-items:center; justify-content:center;}
   .petStageArt img{display:block; width:100%; height:100%; object-fit:contain !important; object-position:center center !important; border-radius:0 !important; background:transparent !important;}
-  .petStageArt.hero{width:108px; height:108px; animation:petDashCalmFloat 18s cubic-bezier(.37,0,.63,1) infinite; filter:drop-shadow(0 13px 15px rgba(0,0,0,.36)) drop-shadow(0 0 10px rgba(255,166,211,.24));}
-  .petStageArt.current{width:var(--petViewSizeV24, 230px); height:var(--petViewSizeV24, 230px); animation:petV24Float 4.2s ease-in-out infinite; filter:drop-shadow(0 17px 18px rgba(0,0,0,.38)) drop-shadow(0 0 14px rgba(255,166,211,.28));}
+  .petStageArt.hero{width:108px; height:108px; animation:petDashboardGentleSway 17.6s ease-in-out infinite; transform-origin:50% 72%; filter:drop-shadow(0 13px 15px rgba(0,0,0,.36)) drop-shadow(0 0 10px rgba(255,166,211,.24));}
+  .petStageArt.current{width:var(--petViewSizeV24, 230px); height:var(--petViewSizeV24, 230px); animation:petModalGentleSway 17.6s ease-in-out infinite !important; transform-origin:50% 72%; filter:drop-shadow(0 17px 18px rgba(0,0,0,.38)) drop-shadow(0 0 14px rgba(255,166,211,.28));}
+  @keyframes petModalGentleSway{
+    0%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    7%{ transform:translateY(-2px) rotate(-2.4deg) scale(1.002); }
+    14%{ transform:translateY(0) rotate(2.1deg) scale(1.001); }
+    21%{ transform:translateY(-1px) rotate(-1.3deg) scale(1.001); }
+    28%{ transform:translateY(0) rotate(.8deg) scale(1); }
+    35%{ transform:translateY(0) rotate(0deg) scale(1); }
+  }
   .petStageArt.pick{width:58px; height:58px; filter:drop-shadow(0 8px 8px rgba(0,0,0,.28));}
   .petStageArt.preview{width:78px; height:78px; filter:drop-shadow(0 8px 8px rgba(0,0,0,.28));}
 
@@ -13199,6 +13293,14 @@ if(!window.__MK_BOOT_OK__){
 
   @keyframes petV24Float{0%,100%{transform:translateY(0) scale(.985)}50%{transform:translateY(-5px) scale(1)}}
   @keyframes petDashCalmFloat{0%,100%{transform:translateY(0) scale(.992)}50%{transform:translateY(-2px) scale(1)}}
+  @keyframes petDashboardGentleSway{
+    0%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
+    7%{ transform:translateY(-1px) rotate(-2.1deg) scale(1.002); }
+    14%{ transform:translateY(0) rotate(1.8deg) scale(1.001); }
+    21%{ transform:translateY(-1px) rotate(-1.1deg) scale(1.001); }
+    28%{ transform:translateY(0) rotate(.7deg) scale(1); }
+    35%{ transform:translateY(0) rotate(0deg) scale(1); }
+  }
   @keyframes petV24FloorPulse{0%,100%{transform:scaleX(.90); opacity:.55}50%{transform:scaleX(1.08); opacity:.86}}
 
   /* ✅ V33: 대시보드는 현재 선택한 펫 이미지/이름만 표시 */
