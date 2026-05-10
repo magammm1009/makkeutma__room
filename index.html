@@ -1,13 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <link rel="preconnect" href="https://script.google.com">
-  <link rel="dns-prefetch" href="https://script.google.com">
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MagamMagam</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
-  <style>
+<meta charset="utf-8"/>
+<link href="https://script.google.com" rel="preconnect"/>
+<link href="https://script.google.com" rel="dns-prefetch"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>MagamMagam</title>
+<link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
+<style>
     :root{
       --panel:rgba(255,255,255,.06);
       --line:rgba(255,255,255,.12);
@@ -2793,7 +2794,6 @@ body.joined #preJoinCard{ display:none; }
   }
 
 </style>
-
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
   #sudaModalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:999999; display:none; align-items:center; justify-content:center; padding:16px; }
@@ -2809,619 +2809,540 @@ body.joined #preJoinCard{ display:none; }
   #sudaModalBody .hint{ color:rgba(255,255,255,.9); line-height:1.5; text-align:center; }
   #sudaModalFrame{ width:100%; height:100%; border:0; background:#111; }
 </style>
-
 </head>
-
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <span class="dot" title="방 불"></span>
-      <div class="brandTitle">💗마끝마💗</div>
-    </div>
-
-    <!-- 가운데: 상태표시 + 내프로필 -->
-    <div class="topCenter" aria-label="작업 상태">
-      <button id="checkInBtn" class="ghost" disabled>💌출근💌</button>
-      <button id="statusBtn" class="primary" disabled>☕ 휴식중 ▾</button>
-
-      <div id="statusMenu" class="statusMenu hidden" role="menu" aria-label="상태 선택">
-                <div class="modeBtns">
-          <button id="modeAutoBtn" class="primary tight" type="button" title="헬퍼(자동)">🤖 헬퍼</button>
-          <button id="modeManualBtn" class="ghost tight" type="button" title="수동">✋ 수동</button>
-        </div>
-
-        <div id="autoOpts" class="autoOpts">
-          <div class="rowMini" style="align-items:center; gap:10px;">
-            <span id="helperTopDot" class="helperDot off" aria-hidden="true"></span>
-            <span id="helperTopText" class="tiny" style="font-weight:900; letter-spacing:.2px;">미연결</span>
-          </div>
-
-          <div class="rowMini">
-            <span class="tiny">자동 휴식(분)</span>
-            <input id="autoBreakMinTop" type="number" min="1" max="180" value="10" style="width:76px">
-          </div>
-          <div class="rowMini">
-            <span class="tiny">자동 자리비움(분)</span>
-            <input id="autoIdleMinTop" type="number" min="1" max="180" value="15" style="width:76px">
-          </div>
-          <div class="tiny" style="opacity:.82; margin-top:6px;">작업중일 때만 적용 · 헬퍼 움직임 재감지 시 자동 복귀</div>
-        </div>
-
-        <div id="manualOpts" class="statusBtns">
-          <button id="btnWork" class="primary" disabled>✍️ 작업중</button>
-          <button id="btnHelperToggle" class="ghost" disabled>🤖 헬퍼 켜기</button>
-          <button id="btnBreak" class="ghost" disabled>☕ 휴식중</button>
-          <button id="btnIdle" class="ghost" disabled>🌙 자리비움</button>
-          <button id="btnTimerReset" class="ghost" disabled title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
-        </div>
-
-        
-
-      </div>
-
-
-      <div class="topPills">
-        <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
-      </div>
-
-      <button id="onlineBtn" class="ghost miniOnline" disabled title="접속 인원">👥 <span id="countOnline">0</span>명</button>
-      <button id="profileBtn" class="ghost">🪪 내 프로필</button>
-    </div>
-
-    <div class="actions">
-      <input id="name" placeholder="닉네임" maxlength="7" style="width:180px">
-      <input id="roomPass" placeholder="입장키" type="password" style="width:120px">
-      <input id="adminPassJoin" placeholder="관리자비번(선택)" type="password" style="width:150px">
-      <button id="joinBtn" class="primary">입장</button>
-      <button id="leaveBtn" class="primary" disabled>퇴장</button>
-      <span class="meMini" id="meHint">—</span>
-      <button id="dataSaverBtn" class="ghost" disabled title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
-      <button id="menuBtn" class="ghost" disabled title="작업방 설정">⚙️</button>
-    </div>
-  </div>
-
-  <div class="wrap">
-
-    <div id="preJoinCard" class="card preJoinCard" aria-live="polite">
-      <h3>🔒 입장 전에는 내용이 표시되지 않아요</h3>
-      <div class="hint">상단에서 <b>닉네임</b>과 <b>입장키</b>를 입력하고 <b>입장</b>을 눌러줘!<br><span class="tiny">※ 접속 인원은 대략치로만 보여요.</span></div>
-      <div class="prePills">
-        <div class="pill">👥 현재 접속 <b id="approxOnlineText">—</b></div>
-      </div>
-    </div>
-
-    <main>
-      <div class="gridHead">
-        <div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
-        <div id="joinTicker" class="joinTicker hidden" aria-live="polite" aria-atomic="true">
-        <div id="joinTickerTrack" class="joinTickerTrack"><span id="joinTickerText" class="joinTickerText"></span></div>
-      </div>
-
-      <div class="right"><button id="updateBtn" class="ghost layoutToggle" type="button" title="업데이트 안내" aria-label="업데이트 안내">💖Update</button>
-        <button id="guideBtn" class="ghost layoutToggle" type="button" title="가이드 보기" aria-label="가이드 보기">👩‍❤️‍👩가이드</button>
-        <button id="viewMenuBtn" class="ghost layoutToggle" type="button" title="보기/정렬 설정" aria-label="보기/정렬 설정">👓보기 ▾</button>
-
-        <!-- 보기/정렬 메뉴 -->
-        <div id="viewMenu" class="viewMenu hidden" role="menu" aria-label="보기/정렬 메뉴">
-          <div class="vmSection">
-            <div class="vmTitle">🪟 정렬</div>
-            <div class="vmBtns">
-              <button id="vmSortName" class="ghost" type="button">닉네임</button>
-              <button id="vmSortStatus" class="ghost" type="button">상태&닉네임</button>
-            </div>
-          </div>
-          <div class="vmSection">
-            <div class="vmTitle">◽ 타일 보기</div>
-            <div class="vmBtns">
-              <button id="vmViewDefault" class="ghost" type="button">기본 보기</button>
-              <button id="vmViewMini" class="ghost" type="button">미니 보기</button>
-              <button id="vmViewPlayground" class="ghost" type="button">🐾 펫 놀이터</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- (레거시 버튼: 기능 유지용, UI에서는 숨김) -->
-        <button id="sortModeBtn" class="ghost layoutToggle legacyHide" type="button" title="타일 정렬 방식" aria-label="타일 정렬 방식">🪟정렬: 닉네임</button>
-        <button id="layoutToggleBtn" class="ghost layoutToggle legacyHide" type="button" title="타일 정렬 모드 변경" aria-label="타일 정렬 모드 변경">◽미니 보기</button></div>
-      </div>
-
-      <div id="gridScroll" class="gridScroll">
-      <div id="grid" class="grid"></div>
-    </div>
-    </main>
-
-    <aside class="sidebar">
-      <div class="card" id="dashboardCard">
-        <div class="dashHead">
-          <h3>💗 대시보드</h3>
-          <div class="dashHeadRight">
-            <div class="dashSuccess" title="오늘 미션 성공 인원">👑 <span id="missionSuccessCount">0</span></div>
-            <button id="dashFoldBtn" class="dashFoldBtn dashFoldBtnSmall" type="button" title="현황/바로가기 접기/펼치기">
-              <span id="dashFoldIcon">▴</span>
-              <span class="dashFoldTxt">접기</span>
-            </button>
-          </div>
-        </div>
-        <div class="body">
-          <div id="dashFoldBody" class="dashFoldBody">
-          <div class="dashRow">
-            <div class="dashBox">
-              <div class="dashTitle">⏰ 공용 뽀모</div>
-              <div class="dashBig"><span id="pomoCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
-              <div class="btnRow">
-                <button id="goPomo" class="primary dashGo" title="바로가기">👉💗</button>
-              </div>
-              <div class="dashFoot">
-                <span>연결: <b id="pomoOk">연결됨</b></span>
-                <span class="chip">LIVE</span>
-              </div>
-            </div>
-
-            <div class="dashBox">
-              <div class="dashTitle">💣 폭파 수다</div>
-              <div class="dashBig"><span id="sudaCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
-              <div class="btnRow">
-                <button id="goSuda" class="primary dashGo" title="바로가기">👉💗</button>
-              </div>
-              <div class="dashFoot">
-                <span>연결: <b id="sudaOk">연결됨</b></span>
-                <span class="chip">LIVE</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="btnRow" id="dashShortcuts">
-            <button id="goMacHelper" class="ghost" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
-            <button id="goWinHelper" class="ghost" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
-            <button id="goChool" class="ghost" title="출근부"><span class="btnLabel">🔥출근부</span></button>
-            <button id="goSheet" class="ghost" title="뽀모 시트"><span class="btnLabel">📎뽀모시트</span></button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card chatCard" id="chatCard">
-        <h3>💬 채팅 <span class="tiny">(채팅창&대시보드 접기)</span> <button id="railFoldToggle" class="ghost railFoldBtn" type="button" title="오른쪽 사이드 접기/펴기" aria-label="오른쪽 사이드 접기/펴기">⟫</button></h3>
-        <div class="body chatBody">
-          
-          <div id="embedBar" class="embedBar" style="display:none">
-            <div class="left">
-              <span class="pill">🫧 임베드</span>
-              <span id="embedTitle" class="tiny">열린 창</span>
-            </div>
-            <div class="right" style="display:flex; gap:8px; align-items:center">
-              <button id="embedOpen" class="ghost tight">새 창</button>
-              <button id="embedClose" class="ghost tight">닫기</button>
-            </div>
-          </div>
-          <iframe id="embedFrame" class="embedFrame" style="display:none" loading="lazy" referrerpolicy="no-referrer"></iframe>
-
-          <div id="chatList" class="chatList"></div>
-          <div id="chatNewBar" class="chatNewBar" style="display:none">
-            <button id="chatJumpBtn" class="ghost chatJumpBtn" type="button">
+<div class="topbar">
+<div class="brand">
+<span class="dot" title="방 불"></span>
+<div class="brandTitle">💗마끝마💗</div>
+</div>
+<!-- 가운데: 상태표시 + 내프로필 -->
+<div aria-label="작업 상태" class="topCenter">
+<button class="ghost" disabled="" id="checkInBtn">💌출근💌</button>
+<button class="primary" disabled="" id="statusBtn">☕ 휴식중 ▾</button>
+<div aria-label="상태 선택" class="statusMenu hidden" id="statusMenu" role="menu">
+<div class="modeBtns">
+<button class="primary tight" id="modeAutoBtn" title="헬퍼(자동)" type="button">🤖 헬퍼</button>
+<button class="ghost tight" id="modeManualBtn" title="수동" type="button">✋ 수동</button>
+</div>
+<div class="autoOpts" id="autoOpts">
+<div class="rowMini" style="align-items:center; gap:10px;">
+<span aria-hidden="true" class="helperDot off" id="helperTopDot"></span>
+<span class="tiny" id="helperTopText" style="font-weight:900; letter-spacing:.2px;">미연결</span>
+</div>
+<div class="rowMini">
+<span class="tiny">자동 휴식(분)</span>
+<input id="autoBreakMinTop" max="180" min="1" style="width:76px" type="number" value="10"/>
+</div>
+<div class="rowMini">
+<span class="tiny">자동 자리비움(분)</span>
+<input id="autoIdleMinTop" max="180" min="1" style="width:76px" type="number" value="15"/>
+</div>
+<div class="tiny" style="opacity:.82; margin-top:6px;">작업중일 때만 적용 · 헬퍼 움직임 재감지 시 자동 복귀</div>
+</div>
+<div class="statusBtns" id="manualOpts">
+<button class="primary" disabled="" id="btnWork">✍️ 작업중</button>
+<button class="ghost" disabled="" id="btnHelperToggle">🤖 헬퍼 켜기</button>
+<button class="ghost" disabled="" id="btnBreak">☕ 휴식중</button>
+<button class="ghost" disabled="" id="btnIdle">🌙 자리비움</button>
+<button class="ghost" disabled="" id="btnTimerReset" title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
+</div>
+</div>
+<div class="topPills">
+<div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
+</div>
+<button class="ghost miniOnline" disabled="" id="onlineBtn" title="접속 인원">👥 <span id="countOnline">0</span>명</button>
+<button class="ghost" id="profileBtn">🪪 내 프로필</button>
+</div>
+<div class="actions">
+<input id="name" maxlength="7" placeholder="닉네임" style="width:180px"/>
+<input id="roomPass" placeholder="입장키" style="width:120px" type="password"/>
+<input id="adminPassJoin" placeholder="관리자비번(선택)" style="width:150px" type="password"/>
+<button class="primary" id="joinBtn">입장</button>
+<button class="primary" disabled="" id="leaveBtn">퇴장</button>
+<span class="meMini" id="meHint">—</span>
+<button class="ghost" disabled="" id="dataSaverBtn" title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
+<button class="ghost" disabled="" id="menuBtn" title="작업방 설정">⚙️</button>
+</div>
+</div>
+<div class="wrap">
+<div aria-live="polite" class="card preJoinCard" id="preJoinCard">
+<h3>🔒 입장 전에는 내용이 표시되지 않아요</h3>
+<div class="hint">상단에서 <b>닉네임</b>과 <b>입장키</b>를 입력하고 <b>입장</b>을 눌러줘!<br/><span class="tiny">※ 접속 인원은 대략치로만 보여요.</span></div>
+<div class="prePills">
+<div class="pill">👥 현재 접속 <b id="approxOnlineText">—</b></div>
+</div>
+</div>
+<main>
+<div class="gridHead">
+<div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
+<div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker">
+<div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
+</div>
+<div class="right"><button aria-label="업데이트 안내" class="ghost layoutToggle" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
+<button aria-label="가이드 보기" class="ghost layoutToggle" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
+<button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
+<!-- 보기/정렬 메뉴 -->
+<div aria-label="보기/정렬 메뉴" class="viewMenu hidden" id="viewMenu" role="menu">
+<div class="vmSection">
+<div class="vmTitle">🪟 정렬</div>
+<div class="vmBtns">
+<button class="ghost" id="vmSortName" type="button">닉네임</button>
+<button class="ghost" id="vmSortStatus" type="button">상태&amp;닉네임</button>
+</div>
+</div>
+<div class="vmSection">
+<div class="vmTitle">◽ 타일 보기</div>
+<div class="vmBtns">
+<button class="ghost" id="vmViewDefault" type="button">기본 보기</button>
+<button class="ghost" id="vmViewMini" type="button">미니 보기</button>
+<button class="ghost" id="vmViewPlayground" type="button">🐾 펫 놀이터</button>
+</div>
+</div>
+</div>
+<!-- (레거시 버튼: 기능 유지용, UI에서는 숨김) -->
+<button aria-label="타일 정렬 방식" class="ghost layoutToggle legacyHide" id="sortModeBtn" title="타일 정렬 방식" type="button">🪟정렬: 닉네임</button>
+<button aria-label="타일 정렬 모드 변경" class="ghost layoutToggle legacyHide" id="layoutToggleBtn" title="타일 정렬 모드 변경" type="button">◽미니 보기</button></div>
+</div>
+<div class="gridScroll" id="gridScroll">
+<div class="grid" id="grid"></div>
+</div>
+</main>
+<aside class="sidebar">
+<div class="card" id="dashboardCard">
+<div class="dashHead">
+<h3>💗 대시보드</h3>
+<div class="dashHeadRight">
+<div class="dashSuccess" title="오늘 미션 성공 인원">👑 <span id="missionSuccessCount">0</span></div>
+<button class="dashFoldBtn dashFoldBtnSmall" id="dashFoldBtn" title="현황/바로가기 접기/펼치기" type="button">
+<span id="dashFoldIcon">▴</span>
+<span class="dashFoldTxt">접기</span>
+</button>
+</div>
+</div>
+<div class="body">
+<div class="dashFoldBody" id="dashFoldBody">
+<div class="dashRow">
+<div class="dashBox">
+<div class="dashTitle">⏰ 공용 뽀모</div>
+<div class="dashBig"><span id="pomoCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
+<div class="btnRow">
+<button class="primary dashGo" id="goPomo" title="바로가기">👉💗</button>
+</div>
+<div class="dashFoot">
+<span>연결: <b id="pomoOk">연결됨</b></span>
+<span class="chip">LIVE</span>
+</div>
+</div>
+<div class="dashBox">
+<div class="dashTitle">💣 폭파 수다</div>
+<div class="dashBig"><span id="sudaCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
+<div class="btnRow">
+<button class="primary dashGo" id="goSuda" title="바로가기">👉💗</button>
+</div>
+<div class="dashFoot">
+<span>연결: <b id="sudaOk">연결됨</b></span>
+<span class="chip">LIVE</span>
+</div>
+</div>
+</div>
+<div class="btnRow" id="dashShortcuts">
+<button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
+<button class="ghost" id="goWinHelper" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
+<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근부</span></button>
+<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모시트</span></button>
+</div>
+</div>
+</div>
+<div class="card chatCard" id="chatCard">
+<h3>💬 채팅 <span class="tiny">(채팅창&amp;대시보드 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
+<div class="body chatBody">
+<div class="embedBar" id="embedBar" style="display:none">
+<div class="left">
+<span class="pill">🫧 임베드</span>
+<span class="tiny" id="embedTitle">열린 창</span>
+</div>
+<div class="right" style="display:flex; gap:8px; align-items:center">
+<button class="ghost tight" id="embedOpen">새 창</button>
+<button class="ghost tight" id="embedClose">닫기</button>
+</div>
+</div>
+<iframe class="embedFrame" id="embedFrame" loading="lazy" referrerpolicy="no-referrer" style="display:none"></iframe>
+<div class="chatList" id="chatList"></div>
+<div class="chatNewBar" id="chatNewBar" style="display:none">
+<button class="ghost chatJumpBtn" id="chatJumpBtn" type="button">
               ⬇️ 새 메시지 <span id="chatUnseenCount">1</span> · 바로가기
             </button>
-          </div>
-          <div class="chatInputRow">
-
-            <input id="chatInput" placeholder="메시지…" disabled />
-            <button id="sendBtn" class="primary" disabled>전송</button>
-          </div>
-        </div>
-      </div>
-    </aside>
-  </div>
-  </div>
-
-  <!-- Profile Modal -->
-
-  <div id="missionListModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal">
-      <div class="modalHeader">
-        <h4 id="missionModalTitle">👑 오늘 미션 완료자</h4>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button id="missionTodayBtn" class="ghost" type="button" style="display:none;">👑 오늘</button>
-          <button id="missionMonthlyBtn" class="ghost" type="button">📊 한달</button>
-          <button class="ghost" data-close="missionListModal" type="button">닫기</button>
-        </div>
-      </div>
-      <div class="modalBody" style="max-height:70vh; overflow:auto;">
-        <div id="missionTodayPanel">
-          <div id="missionListBody" class="tiny" style="line-height:1.7; white-space:pre-wrap;"></div>
-        </div>
-
-        <div id="missionMonthlyPanel" style="display:none;">
-          <div class="row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="tiny" style="opacity:.92;">월 선택</span>
-              <select id="missionMonthSelect" style="min-width:140px;"></select>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <button id="missionMonthReloadBtn" class="ghost" type="button">새로고침</button>
-              <button id="missionMonthCopyBtn" class="ghost" type="button">복사</button>
-            </div>
-          </div>
-          <div id="missionMonthlySummary" class="tiny" style="margin-top:6px; opacity:.92;"></div>
-          <div id="missionMonthlyBody" style="margin-top:10px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    </div>
-  </div>
-
-<div id="profileModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalHeader">
-        <div class="t">🪪 내 프로필</div>
-        <button id="closeProfile" class="ghost">닫기</button>
-      </div>
-      <div class="modalBody">
-        <div class="row">
-          <label>🎇이모지</label>
-          <input id="emoji" placeholder="예: 😍, ✍️, 💓, 💝, 💗," maxlength="4" style="width:120px">
-          <span class="tiny">프로필 타일에 표시돼요.</span>
-        </div>
-
-        <div class="row">
-          <label>🎇이모지 크기</label>
-          <input id="emojiSize" type="range" min="26" max="100" value="40" style="flex:1">
-          <input id="emojiSizeNum" type="number" min="26" max="100" value="40" style="width:76px">
-        </div>
-
-        <div class="row">
-          <label>🎇사진 사용</label>
-          <input id="photoEnabled" type="checkbox" checked style="transform:scale(1.15); margin-right:8px;">
-          <span class="tiny">끄면 타일에서 사진 칸이 사라져요.</span>
-        </div>
-
-        <div id="petInPhotoSlotRow" class="row">
-          <label>🐾펫 보여주기</label>
-          <select id="petDisplaySlot">
-            <option value="none">표시 안 함</option>
-            <option value="photo">사진칸에 펫</option>
-            <option value="emoji">이모지칸에 펫</option>
-          </select>
-          <input id="showPetInPhotoSlot" type="checkbox" style="display:none;">
-          <span class="tiny">사진칸 또는 이모지칸 중 하나에 현재 선택한 펫을 보여줘요. 사진과 이모지는 삭제되지 않아요.</span>
-        </div>
-
-        <div id="petSlotBgRow" class="row">
-          <label>🐾펫 배경</label>
-          <div class="colorControls">
-            <input id="petSlotBgPicker" type="color" value="#1b1720" />
-            <input id="petSlotBgColor" value="#1b1720" style="width:110px" />
-            <label style="display:flex;align-items:center;gap:6px;min-width:auto;max-width:none;flex:0 0 auto;">
-              <input id="petSlotBgTransparent" type="checkbox" style="transform:scale(1.05);"> 투명
-            </label>
-          </div>
-          <span class="tiny">펫 보이기를 켰을 때 사진칸 배경만 바꿔요. 사진 파일은 그대로 보관돼요.</span>
-        </div>
-
-        <div id="petSlotMotionRow" class="row">
-          <label>🐾펫 움직임</label>
-          <select id="petSlotMotion">
-            <option value="bounce">가끔 통통</option>
-            <option value="sway">살짝 흔들</option>
-            <option value="none">움직임 없음</option>
-          </select>
-          <span class="tiny">펫을 사진칸/이모지칸에 보여줄 때 적용돼요. 너무 산만하면 ‘가끔 통통’이나 ‘움직임 없음’을 추천해요.</span>
-        </div>
-
-        <div id="photoUploadRow" class="row">
-          <label>🎇사진 업로드</label>
-          <input id="photoFile" type="file" accept="image/*,.gif" />
-          <button id="uploadPhotoBtn" class="primary tight">업로드</button>
-        </div>
-
-        <div id="photoSizeRow" class="row">
-          <label>사진 크기</label>
-          <input id="photoSize" type="range" min="52" max="100" value="68" style="flex:1">
-          <input id="photoSizeNum" type="number" min="52" max="100" value="68" style="width:76px">
-        </div>
-
-        <div class="row">
-          <label>🎇이모지 배경</label>
-          <div class="colorControls">
-            <input id="emojiBgPicker" type="color" value="#2b2b2b" />
-            <input id="emojiBgColor" value="#2b2b2b" style="width:110px" />
-          </div>
-          <span class="tiny"></span>
-        </div>
-
-        <div class="row">
-          <label>🎇이모지 배경 투명</label>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input id="emojiBgTransparent" type="checkbox" style="transform:scale(1.15);" />
-              <span class="tiny"></span>
-            </label>
-          </div>
-          <span class="tiny"></span>
-        </div>
-
-        <div class="row" style="align-items:flex-start;">
-          <label>🎇배경색</label>
-          <div id="swatches" class="swatches" style="display:none"></div>
-          <div class="colorControls">
-            <input id="bgPicker" type="color" value="#ffd0e2" />
-            <input id="bgColor" value="#ffd0e2" style="width:110px" />
-          </div>
-        </div>
-
-        <div class="row">
-          <label>🎇닉네임</label>
-          <input id="profileNick" type="text" maxlength="20" placeholder="닉네임 (최대 20자)">
-          <span class="tiny">저장하면 상단/채팅/접속자 목록에 즉시 반영돼요.</span>
-        </div>
-
-
-        <div class="row">
-          <label>🎇배경 패턴</label>
-          <select id="bgPattern" class="ghost" style="flex:1; background:#111; color:#fff; border:1px solid rgba(255,255,255,.18);">
-            <option value="none">없음</option>
-            <option value="dots">도트</option>
-            <option value="hearts">하트</option>
-            <option value="stars">별</option>
-            <option value="moon">달</option>
-            <option value="flowers">꽃</option>
-            <option value="clouds">구름</option>
-            <option value="catpaws">고양이 발바닥</option>
-            <option value="dogpaws">강아지 발바닥</option>
-            <option value="stripes">스트라이프</option>
-            <option value="grid">그리드</option>
-            <option value="waves">웨이브</option>
-            <option value="sparkles">반짝이</option>
-            <option value="confetti">콘페티</option>
-          </select>
-          <span class="tiny"></span>
-        </div>
-
-
-<div class="row">
-  <label>🎇패턴 색</label>
-  <div class="colorControls">
-    <input id="patternPicker" type="color" value="#ffffff" />
-    <input id="patternColor" value="#ffffff" style="width:110px" />
-  </div>
-  <span class="tiny">패턴(도트/하트/줄무늬 등) 색만 바꿔요.</span>
+</div>
+<div class="chatInputRow">
+<input disabled="" id="chatInput" placeholder="메시지…">
+<button class="primary" disabled="" id="sendBtn">전송</button>
+</input></div>
+</div>
+</div>
+</div></aside>
 </div>
 
+<!-- Profile Modal -->
+<div aria-hidden="true" class="modalOverlay" id="missionListModal">
+<div class="modal">
+<div class="modalHeader">
+<h4 id="missionModalTitle">👑 오늘 미션 완료자</h4>
+<div style="display:flex; gap:8px; align-items:center;">
+<button class="ghost" id="missionTodayBtn" style="display:none;" type="button">👑 오늘</button>
+<button class="ghost" id="missionMonthlyBtn" type="button">📊 한달</button>
+<button class="ghost" data-close="missionListModal" type="button">닫기</button>
+</div>
+</div>
+<div class="modalBody" style="max-height:70vh; overflow:auto;">
+<div id="missionTodayPanel">
+<div class="tiny" id="missionListBody" style="line-height:1.7; white-space:pre-wrap;"></div>
+</div>
+<div id="missionMonthlyPanel" style="display:none;">
+<div class="row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+<span class="tiny" style="opacity:.92;">월 선택</span>
+<select id="missionMonthSelect" style="min-width:140px;"></select>
+</div>
+<div style="display:flex; align-items:center; gap:8px;">
+<button class="ghost" id="missionMonthReloadBtn" type="button">새로고침</button>
+<button class="ghost" id="missionMonthCopyBtn" type="button">복사</button>
+</div>
+</div>
+<div class="tiny" id="missionMonthlySummary" style="margin-top:6px; opacity:.92;"></div>
+<div id="missionMonthlyBody" style="margin-top:10px;"></div>
+</div>
+</div>
+</div>
+</div>
+
+
+<div aria-hidden="true" class="modalOverlay" id="profileModal">
+<div aria-modal="true" class="modal" role="dialog">
+<div class="modalHeader">
+<div class="t">🪪 내 프로필</div>
+<button class="ghost" id="closeProfile">닫기</button>
+</div>
+<div class="modalBody">
 <div class="row">
-          <label>🎇말풍선(최대 15자)</label>
-          <textarea id="bubbleText" placeholder="지금 상태 한 마디!" maxlength="15"></textarea>
-        </div>
-
-        <div class="row">
-          <label>🎇말풍선 배경</label>
-          <div class="colorControls">
-            <input id="bubblePicker" type="color" value="#ffd0e2" />
-            <input id="bubbleColor" value="#ffd0e2" style="width:110px" />
-          </div>
-        </div>
-
-        <div class="row">
-          <label>🎇타이머 색</label>
-          <div class="colorControls">
-            <input id="timePicker" type="color" value="#ffffff" />
-            <input id="timeColor" value="#ffffff" style="width:110px" />
-          </div>
-          <span class="tiny">집중=선택색, 휴식/자리비움=회색 고정</span>
-        </div>
-
-        
-
-        <div class="row">
-          <label>🎇타일 닉네임</label>
-          <div class="colorControls">
-            <input id="nameColorPicker" type="color" value="#ffffff" />
-            <input id="nameColor" value="#ffffff" style="width:110px" />
-          </div>
-          <span class="tiny">🎇프로필 타일</span>
-        </div>
-
-        <div class="row">
-          <label>🎇채팅 닉네임</label>
-          <div class="colorControls">
-            <input id="chatNameColorPicker" type="color" value="#ffffff" />
-            <input id="chatNameColor" value="#ffffff" style="width:110px" />
-          </div>
-          <span class="tiny"></span>
-        </div>
-
-        <div class="row">
-          <label>🎇현재상태</label>
-          <div class="colorControls">
-            <input id="statusTextColorPicker" type="color" value="#ffffff" />
-            <input id="statusTextColor" value="#ffffff" style="width:110px" />
-          </div>
-          <span class="tiny">작업중/휴식중/자리비움 배지 글씨</span>
-        </div>
-
-        <div class="row">
-          <label>🎇말풍선 글씨</label>
-          <div class="colorControls">
-            <input id="bubbleTextColorPicker" type="color" value="#ffffff" />
-            <input id="bubbleTextColor" value="#ffffff" style="width:110px" />
-          </div>
-          <span class="tiny"></span>
-        </div>
-        <div class="row profileHelperHidden">
-          <label>헬퍼 상태</label>
-          <div class="helperStatusLine" style="width:100%; display:flex; align-items:center; gap:10px;">
-            <span id="helperStatusDot" class="helperDot off" aria-hidden="true"></span>
-            <span id="helperStatusText" class="tiny" style="font-weight:900; letter-spacing:.2px;">미연결</span>
-          </div>
-          <span class="tiny">PC 활동 감지용 로컬 헬퍼가 켜져 있으면 ‘연결됨’으로 표시돼요.</span>
-        </div>
-
-
-        <div class="row profileHelperHidden">
-          <label>헬퍼 모드</label>
-          <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap; align-items:center;">
-            <select id="helperMode" style="width:170px; font-weight:1000;">
-              <option value="manual">수동(안전)</option>
-              <option value="auto">자동(연동)</option>
-            </select>
-            <span id="helperDebugText" class="tiny" style="font-weight:900; opacity:.9;"></span>
-          </div>
-          <span class="tiny">자동=무반응 시 휴식/자리비움 전환. 수동=버튼으로만 상태 변경(헬퍼는 표시/복귀만).</span>
-        </div>
-
-<div class="row autoSwitchRow profileHelperHidden" style="display:flex" aria-hidden="false">
-          <label>자동 전환</label>
-          <div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
-            <div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
-              <span class="tiny" style="min-width:86px; opacity:.9;">휴식(분)</span>
-              <input id="autoBreakMin" type="number" min="1" max="180" value="10" style="width:76px" disabled>
-            </div>
-            <div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
-              <span class="tiny" style="min-width:86px; opacity:.9;">자리비움(분)</span>
-              <input id="autoIdleMin" type="number" min="1" max="180" value="15" style="width:76px" disabled>
-            </div>
-          </div>
-          <span class="tiny">작업중일 때만 적용돼요. (기본: 10/15분)</span>
-        </div>
-
+<label>🎇이모지</label>
+<input id="emoji" maxlength="4" placeholder="예: 😍, ✍️, 💓, 💝, 💗," style="width:120px"/>
+<span class="tiny">프로필 타일에 표시돼요.</span>
+</div>
 <div class="row">
-          <button id="applyProfile" class="ghost">저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  
-  <!-- Update Modal -->
-  <div id="updateModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalHeader">
-        <div class="t">💖 Update</div>
-        <button id="closeUpdate" class="ghost">닫기</button>
-      </div>
-      <div class="modalBody">
-        <div class="hint">
-        </div>
-
-        <div id="updateMeta" class="tiny" style="opacity:.8; margin-bottom:10px;"></div>
-
-        <div id="updateView" style="width:100%; min-height:120px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.06); line-height:1.55;"></div>
-
-        <div class="hr" style="margin:14px 0;"></div>
-
-        <div id="updateUnlockRow" class="row" style="display:flex; gap:8px; align-items:center;">
-          <input id="updateAdminPass" type="password" placeholder="관리자 비번" style="flex:1;" />
-          <button id="updateUnlock" class="primary tight">확인</button>
-        </div>
-
-        <div id="updateEditArea" style="display:none;">
-          <div class="hint">✍️ 관리자용 편집</div>
-          <textarea id="updateTextArea" placeholder="업데이트 내용을 적어주세요 (줄바꿈 가능)" style="width:100%; min-height:160px; resize:vertical; padding:12px; border-radius:14px;"></textarea>
-          <div class="row" style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
-            <button id="updateClear" class="ghost">비우기</button>
-            <button id="updateSave" class="primary">저장</button>
-          </div>
-          <div class="tiny" style="opacity:.75; margin-top:6px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Room Settings Modal (Admin) -->
-  <div id="settingsModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalHeader">
-        <div class="t">⚙️ 작업방 설정</div>
-        <button id="closeSettings" class="ghost">닫기</button>
-      </div>
-      <div class="modalBody">
-        <div class="hint">
+<label>🎇이모지 크기</label>
+<input id="emojiSize" max="100" min="26" style="flex:1" type="range" value="40"/>
+<input id="emojiSizeNum" max="100" min="26" style="width:76px" type="number" value="40"/>
+</div>
+<div class="row">
+<label>🎇사진 사용</label>
+<input checked="" id="photoEnabled" style="transform:scale(1.15); margin-right:8px;" type="checkbox"/>
+<span class="tiny">끄면 타일에서 사진 칸이 사라져요.</span>
+</div>
+<div class="row" id="petInPhotoSlotRow">
+<label>🐾펫 보여주기</label>
+<select id="petDisplaySlot">
+<option value="none">표시 안 함</option>
+<option value="photo">사진칸에 펫</option>
+<option value="emoji">이모지칸에 펫</option>
+</select>
+<input id="showPetInPhotoSlot" style="display:none;" type="checkbox"/>
+<span class="tiny">사진칸 또는 이모지칸 중 하나에 현재 선택한 펫을 보여줘요. 사진과 이모지는 삭제되지 않아요.</span>
+</div>
+<div class="row" id="petSlotBgRow">
+<label>🐾펫 배경</label>
+<div class="colorControls">
+<input id="petSlotBgPicker" type="color" value="#1b1720">
+<input id="petSlotBgColor" style="width:110px" value="#1b1720">
+<label style="display:flex;align-items:center;gap:6px;min-width:auto;max-width:none;flex:0 0 auto;">
+<input id="petSlotBgTransparent" style="transform:scale(1.05);" type="checkbox"/> 투명
+            </label>
+</input></input></div>
+<span class="tiny">펫 보이기를 켰을 때 사진칸 배경만 바꿔요. 사진 파일은 그대로 보관돼요.</span>
+</div>
+<div class="row" id="petSlotMotionRow">
+<label>🐾펫 움직임</label>
+<select id="petSlotMotion">
+<option value="bounce">가끔 통통</option>
+<option value="sway">살짝 흔들</option>
+<option value="none">움직임 없음</option>
+</select>
+<span class="tiny">펫을 사진칸/이모지칸에 보여줄 때 적용돼요. 너무 산만하면 ‘가끔 통통’이나 ‘움직임 없음’을 추천해요.</span>
+</div>
+<div class="row" id="photoUploadRow">
+<label>🎇사진 업로드</label>
+<input accept="image/*,.gif" id="photoFile" type="file">
+<button class="primary tight" id="uploadPhotoBtn">업로드</button>
+</input></div>
+<div class="row" id="photoSizeRow">
+<label>사진 크기</label>
+<input id="photoSize" max="100" min="52" style="flex:1" type="range" value="68"/>
+<input id="photoSizeNum" max="100" min="52" style="width:76px" type="number" value="68"/>
+</div>
+<div class="row">
+<label>🎇이모지 배경</label>
+<div class="colorControls">
+<input id="emojiBgPicker" type="color" value="#2b2b2b">
+<input id="emojiBgColor" style="width:110px" value="#2b2b2b">
+</input></input></div>
+<span class="tiny"></span>
+</div>
+<div class="row">
+<label>🎇이모지 배경 투명</label>
+<div style="display:flex; align-items:center; gap:10px;">
+<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+<input id="emojiBgTransparent" style="transform:scale(1.15);" type="checkbox">
+<span class="tiny"></span>
+</input></label>
+</div>
+<span class="tiny"></span>
+</div>
+<div class="row" style="align-items:flex-start;">
+<label>🎇배경색</label>
+<div class="swatches" id="swatches" style="display:none"></div>
+<div class="colorControls">
+<input id="bgPicker" type="color" value="#ffd0e2">
+<input id="bgColor" style="width:110px" value="#ffd0e2">
+</input></input></div>
+</div>
+<div class="row">
+<label>🎇닉네임</label>
+<input id="profileNick" maxlength="20" placeholder="닉네임 (최대 20자)" type="text"/>
+<span class="tiny">저장하면 상단/채팅/접속자 목록에 즉시 반영돼요.</span>
+</div>
+<div class="row">
+<label>🎇배경 패턴</label>
+<select class="ghost" id="bgPattern" style="flex:1; background:#111; color:#fff; border:1px solid rgba(255,255,255,.18);">
+<option value="none">없음</option>
+<option value="dots">도트</option>
+<option value="hearts">하트</option>
+<option value="stars">별</option>
+<option value="moon">달</option>
+<option value="flowers">꽃</option>
+<option value="clouds">구름</option>
+<option value="catpaws">고양이 발바닥</option>
+<option value="dogpaws">강아지 발바닥</option>
+<option value="stripes">스트라이프</option>
+<option value="grid">그리드</option>
+<option value="waves">웨이브</option>
+<option value="sparkles">반짝이</option>
+<option value="confetti">콘페티</option>
+</select>
+<span class="tiny"></span>
+</div>
+<div class="row">
+<label>🎇패턴 색</label>
+<div class="colorControls">
+<input id="patternPicker" type="color" value="#ffffff">
+<input id="patternColor" style="width:110px" value="#ffffff">
+</input></input></div>
+<span class="tiny">패턴(도트/하트/줄무늬 등) 색만 바꿔요.</span>
+</div>
+<div class="row">
+<label>🎇말풍선(최대 15자)</label>
+<textarea id="bubbleText" maxlength="15" placeholder="지금 상태 한 마디!"></textarea>
+</div>
+<div class="row">
+<label>🎇말풍선 배경</label>
+<div class="colorControls">
+<input id="bubblePicker" type="color" value="#ffd0e2">
+<input id="bubbleColor" style="width:110px" value="#ffd0e2">
+</input></input></div>
+</div>
+<div class="row">
+<label>🎇타이머 색</label>
+<div class="colorControls">
+<input id="timePicker" type="color" value="#ffffff">
+<input id="timeColor" style="width:110px" value="#ffffff"/>
+</input></div>
+<span class="tiny">집중=선택색, 휴식/자리비움=회색 고정</span>
+</div>
+<div class="row">
+<label>🎇타일 닉네임</label>
+<div class="colorControls">
+<input id="nameColorPicker" type="color" value="#ffffff"/>
+<input id="nameColor" style="width:110px" value="#ffffff"/>
+</div>
+<span class="tiny">🎇프로필 타일</span>
+</div>
+<div class="row">
+<label>🎇채팅 닉네임</label>
+<div class="colorControls">
+<input id="chatNameColorPicker" type="color" value="#ffffff"/>
+<input id="chatNameColor" style="width:110px" value="#ffffff"/>
+</div>
+<span class="tiny"></span>
+</div>
+<div class="row">
+<label>🎇현재상태</label>
+<div class="colorControls">
+<input id="statusTextColorPicker" type="color" value="#ffffff"/>
+<input id="statusTextColor" style="width:110px" value="#ffffff"/>
+</div>
+<span class="tiny">작업중/휴식중/자리비움 배지 글씨</span>
+</div>
+<div class="row">
+<label>🎇말풍선 글씨</label>
+<div class="colorControls">
+<input id="bubbleTextColorPicker" type="color" value="#ffffff"/>
+<input id="bubbleTextColor" style="width:110px" value="#ffffff"/>
+</div>
+<span class="tiny"></span>
+</div>
+<div class="row profileHelperHidden">
+<label>헬퍼 상태</label>
+<div class="helperStatusLine" style="width:100%; display:flex; align-items:center; gap:10px;">
+<span aria-hidden="true" class="helperDot off" id="helperStatusDot"></span>
+<span class="tiny" id="helperStatusText" style="font-weight:900; letter-spacing:.2px;">미연결</span>
+</div>
+<span class="tiny">PC 활동 감지용 로컬 헬퍼가 켜져 있으면 ‘연결됨’으로 표시돼요.</span>
+</div>
+<div class="row profileHelperHidden">
+<label>헬퍼 모드</label>
+<div style="display:flex; gap:10px; width:100%; flex-wrap:wrap; align-items:center;">
+<select id="helperMode" style="width:170px; font-weight:1000;">
+<option value="manual">수동(안전)</option>
+<option value="auto">자동(연동)</option>
+</select>
+<span class="tiny" id="helperDebugText" style="font-weight:900; opacity:.9;"></span>
+</div>
+<span class="tiny">자동=무반응 시 휴식/자리비움 전환. 수동=버튼으로만 상태 변경(헬퍼는 표시/복귀만).</span>
+</div>
+<div aria-hidden="false" class="row autoSwitchRow profileHelperHidden" style="display:flex">
+<label>자동 전환</label>
+<div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
+<div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
+<span class="tiny" style="min-width:86px; opacity:.9;">휴식(분)</span>
+<input disabled="" id="autoBreakMin" max="180" min="1" style="width:76px" type="number" value="10"/>
+</div>
+<div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
+<span class="tiny" style="min-width:86px; opacity:.9;">자리비움(분)</span>
+<input disabled="" id="autoIdleMin" max="180" min="1" style="width:76px" type="number" value="15"/>
+</div>
+</div>
+<span class="tiny">작업중일 때만 적용돼요. (기본: 10/15분)</span>
+</div>
+<div class="row">
+<button class="ghost" id="applyProfile">저장</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Update Modal -->
+<div aria-hidden="true" class="modalOverlay" id="updateModal">
+<div aria-modal="true" class="modal" role="dialog">
+<div class="modalHeader">
+<div class="t">💖 Update</div>
+<button class="ghost" id="closeUpdate">닫기</button>
+</div>
+<div class="modalBody">
+<div class="hint">
+</div>
+<div class="tiny" id="updateMeta" style="opacity:.8; margin-bottom:10px;"></div>
+<div id="updateView" style="width:100%; min-height:120px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.06); line-height:1.55;"></div>
+<div class="hr" style="margin:14px 0;"></div>
+<div class="row" id="updateUnlockRow" style="display:flex; gap:8px; align-items:center;">
+<input id="updateAdminPass" placeholder="관리자 비번" style="flex:1;" type="password">
+<button class="primary tight" id="updateUnlock">확인</button>
+</input></div>
+<div id="updateEditArea" style="display:none;">
+<div class="hint">✍️ 관리자용 편집</div>
+<textarea id="updateTextArea" placeholder="업데이트 내용을 적어주세요 (줄바꿈 가능)" style="width:100%; min-height:160px; resize:vertical; padding:12px; border-radius:14px;"></textarea>
+<div class="row" style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+<button class="ghost" id="updateClear">비우기</button>
+<button class="primary" id="updateSave">저장</button>
+</div>
+<div class="tiny" style="opacity:.75; margin-top:6px;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Room Settings Modal (Admin) -->
+<div aria-hidden="true" class="modalOverlay" id="settingsModal">
+<div aria-modal="true" class="modal" role="dialog">
+<div class="modalHeader">
+<div class="t">⚙️ 작업방 설정</div>
+<button class="ghost" id="closeSettings">닫기</button>
+</div>
+<div class="modalBody">
+<div class="hint">
           처음 설정하는 사람은 “관리자 비번”을 등록하고, 이후부터는 비번이 있어야 변경할 수 있어요.
         </div>
-
-        <div class="row">
-          <label>🔈 입장 소리</label>
-          <div style="display:flex; align-items:center; gap:10px; width:100%;">
-            <input id="sfxToggle" type="checkbox" />
-            <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
-          </div>
-        </div>
-        <div class="row">
-          <input id="adminPass" type="password" placeholder="관리자 비번" />
-          <button id="adminUnlock" class="primary tight">확인</button>
-        </div>
-
-        <div id="adminArea" style="display:none">
-          <div class="hr"></div>
-          <div class="hint">대시보드 링크(룸 공용)</div>
-          <div class="row">
-            <input id="pomoUrl" placeholder="⏰ 공용 뽀모 링크" />
-            <input id="sudaUrl" placeholder="💣 폭파 수다 링크" />
-          </div>
-          <div class="row">
-            <input id="choolUrl" placeholder="🔥 출근부 링크" />
-            <input id="sheetUrl" placeholder="🔗 뽀모 시트 링크" />
-          </div>
-          <div class="row">
-            <input id="dashApiUrl" placeholder="📡 대시보드 인원 API (Apps Script .../exec?api=counts&callback=cb)" />
-          </div>
-          <div class="row">
-            <button id="saveDash" class="primary">저장</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <div id="ctxMenu" class="ctxMenu hidden" role="menu" aria-hidden="true">
-    <div class="title" id="ctxTitle">프로필</div>
-    <button id="ctxStatusWork" type="button">✍️ 작업중</button>
-    <button id="ctxStatusBreak" type="button">☕ 휴식중</button>
-    <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
-    <button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
-    <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div>    <button id="ctxPinToggle" type="button">📌 상단 고정</button>
-
-    <button id="ctxKick" class="danger" type="button">🚫 강퇴</button>
-    <button id="ctxForceOff" class="danger" type="button">🫥 로그아웃 처리</button>
-    <button id="ctxClose" type="button">닫기</button>
-  </div>
-
-  <div id="toast" class="toast">저장했어!</div>
-
-  
-  <!-- Mission Modal -->
-  <div id="missionModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalHeader">
-        <div class="t">🎯 오늘의 미션</div>
-        <button id="closeMission" class="ghost" type="button">닫기</button>
-      </div>
-      <div class="modalBody">
-        <div class="row">
-          <label>미션</label>
-          <input id="missionText" placeholder="예: 2000자 쓰기 / 25분 2세트" maxlength="60" style="flex:1">
-        </div>
-        <div class="row">
-          <label>성공</label>
-          <label style="display:flex;align-items:center;gap:10px; font-weight:900;">
-            <input id="missionDone" type="checkbox" />
+<div class="row">
+<label>🔈 입장 소리</label>
+<div style="display:flex; align-items:center; gap:10px; width:100%;">
+<input id="sfxToggle" type="checkbox">
+<span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
+</input></div>
+</div>
+<div class="row">
+<input id="adminPass" placeholder="관리자 비번" type="password"/>
+<button class="primary tight" id="adminUnlock">확인</button>
+</div>
+<div id="adminArea" style="display:none">
+<div class="hr"></div>
+<div class="hint">대시보드 링크(룸 공용)</div>
+<div class="row">
+<input id="pomoUrl" placeholder="⏰ 공용 뽀모 링크"/>
+<input id="sudaUrl" placeholder="💣 폭파 수다 링크"/>
+</div>
+<div class="row">
+<input id="choolUrl" placeholder="🔥 출근부 링크"/>
+<input id="sheetUrl" placeholder="🔗 뽀모 시트 링크"/>
+</div>
+<div class="row">
+<input id="dashApiUrl" placeholder="📡 대시보드 인원 API (Apps Script .../exec?api=counts&amp;callback=cb)"/>
+</div>
+<div class="row">
+<button class="primary" id="saveDash">저장</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div aria-hidden="true" class="ctxMenu hidden" id="ctxMenu" role="menu">
+<div class="title" id="ctxTitle">프로필</div>
+<button id="ctxStatusWork" type="button">✍️ 작업중</button>
+<button id="ctxStatusBreak" type="button">☕ 휴식중</button>
+<button id="ctxStatusIdle" type="button">🌙 자리비움</button>
+<button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
+<div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
+<button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
+<button class="danger" id="ctxForceOff" type="button">🫥 로그아웃 처리</button>
+<button id="ctxClose" type="button">닫기</button>
+</div>
+<div class="toast" id="toast">저장했어!</div>
+<!-- Mission Modal -->
+<div aria-hidden="true" class="modalOverlay" id="missionModal">
+<div aria-modal="true" class="modal" role="dialog">
+<div class="modalHeader">
+<div class="t">🎯 오늘의 미션</div>
+<button class="ghost" id="closeMission" type="button">닫기</button>
+</div>
+<div class="modalBody">
+<div class="row">
+<label>미션</label>
+<input id="missionText" maxlength="60" placeholder="예: 2000자 쓰기 / 25분 2세트" style="flex:1"/>
+</div>
+<div class="row">
+<label>성공</label>
+<label style="display:flex;align-items:center;gap:10px; font-weight:900;">
+<input id="missionDone" type="checkbox">
             오늘 미션 완료했어요 👑
-          </label>
-        </div>
-        <div class="tiny" style="opacity:.8; line-height:1.4;">
-          - 자정(KST)에 자동 초기화돼요.<br>
+          </input></label>
+</div>
+<div class="tiny" style="opacity:.8; line-height:1.4;">
+          - 자정(KST)에 자동 초기화돼요.<br/>
           - 성공 체크하면 버튼이 반짝 + 훈장 + 작은 폭죽!
         </div>
-      </div>
-      <div class="modalFooter">
-        <button id="saveMission" class="primary" type="button">저장</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FX layer for fireworks -->
-  <div id="fxLayer" aria-hidden="true"></div>
-
+</div>
+<div class="modalFooter">
+<button class="primary" id="saveMission" type="button">저장</button>
+</div>
+</div>
+</div>
+<!-- FX layer for fireworks -->
+<div aria-hidden="true" id="fxLayer"></div>
 <script type="module">
     // BOOT FLAG (module ok)
     window.__MK_BOOT_OK__ = true;
@@ -13097,11 +13018,149 @@ joinRoom();
     window.addEventListener("pagehide", __goOfflineNow);
 
   
+
+  // ===== V88 펫 놀이터 시크릿 채팅 순서 안정화 패치 =====
+  // 핵심: 클라이언트 시각(Date.now)만으로 정렬하지 않고, RTDB 방 단위 chatSeq를 transaction으로 증가시켜
+  // 모든 접속자가 같은 순번(seq) 기준으로 채팅을 렌더링합니다.
+  const PET_PLAY_CHAT_MAX_V88 = 60;
+  function getPetPlayChatOrderKeyV88(msg){
+    try{
+      const seq = Number(msg?.seq || 0);
+      if(Number.isFinite(seq) && seq > 0) return seq;
+    }catch(e){}
+    return 0;
+  }
+  function sortPetPlayChatItemsV88(arr){
+    return (Array.isArray(arr) ? arr : []).slice().sort((a,b)=>{
+      const as = getPetPlayChatOrderKeyV88(a);
+      const bs = getPetPlayChatOrderKeyV88(b);
+      // seq가 있는 최신 메시지는 seq로 고정 정렬, seq가 없는 과거 메시지는 먼저 배치
+      if(as || bs){
+        if(as !== bs) return as - bs;
+      }
+      const ats = Number(a?.serverTimeMs || a?.tsMs || a?.clientTsMs || 0);
+      const bts = Number(b?.serverTimeMs || b?.tsMs || b?.clientTsMs || 0);
+      return (ats - bts) || String(a?.id || '').localeCompare(String(b?.id || ''));
+    });
+  }
+  async function nextPetPlayChatSeqV88(){
+    try{
+      if(!state.roomId) return Date.now();
+      const seqRef = rRef(rtdb, `${rRoomBase(state.roomId)}/playground/chatSeq`);
+      const res = await rRunTransaction(seqRef, cur=>{
+        const n = Number(cur || 0);
+        return (Number.isFinite(n) ? n : 0) + 1;
+      });
+      const v = Number(res?.snapshot?.val?.() || 0);
+      if(Number.isFinite(v) && v > 0) return v;
+    }catch(e){}
+    // transaction 실패 시에도 정렬이 완전히 깨지지 않도록 큰 fallback 값 부여
+    return Date.now();
+  }
+  function mergePetPlayChatItemV88(msg){
+    try{
+      if(!msg || !msg.id) return;
+      const arr = Array.isArray(window.__MK_PET_PLAY_CHAT_ITEMS__) ? window.__MK_PET_PLAY_CHAT_ITEMS__ : [];
+      const idx = arr.findIndex(x=>String(x.id || '') === String(msg.id || ''));
+      if(idx >= 0) arr[idx] = Object.assign({}, arr[idx], msg);
+      else arr.push(msg);
+      window.__MK_PET_PLAY_CHAT_ITEMS__ = sortPetPlayChatItemsV88(arr).slice(-PET_PLAY_CHAT_MAX_V88);
+    }catch(e){}
+  }
+  function setupPetPlayChatRealtimeV88(){
+    try{
+      if(!state.roomId || getLayoutMode() !== 'playground') return;
+      if(window.__MK_PET_PLAY_CHAT_V88_ROOM__ === state.roomId) return;
+      if(window.__MK_PET_PLAY_CHAT_UNSUB__) try{ window.__MK_PET_PLAY_CHAT_UNSUB__(); }catch(e){}
+      window.__MK_PET_PLAY_CHAT_V88_ROOM__ = state.roomId;
+      window.__MK_PET_PLAY_CHAT_ITEMS__ = [];
+      window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(
+        rQuery(rPlaygroundChatRootRef(state.roomId), rOrderByChild('seq'), rLimitToLast(PET_PLAY_CHAT_MAX_V88)),
+        (snap)=>{
+          const msg = Object.assign({ id:snap.key || '' }, snap.val() || {});
+          mergePetPlayChatItemV88(msg);
+          try{ renderPetPlayChatList(); }catch(e){}
+          const msgTs = Number(msg.tsMs || msg.clientTsMs || 0);
+          const recentSelf = String(msg.uid || '') === String(state.uid || '') && (Date.now() - msgTs < 2500);
+          if(!recentSelf && Date.now() - msgTs < 15000){
+            try{ showPetPlayChatBubble(msg); }catch(e){}
+          }
+        }
+      );
+    }catch(e){}
+  }
+  const __sortPetPlayChatItemsBeforeV88 = (typeof sortPetPlayChatItemsV87 === 'function') ? sortPetPlayChatItemsV87 : null;
+  sortPetPlayChatItemsV87 = function(arr){ return sortPetPlayChatItemsV88(arr); };
+  renderPetPlayChatList = function(){
+    try{
+      const list = document.getElementById('petPlayChatList');
+      if(!list) return;
+      const arr = sortPetPlayChatItemsV88(window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-PET_PLAY_CHAT_MAX_V88);
+      const nearBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 36;
+      list.innerHTML = arr.map(m=>{
+        const mine = String(m.uid || '') === String(state.uid || '');
+        const cls = mine ? 'me' : 'other';
+        return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${renderPetPlayChatNameV87(m)}</span>${escapeHtml(String(m.text||'').slice(0,120))}</div>`;
+      }).join('') || `<div class="petPlayChatMsg empty">아직 놀이터 채팅이 없어 🐾</div>`;
+      if(nearBottom) list.scrollTop = list.scrollHeight;
+    }catch(e){}
+  };
+  sendPetPlayChat = async function(){
+    try{
+      const input = document.getElementById('petPlayChatInput');
+      if(!input || !state.roomId || !state.uid) return;
+      const raw = String(input.value || '');
+      const text = raw.trim().slice(0,120);
+      if(!text) return;
+      const nowSend = Date.now();
+      const sendKey = `${String(state.uid||'')}::${text}`;
+      if(window.__MK_PET_PLAY_SEND_LOCK__ && window.__MK_PET_PLAY_SEND_LOCK__.key === sendKey && nowSend - window.__MK_PET_PLAY_SEND_LOCK__.at < 1100) return;
+      window.__MK_PET_PLAY_SEND_LOCK__ = { key: sendKey, at: nowSend };
+      input.value = '';
+      const seq = await nextPetPlayChatSeqV88();
+      const payload = {
+        uid:String(state.uid),
+        name:normalizeNick(state.nickname || els.name?.value || '익명'),
+        emoji:String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || '').trim()).slice(0,4),
+        text,
+        seq,
+        clientTsMs:nowSend,
+        tsMs:Date.now(),
+        serverTs:rServerTimestamp()
+      };
+      // 목록은 RTDB에서 돌아온 seq 기준 이벤트로만 추가한다. 그래야 접속자마다 순서가 흔들리지 않는다.
+      try{ showPetPlayChatBubble(payload); }catch(_e){}
+      await rPush(rPlaygroundChatRootRef(state.roomId), payload);
+      try{ prunePetPlayChatV67(PET_PLAY_CHAT_MAX_V88); }catch(_e){}
+      try{ input.focus({preventScroll:true}); }catch(_e){}
+    }catch(e){ try{ showToast('놀이터 채팅 전송 실패'); }catch(_){} }
+  };
+  try{
+    const __ensurePetPlaygroundRealtimeBeforeV88 = ensurePetPlaygroundRealtime;
+    ensurePetPlaygroundRealtime = function(){
+      try{
+        const ret = __ensurePetPlaygroundRealtimeBeforeV88.apply(this, arguments);
+        setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 80);
+        setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 720);
+        return ret;
+      }catch(e){}
+    };
+  }catch(e){}
+  try{
+    const __stopPetPlaygroundRealtimeBeforeV88 = stopPetPlaygroundRealtimeV67;
+    stopPetPlaygroundRealtimeV67 = function(){
+      try{ window.__MK_PET_PLAY_CHAT_V88_ROOM__ = ''; }catch(e){}
+      return __stopPetPlaygroundRealtimeBeforeV88.apply(this, arguments);
+    };
+  }catch(e){}
+  // 이미 놀이터 안에서 패치 파일을 새로고침한 경우도 즉시 채팅 리스너를 V88로 교체
+  try{ setTimeout(()=>setupPetPlayChatRealtimeV88(), 500); }catch(e){}
+
   // READY FLAG (bindings complete)
   window.__MK_READY__ = true;
 })();
 </script>
-  <script>
+<script>
     // Fallback: if ES module didn't execute (common when opening via file://), show a clear hint
     (function(){
       function show(msg){
@@ -13132,55 +13191,48 @@ if(!window.__MK_BOOT_OK__){
       });
     })();
   </script>
-
-
-  
-
-  <!-- ✅ 입장 공지(매일 1회) : 출근 유도 팝업 -->
-  <div id="dailyNoticeModal" class="dailyNoticeModal hidden" aria-hidden="true">
-    <div class="backdrop" data-close="1"></div>
-    <div class="panel" role="dialog" aria-modal="true" aria-label="오늘의 공지">
-      <div class="head">
-        <div class="ttl">📌 오늘의 공지</div>
-        <button id="dailyNoticeCloseX" class="xBtn" type="button" aria-label="닫기">닫기 ✖</button>
-      </div>
-      <div class="body">
-        <div style="font-weight:900; font-size:15px; margin-bottom:6px;">출근 체크 잊지 말기 💗</div>
-        <div>작업방 입장 후 <b>출근(출석)</b>만 한 번 눌러주면, <b>출석 현황</b>에는 하루 1회만 반영되고, 나머지 기록은 <b>AttendanceLog</b>로 남아요!</div>
-        <div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요)</div>
-      </div>
-      <div class="btnRow">
-        <button id="dailyNoticeLaterBtn" type="button">나중에</button>
-        <button id="dailyNoticeGoBtn" class="primary" type="button">💌 출근 체크하러 가기</button>
-      </div>
-    </div>
-  </div>
-
+<!-- ✅ 입장 공지(매일 1회) : 출근 유도 팝업 -->
+<div aria-hidden="true" class="dailyNoticeModal hidden" id="dailyNoticeModal">
+<div class="backdrop" data-close="1"></div>
+<div aria-label="오늘의 공지" aria-modal="true" class="panel" role="dialog">
+<div class="head">
+<div class="ttl">📌 오늘의 공지</div>
+<button aria-label="닫기" class="xBtn" id="dailyNoticeCloseX" type="button">닫기 ✖</button>
+</div>
+<div class="body">
+<div style="font-weight:900; font-size:15px; margin-bottom:6px;">출근 체크 잊지 말기 💗</div>
+<div>작업방 입장 후 <b>출근(출석)</b>만 한 번 눌러주면, <b>출석 현황</b>에는 하루 1회만 반영되고, 나머지 기록은 <b>AttendanceLog</b>로 남아요!</div>
+<div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요)</div>
+</div>
+<div class="btnRow">
+<button id="dailyNoticeLaterBtn" type="button">나중에</button>
+<button class="primary" id="dailyNoticeGoBtn" type="button">💌 출근 체크하러 가기</button>
+</div>
+</div>
+</div>
 <!-- ✅ 출근(출석) 팝업 -->
-  <div id="attModal" class="attModal hidden" aria-hidden="true">
-    <div class="backdrop" data-close="1"></div>
-    <div class="panel" role="dialog" aria-modal="true" aria-label="출근">
-      <div class="head">
-        <div class="ttl">💌 출근 체크(시트랑 연동 중! 조금만 기다려주시기><)</div>
-        <div class="attHeadBtns">
-          <button id="attCloseBtn" class="xBtn" type="button">닫기 ✖</button>
-          <button id="attDoneBtn" class="ghost tight" type="button" title="출근을 완료했다면 눌러서 표시할 수 있어요">✅ 완료</button>
-        </div>
-      </div>
-      <iframe id="attFrame" title="출근(출석)" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
-    </div>
-  </div>
-
-
-  <!-- 📖 Guide Modal -->
-  <div id="guideModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" style="width:min(720px, 92vw);">
-      <div class="modalHeader">
-        <div class="t">📍가이드</div>
-        <button id="closeGuide" class="ghost">닫기</button>
-      </div>
-      <div class="modalBody" style="max-height:72vh; overflow:auto;">
-        <pre id="guidePre" class="guidePre">
+<div aria-hidden="true" class="attModal hidden" id="attModal">
+<div class="backdrop" data-close="1"></div>
+<div aria-label="출근" aria-modal="true" class="panel" role="dialog">
+<div class="head">
+<div class="ttl">💌 출근 체크(시트랑 연동 중! 조금만 기다려주시기&gt;&lt;)</div>
+<div class="attHeadBtns">
+<button class="xBtn" id="attCloseBtn" type="button">닫기 ✖</button>
+<button class="ghost tight" id="attDoneBtn" title="출근을 완료했다면 눌러서 표시할 수 있어요" type="button">✅ 완료</button>
+</div>
+</div>
+<iframe id="attFrame" referrerpolicy="no-referrer" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" title="출근(출석)"></iframe>
+</div>
+</div>
+<!-- 📖 Guide Modal -->
+<div aria-hidden="true" class="modalOverlay" id="guideModal">
+<div aria-modal="true" class="modal" role="dialog" style="width:min(720px, 92vw);">
+<div class="modalHeader">
+<div class="t">📍가이드</div>
+<button class="ghost" id="closeGuide">닫기</button>
+</div>
+<div class="modalBody" style="max-height:72vh; overflow:auto;">
+<pre class="guidePre" id="guidePre">
 
 📍 새로운 작업방 오픈 📌
 
@@ -13221,45 +13273,36 @@ if(!window.__MK_BOOT_OK__){
 🟥오류/건의는 수시로 수정이 가능합니다.
 🟥혹여라도 새 작업방에서 작업하시다가 문제가 생긴 듯하다면 갠톡 주십셔! 
 </pre>
-      </div>
-    </div>
-  </div>
-
-  <button id="railEdgeBtn" class="railEdgeBtn" type="button" title="오른쪽 사이드 펼치기" aria-label="오른쪽 사이드 펼치기">⟪</button>
-
-
-  <!-- ✅ Online members modal -->
-  <div id="onlineModal" class="modalOverlay" aria-hidden="true">
-    <div class="modal">
-      <div class="modalHeader">
-        <h4>👥 접속 명단</h4>
-        <button id="closeOnline" class="ghost tight">닫기</button>
-      </div>
-      <div class="modalBody">
-        <div id="onlineList" class="onlineList"></div>
-        <div class="tiny" style="margin-top:8px; opacity:.75;">※ 오프라인(마지막 접속 오래됨)은 제외했어.</div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- Suda modal -->
-  <div id="sudaModalOverlay" role="dialog" aria-modal="true" aria-label="수다방">
-    <div id="sudaModalBox">
-      <div id="sudaModalTop">
-        <div class="title">💬 수다방</div>
-        <div class="sp"></div>
-        <a id="sudaModalOpenNewTab" href="#" target="_blank" rel="noopener noreferrer" class="btnPrimary">새 탭으로 열기</a>
-        <button id="sudaModalReload" type="button">새로고침</button>
-        <button id="sudaModalClose" type="button">닫기</button>
-      </div>
-      <div id="sudaModalBody"><div class="hint">수다방은 <b>새 탭</b>에서 열려요.<br/>버튼을 눌러 입장해 주세요 🥨</div></div>
-    </div>
-  </div>
-
-
-
-
+</div>
+</div>
+</div>
+<button aria-label="오른쪽 사이드 펼치기" class="railEdgeBtn" id="railEdgeBtn" title="오른쪽 사이드 펼치기" type="button">⟪</button>
+<!-- ✅ Online members modal -->
+<div aria-hidden="true" class="modalOverlay" id="onlineModal">
+<div class="modal">
+<div class="modalHeader">
+<h4>👥 접속 명단</h4>
+<button class="ghost tight" id="closeOnline">닫기</button>
+</div>
+<div class="modalBody">
+<div class="onlineList" id="onlineList"></div>
+<div class="tiny" style="margin-top:8px; opacity:.75;">※ 오프라인(마지막 접속 오래됨)은 제외했어.</div>
+</div>
+</div>
+</div>
+<!-- Suda modal -->
+<div aria-label="수다방" aria-modal="true" id="sudaModalOverlay" role="dialog">
+<div id="sudaModalBox">
+<div id="sudaModalTop">
+<div class="title">💬 수다방</div>
+<div class="sp"></div>
+<a class="btnPrimary" href="#" id="sudaModalOpenNewTab" rel="noopener noreferrer" target="_blank">새 탭으로 열기</a>
+<button id="sudaModalReload" type="button">새로고침</button>
+<button id="sudaModalClose" type="button">닫기</button>
+</div>
+<div id="sudaModalBody"><div class="hint">수다방은 <b>새 탭</b>에서 열려요.<br>버튼을 눌러 입장해 주세요 🥨</br></div></div>
+</div>
+</div>
 <!-- PET_REWORK_V24_START: clean SVG pet system, 12 pets, 100h max growth -->
 <style id="petReworkV24Style">
   /* v24: 이전 이미지 보정/안전 캔버스/진화 이미지 강제 교체 패치를 제거하고, 투명 SVG 렌더러 하나로 통합 */
@@ -14137,145 +14180,8 @@ if(!window.__MK_BOOT_OK__){
 })();
 
 
-// ===== V88 펫 놀이터 시크릿 채팅 순서 안정화 패치 =====
-// 핵심: 클라이언트 시각(Date.now)만으로 정렬하지 않고, RTDB 방 단위 chatSeq를 transaction으로 증가시켜
-// 모든 접속자가 같은 순번(seq) 기준으로 채팅을 렌더링합니다.
-const PET_PLAY_CHAT_MAX_V88 = 60;
-function getPetPlayChatOrderKeyV88(msg){
-  try{
-    const seq = Number(msg?.seq || 0);
-    if(Number.isFinite(seq) && seq > 0) return seq;
-  }catch(e){}
-  return 0;
-}
-function sortPetPlayChatItemsV88(arr){
-  return (Array.isArray(arr) ? arr : []).slice().sort((a,b)=>{
-    const as = getPetPlayChatOrderKeyV88(a);
-    const bs = getPetPlayChatOrderKeyV88(b);
-    // seq가 있는 최신 메시지는 seq로 고정 정렬, seq가 없는 과거 메시지는 먼저 배치
-    if(as || bs){
-      if(as !== bs) return as - bs;
-    }
-    const ats = Number(a?.serverTimeMs || a?.tsMs || a?.clientTsMs || 0);
-    const bts = Number(b?.serverTimeMs || b?.tsMs || b?.clientTsMs || 0);
-    return (ats - bts) || String(a?.id || '').localeCompare(String(b?.id || ''));
-  });
-}
-async function nextPetPlayChatSeqV88(){
-  try{
-    if(!state.roomId) return Date.now();
-    const seqRef = rRef(rtdb, `${rRoomBase(state.roomId)}/playground/chatSeq`);
-    const res = await rRunTransaction(seqRef, cur=>{
-      const n = Number(cur || 0);
-      return (Number.isFinite(n) ? n : 0) + 1;
-    });
-    const v = Number(res?.snapshot?.val?.() || 0);
-    if(Number.isFinite(v) && v > 0) return v;
-  }catch(e){}
-  // transaction 실패 시에도 정렬이 완전히 깨지지 않도록 큰 fallback 값 부여
-  return Date.now();
-}
-function mergePetPlayChatItemV88(msg){
-  try{
-    if(!msg || !msg.id) return;
-    const arr = Array.isArray(window.__MK_PET_PLAY_CHAT_ITEMS__) ? window.__MK_PET_PLAY_CHAT_ITEMS__ : [];
-    const idx = arr.findIndex(x=>String(x.id || '') === String(msg.id || ''));
-    if(idx >= 0) arr[idx] = Object.assign({}, arr[idx], msg);
-    else arr.push(msg);
-    window.__MK_PET_PLAY_CHAT_ITEMS__ = sortPetPlayChatItemsV88(arr).slice(-PET_PLAY_CHAT_MAX_V88);
-  }catch(e){}
-}
-function setupPetPlayChatRealtimeV88(){
-  try{
-    if(!state.roomId || getLayoutMode() !== 'playground') return;
-    if(window.__MK_PET_PLAY_CHAT_V88_ROOM__ === state.roomId) return;
-    if(window.__MK_PET_PLAY_CHAT_UNSUB__) try{ window.__MK_PET_PLAY_CHAT_UNSUB__(); }catch(e){}
-    window.__MK_PET_PLAY_CHAT_V88_ROOM__ = state.roomId;
-    window.__MK_PET_PLAY_CHAT_ITEMS__ = [];
-    window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(
-      rQuery(rPlaygroundChatRootRef(state.roomId), rOrderByChild('seq'), rLimitToLast(PET_PLAY_CHAT_MAX_V88)),
-      (snap)=>{
-        const msg = Object.assign({ id:snap.key || '' }, snap.val() || {});
-        mergePetPlayChatItemV88(msg);
-        try{ renderPetPlayChatList(); }catch(e){}
-        const msgTs = Number(msg.tsMs || msg.clientTsMs || 0);
-        const recentSelf = String(msg.uid || '') === String(state.uid || '') && (Date.now() - msgTs < 2500);
-        if(!recentSelf && Date.now() - msgTs < 15000){
-          try{ showPetPlayChatBubble(msg); }catch(e){}
-        }
-      }
-    );
-  }catch(e){}
-}
-const __sortPetPlayChatItemsBeforeV88 = (typeof sortPetPlayChatItemsV87 === 'function') ? sortPetPlayChatItemsV87 : null;
-sortPetPlayChatItemsV87 = function(arr){ return sortPetPlayChatItemsV88(arr); };
-renderPetPlayChatList = function(){
-  try{
-    const list = document.getElementById('petPlayChatList');
-    if(!list) return;
-    const arr = sortPetPlayChatItemsV88(window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-PET_PLAY_CHAT_MAX_V88);
-    const nearBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 36;
-    list.innerHTML = arr.map(m=>{
-      const mine = String(m.uid || '') === String(state.uid || '');
-      const cls = mine ? 'me' : 'other';
-      return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${renderPetPlayChatNameV87(m)}</span>${escapeHtml(String(m.text||'').slice(0,120))}</div>`;
-    }).join('') || `<div class="petPlayChatMsg empty">아직 놀이터 채팅이 없어 🐾</div>`;
-    if(nearBottom) list.scrollTop = list.scrollHeight;
-  }catch(e){}
-};
-sendPetPlayChat = async function(){
-  try{
-    const input = document.getElementById('petPlayChatInput');
-    if(!input || !state.roomId || !state.uid) return;
-    const raw = String(input.value || '');
-    const text = raw.trim().slice(0,120);
-    if(!text) return;
-    const nowSend = Date.now();
-    const sendKey = `${String(state.uid||'')}::${text}`;
-    if(window.__MK_PET_PLAY_SEND_LOCK__ && window.__MK_PET_PLAY_SEND_LOCK__.key === sendKey && nowSend - window.__MK_PET_PLAY_SEND_LOCK__.at < 1100) return;
-    window.__MK_PET_PLAY_SEND_LOCK__ = { key: sendKey, at: nowSend };
-    input.value = '';
-    const seq = await nextPetPlayChatSeqV88();
-    const payload = {
-      uid:String(state.uid),
-      name:normalizeNick(state.nickname || els.name?.value || '익명'),
-      emoji:String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || '').trim()).slice(0,4),
-      text,
-      seq,
-      clientTsMs:nowSend,
-      tsMs:Date.now(),
-      serverTs:rServerTimestamp()
-    };
-    // 목록은 RTDB에서 돌아온 seq 기준 이벤트로만 추가한다. 그래야 접속자마다 순서가 흔들리지 않는다.
-    try{ showPetPlayChatBubble(payload); }catch(_e){}
-    await rPush(rPlaygroundChatRootRef(state.roomId), payload);
-    try{ prunePetPlayChatV67(PET_PLAY_CHAT_MAX_V88); }catch(_e){}
-    try{ input.focus({preventScroll:true}); }catch(_e){}
-  }catch(e){ try{ showToast('놀이터 채팅 전송 실패'); }catch(_){} }
-};
-try{
-  const __ensurePetPlaygroundRealtimeBeforeV88 = ensurePetPlaygroundRealtime;
-  ensurePetPlaygroundRealtime = function(){
-    try{
-      const ret = __ensurePetPlaygroundRealtimeBeforeV88.apply(this, arguments);
-      setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 80);
-      setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 720);
-      return ret;
-    }catch(e){}
-  };
-}catch(e){}
-try{
-  const __stopPetPlaygroundRealtimeBeforeV88 = stopPetPlaygroundRealtimeV67;
-  stopPetPlaygroundRealtimeV67 = function(){
-    try{ window.__MK_PET_PLAY_CHAT_V88_ROOM__ = ''; }catch(e){}
-    return __stopPetPlaygroundRealtimeBeforeV88.apply(this, arguments);
-  };
-}catch(e){}
-// 이미 놀이터 안에서 패치 파일을 새로고침한 경우도 즉시 채팅 리스너를 V88로 교체
-try{ setTimeout(()=>setupPetPlayChatRealtimeV88(), 500); }catch(e){}
 
 </script>
 <!-- PET_REWORK_V24_END -->
-
 </body>
 </html>
