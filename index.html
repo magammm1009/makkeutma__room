@@ -2733,6 +2733,11 @@ body.joined #preJoinCard{ display:none; }
 
   
 
+
+    /* ===== V87 펫 놀이터 시크릿 채팅 안정화 ===== */
+    .petPlayChatName{display:flex !important; align-items:center; gap:4px;}
+    .petPlayChatEmoji{display:inline-flex; min-width:1.2em; justify-content:center; line-height:1;}
+
   /* ===== V86: 대시보드 펫 독립 애니메이션 안정화 =====
      - renderDash()가 더 이상 같은 펫/같은 레벨의 SVG DOM을 반복 교체하지 않도록 JS를 보강했습니다.
      - 이 CSS는 대시보드 펫 본체와 하트만 부드럽게 보정합니다.
@@ -9922,11 +9927,12 @@ t.appendChild(bg);
           if(Date.now() - Number(a.tsMs || 0) > 45000) return;
           try{ showPetPlayActionFx(a); }catch(e){}
         });
-        window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(rQuery(rPlaygroundChatRootRef(state.roomId), rLimitToLast(50)), (snap)=>{
+        window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(rQuery(rPlaygroundChatRootRef(state.roomId), rOrderByChild("tsMs"), rLimitToLast(50)), (snap)=>{
           const msg = Object.assign({ id:snap.key || "" }, snap.val() || {});
           const arr = Array.isArray(window.__MK_PET_PLAY_CHAT_ITEMS__) ? window.__MK_PET_PLAY_CHAT_ITEMS__ : [];
           if(arr.some(x=>x.id === msg.id)) return;
           arr.push(msg);
+          arr.sort((a,b)=> (Number(a.tsMs || 0) - Number(b.tsMs || 0)) || String(a.id || "").localeCompare(String(b.id || "")));
           window.__MK_PET_PLAY_CHAT_ITEMS__ = arr.slice(-50);
           try{ renderPetPlayChatList(); }catch(e){}
           const __recentSelfPetPlayChat = String(msg.uid || "") === String(state.uid || "") && (Date.now() - Number(msg.tsMs || 0) < 2500);
@@ -9960,6 +9966,7 @@ t.appendChild(bg);
           active:true,
           uid,
           name: normalizeNick(state.nickname || els.name?.value || "익명"),
+          emoji: String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || "").trim()).slice(0,4),
           petId: info.id,
           petLv: info.lv,
           petName: info.name || "",
@@ -10138,12 +10145,12 @@ t.appendChild(bg);
       try{
         const list = document.getElementById("petPlayChatList");
         if(!list) return;
-        const arr = (window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-20);
+        const arr = sortPetPlayChatItemsV87(window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-20);
         const nearBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 28;
         list.innerHTML = arr.map(m=>{
           const mine = String(m.uid || "") === String(state.uid || "");
           const cls = mine ? "me" : "other";
-          return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${escapeHtml(normalizeNick(m.name||"익명"))}</span>${escapeHtml(String(m.text||"").slice(0,120))}</div>`;
+          return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${renderPetPlayChatNameV87(m)}</span>${escapeHtml(String(m.text||"").slice(0,120))}</div>`;
         }).join("") || `<div class="petPlayChatMsg empty">아직 놀이터 채팅이 없어 🐾</div>`;
         if(nearBottom) list.scrollTop = list.scrollHeight;
       }catch(e){}
@@ -10173,8 +10180,12 @@ t.appendChild(bg);
         if(!input || !state.roomId || !state.uid) return;
         const text = String(input.value || "").trim().slice(0,120);
         if(!text) return;
+        const nowSend = Date.now();
+        const sendKey = `${String(state.uid||"")}::${text}`;
+        if(window.__MK_PET_PLAY_SEND_LOCK__ && window.__MK_PET_PLAY_SEND_LOCK__.key === sendKey && nowSend - window.__MK_PET_PLAY_SEND_LOCK__.at < 900) return;
+        window.__MK_PET_PLAY_SEND_LOCK__ = { key: sendKey, at: nowSend };
         input.value = "";
-        const payload = { uid:String(state.uid), name:normalizeNick(state.nickname || els.name?.value || "익명"), text, tsMs:Date.now(), serverTs:rServerTimestamp() };
+        const payload = { uid:String(state.uid), name:normalizeNick(state.nickname || els.name?.value || "익명"), emoji:String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || "").trim()).slice(0,4), text, tsMs:Date.now(), serverTs:rServerTimestamp() };
         // 내 메시지는 전송 버튼을 누른 즉시 내 펫 위에 먼저 띄움
         try{ showPetPlayChatBubble(payload); }catch(_e){}
         await rPush(rPlaygroundChatRootRef(state.roomId), payload);
@@ -10194,7 +10205,7 @@ t.appendChild(bg);
         if(spark && !spark.dataset.wired){ spark.dataset.wired="1"; spark.addEventListener("click", ()=>sendPetPlayAction("spark", window.__MK_PET_PLAY_TARGET_UID__ || state.uid)); }
         if(poke && !poke.dataset.wired){ poke.dataset.wired="1"; poke.addEventListener("click", ()=>sendPetPlayAction("poke", window.__MK_PET_PLAY_TARGET_UID__ || "")); }
         if(send && !send.dataset.wired){ send.dataset.wired="1"; send.addEventListener("click", sendPetPlayChat); }
-        if(input && !input.dataset.wired){ input.dataset.wired="1"; input.addEventListener("keydown", ev=>{ if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); sendPetPlayChat(); } }); }
+        if(input && !input.dataset.wired){ input.dataset.wired="1"; input.addEventListener("keydown", ev=>{ if(ev.isComposing || ev.keyCode === 229 || ev.key === "Process") return; if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); sendPetPlayChat(); } }); }
         if(bgSel && !bgSel.dataset.wired){ bgSel.dataset.wired="1"; bgSel.addEventListener("change", ()=>setPetPlayBgTheme(bgSel.value)); }
         if(wbToggle && !wbToggle.dataset.wired){ wbToggle.dataset.wired="1"; wbToggle.addEventListener("click", ()=>togglePetPlayWhiteboard()); }
         if(wbClear && !wbClear.dataset.wired){ wbClear.dataset.wired="1"; wbClear.addEventListener("click", clearPetPlayWhiteboard); }
@@ -11339,16 +11350,39 @@ async function prunePetPlayWhiteboardV67(max=PET_PLAY_WB_MAX_V67){
     await rUpdate(rRef(rtdb), updates);
   }catch(e){}
 }
+
+function getPetPlayChatEmojiV87(msg){
+  try{
+    const uid = String(msg?.uid || "");
+    const direct = String(msg?.emoji || "").trim();
+    if(direct) return direct.slice(0,4);
+    const me = uid ? state.currentParticipants?.get?.(uid) : null;
+    const fromPresence = String(me?.theme?.emoji || "").trim();
+    if(fromPresence) return fromPresence.slice(0,4);
+    const active = window.__MK_PET_PLAY_ACTIVE_MAP__;
+    const fromActive = active && uid ? String(active.get(uid)?.emoji || "").trim() : "";
+    if(fromActive) return fromActive.slice(0,4);
+  }catch(e){}
+  return "";
+}
+function renderPetPlayChatNameV87(msg){
+  const emoji = getPetPlayChatEmojiV87(msg);
+  const name = normalizeNick(msg?.name || "익명");
+  return `${emoji ? `<span class="petPlayChatEmoji" aria-hidden="true">${escapeHtml(emoji)}</span>` : ""}<span class="petPlayChatNick">${escapeHtml(name)}</span>`;
+}
+function sortPetPlayChatItemsV87(arr){
+  return (Array.isArray(arr) ? arr : []).slice().sort((a,b)=> (Number(a?.tsMs || 0) - Number(b?.tsMs || 0)) || String(a?.id || "").localeCompare(String(b?.id || "")));
+}
 renderPetPlayChatList = function(){
   try{
     const list = document.getElementById("petPlayChatList");
     if(!list) return;
-    const arr = (window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-PET_PLAY_CHAT_MAX_V67);
+    const arr = sortPetPlayChatItemsV87(window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-PET_PLAY_CHAT_MAX_V67);
     const nearBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 28;
     list.innerHTML = arr.map(m=>{
       const mine = String(m.uid || "") === String(state.uid || "");
       const cls = mine ? "me" : "other";
-      return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${escapeHtml(normalizeNick(m.name||"익명"))}</span>${escapeHtml(String(m.text||"").slice(0,120))}</div>`;
+      return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${renderPetPlayChatNameV87(m)}</span>${escapeHtml(String(m.text||"").slice(0,120))}</div>`;
     }).join("") || `<div class="petPlayChatMsg empty">아직 놀이터 채팅이 없어 🐾</div>`;
     if(nearBottom) list.scrollTop = list.scrollHeight;
   }catch(e){}
@@ -11360,7 +11394,7 @@ sendPetPlayChat = async function(){
     const text = String(input.value || "").trim().slice(0,120);
     if(!text) return;
     input.value = "";
-    const payload = { uid:String(state.uid), name:normalizeNick(state.nickname || els.name?.value || "익명"), text, tsMs:Date.now(), serverTs:rServerTimestamp() };
+    const payload = { uid:String(state.uid), name:normalizeNick(state.nickname || els.name?.value || "익명"), emoji:String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || "").trim()).slice(0,4), text, tsMs:Date.now(), serverTs:rServerTimestamp() };
     try{ showPetPlayChatBubble(payload); }catch(_e){}
     await rPush(rPlaygroundChatRootRef(state.roomId), payload);
     prunePetPlayChatV67(PET_PLAY_CHAT_MAX_V67);
@@ -11403,6 +11437,7 @@ function ensurePetPlayChatHotTypingV67(){
       const tag = String(ev.target?.tagName || "").toUpperCase();
       if(["INPUT","TEXTAREA","SELECT"].includes(tag)) return;
       if(ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if(ev.isComposing || ev.keyCode === 229 || ev.key === "Process") return;
       const input = document.getElementById("petPlayChatInput");
       if(!input) return;
       if(ev.key === "Enter"){
@@ -14100,6 +14135,145 @@ if(!window.__MK_BOOT_OK__){
   function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
+
+
+// ===== V88 펫 놀이터 시크릿 채팅 순서 안정화 패치 =====
+// 핵심: 클라이언트 시각(Date.now)만으로 정렬하지 않고, RTDB 방 단위 chatSeq를 transaction으로 증가시켜
+// 모든 접속자가 같은 순번(seq) 기준으로 채팅을 렌더링합니다.
+const PET_PLAY_CHAT_MAX_V88 = 60;
+function getPetPlayChatOrderKeyV88(msg){
+  try{
+    const seq = Number(msg?.seq || 0);
+    if(Number.isFinite(seq) && seq > 0) return seq;
+  }catch(e){}
+  return 0;
+}
+function sortPetPlayChatItemsV88(arr){
+  return (Array.isArray(arr) ? arr : []).slice().sort((a,b)=>{
+    const as = getPetPlayChatOrderKeyV88(a);
+    const bs = getPetPlayChatOrderKeyV88(b);
+    // seq가 있는 최신 메시지는 seq로 고정 정렬, seq가 없는 과거 메시지는 먼저 배치
+    if(as || bs){
+      if(as !== bs) return as - bs;
+    }
+    const ats = Number(a?.serverTimeMs || a?.tsMs || a?.clientTsMs || 0);
+    const bts = Number(b?.serverTimeMs || b?.tsMs || b?.clientTsMs || 0);
+    return (ats - bts) || String(a?.id || '').localeCompare(String(b?.id || ''));
+  });
+}
+async function nextPetPlayChatSeqV88(){
+  try{
+    if(!state.roomId) return Date.now();
+    const seqRef = rRef(rtdb, `${rRoomBase(state.roomId)}/playground/chatSeq`);
+    const res = await rRunTransaction(seqRef, cur=>{
+      const n = Number(cur || 0);
+      return (Number.isFinite(n) ? n : 0) + 1;
+    });
+    const v = Number(res?.snapshot?.val?.() || 0);
+    if(Number.isFinite(v) && v > 0) return v;
+  }catch(e){}
+  // transaction 실패 시에도 정렬이 완전히 깨지지 않도록 큰 fallback 값 부여
+  return Date.now();
+}
+function mergePetPlayChatItemV88(msg){
+  try{
+    if(!msg || !msg.id) return;
+    const arr = Array.isArray(window.__MK_PET_PLAY_CHAT_ITEMS__) ? window.__MK_PET_PLAY_CHAT_ITEMS__ : [];
+    const idx = arr.findIndex(x=>String(x.id || '') === String(msg.id || ''));
+    if(idx >= 0) arr[idx] = Object.assign({}, arr[idx], msg);
+    else arr.push(msg);
+    window.__MK_PET_PLAY_CHAT_ITEMS__ = sortPetPlayChatItemsV88(arr).slice(-PET_PLAY_CHAT_MAX_V88);
+  }catch(e){}
+}
+function setupPetPlayChatRealtimeV88(){
+  try{
+    if(!state.roomId || getLayoutMode() !== 'playground') return;
+    if(window.__MK_PET_PLAY_CHAT_V88_ROOM__ === state.roomId) return;
+    if(window.__MK_PET_PLAY_CHAT_UNSUB__) try{ window.__MK_PET_PLAY_CHAT_UNSUB__(); }catch(e){}
+    window.__MK_PET_PLAY_CHAT_V88_ROOM__ = state.roomId;
+    window.__MK_PET_PLAY_CHAT_ITEMS__ = [];
+    window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(
+      rQuery(rPlaygroundChatRootRef(state.roomId), rOrderByChild('seq'), rLimitToLast(PET_PLAY_CHAT_MAX_V88)),
+      (snap)=>{
+        const msg = Object.assign({ id:snap.key || '' }, snap.val() || {});
+        mergePetPlayChatItemV88(msg);
+        try{ renderPetPlayChatList(); }catch(e){}
+        const msgTs = Number(msg.tsMs || msg.clientTsMs || 0);
+        const recentSelf = String(msg.uid || '') === String(state.uid || '') && (Date.now() - msgTs < 2500);
+        if(!recentSelf && Date.now() - msgTs < 15000){
+          try{ showPetPlayChatBubble(msg); }catch(e){}
+        }
+      }
+    );
+  }catch(e){}
+}
+const __sortPetPlayChatItemsBeforeV88 = (typeof sortPetPlayChatItemsV87 === 'function') ? sortPetPlayChatItemsV87 : null;
+sortPetPlayChatItemsV87 = function(arr){ return sortPetPlayChatItemsV88(arr); };
+renderPetPlayChatList = function(){
+  try{
+    const list = document.getElementById('petPlayChatList');
+    if(!list) return;
+    const arr = sortPetPlayChatItemsV88(window.__MK_PET_PLAY_CHAT_ITEMS__ || []).slice(-PET_PLAY_CHAT_MAX_V88);
+    const nearBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 36;
+    list.innerHTML = arr.map(m=>{
+      const mine = String(m.uid || '') === String(state.uid || '');
+      const cls = mine ? 'me' : 'other';
+      return `<div class="petPlayChatMsg ${cls}"><span class="petPlayChatName">${renderPetPlayChatNameV87(m)}</span>${escapeHtml(String(m.text||'').slice(0,120))}</div>`;
+    }).join('') || `<div class="petPlayChatMsg empty">아직 놀이터 채팅이 없어 🐾</div>`;
+    if(nearBottom) list.scrollTop = list.scrollHeight;
+  }catch(e){}
+};
+sendPetPlayChat = async function(){
+  try{
+    const input = document.getElementById('petPlayChatInput');
+    if(!input || !state.roomId || !state.uid) return;
+    const raw = String(input.value || '');
+    const text = raw.trim().slice(0,120);
+    if(!text) return;
+    const nowSend = Date.now();
+    const sendKey = `${String(state.uid||'')}::${text}`;
+    if(window.__MK_PET_PLAY_SEND_LOCK__ && window.__MK_PET_PLAY_SEND_LOCK__.key === sendKey && nowSend - window.__MK_PET_PLAY_SEND_LOCK__.at < 1100) return;
+    window.__MK_PET_PLAY_SEND_LOCK__ = { key: sendKey, at: nowSend };
+    input.value = '';
+    const seq = await nextPetPlayChatSeqV88();
+    const payload = {
+      uid:String(state.uid),
+      name:normalizeNick(state.nickname || els.name?.value || '익명'),
+      emoji:String((state.currentParticipants?.get?.(state.uid)?.theme?.emoji || defaultTheme().emoji || '').trim()).slice(0,4),
+      text,
+      seq,
+      clientTsMs:nowSend,
+      tsMs:Date.now(),
+      serverTs:rServerTimestamp()
+    };
+    // 목록은 RTDB에서 돌아온 seq 기준 이벤트로만 추가한다. 그래야 접속자마다 순서가 흔들리지 않는다.
+    try{ showPetPlayChatBubble(payload); }catch(_e){}
+    await rPush(rPlaygroundChatRootRef(state.roomId), payload);
+    try{ prunePetPlayChatV67(PET_PLAY_CHAT_MAX_V88); }catch(_e){}
+    try{ input.focus({preventScroll:true}); }catch(_e){}
+  }catch(e){ try{ showToast('놀이터 채팅 전송 실패'); }catch(_){} }
+};
+try{
+  const __ensurePetPlaygroundRealtimeBeforeV88 = ensurePetPlaygroundRealtime;
+  ensurePetPlaygroundRealtime = function(){
+    try{
+      const ret = __ensurePetPlaygroundRealtimeBeforeV88.apply(this, arguments);
+      setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 80);
+      setTimeout(()=>{ try{ setupPetPlayChatRealtimeV88(); }catch(e){} }, 720);
+      return ret;
+    }catch(e){}
+  };
+}catch(e){}
+try{
+  const __stopPetPlaygroundRealtimeBeforeV88 = stopPetPlaygroundRealtimeV67;
+  stopPetPlaygroundRealtimeV67 = function(){
+    try{ window.__MK_PET_PLAY_CHAT_V88_ROOM__ = ''; }catch(e){}
+    return __stopPetPlaygroundRealtimeBeforeV88.apply(this, arguments);
+  };
+}catch(e){}
+// 이미 놀이터 안에서 패치 파일을 새로고침한 경우도 즉시 채팅 리스너를 V88로 교체
+try{ setTimeout(()=>setupPetPlayChatRealtimeV88(), 500); }catch(e){}
+
 </script>
 <!-- PET_REWORK_V24_END -->
 
