@@ -14083,11 +14083,47 @@ if(!window.__MK_BOOT_OK__){
     const afterLv=levelOf(after); if(afterLv > beforeLv) toast(`${displayName(id)}가 Lv.${afterLv}로 성장했어!`);
     renderAll();
   }
-  // ✅ V47: 펫 성장 판정 보강
-  // 이전 버전은 state/RTDB 반영값만 믿어서, 실제 작업 타이머가 도는데도 펫 성장 루프가 작업중을 못 잡는 경우가 있었음.
-  // 이번 버전은 1) 버튼 클릭 로컬 플래그, 2) state 값, 3) 상단 버튼 문구/클래스, 4) 세션 시작값을 모두 확인한다.
+  // ✅ V49: 펫 성장 판정/누적 보강 + stale sessionStartedAtMs 안전장치
+  // 문제 원인:
+  // - 화면 타이머는 totalSecondsToday + sessionStartedAtMs로 실제 경과 시간을 계산한다.
+  // - 기존 펫 성장은 setInterval(growthTick, 1000)이 실행된 초만 더했다.
+  // - 그래서 탭이 백그라운드/절전/모바일 숨김 상태가 되면 실제 작업 타이머는 증가해도 펫 경험치는 덜 들어갈 수 있었다.
+  // 해결:
+  // - 펫 경험치도 “현재 표시되어야 하는 실제 작업 누적 초”의 차이값을 기준으로 누적한다.
+  // - 별도 anchor를 localStorage에 저장해 새로고침/재입장/자정 리셋 때 중복 누적을 막는다.
   const PET_WORK_FLAG = 'mk_pet_growth_working_v47';
+  const PET_GROW_ANCHOR = 'mk_pet_growth_focus_anchor_v48';
   let lastWorkSeenMs = 0;
+
+  function petDayKey(){
+    try{
+      const d = new Date(Date.now() + 9*60*60*1000);
+      return d.toISOString().slice(0,10);
+    }catch(e){
+      return new Date().toISOString().slice(0,10);
+    }
+  }
+  function petFocusLoadSeconds(){
+    try{
+      const day = localStorage.getItem('mk_focus_day') || '';
+      const sec = Number(localStorage.getItem('mk_focus_sec') || 0);
+      if(day !== petDayKey()) return 0;
+      return Number.isFinite(sec) ? Math.max(0, Math.floor(sec)) : 0;
+    }catch(e){ return 0; }
+  }
+  function readPetGrowthAnchor(){
+    try{ return JSON.parse(localStorage.getItem(PET_GROW_ANCHOR) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function writePetGrowthAnchor(day, sec){
+    try{
+      localStorage.setItem(PET_GROW_ANCHOR, JSON.stringify({
+        day:String(day || petDayKey()),
+        sec:Math.max(0, Math.floor(Number(sec)||0)),
+        at:Date.now()
+      }));
+    }catch(e){}
+  }
+
   function setPetWorkFlag(on){
     try{
       if(on){ localStorage.setItem(PET_WORK_FLAG, JSON.stringify({on:true, at:Date.now()})); lastWorkSeenMs = Date.now(); }
@@ -14097,6 +14133,8 @@ if(!window.__MK_BOOT_OK__){
   function readPetWorkFlag(){
     try{
       const raw = JSON.parse(localStorage.getItem(PET_WORK_FLAG) || '{}') || {};
+      // 너무 오래된 true 플래그는 다음 입장/새 탭에서 잘못 작업중으로 오인하지 않게 버린다.
+      if(raw.on === true && Number(raw.at || 0) && (Date.now() - Number(raw.at || 0) > 12*60*60*1000)) return false;
       return raw.on === true;
     }catch(e){ return false; }
   }
@@ -14105,19 +14143,37 @@ if(!window.__MK_BOOT_OK__){
       const work = document.getElementById('btnWork');
       const br = document.getElementById('btnBreak');
       const idle = document.getElementById('btnIdle');
-      if(work && !work.dataset.petGrowthV47){ work.dataset.petGrowthV47='1'; work.addEventListener('click', ()=>setPetWorkFlag(true), true); }
-      if(br && !br.dataset.petGrowthV47){ br.dataset.petGrowthV47='1'; br.addEventListener('click', ()=>setPetWorkFlag(false), true); }
-      if(idle && !idle.dataset.petGrowthV47){ idle.dataset.petGrowthV47='1'; idle.addEventListener('click', ()=>setPetWorkFlag(false), true); }
+      if(work && !work.dataset.petGrowthV48){ work.dataset.petGrowthV48='1'; work.addEventListener('click', ()=>setPetWorkFlag(true), true); }
+      if(br && !br.dataset.petGrowthV48){ br.dataset.petGrowthV48='1'; br.addEventListener('click', ()=>setPetWorkFlag(false), true); }
+      if(idle && !idle.dataset.petGrowthV48){ idle.dataset.petGrowthV48='1'; idle.addEventListener('click', ()=>setPetWorkFlag(false), true); }
       window.addEventListener('pagehide', ()=>setPetWorkFlag(false), {once:false});
       window.addEventListener('beforeunload', ()=>setPetWorkFlag(false), {once:false});
+      document.addEventListener('visibilitychange', ()=>{
+        // visibilitychange 자체로 성장값을 더하지는 않는다. 다음 tick에서 실제 누적 초 차이만 반영한다.
+        try{ if(document.visibilityState === 'visible') lastMs = Date.now(); }catch(e){}
+      });
     }catch(e){}
+  }
+  function getPetRuntimeSnapshot(){
+    const s = window.__mk_state || {};
+    const uid = s.uid || '';
+    const me = (uid && s.currentParticipants && s.currentParticipants.get) ? s.currentParticipants.get(uid) : null;
+    const status = String(s.myStatus || me?.status || s._lastStatus || s.status || s.localStatus || '').trim().toLowerCase();
+    const baseCandidates = [me?.totalSecondsToday, s.totalSecondsToday, petFocusLoadSeconds()].map(v => Number(v));
+    const base = Math.max(0, ...baseCandidates.filter(v => Number.isFinite(v)));
+    const start = Number(me?.sessionStartedAtMs || s._workSessionStartedAtMs || 0);
+    const nonWork = (status === 'break' || status === 'idle' || status === 'away' || status === 'off' || status === 'offline');
+    // 상태값이 비어 있지만 sessionStartedAtMs만 살아 있는 재연결/반영 지연 상황은 작업중으로 보되,
+    // 명시적으로 휴식/자리비움/오프라인이면 오래된 sessionStartedAtMs를 무시한다.
+    const effectivelyWork = (status === 'work') || (!nonWork && start > 0);
+    const live = (effectivelyWork && start > 0) ? (base + Math.max(0, (Date.now() - start)/1000)) : base;
+    return { s, uid, me, status, nonWork, effectivelyWork, base, start, live: Math.max(0, Math.floor(Number(live)||0)) };
   }
   function isWorking(){
     try{
-      const s=window.__mk_state || {};
-      const uid = s.uid || '';
-      const me = (uid && s.currentParticipants && s.currentParticipants.get) ? s.currentParticipants.get(uid) : null;
-      const candidates = [s.myStatus, me?.status, s._lastStatus, s.status, s?.localStatus].map(v => String(v||'').trim().toLowerCase());
+      const snap = getPetRuntimeSnapshot();
+      const candidates = [snap.status, snap.s?.myStatus, snap.me?.status, snap.s?._lastStatus, snap.s?.status, snap.s?.localStatus]
+        .map(v => String(v||'').trim().toLowerCase());
       if(candidates.includes('work')){ lastWorkSeenMs = Date.now(); setPetWorkFlag(true); return true; }
 
       const statusTxt = String(document.getElementById('statusBtn')?.textContent || '').replace(/\s+/g,'').toLowerCase();
@@ -14128,7 +14184,6 @@ if(!window.__MK_BOOT_OK__){
         lastWorkSeenMs = Date.now(); setPetWorkFlag(true); return true;
       }
 
-      // 상태 객체가 늦게 따라오는 경우: 작업 버튼 클릭 플래그를 신뢰한다.
       if(readPetWorkFlag()){
         const breakTxt = String(document.getElementById('statusBtn')?.textContent || '').replace(/\s+/g,'');
         if(breakTxt.includes('휴식중') || breakTxt.includes('자리비움') || breakTxt.includes('오프라인')) return false;
@@ -14136,8 +14191,9 @@ if(!window.__MK_BOOT_OK__){
         return true;
       }
 
-      // sessionStartedAtMs가 살아 있으면 작업 세션으로 판단
-      if(Number(s._workSessionStartedAtMs || 0) > 0 || Number(me?.sessionStartedAtMs || 0) > 0){
+      // 상태 반영이 늦고 sessionStartedAtMs만 먼저 살아 있는 경우만 작업중으로 보정한다.
+      // 단, 현재 상태가 휴식/자리비움/오프라인으로 명시되어 있으면 오래된 세션값을 신뢰하지 않는다.
+      if(!snap.nonWork && (Number(snap.s?._workSessionStartedAtMs || 0) > 0 || Number(snap.me?.sessionStartedAtMs || 0) > 0)){
         lastWorkSeenMs = Date.now(); return true;
       }
 
@@ -14148,35 +14204,91 @@ if(!window.__MK_BOOT_OK__){
   let petRenderThrottleMs = 0;
   let petGrowthCarrySec = 0;
   function growthTick(){
-    const now=Date.now();
-    const delta=Math.max(0,Math.min(5,(now-lastMs)/1000));
-    lastMs=now;
+    const now = Date.now();
+    const elapsed = Math.max(0, Math.min(10, (now-lastMs)/1000));
+    lastMs = now;
+
     const working = isWorking();
-    window.__MK_PET_DEBUG__ = { working, delta, carry:petGrowthCarrySec, at:new Date().toISOString(), stateStatus: window.__mk_state?.myStatus || '', flag: readPetWorkFlag(), statusText: document.getElementById('statusBtn')?.textContent || '', growthEnabled: loadState().growthEnabled };
-    if(working){
-      petGrowthCarrySec += delta;
-      const whole = Math.floor(petGrowthCarrySec);
+    const snap = getPetRuntimeSnapshot();
+    const today = petDayKey();
+    const anchor = readPetGrowthAnchor();
+    const anchorSecRaw = Number(anchor.sec);
+    const hasAnchor = (anchor.day === today && Number.isFinite(anchorSecRaw));
+    const anchorSec = hasAnchor ? Math.max(0, Math.floor(anchorSecRaw)) : snap.live;
+
+    window.__MK_PET_DEBUG__ = {
+      version:'v49',
+      working,
+      elapsed,
+      carry:petGrowthCarrySec,
+      at:new Date().toISOString(),
+      stateStatus: snap.s?.myStatus || '',
+      participantStatus: snap.me?.status || '',
+      flag: readPetWorkFlag(),
+      statusText: document.getElementById('statusBtn')?.textContent || '',
+      growthEnabled: loadState().growthEnabled,
+      liveFocusSec: snap.live,
+      anchorSec,
+      anchorDay: anchor.day || '',
+      today
+    };
+
+    if(!hasAnchor){
+      writePetGrowthAnchor(today, snap.live);
+      return;
+    }
+
+    // 자정/수동 초기화/프로필 교체 등으로 오늘 타이머가 줄어든 경우: 기준점만 재설정
+    if(snap.live < anchorSec){
+      writePetGrowthAnchor(today, snap.live);
+      petGrowthCarrySec = 0;
+      return;
+    }
+
+    if(!working){
+      // 휴식/자리비움 상태에서 타이머 저장값이 병합되어도 펫이 자라지 않게 기준점만 따라간다.
+      writePetGrowthAnchor(today, snap.live);
+      petGrowthCarrySec = 0;
+      return;
+    }
+
+    let delta = Math.max(0, snap.live - anchorSec);
+
+    // 혹시 live 계산이 아직 못 따라온 첫 1~2초에는 기존 tick 방식으로 최소 보강한다.
+    if(delta <= 0 && elapsed > 0){
+      petGrowthCarrySec += elapsed;
+      delta = Math.floor(petGrowthCarrySec);
+      if(delta > 0) petGrowthCarrySec -= delta;
+    }else{
+      petGrowthCarrySec = 0;
+    }
+
+    // 비정상 점프 방지: 한 번에 최대 12시간까지만 반영. 일반 백그라운드/절전 복귀는 그대로 회수된다.
+    const safeDelta = Math.max(0, Math.min(12*60*60, Math.floor(delta)));
+    if(safeDelta > 0){
       const stBefore = loadState();
       const id = isPetId(stBefore.activePetId) ? stBefore.activePetId : (isPetId(stBefore.growingPetId) ? stBefore.growingPetId : 'cat');
       const before = Number(stBefore.pets?.[id]?.totalSec || 0);
-      if(whole >= 1){
-        petGrowthCarrySec -= whole;
-        addGrowth(whole,false);
-      }
-      // renderAll은 addGrowth 안에서 실행되지만, 매초 너무 무거운 경우를 대비해 새로고침은 5초 단위로 한 번 더 보강
-      if(now - petRenderThrottleMs > 5000){ petRenderThrottleMs = now; try{ renderAll(); }catch(e){} }
+      addGrowth(safeDelta, false);
       const stAfter = loadState();
       const after = Number(stAfter.pets?.[id]?.totalSec || 0);
       window.__MK_PET_DEBUG__.petId = id;
       window.__MK_PET_DEBUG__.before = before;
       window.__MK_PET_DEBUG__.after = after;
-      window.__MK_PET_DEBUG__.added = whole;
-      window.__MK_PET_DEBUG__.carry = petGrowthCarrySec;
+      window.__MK_PET_DEBUG__.added = safeDelta;
     }else{
-      petGrowthCarrySec = 0;
+      window.__MK_PET_DEBUG__.added = 0;
+    }
+
+    // anchor는 실제 live 값으로 맞춘다. 그래야 백그라운드 복귀 후 이미 회수한 구간을 중복 반영하지 않는다.
+    writePetGrowthAnchor(today, snap.live);
+
+    if(now - petRenderThrottleMs > 5000){
+      petRenderThrottleMs = now;
+      try{ renderAll(); }catch(e){}
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v49]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 
