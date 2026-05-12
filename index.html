@@ -14083,7 +14083,7 @@ if(!window.__MK_BOOT_OK__){
     const afterLv=levelOf(after); if(afterLv > beforeLv) toast(`${displayName(id)}가 Lv.${afterLv}로 성장했어!`);
     renderAll();
   }
-  // ✅ V49: 펫 성장 판정/누적 보강 + stale sessionStartedAtMs 안전장치
+  // ✅ V51: 펫 성장 판정/누적 보강 + localStorage live값 중복 더하기 방지 + 임시 tick 중복 제거
   // 문제 원인:
   // - 화면 타이머는 totalSecondsToday + sessionStartedAtMs로 실제 경과 시간을 계산한다.
   // - 기존 펫 성장은 setInterval(growthTick, 1000)이 실행된 초만 더했다.
@@ -14159,15 +14159,39 @@ if(!window.__MK_BOOT_OK__){
     const uid = s.uid || '';
     const me = (uid && s.currentParticipants && s.currentParticipants.get) ? s.currentParticipants.get(uid) : null;
     const status = String(s.myStatus || me?.status || s._lastStatus || s.status || s.localStatus || '').trim().toLowerCase();
-    const baseCandidates = [me?.totalSecondsToday, s.totalSecondsToday, petFocusLoadSeconds()].map(v => Number(v));
-    const base = Math.max(0, ...baseCandidates.filter(v => Number.isFinite(v)));
+
+    // ✅ V50~V51 핵심 수정
+    // localStorage(mk_focus_sec)는 화면 타이머 저장 지점에서 이미 "오늘 누적 + 현재 세션 경과"가 반영된 live 값일 수 있다.
+    // v49에서는 이 값을 base로 잡은 뒤 sessionStartedAtMs 경과분을 다시 더해 20분 작업이 40분 경험치처럼 중복 누적될 수 있었다.
+    // 따라서 active session이 있을 때는 localFocusSec를 "세션 시작 기준 base"로 쓰지 않고,
+    // 1) RTDB/state의 커밋된 totalSecondsToday + 세션 경과값
+    // 2) localStorage의 live 저장값
+    // 둘 중 더 큰 값을 최종 live로만 사용한다. 절대 localFocusSec + sessionElapsed를 하지 않는다.
+    const localFocusSec = petFocusLoadSeconds();
+    const committedCandidates = [me?.totalSecondsToday, s.totalSecondsToday]
+      .map(v => Number(v))
+      .filter(v => Number.isFinite(v) && v >= 0);
+    const committedBase = committedCandidates.length ? Math.max(...committedCandidates) : 0;
+
     const start = Number(me?.sessionStartedAtMs || s._workSessionStartedAtMs || 0);
     const nonWork = (status === 'break' || status === 'idle' || status === 'away' || status === 'off' || status === 'offline');
     // 상태값이 비어 있지만 sessionStartedAtMs만 살아 있는 재연결/반영 지연 상황은 작업중으로 보되,
     // 명시적으로 휴식/자리비움/오프라인이면 오래된 sessionStartedAtMs를 무시한다.
     const effectivelyWork = (status === 'work') || (!nonWork && start > 0);
-    const live = (effectivelyWork && start > 0) ? (base + Math.max(0, (Date.now() - start)/1000)) : base;
-    return { s, uid, me, status, nonWork, effectivelyWork, base, start, live: Math.max(0, Math.floor(Number(live)||0)) };
+    const sessionElapsed = (effectivelyWork && start > 0) ? Math.max(0, (Date.now() - start)/1000) : 0;
+    const liveFromSession = (effectivelyWork && start > 0) ? (committedBase + sessionElapsed) : committedBase;
+    const live = effectivelyWork ? Math.max(liveFromSession, localFocusSec) : Math.max(committedBase, localFocusSec);
+
+    return {
+      s, uid, me, status, nonWork, effectivelyWork,
+      base: committedBase,
+      committedBase,
+      localFocusSec,
+      sessionElapsed,
+      liveFromSession: Math.max(0, Math.floor(Number(liveFromSession)||0)),
+      start,
+      live: Math.max(0, Math.floor(Number(live)||0))
+    };
   }
   function isWorking(){
     try{
@@ -14217,7 +14241,7 @@ if(!window.__MK_BOOT_OK__){
     const anchorSec = hasAnchor ? Math.max(0, Math.floor(anchorSecRaw)) : snap.live;
 
     window.__MK_PET_DEBUG__ = {
-      version:'v49',
+      version:'v51',
       working,
       elapsed,
       carry:petGrowthCarrySec,
@@ -14252,16 +14276,13 @@ if(!window.__MK_BOOT_OK__){
       return;
     }
 
-    let delta = Math.max(0, snap.live - anchorSec);
-
-    // 혹시 live 계산이 아직 못 따라온 첫 1~2초에는 기존 tick 방식으로 최소 보강한다.
-    if(delta <= 0 && elapsed > 0){
-      petGrowthCarrySec += elapsed;
-      delta = Math.floor(petGrowthCarrySec);
-      if(delta > 0) petGrowthCarrySec -= delta;
-    }else{
-      petGrowthCarrySec = 0;
-    }
+    // ✅ V51: 경험치는 오직 실제 표시/저장 타이머의 증가분만 반영한다.
+    // v50의 임시 tick 보강(delta<=0일 때 elapsed 추가)은 localStorage 저장 주기(약 3~15초)와 겹치면
+    // '먼저 1초씩 적립 + 나중에 저장값 점프분 적립'으로 몇 초씩 중복될 수 있어 제거한다.
+    // snap.live는 sessionStartedAtMs 기반 liveFromSession 또는 localStorage live값 중 더 큰 값이므로,
+    // 정상 작업 중에는 tick 보강 없이도 실제 경과를 따라간다.
+    petGrowthCarrySec = 0;
+    const delta = Math.max(0, snap.live - anchorSec);
 
     // 비정상 점프 방지: 한 번에 최대 12시간까지만 반영. 일반 백그라운드/절전 복귀는 그대로 회수된다.
     const safeDelta = Math.max(0, Math.min(12*60*60, Math.floor(delta)));
@@ -14288,7 +14309,7 @@ if(!window.__MK_BOOT_OK__){
       try{ renderAll(); }catch(e){}
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v49]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 
