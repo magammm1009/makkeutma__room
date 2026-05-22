@@ -2793,6 +2793,36 @@ body.joined #preJoinCard{ display:none; }
     74%{ opacity:0; transform:translate3d(10px,-31px,0) scale(.94) rotate(14deg); }
   }
 
+
+
+    /* ===== V92 작업방 본체 경량화: 채팅 입력 보호/저사양 렌더 ===== */
+    body.typingMode .brand .dot,
+    body.typingMode .joinTickerTrack,
+    body.typingMode .tile *,
+    body.typingMode .petDashFx,
+    body.typingMode .petDashHeart,
+    body.lowPerfMode .brand .dot,
+    body.lowPerfMode .joinTickerTrack,
+    body.lowPerfMode .tile *,
+    body.lowPerfMode .msg *,
+    body.lowPerfMode .card *{
+      animation-play-state: paused !important;
+      transition-duration: .001ms !important;
+    }
+    body.lowPerfMode .tile,
+    body.lowPerfMode .card,
+    body.lowPerfMode .petPlayFriend,
+    body.lowPerfMode .petPlayPet img{
+      filter:none !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
+      box-shadow:none !important;
+    }
+    body:not(.mkPetPlaygroundPage) .grid.playgroundMode{
+      display:grid !important;
+      min-height:0 !important;
+    }
+
 </style>
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
@@ -2897,7 +2927,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="vmBtns">
 <button class="ghost" id="vmViewDefault" type="button">기본 보기</button>
 <button class="ghost" id="vmViewMini" type="button">미니 보기</button>
-<button class="ghost" id="vmViewPlayground" type="button">🐾 펫 놀이터</button>
+<button class="ghost" id="vmViewPlayground" type="button">🐾 펫 놀이터 열기</button>
 </div>
 </div>
 </div>
@@ -3765,14 +3795,30 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     // ✅ Tile layout modes (default / compact5)
     // -----------------------------
     const LS_LAYOUT_MODE = "mk_layout_mode_v1";
+    function isPetPlaygroundPage(){
+      try{ return !!window.__MK_PLAYGROUND_PAGE__; }catch(e){ return false; }
+    }
     function getLayoutMode(){
       try{
         const m = localStorage.getItem(LS_LAYOUT_MODE) || "default";
-        return (m === "compact5" || m === "playground") ? m : "default";
+        if(m === "playground") return isPetPlaygroundPage() ? "playground" : "default";
+        return (m === "compact5") ? m : "default";
       }catch(e){ return "default"; }
     }
     function setLayoutMode(mode){
-      try{ localStorage.setItem(LS_LAYOUT_MODE, mode); }catch(e){}
+      try{
+        const safe = (mode === "playground" && !isPetPlaygroundPage()) ? "default" : mode;
+        localStorage.setItem(LS_LAYOUT_MODE, safe);
+      }catch(e){}
+    }
+    function openExternalPetPlayground(){
+      try{
+        const url = new URL("playground.html", window.location.href);
+        if(state && state.roomId) url.searchParams.set("room", state.roomId);
+        window.open(url.toString(), "_blank", "noopener");
+      }catch(e){
+        try{ window.open("playground.html", "_blank", "noopener"); }catch(_e){}
+      }
     }
     function applyLayoutMode(mode){
       const g = els.grid;
@@ -3888,7 +3934,7 @@ function syncViewMenuUI(){
     const lm = getLayoutMode();
     els.vmViewDefault?.classList.toggle("on", lm==="default");
     els.vmViewMini?.classList.toggle("on", lm==="compact5");
-    els.vmViewPlayground?.classList.toggle("on", lm==="playground");
+    els.vmViewPlayground?.classList.toggle("on", false);
   }catch(e){}
 }
 function setSortModeDirect(mode){
@@ -3909,7 +3955,12 @@ function setSortModeDirect(mode){
   syncViewMenuUI();
 }
 function setLayoutModeDirect(mode){
-  const safe = (mode==="compact5" || mode==="playground") ? mode : "default";
+  if(mode === "playground" && !isPetPlaygroundPage()){
+    openExternalPetPlayground();
+    syncViewMenuUI();
+    return;
+  }
+  const safe = (mode==="compact5" || (mode==="playground" && isPetPlaygroundPage())) ? mode : "default";
   const prev = getLayoutMode();
   if(prev === safe){
     syncViewMenuUI();
@@ -4393,6 +4444,37 @@ chatUnseen: 0,
 
     };
     window.__mk_state = state;
+
+
+    // ===== V92 작업방 본체 경량화 패치 =====
+    // 채팅 입력 중에는 타일/대시보드/놀이터류 렌더를 아주 잠깐 미뤄서 입력 끊김을 줄입니다.
+    const MK_TYPING_LOCK_MS = 520;
+    const MK_TYPING_CLASS_MS = 760;
+    function markTypingLock(){
+      try{
+        state._typingLockUntil = Date.now() + MK_TYPING_LOCK_MS;
+        document.body?.classList.add("typingMode");
+        clearTimeout(state._typingModeTimer);
+        state._typingModeTimer = setTimeout(()=>{
+          try{ document.body?.classList.remove("typingMode"); }catch(e){}
+        }, MK_TYPING_CLASS_MS);
+      }catch(e){}
+    }
+    function isTypingLocked(){
+      try{ return Date.now() < Number(state._typingLockUntil || 0); }catch(e){ return false; }
+    }
+    function scheduleAfterTypingLock(fn, delay=MK_TYPING_LOCK_MS){
+      try{
+        clearTimeout(state._typingDeferredTimer);
+        state._typingDeferredTimer = setTimeout(()=>{ try{ fn && fn(); }catch(e){} }, delay);
+      }catch(e){ try{ fn && fn(); }catch(_e){} }
+    }
+    window.__MK_MARK_TYPING_LOCK__ = markTypingLock;
+    try{
+      if(!window.__MK_PLAYGROUND_PAGE__) document.body?.classList.add("mkWorkroomMainPage");
+      else document.body?.classList.add("mkPetPlaygroundPage");
+    }catch(e){}
+
 
     // Helpers
 
@@ -8653,7 +8735,11 @@ function subscribeChat(){
   function __scheduleChatRender(){
     if(__chatRenderScheduled) return;
     __chatRenderScheduled = true;
-    requestAnimationFrame(()=>{
+    const runChatRender = ()=>{
+      // V92-hotfix: 채팅 렌더는 입력 보호 대상에서 제외합니다.
+      // 입력 보호는 타일/대시보드처럼 무거운 비채팅 렌더에만 적용해야
+      // 메시지가 전송 직후 바로 목록에 올라옵니다.
+      requestAnimationFrame(()=>{
       __chatRenderScheduled = false;
       try{
         const nearBottom = isChatNearBottom();
@@ -8682,7 +8768,9 @@ function subscribeChat(){
         ensureChatMoreUI();
         updateChatMoreUI();
       }catch(e){}
-    });
+      });
+    };
+    runChatRender();
   }
 
   function ensureChatMoreUI(){
@@ -9652,13 +9740,24 @@ t.appendChild(bg);
       state._pendingPresenceArr = onlineArr;
       if(state._presenceRenderQueued) return;
       state._presenceRenderQueued = true;
-      requestAnimationFrame(()=>{
-        state._presenceRenderQueued = false;
-        const arr = state._pendingPresenceArr || [];
-        try{ renderStatusRoster(arr); }catch(e){}
-        try{ renderGridTilesOrRoster(arr); }catch(e){}
-        try{ setMissionButtonState(); }catch(e){}
-      });
+      const runPresenceRender = ()=>{
+        if(isTypingLocked()){
+          state._presenceRenderQueued = false;
+          clearTimeout(state._presenceRenderTypingTimer);
+          state._presenceRenderTypingTimer = setTimeout(()=>{
+            try{ schedulePresenceRender(state._pendingPresenceArr || []); }catch(e){}
+          }, 360);
+          return;
+        }
+        requestAnimationFrame(()=>{
+          state._presenceRenderQueued = false;
+          const arr = state._pendingPresenceArr || [];
+          try{ renderStatusRoster(arr); }catch(e){}
+          try{ renderGridTilesOrRoster(arr); }catch(e){}
+          try{ setMissionButtonState(); }catch(e){}
+        });
+      };
+      runPresenceRender();
     }
 
 
@@ -12894,7 +12993,10 @@ try{
     let __chatIsComposing = false;
     let __chatSendAfterCompose = false;
 
+    els.chatInput.addEventListener("input", ()=>{ try{ markTypingLock(); }catch(e){} }, {passive:true});
+    els.chatInput.addEventListener("focus", ()=>{ try{ markTypingLock(); }catch(e){} }, {passive:true});
     els.chatInput.addEventListener("compositionstart", ()=>{
+      try{ markTypingLock(); }catch(e){}
       __chatIsComposing = true;
       __chatSendAfterCompose = false;
     });
@@ -12908,6 +13010,7 @@ try{
     });
 
     els.chatInput.addEventListener("keydown", (e)=>{
+      try{ markTypingLock(); }catch(err){}
       if(e.key !== "Enter") return;
 
 
