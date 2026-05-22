@@ -6,7 +6,7 @@
 <link href="https://script.google.com" rel="preconnect"/>
 <link href="https://script.google.com" rel="dns-prefetch"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>MagamMagam v92</title>
+<title>MagamMagam</title>
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
     :root{
@@ -2891,7 +2891,6 @@ body.joined #preJoinCard{ display:none; }
 <button class="primary" disabled="" id="leaveBtn">퇴장</button>
 <span class="meMini" id="meHint">—</span>
 <button class="ghost" disabled="" id="dataSaverBtn" title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
-<button class="ghost" disabled="" id="safeRefreshBtn" title="장시간 사용으로 버벅일 때 작업방을 가볍게 다시 엽니다">🧹 가볍게</button>
 <button class="ghost" disabled="" id="menuBtn" title="작업방 설정">⚙️</button>
 </div>
 </div>
@@ -2910,6 +2909,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
 </div>
 <div class="right"><button aria-label="업데이트 안내" class="ghost layoutToggle" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
+<button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="캐시는 비우고 현재 방을 다시 불러옵니다" type="button">🔄새로고침</button>
 <button aria-label="폭파 수다방 열기" class="ghost layoutToggle" id="goSudaMini" title="폭파 수다방 열기" type="button">💣수다</button>
 <button aria-label="가이드 보기" class="ghost layoutToggle" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
@@ -4190,7 +4190,6 @@ const auth = getAuth(app);
       vmViewDefault: $("vmViewDefault"),
       vmViewMini: $("vmViewMini"),
       dataSaverBtn: $("dataSaverBtn"),
-      safeRefreshBtn: $("safeRefreshBtn"),
 
       ctxMenu: $("ctxMenu"),
       ctxTitle: $("ctxTitle"),
@@ -6303,7 +6302,6 @@ function setControlsEnabled(joined){
       els.name.disabled = joined;
       els.menuBtn.disabled = !joined;
       if(els.dataSaverBtn) els.dataSaverBtn.disabled = !joined;
-      if(els.safeRefreshBtn) els.safeRefreshBtn.disabled = !joined;
 
       // hide/show nickname & pass area on join
       els.name.style.display = joined ? "none" : "";
@@ -8371,13 +8369,10 @@ async function saveDashboard(){
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
       }[c]));
     }
-    const CHAT_MAX_VIEW = 200;
-    // ✅ V94: messages 경로에는 chat뿐 아니라 sfx/ticker/mission도 섞여 있음.
-    // rLimitToLast(N)는 '채팅 N개'가 아니라 '전체 이벤트 N개'라서, 효과 이벤트가 많으면 최신 채팅이 밀려 누락될 수 있음.
-    // 그래서 raw 조회 폭은 넉넉히, 화면 유지 개수는 적당히 분리한다.
-    const CHAT_RAW_QUERY_LIMIT = 180;
-    const CHAT_QUERY_LIMIT = 80;
-    const CHAT_KEEP_MAX = 80;
+    const CHAT_MAX_VIEW = 100;
+    // If mission events share the same collection, fetch a bit more so chat still shows up to 70.
+    const CHAT_QUERY_LIMIT = 10; // ✅ always load last 10 to reduce reads (first/re-entry)
+    const CHAT_KEEP_MAX = 50;   // ✅ while staying in room, keep up to 50 in memory/UI
     // ✅ Reactions (간단 이모지)
     const REACTS = [
       { k:"heart", e:"❤️" },
@@ -8673,80 +8668,79 @@ function subscribeChat(){
   try{ if(state.unsubChat) state.unsubChat(); }catch(e){}
   try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
   try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
-
   state.chatDisplayIds = [];
   state.chatRollingById = {};
   state.chatCache = [];
   state.chatCacheById = {};
   state.chatFirstLoadDone = false;
   state.chatDidPrependOnce = false;
-  state.chatUnseen = 0;
 
-  // ✅ V95 긴급 복구
-  // tsMs/client clock 기준 정렬은 오래 켜둔 방에서 과거 채팅이 최신처럼 끼어드는 문제가 생길 수 있어
-  // RTDB push key(=생성 순서가 반영된 키) 기준으로 최신/과거를 판정한다.
-  const INIT_CHAT_LIMIT = 30;
-  const STAY_LIMIT = 60;
-  const MORE_LIMIT = 40;
-  const MAX_LIMIT = 100;
-  const RAW_SCAN_LIMIT = 260; // chat 외 ticker/sfx/mission이 섞여도 최신 chat을 충분히 찾기 위한 스캔폭
+  // limits (requested)
+  const INIT_LIMIT = 10;   // 입장 시
+  const STAY_LIMIT = 20;   // 입장 유지 시
+  const MORE_LIMIT = 20;   // 더보기 1회
+  const MAX_LIMIT  = 40;   // 총 최대(20+20)
 
-  state.chatWindowMax = STAY_LIMIT;
-  state.chatMoreUsed = false;
-  state.chatStayExpanded = false;
+  state.chatWindowMax = STAY_LIMIT;     // currently enforced visible window
+  state.chatMoreUsed = false;           // 더보기 사용 여부(1회)
+  state.chatStayExpanded = false;       // 10 -> 20 확장 완료 여부
 
   const root = rMessagesRootRef(state.roomId);
-  let __chatRenderScheduled = false;
-  let __initialBoundaryKey = ""; // listener가 붙을 때 이미 있던 과거 child_added를 무시하기 위한 경계
-
-  function isRenderableChat(m){
-    if(!m) return false;
-    if(m.type === "mission" || m.type === "sfx" || m.type === "ticker") return false;
-    // 예전 데이터에 type이 없을 수도 있으므로 text가 있으면 채팅으로 인정
-    if(m.type && m.type !== "chat" && !m.text) return false;
-    return !!String(m.text || "").trim();
-  }
-
-  function keyCompare(a,b){ return String(a||"").localeCompare(String(b||"")); }
 
   function normalizeDocsFromSnapVal(valObj){
     const docs = [];
     for(const [id, data] of Object.entries(valObj || {})){
       if(!data) continue;
-      const mm = { id, _key:id, ...data };
-      if(isRenderableChat(mm)) docs.push(mm);
+      docs.push({ id, ...data });
     }
-    docs.sort((a,b)=> keyCompare(a._key||a.id, b._key||b.id));
-    return docs;
+    docs.sort((a,b)=>{
+      const ta = Number(a.serverTs||a.tsMs||0);
+      const tb = Number(b.serverTs||b.tsMs||0);
+      if(ta !== tb) return ta - tb;
+      return String(a.id||"").localeCompare(String(b.id||""));
+    });
+    // mission/sfx 제외(채팅만)
+    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "ticker")));
   }
 
   function rebuildCacheFromMap(){
-    let merged = Object.values(state.chatRollingById || {}).filter(isRenderableChat);
-    merged.sort((a,b)=> keyCompare(a._key||a.id, b._key||b.id));
-    const keep = Math.max(1, Number(state.chatWindowMax || STAY_LIMIT));
+    let merged = Object.values(state.chatRollingById || {});
+    merged.sort((a,b)=>{
+      const ta = Number(a.serverTs||a.tsMs||0);
+      const tb = Number(b.serverTs||b.tsMs||0);
+      if(ta !== tb) return ta - tb;
+      return String(a.id||"").localeCompare(String(b.id||""));
+    });
+    // enforce window max (20 or 40)
+    const keep = Math.max(1, Number(state.chatWindowMax||STAY_LIMIT));
     merged = merged.slice(-keep);
-
+    // rebuild map
     const nextMap = {};
     for(const mm of merged){
-      if(mm && mm.id){
-        mm._key = mm._key || mm.id;
-        nextMap[mm.id] = mm;
-      }
+      if(mm && mm.id) nextMap[mm.id] = mm;
     }
     state.chatRollingById = nextMap;
+    // cache
     state.chatCache = merged;
     state.chatCacheById = {};
     for(const mm of merged){ if(mm && mm.id) state.chatCacheById[mm.id] = mm; }
     return merged;
   }
 
-  function __scheduleChatRender(forceBottom){
+  // ✅ render batching: 여러 child_added/changed를 한 프레임에 묶어서 렌더(버벅임 감소)
+  let __chatRenderScheduled = false;
+  function __scheduleChatRender(){
     if(__chatRenderScheduled) return;
     __chatRenderScheduled = true;
-    requestAnimationFrame(()=>{
+    const runChatRender = ()=>{
+      // V92-hotfix: 채팅 렌더는 입력 보호 대상에서 제외합니다.
+      // 입력 보호는 타일/대시보드처럼 무거운 비채팅 렌더에만 적용해야
+      // 메시지가 전송 직후 바로 목록에 올라옵니다.
+      requestAnimationFrame(()=>{
       __chatRenderScheduled = false;
       try{
-        const nearBottom = (typeof forceBottom === "boolean") ? forceBottom : isChatNearBottom();
+        const nearBottom = isChatNearBottom();
+        state.chatUserNearBottom = nearBottom;
         const list2 = rebuildCacheFromMap();
         const newIds = list2.map(m=>m.id);
         const oldIds = state.chatDisplayIds || [];
@@ -8762,6 +8756,7 @@ function subscribeChat(){
             hideChatNewBar(true);
           }
         }else{
+          // 첫 렌더
           try{ state.chatUnseen = 0; hideChatNewBar(true); }catch(e){}
         }
 
@@ -8769,11 +8764,11 @@ function subscribeChat(){
         state.chatDisplayIds = newIds;
         ensureChatMoreUI();
         updateChatMoreUI();
-      }catch(e){ console.warn("[chat] render failed", e); }
-    });
+      }catch(e){}
+      });
+    };
+    runChatRender();
   }
-
-  try{ state._scheduleChatRender = __scheduleChatRender; }catch(e){}
 
   function ensureChatMoreUI(){
     if(!els.chatList) return;
@@ -8790,90 +8785,111 @@ function subscribeChat(){
       btn.type = "button";
       btn.id = "chatMoreBtn";
       btn.className = "chatJumpBtn";
-      btn.textContent = "⬆️ 더보기(과거 40개)";
+      btn.textContent = "⬆️ 더보기(과거 20개)";
       btn.addEventListener("click", async ()=>{
         if(state.chatMoreUsed) return;
         try{ btn.disabled = true; }catch(e){}
-        try{ await loadMoreOlderOnce(); }
-        finally{
+        try{
+          await loadMoreOlderOnce();
+        }finally{
           try{ btn.disabled = false; }catch(e){}
           updateChatMoreUI();
         }
       });
       bar.appendChild(btn);
     }
+    // keep at top of chatList
     try{
-      if(els.chatList.firstChild !== bar) els.chatList.prepend(bar);
+      if(els.chatList.firstChild !== bar){
+        els.chatList.prepend(bar);
+      }
     }catch(e){}
   }
 
   function updateChatMoreUI(){
     const bar = document.getElementById("chatMoreBar");
     if(!bar || !els.chatList) return;
-    const atTop = (els.chatList.scrollTop || 0) <= 60;
+    const atTop = (els.chatList.scrollTop || 0) <= 60; // ✅ 약간만 위로 올려도 더보기 노출
     const can = state.chatStayExpanded && !state.chatMoreUsed;
     bar.style.display = (can && atTop) ? "flex" : "none";
   }
 
-  async function loadRecentRawByKey(limitN=RAW_SCAN_LIMIT){
-    const q = rQuery(root, rOrderByKey(), rLimitToLast(limitN));
+  async function loadLastOnce(n){
+    const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(n));
     const snap = await rGet(q);
     const val = snap && snap.val ? (snap.val() || {}) : {};
-    const rawKeys = Object.keys(val || {}).sort(keyCompare);
-    if(rawKeys.length) __initialBoundaryKey = rawKeys[rawKeys.length - 1];
     return normalizeDocsFromSnapVal(val);
   }
 
-  async function loadOlderBeforeKey(beforeKey, want=MORE_LIMIT){
-    const key = String(beforeKey || "");
-    if(!key) return [];
-    // endAt는 기준 키를 포함하므로 아래에서 key 미만만 필터링한다.
-    const q = rQuery(root, rOrderByKey(), rEndAt(key), rLimitToLast(Math.max(RAW_SCAN_LIMIT, want * 5)));
+  async function loadBeforeTs(ts, n){
+    // load older messages (endAt(ts-1)) up to n
+    const end = Number(ts||0) - 1;
+    if(!end || end < 0) return [];
+    const q = rQuery(root, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(n));
     const snap = await rGet(q);
     const val = snap && snap.val ? (snap.val() || {}) : {};
-    const docs = normalizeDocsFromSnapVal(val).filter(m => keyCompare(m._key||m.id, key) < 0);
-    return docs.slice(-want);
+    return normalizeDocsFromSnapVal(val);
   }
 
   async function expandToStayLimit(){
     if(state.chatStayExpanded) return;
     const current = rebuildCacheFromMap();
-    if(current.length >= STAY_LIMIT){ state.chatStayExpanded = true; return; }
+    if(current.length >= STAY_LIMIT){
+      state.chatStayExpanded = true;
+      return;
+    }
     const oldest = current[0];
-    const oldestKey = oldest?._key || oldest?.id || "";
-    if(!oldestKey){ state.chatStayExpanded = true; return; }
+    const oldestTs = Number(oldest?.tsMs||0);
+    if(!oldestTs) { state.chatStayExpanded = true; return; }
     const need = STAY_LIMIT - current.length;
-    const older = await loadOlderBeforeKey(oldestKey, Math.min(need, STAY_LIMIT));
+    const older = await loadBeforeTs(oldestTs, Math.min(need, STAY_LIMIT));
     if(older && older.length){
-      for(const mm of older){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
+      // prepend older
+      for(const mm of older){
+        if(mm && mm.id) state.chatRollingById[mm.id] = mm;
+      }
+      // flag for scroll anchoring
       state.chatDidPrependOnce = true;
     }
     state.chatStayExpanded = true;
-    __scheduleChatRender(true);
+    const list = rebuildCacheFromMap();
+    const nearBottom = true;
+    renderChatFull(list, nearBottom);
+    state.chatDisplayIds = list.map(m=>m.id);
+    try{
+      state.chatUnseen = 0; hideChatNewBar(true);
+    }catch(e){}
   }
 
   async function loadMoreOlderOnce(){
     if(state.chatMoreUsed) return;
     const current = rebuildCacheFromMap();
-    if(!current.length){ state.chatMoreUsed = true; return; }
-    const oldestKey = current[0]?._key || current[0]?.id || "";
-    if(!oldestKey){ state.chatMoreUsed = true; return; }
-    const older = await loadOlderBeforeKey(oldestKey, MORE_LIMIT);
+    if(!current.length) { state.chatMoreUsed = true; return; }
+    const oldestTs = Number(current[0]?.tsMs||0);
+    if(!oldestTs){ state.chatMoreUsed = true; return; }
+
+    const older = await loadBeforeTs(oldestTs, MORE_LIMIT);
     if(older && older.length){
+      // increase window to 40
       state.chatWindowMax = MAX_LIMIT;
-      for(const mm of older){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
+      for(const mm of older){
+        if(mm && mm.id) state.chatRollingById[mm.id] = mm;
+      }
       state.chatDidPrependOnce = true;
       const list = rebuildCacheFromMap();
+      // not force bottom; keep scroll anchored
       renderChatFull(list, false);
       state.chatDisplayIds = list.map(m=>m.id);
     }
     state.chatMoreUsed = true;
   }
 
+  // initial load 10
   (async ()=>{
     try{
-      const recent = await loadRecentRawByKey(RAW_SCAN_LIMIT);
-      for(const mm of recent.slice(-INIT_CHAT_LIMIT)){
+      const initial = await loadLastOnce(INIT_LIMIT);
+      // seed map
+      for(const mm of initial){
         if(mm && mm.id) state.chatRollingById[mm.id] = mm;
       }
       const list = rebuildCacheFromMap();
@@ -8881,30 +8897,25 @@ function subscribeChat(){
       state.chatDisplayIds = list.map(m=>m.id);
       state.chatFirstLoadDone = true;
       try{ state.chatUnseen = 0; hideChatNewBar(true); }catch(e){}
+      // ensure UI bits
       ensureChatMoreUI();
       updateChatMoreUI();
 
-      setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 900);
+      // auto expand to 20 after "stay"
+      setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 1200);
 
-      const qLive = rQuery(root, rOrderByKey(), rLimitToLast(RAW_SCAN_LIMIT));
+      // live listener: 안정적으로(클라이언트 시계 차이로 누락 방지) 마지막 MAX_LIMIT을 계속 구독
+      const qLive = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(MAX_LIMIT));
+
       const onAdd = (snap)=>{
         try{
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
-          const mm = { id, _key:id, ...data };
+          const mm = { id, ...data };
 
-          // onChildAdded는 listener 부착 시 기존 child도 모두 쏘므로, 경계 이하의 과거 항목은 무시한다.
-          if(__initialBoundaryKey && keyCompare(id, __initialBoundaryKey) <= 0){
-            // 단, optimistic으로 먼저 표시해 둔 내 메시지가 서버에서 돌아온 경우는 교체한다.
-            if(state.chatRollingById && state.chatRollingById[id]?.__optimistic){
-              state.chatRollingById[id] = mm;
-              __scheduleChatRender(true);
-            }
-            return;
-          }
-
-          if(mm.type === 'ticker'){
+          // ✅ Ticker(입장 알림 등): 채팅에 렌더하지 않고 상단 띠로만 표시
+          if(mm && mm.type==='ticker'){
             try{
               const ts = Number(mm.tsMs||0);
               const last = Number(sessionStorage.getItem('lastTickerTs') || 0);
@@ -8915,57 +8926,75 @@ function subscribeChat(){
             }catch(e){}
             return;
           }
-          if(mm.type === 'sfx'){
+
+          // ✅ SFX는 렌더하지 않고 재생만
+          if(mm && mm.type==='sfx'){
             try{
               const ts = Number(mm.tsMs||0);
-              if(ts && ts > (state.lastSfxTs||0)){
+              if(!state.sfxInitDone){
+                state.lastSfxTs = Math.max(Number(state.lastSfxTs||0), ts||0);
+                state.sfxInitDone = true;
+              }else if(ts && ts > (state.lastSfxTs||0)){
                 state.lastSfxTs = ts;
                 if(!(mm.uid && state.uid && mm.uid === state.uid)) playSfx(mm.kind);
               }
             }catch(e){}
             return;
           }
-          if(!isRenderableChat(mm)) return;
+
+          if(mm && mm.type==='mission') return;
+
+          // ✅ 초기 load에서 이미 가져온 항목이면(중복 child_added) 무시
+          if(state.chatFirstLoadDone && state.chatRollingById && state.chatRollingById[id]){
+            return;
+          }
 
           state.chatRollingById = state.chatRollingById || {};
           state.chatRollingById[id] = mm;
-          __scheduleChatRender(true);
-        }catch(e){ console.warn('[chat] child_added failed', e); }
+          __scheduleChatRender();
+        }catch(e){}
       };
+
       rOnChildAdded(qLive, onAdd);
       state.unsubChatLive = ()=>{ try{ rOff(qLive, "child_added", onAdd); }catch(e){} };
 
+      // change listener (reactions / edits)
+      const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(CHAT_MAX_VIEW));
       const onChg = (snap)=>{
         try{
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
-          const mm = { id, _key:id, ...data };
-          if(!isRenderableChat(mm)) return;
+          const mm = { id, ...data };
+          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker")) return;
+
+          // update only if we have it
           if(state.chatRollingById && state.chatRollingById[id]){
             state.chatRollingById[id] = mm;
             __scheduleChatRender();
           }
-        }catch(e){ console.warn('[chat] child_changed failed', e); }
+        }catch(e){}
       };
-      rOnChildChanged(qLive, onChg);
-      state.unsubChatChg = ()=>{ try{ rOff(qLive, "child_changed", onChg); }catch(e){} };
+      rOnChildChanged(qChg, onChg);
+      state.unsubChatChg = ()=>{ try{ rOff(qChg, "child_changed", onChg); }catch(e){} };
 
+      // attach scroll-top watcher for "more" bar
       if(els.chatList && !state._chatMoreScrollHooked){
         state._chatMoreScrollHooked = true;
         els.chatList.addEventListener("scroll", ()=>{ try{ updateChatMoreUI(); }catch(e){} }, { passive:true });
       }
 
     }catch(e){
-      console.error('[chat] subscribe failed', e);
-      // fallback도 key 기준으로만 동작시켜 tsMs 꼬임을 피한다.
+      console.error(e);
+      // fall back to old onValue if something blows up
       try{
-        const q = rQuery(root, rOrderByKey(), rLimitToLast(RAW_SCAN_LIMIT));
+        const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(INIT_LIMIT));
         const onMsgs = (snap)=>{
           const val = snap && snap.val ? (snap.val() || {}) : {};
-          const list = normalizeDocsFromSnapVal(val).slice(-STAY_LIMIT);
+          const list = normalizeDocsFromSnapVal(val);
+          // enforce stay limit
           state.chatRollingById = {};
-          for(const mm of list){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
+          for(const mm of list.slice(-STAY_LIMIT)){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
           const merged = rebuildCacheFromMap();
           renderChatFull(merged, true);
           state.chatDisplayIds = merged.map(m=>m.id);
@@ -8973,39 +9002,17 @@ function subscribeChat(){
         };
         rOnValue(q, onMsgs);
         state.unsubChat = ()=>{ try{ rOff(q, "value", onMsgs); }catch(e){} };
-      }catch(e2){ console.error('[chat] fallback failed', e2); }
+      }catch(e2){}
     }
   })();
 
+  // unified unsubscribe
   state.unsubChat = ()=>{
     try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
     try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
   };
 }
 
-// ✅ V95: 최신 채팅 재동기화도 tsMs가 아니라 RTDB push key 기준으로 수행한다.
-async function resyncLatestChatV93(reason="manual"){
-  try{
-    if(!state.roomId) return;
-    const root = rMessagesRootRef(state.roomId);
-    const q = rQuery(root, rOrderByKey(), rLimitToLast(260));
-    const snap = await rGet(q);
-    const val = snap && snap.val ? (snap.val() || {}) : {};
-    const docs = [];
-    for(const [id, data] of Object.entries(val || {})){
-      if(!data) continue;
-      const mm = {id, _key:id, ...data};
-      if(mm.type === "mission" || mm.type === "sfx" || mm.type === "ticker") continue;
-      if(String(mm.text||"").trim()) docs.push(mm);
-    }
-    docs.sort((a,b)=>String(a._key||a.id).localeCompare(String(b._key||b.id)));
-    state.chatRollingById = state.chatRollingById || {};
-    for(const mm of docs.slice(-60)){ if(mm && mm.id) state.chatRollingById[mm.id] = mm; }
-    if(typeof state._scheduleChatRender === "function") state._scheduleChatRender(true);
-    try{ window.__MK_LAST_CHAT_RESYNC_V95__ = {reason, at:Date.now(), count:docs.length}; }catch(e){}
-  }catch(e){ console.warn("[chat] key resync failed", e); }
-}
-try{ window.resyncLatestChatV93 = resyncLatestChatV93; window.resyncLatestChatV95 = resyncLatestChatV93; }catch(e){}
 
 // ===== SFX(입장) : 모두에게 들리게(채팅 컬렉션에 'sfx' 이벤트로 브로드캐스트) =====
 // ⚠️ 브라우저 자동재생 정책 때문에, '첫 클릭/키입력' 전에는 재생이 막힐 수 있어요.
@@ -9101,14 +9108,6 @@ async function emitSfx(kind){
       if(!msgId){
         await rPush(rMessagesRootRef(roomId), payload);
       }else{
-        // ✅ V91: 내가 보낸 일반 채팅은 RTDB 왕복 전에 로컬 목록에 먼저 반영
-        // 실제 child_added가 돌아오면 같은 msgId라 중복 추가되지 않습니다.
-        try{
-          const localMsg = Object.assign({ id: msgId, __optimistic:true }, payload);
-          state.chatRollingById = state.chatRollingById || {};
-          state.chatRollingById[msgId] = localMsg;
-          if(typeof state._scheduleChatRender === "function") state._scheduleChatRender();
-        }catch(_e){}
         const dayKey = __seoulDateKeyFromMs(payload.tsMs || Date.now());
         const updates = {};
         updates[`${rRoomBase(roomId)}/messages/${msgId}`] = payload;
@@ -9320,15 +9319,6 @@ async function sendChatCore(text, isFlush=false){
         // fallback
         await rPush(rMessagesRootRef(roomId), payload);
       }else{
-        // ✅ V93 hotfix: 내가 보낸 일반 채팅은 DB 왕복 전에 화면에 먼저 올림.
-        // 서버 child_added가 같은 msgId로 돌아오면 위 onAdd에서 실제 서버값으로 교체됩니다.
-        try{
-          const localMsg = Object.assign({ id: msgId, __optimistic:true }, payload);
-          state.chatRollingById = state.chatRollingById || {};
-          state.chatRollingById[msgId] = localMsg;
-          if(typeof state._scheduleChatRender === "function") state._scheduleChatRender();
-          try{ scrollChatToBottom(); }catch(_s){}
-        }catch(_e){}
         const dayKey = __seoulDateKeyFromMs(payload.tsMs || Date.now());
         const updates = {};
         updates[`${rRoomBase(roomId)}/messages/${msgId}`] = payload;
@@ -9337,12 +9327,6 @@ async function sendChatCore(text, isFlush=false){
       }
     }catch(e){
       // fan-out 실패 시에도 기존 경로로는 최소 보장
-      try{
-        if(typeof msgId !== "undefined" && msgId && state.chatRollingById && state.chatRollingById[msgId]?.__optimistic){
-          delete state.chatRollingById[msgId];
-          if(typeof state._scheduleChatRender === "function") state._scheduleChatRender();
-        }
-      }catch(_e){}
       await rPush(rMessagesRootRef(state.roomId), payload);
     }
     return true;
@@ -11192,24 +11176,18 @@ try{
 
     // keep dashboard docked
     
-let __resizeRenderRafV91 = 0;
 window.addEventListener("resize", ()=>{
-  // ✅ V91: resize 중 타일 전체 렌더가 연속 호출되면 창이 버벅입니다.
-  // 한 프레임에 1회만 정리해서 드래그/창크기 변화 중 렉을 줄입니다.
-  if(__resizeRenderRafV91) return;
-  __resizeRenderRafV91 = requestAnimationFrame(()=>{
-    __resizeRenderRafV91 = 0;
-    dockRightRail();
-    ensureChatLayout();
-    try{
-      const arr = [...state.currentParticipants.values()];
-      const onlineArr = arr.filter(p=> isDisplayablePresence(p));
-      sortPresenceArr(onlineArr);
-      renderGridTilesOrRoster(onlineArr);
-    }catch(e){
-      applyCompactMode();
-    }
-  });
+  dockRightRail();
+  ensureChatLayout();
+  // ✅ 창 폭 변화 시: compact 모드/타일↔접속자목록 즉시 갱신
+  try{
+    const arr = [...state.currentParticipants.values()];
+    const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+            sortPresenceArr(onlineArr);
+    renderGridTilesOrRoster(onlineArr);
+  }catch(e){
+    applyCompactMode();
+  }
 });
 
 // =============================
@@ -11260,122 +11238,14 @@ document.addEventListener("visibilitychange", ()=>{
     // ✅ V90: 탭이 백그라운드로 가면 펫 놀이터 리스너도 즉시 정지
     // 작업방을 안 보고 있는 동안 action/chat/whiteboard 리스너가 계속 도는 것을 막습니다.
     try{ if(typeof stopPetPlaygroundRealtimeV67 === "function") stopPetPlaygroundRealtimeV67(); }catch(e){}
-    // ✅ V92: 백그라운드 진입 시 가벼운 정리도 같이 수행
-    try{ runSoftCleanupV92("hidden"); }catch(e){}
   }else{
     // 돌아오면, 사용자가 nonChatEnabled를 꺼두지 않은 경우만 재구독
     if(state.nonChatEnabled) resumeNonChatSubscriptions();
     // ✅ V90: 다시 돌아왔고 현재 보기가 놀이터일 때만 재구독
     try{ if(getLayoutMode && getLayoutMode() === "playground" && typeof ensurePetPlaygroundRealtime === "function") ensurePetPlaygroundRealtime(); }catch(e){}
-    // ✅ V93 hotfix: 장시간 백그라운드 후 돌아왔을 때 최신 채팅을 한 번 보정
-    try{ if(typeof resyncLatestChatV93 === "function") resyncLatestChatV93("visible"); }catch(e){}
   }
 });
 
-// =============================
-// 🧹 V92 장시간 사용 최적화 + 안전 재시작
-// - 리스너/DOM/로컬 캐시를 가볍게 정리
-// - 사용자가 버튼으로 캐시 우회 재진입을 실행할 수 있게 함
-// =============================
-const MK_SAFE_REFRESH_FLAG_V92 = "mk_safe_refresh_resume_v92";
-const MK_SAFE_REFRESH_LAYOUT_V92 = "mk_safe_refresh_layout_v92";
-let __mkSoftCleanupTimerV92 = 0;
-
-function trimObjectByTimeV92(obj, keep=40){
-  try{
-    const entries = Object.entries(obj || {}).filter(([,v])=>v && typeof v === "object");
-    entries.sort((a,b)=>{
-      const av = a[1] || {}, bv = b[1] || {};
-      const at = Number(av.serverTs || av.tsMs || 0);
-      const bt = Number(bv.serverTs || bv.tsMs || 0);
-      if(at !== bt) return at - bt;
-      return String(a[0]).localeCompare(String(b[0]));
-    });
-    return Object.fromEntries(entries.slice(-keep));
-  }catch(e){ return obj || {}; }
-}
-
-function runSoftCleanupV92(reason="manual"){
-  try{ if(typeof persistMyFocusToLocal === "function") persistMyFocusToLocal(); }catch(e){}
-
-  // 놀이터를 보고 있지 않으면 놀이터 전용 리스너/지연 작업은 확실히 정지
-  try{
-    if(!getLayoutMode || getLayoutMode() !== "playground"){
-      if(typeof stopPetPlaygroundRealtimeV67 === "function") stopPetPlaygroundRealtimeV67();
-      window.__MK_PET_PLAY_RTDB_PENDING_ROOM__ = "";
-    }
-  }catch(e){}
-
-  // 열린 리액션 피커/임시 UI는 닫아서 DOM 이벤트 대기 상태를 줄임
-  try{ document.querySelectorAll(".reactPicker.open").forEach(el=>el.classList.remove("open")); }catch(e){}
-
-  // ✅ V93 hotfix: 일반 채팅 목록/캐시는 여기서 건드리지 않음.
-  // V92의 정리 루틴이 오래 켜진 창을 가볍게 만들려다 최신 채팅 DOM/표시 상태를 흔들 수 있어,
-  // 채팅은 subscribeChat()의 window 관리에만 맡깁니다. 서버 데이터는 물론 화면의 최신 메시지도 보존합니다.
-
-  try{ window.__MK_LAST_SOFT_CLEANUP_V92__ = {reason, at:Date.now()}; }catch(e){}
-}
-
-function buildCacheBustedUrlV92(){
-  const url = new URL(window.location.href);
-  url.searchParams.set("_mkRefresh", Date.now().toString(36));
-  return url.toString();
-}
-
-function requestSafeHardRefreshV92(){
-  try{
-    if(window.__MK_SAFE_REFRESHING_V92__) return;
-    const ok = window.confirm(
-      "작업방을 가볍게 다시 열까요?\n\n" +
-      "청소(새로고침) 후 다시 열립니다!"
-    );
-    if(!ok) return;
-    window.__MK_SAFE_REFRESHING_V92__ = true;
-    try{ sessionStorage.setItem(MK_SAFE_REFRESH_FLAG_V92, "1"); }catch(e){}
-    try{ sessionStorage.setItem(MK_SAFE_REFRESH_LAYOUT_V92, getLayoutMode ? getLayoutMode() : "default"); }catch(e){}
-    try{ if(els.name && els.name.value) localStorage.setItem("mk_last_name", els.name.value.trim()); }catch(e){}
-    runSoftCleanupV92("safe-refresh");
-    try{ showToast("작업방 청소하는 중…", 1200); }catch(e){}
-    setTimeout(()=>{
-      try{ window.location.replace(buildCacheBustedUrlV92()); }
-      catch(e){ window.location.reload(); }
-    }, 120);
-  }catch(e){
-    try{ window.location.reload(); }catch(_e){}
-  }
-}
-
-function maybeResumeAfterSafeRefreshV92(){
-  let should = false;
-  let prevLayout = "default";
-  try{ should = sessionStorage.getItem(MK_SAFE_REFRESH_FLAG_V92) === "1"; }catch(e){}
-  if(!should) return;
-  try{ sessionStorage.removeItem(MK_SAFE_REFRESH_FLAG_V92); }catch(e){}
-  try{ prevLayout = sessionStorage.getItem(MK_SAFE_REFRESH_LAYOUT_V92) || "default"; sessionStorage.removeItem(MK_SAFE_REFRESH_LAYOUT_V92); }catch(e){}
-
-  // Firebase/Auth/DOM 초기화를 기다린 뒤 재입장 시도. 놀이터는 무거우므로 자동 복귀하지 않고 기본/미니까지만 복구.
-  setTimeout(()=>{
-    try{
-      if(!state.joined && els.joinBtn && !els.joinBtn.disabled){
-        Promise.resolve(joinRoom()).then(()=>{
-          try{
-            const safeLayout = (prevLayout === "compact5") ? "compact5" : "default";
-            if(typeof setLayoutModeDirect === "function") setLayoutModeDirect(safeLayout);
-          }catch(e){}
-          try{ showToast("작업방 청소 완료! ✨", 1800); }catch(e){}
-        }).catch(()=>{});
-      }
-    }catch(e){}
-  }, 900);
-}
-
-function startLongSessionCleanupV92(){
-  try{ if(__mkSoftCleanupTimerV92) clearInterval(__mkSoftCleanupTimerV92); }catch(e){}
-  // 자동 새로고침은 하지 않음. 25분마다 보이지 않는 임시 상태만 가볍게 정리.
-  __mkSoftCleanupTimerV92 = setInterval(()=>{
-    try{ runSoftCleanupV92("interval"); }catch(e){}
-  }, 25 * 60 * 1000);
-}
 
 
 // ===== V67 펫 놀이터 성능/사용량 최적화 =====
@@ -11452,9 +11322,18 @@ ensurePetPlaygroundRealtime = function(){
       if(Date.now() - Number(a.tsMs || 0) > 30000) return;
       try{ showPetPlayActionFx(a); }catch(e){}
     });
-    // ✅ V91: V67의 tsMs 기준 놀이터 채팅 리스너는 비활성화합니다.
-    // 아래 V88 seq 기준 리스너 하나만 사용해야 초기 50~60개 렌더가 중복되지 않아 진입/채팅 렉이 줄어듭니다.
-    window.__MK_PET_PLAY_CHAT_UNSUB__ = null;
+    window.__MK_PET_PLAY_CHAT_UNSUB__ = rOnChildAdded(rQuery(rPlaygroundChatRootRef(state.roomId), rLimitToLast(PET_PLAY_CHAT_MAX_V67)), (snap)=>{
+      const msg = Object.assign({ id:snap.key || "" }, snap.val() || {});
+      const arr = Array.isArray(window.__MK_PET_PLAY_CHAT_ITEMS__) ? window.__MK_PET_PLAY_CHAT_ITEMS__ : [];
+      if(arr.some(x=>x.id === msg.id)) return;
+      arr.push(msg);
+      window.__MK_PET_PLAY_CHAT_ITEMS__ = arr
+        .sort((a,b)=>Number(a.tsMs||0)-Number(b.tsMs||0))
+        .slice(-PET_PLAY_CHAT_MAX_V67);
+      try{ renderPetPlayChatList(); }catch(e){}
+      const __recentSelfPetPlayChat = String(msg.uid || "") === String(state.uid || "") && (Date.now() - Number(msg.tsMs || 0) < 2500);
+      if(!__recentSelfPetPlayChat && Date.now() - Number(msg.tsMs || 0) < 15000) try{ showPetPlayChatBubble(msg); }catch(e){}
+    });
     window.__MK_PET_PLAY_SETTINGS_UNSUB__ = rOnValue(rPlaygroundSettingsRef(state.roomId), (snap)=>{
       const v = snap.val() || {};
       window.__MK_PET_PLAY_SETTINGS__ = Object.assign({ bgTheme:"spring" }, v);
@@ -12574,12 +12453,6 @@ try{
       });
     }
 
-    if(els.safeRefreshBtn){
-      els.safeRefreshBtn.addEventListener("click", requestSafeHardRefreshV92);
-    }
-    try{ startLongSessionCleanupV92(); }catch(e){}
-    try{ maybeResumeAfterSafeRefreshV92(); }catch(e){}
-
     if(els.closeGuide){
       els.closeGuide.addEventListener("click", ()=>hideModal(els.guideModal));
     }
@@ -13354,17 +13227,6 @@ joinRoom();
       window.__MK_PET_PLAY_CHAT_ITEMS__ = sortPetPlayChatItemsV88(arr).slice(-PET_PLAY_CHAT_MAX_V88);
     }catch(e){}
   }
-  let __petPlayChatRenderRafV91 = 0;
-  function schedulePetPlayChatRenderV91(){
-    try{
-      if(__petPlayChatRenderRafV91) return;
-      __petPlayChatRenderRafV91 = requestAnimationFrame(()=>{
-        __petPlayChatRenderRafV91 = 0;
-        try{ renderPetPlayChatList(); }catch(e){}
-      });
-    }catch(e){ try{ renderPetPlayChatList(); }catch(_e){} }
-  }
-
   function setupPetPlayChatRealtimeV88(){
     try{
       if(!state.roomId || getLayoutMode() !== 'playground') return;
@@ -13377,7 +13239,7 @@ joinRoom();
         (snap)=>{
           const msg = Object.assign({ id:snap.key || '' }, snap.val() || {});
           mergePetPlayChatItemV88(msg);
-          schedulePetPlayChatRenderV91();
+          try{ renderPetPlayChatList(); }catch(e){}
           const msgTs = Number(msg.tsMs || msg.clientTsMs || 0);
           const recentSelf = String(msg.uid || '') === String(state.uid || '') && (Date.now() - msgTs < 2500);
           if(!recentSelf && Date.now() - msgTs < 15000){
@@ -14679,6 +14541,63 @@ if(!window.__MK_BOOT_OK__){
     73%{ opacity:0; transform:translate3d(12px,-40px,0) scale(.95) rotate(16deg); }
   }
 </style>
+
+
+<!-- V90_SAFE: 브라우저 강력 새로고침 버튼 - localStorage/DB/채팅 로직은 건드리지 않음 -->
+<script id="hardRefreshPatchV90">
+(function(){
+  'use strict';
+  async function clearBrowserCachesSafely(){
+    try{
+      if('caches' in window && window.caches && typeof window.caches.keys === 'function'){
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map(function(key){ return window.caches.delete(key); }));
+      }
+    }catch(e){
+      console.warn('[hard refresh] cache clear skipped', e);
+    }
+    try{
+      if('serviceWorker' in navigator && navigator.serviceWorker && typeof navigator.serviceWorker.getRegistrations === 'function'){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(function(reg){
+          try{ return (reg && typeof reg.update === 'function') ? reg.update() : Promise.resolve(); }
+          catch(e){ return Promise.resolve(); }
+        }));
+      }
+    }catch(e){
+      console.warn('[hard refresh] service worker update skipped', e);
+    }
+  }
+  function makeCacheBustedUrl(){
+    const url = new URL(window.location.href);
+    url.searchParams.set('__hardRefresh', String(Date.now()));
+    return url.toString();
+  }
+  async function runHardRefresh(){
+    const btn = document.getElementById('hardRefreshBtn');
+    try{
+      if(btn){
+        btn.disabled = true;
+        btn.textContent = '🔄새로고침중';
+      }
+      await clearBrowserCachesSafely();
+    }finally{
+      window.location.replace(makeCacheBustedUrl());
+    }
+  }
+  function bind(){
+    const btn = document.getElementById('hardRefreshBtn');
+    if(!btn || btn.dataset.hardRefreshBound === '1') return;
+    btn.dataset.hardRefreshBound = '1';
+    btn.addEventListener('click', function(ev){
+      ev.preventDefault();
+      runHardRefresh();
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
 
 </body>
 </html>
