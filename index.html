@@ -3320,6 +3320,89 @@ body.joined #preJoinCard{ display:none; }
 }
 </style>
 
+
+
+<!-- V90-7: 모바일 채팅창 강제 노출 패치 (CSS only) -->
+<style id="mobileChatForceV90_7">
+/*
+  모바일에서 채팅창이 안 보이는 주원인 후보:
+  PC에서 '채팅창/대시보드 접기' 상태가 저장되어 body.railFolded가 붙으면
+  .sidebar가 display:none 처리될 수 있음.
+  모바일에서는 사이드바가 곧 채팅 영역이므로, 접힘 상태와 무관하게 강제로 펼칩니다.
+  타일 크기/채팅 로직/Firebase 로직은 수정하지 않습니다.
+*/
+@media (max-width: 760px){
+  body.joined.railFolded .wrap,
+  body.joined .wrap{
+    display:flex !important;
+    flex-direction:column !important;
+    height:calc(100dvh - 96px) !important;
+    max-height:calc(100dvh - 96px) !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  body.joined.railFolded .sidebar,
+  body.joined .sidebar{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:relative !important;
+    top:auto !important;
+    order:2 !important;
+    width:100% !important;
+    max-width:none !important;
+    height:auto !important;
+    min-height:380px !important;
+    max-height:none !important;
+    flex:0 0 auto !important;
+    overflow:visible !important;
+    margin:0 !important;
+  }
+
+  body.joined.railFolded #chatCard,
+  body.joined #chatCard{
+    display:flex !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    flex:0 0 auto !important;
+    width:100% !important;
+    min-height:380px !important;
+    height:380px !important;
+    max-height:none !important;
+  }
+
+  body.joined.railFolded #dashboardCard,
+  body.joined #dashboardCard{
+    display:none !important;
+  }
+
+  body.joined #chatCard .chatBody{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined #chatCard .chatList{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:230px !important;
+    overflow-y:auto !important;
+  }
+
+  /* 모바일에서는 접기 버튼/엣지 버튼이 채팅을 숨기지 않도록 완전히 감춤 */
+  body.joined #railFoldToggle,
+  body.joined #railEdgeBtn{
+    display:none !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="topbar">
