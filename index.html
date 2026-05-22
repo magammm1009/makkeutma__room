@@ -6,6 +6,15 @@
 <link href="https://script.google.com" rel="preconnect"/>
 <link href="https://script.google.com" rel="dns-prefetch"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
+<!-- PWA_SAFE_PATCH_V90: PC/모바일 앱 설치 지원 메타 - 기존 작업방 로직에는 영향 없음 -->
+<link rel="manifest" href="manifest.webmanifest"/>
+<meta name="theme-color" content="#0b0b10"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="마끝마"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+
 <title>MagamMagam</title>
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -2822,6 +2831,26 @@ body.joined #preJoinCard{ display:none; }
        이전에는 일반 작업방에서 playgroundMode를 강제로 grid로 되돌렸는데,
        이제는 보기 메뉴에서 선택한 동안만 내부 놀이터 화면을 렌더합니다. */
 
+
+
+/* PWA_SAFE_PATCH_V90: 설치 버튼/앱 모드 보정 - 데이터/채팅/타이머 로직 미수정 */
+#installPwaBtn{
+  border-color: rgba(255,182,214,.30);
+  background: rgba(255,182,214,.09);
+  white-space: nowrap;
+}
+#installPwaBtn.isInstalled{
+  opacity:.72;
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.05);
+}
+@media (display-mode: standalone){
+  #installPwaBtn{display:none !important;}
+}
+@media (max-width: 760px){
+  #installPwaBtn{padding:10px 10px;}
+}
+
 </style>
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
@@ -2882,6 +2911,7 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <button class="ghost miniOnline" disabled="" id="onlineBtn" title="접속 인원">👥 <span id="countOnline">0</span>명</button>
 <button class="ghost" id="profileBtn">🪪 내 프로필</button>
+<button class="ghost" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
 <div class="actions">
 <input id="name" maxlength="7" placeholder="닉네임" style="width:180px"/>
@@ -14596,6 +14626,112 @@ if(!window.__MK_BOOT_OK__){
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+</script>
+
+
+
+<!-- PWA_SAFE_PATCH_V90: 앱 설치 버튼 + service worker 등록. 기존 RTDB/채팅/펫/타이머 상태는 건드리지 않음 -->
+<script id="pwaSafePatchV90">
+(function(){
+  'use strict';
+  var deferredInstallPrompt = null;
+  var installBtn = null;
+
+  function isStandalone(){
+    try{
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    }catch(e){ return false; }
+  }
+
+  function isIOS(){
+    try{
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent || '') ||
+        ((window.navigator.platform === 'MacIntel') && window.navigator.maxTouchPoints > 1);
+    }catch(e){ return false; }
+  }
+
+  function updateInstallButton(){
+    if(!installBtn) return;
+    if(isStandalone()){
+      installBtn.classList.add('isInstalled');
+      installBtn.textContent = '✅설치됨';
+      installBtn.title = '이미 앱 모드로 실행 중입니다';
+      return;
+    }
+    installBtn.classList.remove('isInstalled');
+    installBtn.textContent = '📲앱설치';
+    installBtn.title = 'PC/모바일에 작업방을 앱처럼 설치합니다';
+  }
+
+  async function registerServiceWorker(){
+    try{
+      if(!('serviceWorker' in navigator)) return;
+      // file:// 로 직접 열었을 때는 등록하지 않음. HTTPS/GitHub Pages/Firebase Hosting에서 작동.
+      if(window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') return;
+      var reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      // 기존 탭의 실시간 작업을 방해하지 않도록 update 확인만 수행.
+      if(reg && typeof reg.update === 'function') reg.update().catch(function(){});
+    }catch(e){
+      console.warn('[PWA] service worker registration skipped', e);
+    }
+  }
+
+  function showInstallGuide(){
+    var msg;
+    if(isIOS()){
+      msg = 'iPhone/iPad에서는 Safari 하단/상단 공유 버튼(□↑)을 누른 뒤 “홈 화면에 추가”를 선택하면 앱처럼 설치돼요.';
+    }else{
+      msg = '브라우저 주소창 오른쪽의 설치 아이콘을 누르거나, Chrome/Edge 메뉴에서 “앱 설치” 또는 “홈 화면에 추가”를 선택해 주세요. 설치 조건이 준비되면 이 버튼으로도 바로 설치창이 열려요.';
+    }
+    window.alert(msg);
+  }
+
+  function bindInstallButton(){
+    installBtn = document.getElementById('installPwaBtn');
+    if(!installBtn || installBtn.dataset.pwaBound === '1') return;
+    installBtn.dataset.pwaBound = '1';
+    updateInstallButton();
+    installBtn.addEventListener('click', async function(ev){
+      ev.preventDefault();
+      try{
+        if(isStandalone()){
+          updateInstallButton();
+          return;
+        }
+        if(deferredInstallPrompt){
+          var promptEvent = deferredInstallPrompt;
+          deferredInstallPrompt = null;
+          promptEvent.prompt();
+          await promptEvent.userChoice.catch(function(){ return null; });
+          updateInstallButton();
+          return;
+        }
+        showInstallGuide();
+      }catch(e){
+        console.warn('[PWA] install prompt failed', e);
+        showInstallGuide();
+      }
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', function(ev){
+    try{
+      ev.preventDefault();
+      deferredInstallPrompt = ev;
+      updateInstallButton();
+    }catch(e){}
+  });
+  window.addEventListener('appinstalled', function(){
+    deferredInstallPrompt = null;
+    updateInstallButton();
+  });
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ bindInstallButton(); registerServiceWorker(); });
+  }else{
+    bindInstallButton(); registerServiceWorker();
+  }
 })();
 </script>
 
