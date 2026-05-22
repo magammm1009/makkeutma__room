@@ -3075,79 +3075,6 @@ body.joined #preJoinCard{ display:none; }
   }
 }
 
-
-/* ===== V90-3 긴급 안전 패치: PC 타일-채팅 간격 + 모바일 채팅 노출 =====
-   - 데이터/채팅 전송/타이머/펫 성장 로직 미수정
-   - 표시 CSS만 보정
-*/
-@media (min-width: 761px){
-  /* 오른쪽 채팅창과 타일 영역 사이가 과하게 벌어지지 않도록 메인 그리드를 채움 */
-  .wrap{
-    gap:14px !important;
-  }
-  .wrap > main{
-    padding-right:0 !important;
-  }
-  .grid:not(.compact5):not(.playgroundMode){
-    grid-template-columns: repeat(auto-fill, minmax(var(--tileMin), 1fr)) !important;
-    justify-content:stretch !important;
-  }
-  .grid:not(.compact5):not(.playgroundMode) .tile{
-    justify-self:stretch !important;
-  }
-}
-
-@media (max-width: 760px){
-  /* 모바일에서 내 타일이 화면을 과하게 잡아먹어 채팅이 사라지는 문제 보정 */
-  body.joined .wrap{
-    height:calc(100svh - 96px) !important;
-    max-height:calc(100svh - 96px) !important;
-    overflow:hidden !important;
-  }
-  body.joined .wrap > main{
-    flex:0 0 auto !important;
-    max-height:34svh !important;
-    overflow:hidden !important;
-  }
-  body.joined .grid .tile.mineTile{
-    min-height:210px !important;
-    max-height:32svh !important;
-    overflow:hidden !important;
-  }
-  body.joined .grid .tile.mineTile .content{
-    min-height:210px !important;
-    gap:8px !important;
-  }
-  body.joined .sidebar{
-    display:flex !important;
-    visibility:visible !important;
-    opacity:1 !important;
-    flex:1 1 auto !important;
-    min-height:260px !important;
-    height:auto !important;
-    overflow:hidden !important;
-  }
-  body.joined .chatCard{
-    display:flex !important;
-    visibility:visible !important;
-    opacity:1 !important;
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    height:100% !important;
-  }
-  body.joined .chatBody{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow:hidden !important;
-  }
-  body.joined .chatList{
-    display:flex !important;
-    flex:1 1 auto !important;
-    min-height:120px !important;
-    max-height:none !important;
-  }
-}
-
 </style>
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
@@ -3164,245 +3091,6 @@ body.joined #preJoinCard{ display:none; }
   #sudaModalBody .hint{ color:rgba(255,255,255,.9); line-height:1.5; text-align:center; }
   #sudaModalFrame{ width:100%; height:100%; border:0; background:#111; }
 </style>
-
-
-<!-- V90-4: 모바일 타일 크기 복구 + 채팅은 아래로 스크롤 노출 (CSS only) -->
-<style id="mobileTileRestoreV90_4">
-@media (max-width: 760px){
-  /* 화면 높이 안에 억지로 끼워 넣지 않고, 내 프로필 타일 원래 크기를 보존한 채 아래로 채팅이 이어지게 함 */
-  html, body{
-    min-height:100svh !important;
-    height:auto !important;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-  }
-  body.joined .wrap{
-    height:auto !important;
-    max-height:none !important;
-    min-height:calc(100svh - 96px) !important;
-    overflow:visible !important;
-    display:flex !important;
-    flex-direction:column !important;
-  }
-  body.joined .wrap > main{
-    flex:0 0 auto !important;
-    height:auto !important;
-    max-height:none !important;
-    overflow:visible !important;
-  }
-  body.joined .gridScroll{
-    flex:0 0 auto !important;
-    height:auto !important;
-    max-height:none !important;
-    overflow:visible !important;
-  }
-  body.joined .grid .tile.mineTile{
-    display:block !important;
-    width:100% !important;
-    max-width:100% !important;
-    aspect-ratio:auto !important;
-    min-height:250px !important;
-    max-height:none !important;
-    overflow:hidden !important;
-  }
-  body.joined .grid .tile.mineTile .content{
-    min-height:250px !important;
-    gap:var(--tileGap, 10px) !important;
-  }
-  body.joined .sidebar{
-    flex:0 0 auto !important;
-    height:auto !important;
-    min-height:360px !important;
-    max-height:none !important;
-    overflow:visible !important;
-  }
-  body.joined .chatCard{
-    flex:0 0 auto !important;
-    min-height:360px !important;
-    height:360px !important;
-    display:flex !important;
-  }
-  body.joined .chatBody{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow:hidden !important;
-  }
-  body.joined .chatList{
-    flex:1 1 auto !important;
-    min-height:220px !important;
-    overflow-y:auto !important;
-  }
-}
-</style>
-
-<!-- V90-5: 프로필 타일 크기 고정 패치 (CSS only) -->
-<style id="fixedTileSizeV90_5">
-/*
-  브라우저/PWA 창 폭에 따라 프로필 타일이 늘었다 줄어드는 문제 보정.
-  - 일반 보기 타일: 원래 카드 크기인 230px 정사각형으로 고정
-  - 미니 보기/펫 놀이터 모드는 기존 동작 유지
-  - 모바일의 내 타일은 화면 폭을 따라가되, 높이가 잘리지 않도록 안전 높이만 보정
-*/
-:root{
-  --mk-fixed-tile-size:230px;
-}
-
-@media (min-width: 761px){
-  .grid:not(.compact5):not(.playgroundMode){
-    grid-template-columns: repeat(auto-fill, var(--mk-fixed-tile-size)) !important;
-    justify-content:start !important;
-    align-content:start !important;
-    gap:8px !important;
-  }
-  .grid:not(.compact5):not(.playgroundMode) .tile{
-    width:var(--mk-fixed-tile-size) !important;
-    max-width:var(--mk-fixed-tile-size) !important;
-    min-width:var(--mk-fixed-tile-size) !important;
-    height:var(--mk-fixed-tile-size) !important;
-    min-height:var(--mk-fixed-tile-size) !important;
-    aspect-ratio:1 / 1 !important;
-    justify-self:start !important;
-  }
-
-  /* 창이 아주 애매하게 좁을 때도 타일을 줄이지 않고 내부 스크롤로 보호 */
-  .wrap > main{
-    min-width:0 !important;
-    overflow:hidden !important;
-  }
-  .gridScroll{
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-  }
-}
-
-@media (max-width: 760px){
-  /* 모바일은 폭이 작으므로 230px 고정을 강제하지 않되, 카드 아래가 잘리지 않게 함 */
-  body.joined .grid .tile.mineTile{
-    width:100% !important;
-    max-width:100% !important;
-    height:auto !important;
-    min-height:250px !important;
-    aspect-ratio:auto !important;
-    overflow:hidden !important;
-  }
-  body.joined .grid .tile.mineTile .content{
-    min-height:250px !important;
-  }
-}
-</style>
-
-
-
-<!-- V90-6: 프로필 타일-채팅창 간격 보정 패치 (CSS only) -->
-<style id="tileChatGapFixV90_6">
-/*
-  V90-5에서 프로필 타일 크기는 230px로 고정 유지.
-  이번 패치는 타일 크기를 바꾸지 않고, 고정 타일 묶음을 채팅창 쪽으로 정렬해서
-  오른쪽 빈 공간만 줄입니다. 채팅/타이머/Firebase 로직 수정 없음.
-*/
-@media (min-width: 761px){
-  .wrap{
-    gap:6px !important;
-  }
-  .wrap > main{
-    padding-right:0 !important;
-  }
-  .grid:not(.compact5):not(.playgroundMode){
-    justify-content:end !important;
-  }
-  .grid:not(.compact5):not(.playgroundMode) .tile{
-    width:var(--mk-fixed-tile-size, 230px) !important;
-    max-width:var(--mk-fixed-tile-size, 230px) !important;
-    min-width:var(--mk-fixed-tile-size, 230px) !important;
-    height:var(--mk-fixed-tile-size, 230px) !important;
-    min-height:var(--mk-fixed-tile-size, 230px) !important;
-  }
-}
-</style>
-
-
-
-<!-- V90-7: 모바일 채팅창 강제 노출 패치 (CSS only) -->
-<style id="mobileChatForceV90_7">
-/*
-  모바일에서 채팅창이 안 보이는 주원인 후보:
-  PC에서 '채팅창/대시보드 접기' 상태가 저장되어 body.railFolded가 붙으면
-  .sidebar가 display:none 처리될 수 있음.
-  모바일에서는 사이드바가 곧 채팅 영역이므로, 접힘 상태와 무관하게 강제로 펼칩니다.
-  타일 크기/채팅 로직/Firebase 로직은 수정하지 않습니다.
-*/
-@media (max-width: 760px){
-  body.joined.railFolded .wrap,
-  body.joined .wrap{
-    display:flex !important;
-    flex-direction:column !important;
-    height:calc(100dvh - 96px) !important;
-    max-height:calc(100dvh - 96px) !important;
-    min-height:0 !important;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-    -webkit-overflow-scrolling:touch !important;
-  }
-
-  body.joined.railFolded .sidebar,
-  body.joined .sidebar{
-    display:flex !important;
-    visibility:visible !important;
-    opacity:1 !important;
-    position:relative !important;
-    top:auto !important;
-    order:2 !important;
-    width:100% !important;
-    max-width:none !important;
-    height:auto !important;
-    min-height:380px !important;
-    max-height:none !important;
-    flex:0 0 auto !important;
-    overflow:visible !important;
-    margin:0 !important;
-  }
-
-  body.joined.railFolded #chatCard,
-  body.joined #chatCard{
-    display:flex !important;
-    visibility:visible !important;
-    opacity:1 !important;
-    flex:0 0 auto !important;
-    width:100% !important;
-    min-height:380px !important;
-    height:380px !important;
-    max-height:none !important;
-  }
-
-  body.joined.railFolded #dashboardCard,
-  body.joined #dashboardCard{
-    display:none !important;
-  }
-
-  body.joined #chatCard .chatBody{
-    display:flex !important;
-    flex-direction:column !important;
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow:hidden !important;
-  }
-
-  body.joined #chatCard .chatList{
-    display:flex !important;
-    flex-direction:column !important;
-    flex:1 1 auto !important;
-    min-height:230px !important;
-    overflow-y:auto !important;
-  }
-
-  /* 모바일에서는 접기 버튼/엣지 버튼이 채팅을 숨기지 않도록 완전히 감춤 */
-  body.joined #railFoldToggle,
-  body.joined #railEdgeBtn{
-    display:none !important;
-  }
-}
-</style>
-
 </head>
 <body>
 <div class="topbar">
@@ -9243,10 +8931,18 @@ function subscribeChat(){
   state.chatDidPrependOnce = false;
 
   // limits (requested)
-  const INIT_LIMIT = 10;   // 입장 시
-  const STAY_LIMIT = 20;   // 입장 유지 시
+  const INIT_LIMIT = 10;   // 입장 시 표시할 채팅 수
+  const STAY_LIMIT = 20;   // 입장 유지 시 표시할 채팅 수
   const MORE_LIMIT = 20;   // 더보기 1회
   const MAX_LIMIT  = 40;   // 총 최대(20+20)
+
+  // ✅ v90 chat-normalize hotfix
+  // 입장 알림(ticker), 사운드(sfx), 미션 이벤트가 messages 경로에 같이 저장되어도
+  // limitToLast(10/20)가 시스템 이벤트만 가져와 채팅이 빈 것처럼 보이지 않게
+  // 원본은 넉넉히 읽고, 실제 채팅만 필터링한 뒤 화면 표시 수를 제한합니다.
+  const RAW_INIT_LIMIT = 160;
+  const RAW_MORE_LIMIT = 160;
+  const RAW_LIVE_LIMIT = 220;
 
   state.chatWindowMax = STAY_LIMIT;     // currently enforced visible window
   state.chatMoreUsed = false;           // 더보기 사용 여부(1회)
@@ -9267,7 +8963,7 @@ function subscribeChat(){
       return String(a.id||"").localeCompare(String(b.id||""));
     });
     // mission/sfx 제외(채팅만)
-    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "ticker")));
+    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "ticker" || m.type === "sys")));
   }
 
   function rebuildCacheFromMap(){
@@ -9382,7 +9078,8 @@ function subscribeChat(){
   }
 
   async function loadLastOnce(n){
-    const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(n));
+    const rawN = Math.max(Number(n)||0, RAW_INIT_LIMIT);
+    const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(rawN));
     const snap = await rGet(q);
     const val = snap && snap.val ? (snap.val() || {}) : {};
     return normalizeDocsFromSnapVal(val);
@@ -9392,7 +9089,8 @@ function subscribeChat(){
     // load older messages (endAt(ts-1)) up to n
     const end = Number(ts||0) - 1;
     if(!end || end < 0) return [];
-    const q = rQuery(root, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(n));
+    const rawN = Math.max(Number(n)||0, RAW_MORE_LIMIT);
+    const q = rQuery(root, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(rawN));
     const snap = await rGet(q);
     const val = snap && snap.val ? (snap.val() || {}) : {};
     return normalizeDocsFromSnapVal(val);
@@ -9472,7 +9170,7 @@ function subscribeChat(){
       setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 1200);
 
       // live listener: 안정적으로(클라이언트 시계 차이로 누락 방지) 마지막 MAX_LIMIT을 계속 구독
-      const qLive = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(MAX_LIMIT));
+      const qLive = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
 
       const onAdd = (snap)=>{
         try{
@@ -9509,7 +9207,7 @@ function subscribeChat(){
             return;
           }
 
-          if(mm && mm.type==='mission') return;
+          if(mm && (mm.type==='mission' || mm.type==='sys')) return;
 
           // ✅ 초기 load에서 이미 가져온 항목이면(중복 child_added) 무시
           if(state.chatFirstLoadDone && state.chatRollingById && state.chatRollingById[id]){
@@ -9526,14 +9224,14 @@ function subscribeChat(){
       state.unsubChatLive = ()=>{ try{ rOff(qLive, "child_added", onAdd); }catch(e){} };
 
       // change listener (reactions / edits)
-      const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(CHAT_MAX_VIEW));
+      const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
       const onChg = (snap)=>{
         try{
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
           const mm = { id, ...data };
-          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker")) return;
+          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker" || mm.type==="sys")) return;
 
           // update only if we have it
           if(state.chatRollingById && state.chatRollingById[id]){
@@ -9555,7 +9253,7 @@ function subscribeChat(){
       console.error(e);
       // fall back to old onValue if something blows up
       try{
-        const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(INIT_LIMIT));
+        const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_INIT_LIMIT));
         const onMsgs = (snap)=>{
           const val = snap && snap.val ? (snap.val() || {}) : {};
           const list = normalizeDocsFromSnapVal(val);
