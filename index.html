@@ -2851,6 +2851,230 @@ body.joined #preJoinCard{ display:none; }
   #installPwaBtn{padding:10px 10px;}
 }
 
+
+
+/* ===== PWA v90-2 안전 패치: PC 최소폭 + 모바일 전용 간소화 =====
+   - 기존 Firebase/채팅/펫/타이머 로직은 건드리지 않고 표시 구조만 조정
+   - PC/PWA 창은 2타일 이하로 무너지기 전에 가로 스크롤로 보호
+   - 모바일은 내 타일 + 채팅 중심 화면으로 정리
+*/
+:root{
+  --mk-desktop-min-w: 760px;
+}
+
+@media (min-width: 761px){
+  html, body{
+    min-width: var(--mk-desktop-min-w);
+    overflow-x: auto;
+  }
+  .topbar,
+  .wrap{
+    min-width: var(--mk-desktop-min-w);
+  }
+  .grid{
+    grid-template-columns: repeat(auto-fill, minmax(var(--tileMin), var(--tileMax))) !important;
+  }
+}
+
+/* 기존 920px 이하에서 메인 타일을 숨기던 규칙을 모바일 전용 규칙으로 대체 */
+@media (max-width: 920px) and (min-width: 761px){
+  .wrap{
+    grid-template-columns: minmax(0, 1fr) 340px !important;
+  }
+  main{
+    display:flex !important;
+  }
+  .sidebar{
+    order:initial !important;
+    position:sticky !important;
+    top:72px !important;
+    height: calc(100vh - 92px) !important;
+    max-height: calc(100vh - 92px) !important;
+    width:auto !important;
+    max-width:none !important;
+    margin:0 !important;
+  }
+}
+
+/* 상단 관리자 비번/절약 버튼은 UI에서 제거: 기능 참조 안전을 위해 DOM은 유지 */
+#adminPassJoin,
+#dataSaverBtn{
+  display:none !important;
+}
+
+/* 모바일/PWA: 출근·상태·퇴장·접속인원 + 내 타일 + 채팅만 */
+@media (max-width: 760px){
+  html, body{
+    min-width:0 !important;
+    overflow-x:hidden !important;
+  }
+  body.joined .topbar{
+    position:sticky;
+    top:0;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    padding:8px !important;
+  }
+  body.joined .brand,
+  body.joined .topPills,
+  body.joined #profileBtn,
+  body.joined #installPwaBtn,
+  body.joined #menuBtn,
+  body.joined #meHint,
+  body.joined .actions input,
+  body.joined #joinBtn{
+    display:none !important;
+  }
+  body.joined .topCenter{
+    order:1 !important;
+    width:100% !important;
+    min-width:0 !important;
+    display:grid !important;
+    grid-template-columns: 1fr 1.35fr 0.9fr !important;
+    gap:6px !important;
+    align-items:center !important;
+    justify-content:stretch !important;
+  }
+  body.joined #checkInBtn,
+  body.joined #statusBtn,
+  body.joined #onlineBtn{
+    width:100% !important;
+    min-width:0 !important;
+    min-height:38px !important;
+    padding:9px 8px !important;
+    font-size:12px !important;
+  }
+  body.joined .actions{
+    order:2 !important;
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    justify-content:stretch !important;
+    gap:6px !important;
+  }
+  body.joined #leaveBtn{
+    display:flex !important;
+    width:100% !important;
+    justify-content:center !important;
+    min-height:38px !important;
+    padding:9px 8px !important;
+    font-size:12px !important;
+  }
+  body.joined .statusMenu{
+    position:fixed !important;
+    top:58px !important;
+    left:8px !important;
+    right:8px !important;
+    transform:none !important;
+    width:auto !important;
+    max-height:calc(100svh - 72px) !important;
+    overflow:auto !important;
+  }
+
+  body.joined .wrap{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:8px !important;
+    height:calc(100svh - 96px) !important;
+    max-height:calc(100svh - 96px) !important;
+    padding:8px !important;
+    overflow:hidden !important;
+  }
+  body.joined .wrap > main{
+    display:flex !important;
+    flex:0 0 auto !important;
+    min-height:0 !important;
+    max-height:42svh !important;
+    padding-right:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined .gridHead{
+    display:none !important;
+  }
+  body.joined .gridScroll{
+    overflow:auto !important;
+    padding-right:0 !important;
+  }
+  body.joined .grid{
+    display:grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-content:stretch !important;
+    gap:8px !important;
+    padding:0 !important;
+  }
+  body.joined .grid .tile:not(.mineTile){
+    display:none !important;
+  }
+  body.joined .grid .tile.mineTile{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    aspect-ratio:auto !important;
+    min-height:250px !important;
+    max-height:40svh !important;
+  }
+  body.joined .grid .tile.mineTile .content{
+    min-height:250px !important;
+  }
+
+  body.joined .sidebar{
+    position:relative !important;
+    top:auto !important;
+    order:2 !important;
+    width:100% !important;
+    max-width:none !important;
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    flex:1 1 auto !important;
+    display:flex !important;
+    overflow:hidden !important;
+    gap:8px !important;
+    margin:0 !important;
+  }
+  body.joined #dashboardCard{
+    display:none !important;
+  }
+  body.joined .chatCard{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  body.joined .chatCard h3{
+    padding:9px 10px !important;
+    font-size:13px !important;
+  }
+  body.joined .chatCard h3 .tiny,
+  body.joined #railFoldToggle{
+    display:none !important;
+  }
+  body.joined .chatBody{
+    min-height:0 !important;
+    padding:8px !important;
+  }
+  body.joined .chatList{
+    min-height:0 !important;
+  }
+  body.joined .chatInputRow{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+  }
+  body.joined .chatInputRow input{
+    min-width:0 !important;
+  }
+  body.joined .chatInputRow button{
+    min-width:64px !important;
+    flex:0 0 64px !important;
+  }
+
+  /* 입장 전 모바일은 닉네임/입장키 입력이 가능해야 해서 기존 입력 UI 유지 */
+  body:not(.joined) .topbar{
+    display:flex !important;
+    flex-wrap:wrap !important;
+  }
+}
+
 </style>
 <style id="sudaModalStyle">
   /* Suda modal (keeps dashboard alive) */
@@ -3327,7 +3551,8 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="modalBody">
 <div class="hint">
-          처음 설정하는 사람은 “관리자 비번”을 등록하고, 이후부터는 비번이 있어야 변경할 수 있어요.
+          처음 설정하는 사람은 “관리자 비번”을 등록하고, 이후부터는 비번이 있어야 변경할 수 있어요.<br/>
+          <span class="tiny">※ 관리자 비번 입력은 상단이 아니라 이 설정 창에서만 사용하도록 정리했어요.</span>
         </div>
 <div class="row">
 <label>🔈 입장 소리</label>
@@ -9408,13 +9633,14 @@ async function sendChatCore(text, isFlush=false){
       if(prev && prev.key === key && prev.el) return prev.el;
 
       const t = document.createElement("div");
-      t.className = "tile";
+      const tileIsMine = !!(state.uid && p?.id && (p.id === state.uid));
+      t.className = tileIsMine ? "tile mineTile" : "tile";
       t.dataset.uid = String(p?.id || "");
       t.dataset.name = normalizeNick(p?.name || p?.id || "");
       // 우클릭 메뉴(강퇴)
       t.addEventListener("contextmenu", (ev)=>{
         // ✅ 내 타일의 '현재 상태 배지'를 우클릭하면 상태 선택 메뉴
-        const isMine = !!(state.uid && p?.id && (p.id === state.uid));
+        const isMine = tileIsMine;
         const hitBadge = !!(ev.target && ev.target.closest && ev.target.closest(".badge"));
         if(isMine && hitBadge){
           ev.preventDefault();
@@ -9695,7 +9921,10 @@ t.appendChild(bg);
       }catch(e){}
       const gap = 8;
       const threshold = Math.ceil(tileMin * colsNeeded + gap * Math.max(0, colsNeeded-1) + 50);
-      return w <= threshold;
+      // PWA v90-2: 작은 폭에서 메인을 로스터/채팅 전용으로 접으면
+      // 모바일에서 '내 프로필 타일+펫+타이머'가 사라져서 요청 구조와 충돌합니다.
+      // 창 폭 보호는 CSS min-width/모바일 전용 레이아웃에서 처리합니다.
+      return false;
     }
 
     function preserveChatScrollForLayout(fn){
