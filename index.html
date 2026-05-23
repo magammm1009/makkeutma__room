@@ -3091,6 +3091,35 @@ body.joined #preJoinCard{ display:none; }
   #sudaModalBody .hint{ color:rgba(255,255,255,.9); line-height:1.5; text-align:center; }
   #sudaModalFrame{ width:100%; height:100%; border:0; background:#111; }
 </style>
+
+<style id="safeRefreshAndMissionRemovalV91">
+  /* V91: 요청 반영 — 데이터 유실 위험이 있는 강제 캐시 삭제 제거, 무거운/불필요 애니메이션 제거 */
+  body.joined .brand .dot,
+  .recBadge .recDot,
+  .stWork,
+  .stIdle,
+  #checkInBtn.checkinPulse{
+    animation: none !important;
+  }
+  .recBadge .recDot{
+    box-shadow:none !important;
+    transform:none !important;
+  }
+  #checkInBtn.checkinPulse{
+    box-shadow:none !important;
+    filter:none !important;
+  }
+  /* 오늘의 미션/메달 현황 기능은 화면에서 완전히 제거 */
+  .missionBtn,
+  .missionSpacer,
+  .missionMedal,
+  .dashSuccess,
+  #missionModal,
+  #missionListModal,
+  #fxLayer{
+    display:none !important;
+  }
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -3163,7 +3192,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
 </div>
 <div class="right"><button aria-label="업데이트 안내" class="ghost layoutToggle" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
-<button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="캐시는 비우고 현재 방을 다시 불러옵니다" type="button">🔄새로고침</button>
+<button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="현재 방을 안전하게 다시 불러옵니다(기록 삭제 없음)" type="button">🔄새로고침</button>
 <button aria-label="폭파 수다방 열기" class="ghost layoutToggle" id="goSudaMini" title="폭파 수다방 열기" type="button">💣수다</button>
 <button aria-label="가이드 보기" class="ghost layoutToggle" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
@@ -3582,6 +3611,47 @@ body.joined #preJoinCard{ display:none; }
 <div class="row">
 <button class="primary" id="saveDash">저장</button>
 </div>
+<div class="hr"></div>
+<div class="hint">🐾 펫 백업/복구 관리</div>
+<div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
+<div class="row">
+<input id="petAdminNick" list="petAdminNickList" placeholder="작가 닉네임"/>
+<datalist id="petAdminNickList"></datalist>
+<select id="petAdminPetId">
+<option value="cat">말랑 고양이</option>
+<option value="whale">둥실 고래</option>
+<option value="rabbit">쫑긋 토끼</option>
+<option value="dog">폴짝 강아지</option>
+<option value="fox">살랑 여우</option>
+<option value="chick">콩알 병아리</option>
+<option value="bear">포근 곰</option>
+<option value="stone">평범한 돌</option>
+<option value="star">작은 별</option>
+<option value="moon">보름달</option>
+<option value="sun">작은 해</option>
+<option value="cloud">작은 구름</option>
+<option value="octopus">말랑 문어</option>
+<option value="flower">작은 꽃</option>
+<option value="wing">보송 날개</option>
+<option value="pencil">몽당 연필</option>
+<option value="diamond">반짝 다이아</option>
+<option value="deer">숲사슴</option>
+<option value="heart">하트퐁</option>
+<option value="ghost">몽실 유령</option>
+<option value="ember">포근 불씨</option>
+</select>
+</div>
+<div class="row">
+<input id="petAdminLevel" max="30" min="0" placeholder="레벨 0~30" type="number" value="0"/>
+<input id="petAdminHours" min="0" max="100" step="0.1" placeholder="누적 시간(선택)" type="number"/>
+<input id="petAdminCustomName" maxlength="20" placeholder="펫 별명(선택)"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="petAdminLoad" type="button">백업 확인</button>
+<button class="primary" id="petAdminSave" type="button">펫 보정 저장</button>
+<button class="ghost" id="petAdminRestoreMine" type="button">내 펫 백업에서 복원</button>
+</div>
+<div id="petAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">아직 조회한 펫 백업이 없어요.</div>
 </div>
 </div>
 </div>
@@ -5490,199 +5560,22 @@ async function emitMissionEvent(action, m){
 }
 
 async function subscribeMissionFeed(){
+  // V91: 오늘의 미션/메달 현황 제거 — 실시간 구독을 시작하지 않음
   try{
-    if(state.unsubMissionFeed) state.unsubMissionFeed();
-    state.unsubMissionFeed = null;
-
-    const dayKey = seoulDateKey();
-    state.missionDayKey = dayKey;
-    if(!state.roomId) return;
-    if(!state.nonChatEnabled) return;
-
-    const mref = rMissionsRootRef(state.roomId, dayKey);
-
-    // ✅ 로컬 캐시(증분 업데이트용)
-    state.missionByUid = new Map();
-    state.missionLastByName = new Map();
-    state.missionSuccessCount = 0;
-
-    // ✅ 1회만 전체 스냅샷 로드 (이후에는 child_*로 증분)
-    try{
-      const snap = await rGet(mref);
-      const v = (snap && snap.val) ? (snap.val() || {}) : {};
-
-      const byUid = new Map();
-      const bestByName = new Map();
-
-      for(const [uid, info] of Object.entries(v)){
-        if(!info) continue;
-        const name = (typeof normalizeNick==="function") ? normalizeNick(info.name||"") : String(info.name||"").trim();
-        if(!name) continue;
-
-        const text = String(info.text||"").trim();
-        const doneAtMs = Number(info.doneAtMs||0);
-
-        byUid.set(uid, { uid, name, text, doneAtMs });
-        bestByName.set(name, { action:"done", text, tsMs: doneAtMs });
-      }
-
-      state.missionByUid = byUid;
-      state.missionLastByName = bestByName;
-
-      const doneCount = bestByName.size;
-      state.missionSuccessCount = doneCount;
-      renderMissionSuccessCount(doneCount);
-      refreshAllMissionButtons();
-      refreshAllMissionMedals();
-
-      // 내 미션 상태 보정(uid 기준)
-      try{
-        if(state.uid){
-          const mine = v[state.uid];
-          const cur = state.myMission || loadMissionLocal();
-          if(mine){
-            const merged = { dayKey, text: (cur.text || mine.text || "").slice(0,60), done:true, doneAt: cur.doneAt || (mine.doneAtMs ? new Date(mine.doneAtMs).toISOString() : "") };
-            state.myMission = merged; saveMissionLocal(merged); setMissionButtonState();
-          }
-        }
-      }catch(e){}
-    }catch(e){}
-
-    // ✅ UI 갱신을 rAF로 합치기(폭주 방지)
-    const scheduleMissionUi = ()=>{
-      if(state._missionUiScheduled) return;
-      state._missionUiScheduled = true;
-      requestAnimationFrame(()=>{
-        state._missionUiScheduled = false;
-        try{
-          const bestByName = (state.missionLastByName instanceof Map) ? state.missionLastByName : new Map();
-          let doneCount = 0;
-          for(const vv of bestByName.values()){
-            if(vv && vv.action==="done") doneCount++;
-          }
-          state.missionSuccessCount = doneCount;
-          renderMissionSuccessCount(doneCount);
-          refreshAllMissionButtons();
-          refreshAllMissionMedals();
-        }catch(e){}
-      });
-    };
-
-    const applyUidInfo = (uid, info, allowFireworks)=>{
-      if(!uid) return;
-
-      // remove
-      if(!info){
-        try{
-          const prev = (state.missionByUid instanceof Map) ? state.missionByUid.get(uid) : null;
-          if(prev && prev.name){
-            try{ state.missionLastByName.delete(prev.name); }catch(e){}
-          }
-          try{ state.missionByUid.delete(uid); }catch(e){}
-        }catch(e){}
-        scheduleMissionUi();
-        return;
-      }
-
-      const name = (typeof normalizeNick==="function") ? normalizeNick(info.name||"") : String(info.name||"").trim();
-      if(!name) return;
-
-      const text = String(info.text||"").trim();
-      const doneAtMs = Number(info.doneAtMs||0);
-
-      const prevUidRec = (state.missionByUid instanceof Map) ? state.missionByUid.get(uid) : null;
-      if(prevUidRec && prevUidRec.name && prevUidRec.name !== name){
-        try{ state.missionLastByName.delete(prevUidRec.name); }catch(e){}
-      }
-
-      if(!(state.missionByUid instanceof Map)) state.missionByUid = new Map();
-      if(!(state.missionLastByName instanceof Map)) state.missionLastByName = new Map();
-
-      state.missionByUid.set(uid, { uid, name, text, doneAtMs });
-
-      const prevByName = state.missionLastByName.get(name);
-      state.missionLastByName.set(name, { action:"done", text, tsMs: doneAtMs });
-
-      scheduleMissionUi();
-
-      // 폭죽: 초기 로드(기존 child_added)에서는 금지, 이후 새로 done된 사람만 1회
-      if(allowFireworks){
-        try{
-          const wasDone = !!(prevByName && prevByName.action==="done");
-          if(!wasDone){
-            const tileEl = findTileElByName(name);
-            if(tileEl) fxFireworksAt(tileEl);
-          }
-        }catch(e){}
-      }
-
-      // 내 미션 상태 보정(uid 기준)
-      try{
-        if(state.uid && uid === state.uid){
-          const cur = state.myMission || loadMissionLocal();
-          const merged = { dayKey, text: (cur.text || text || "").slice(0,60), done:true, doneAt: cur.doneAt || (doneAtMs ? new Date(doneAtMs).toISOString() : "") };
-          state.myMission = merged; saveMissionLocal(merged); setMissionButtonState();
-        }
-      }catch(e){}
-    };
-
-    const onAdd = (snap)=>{
-      const uid = snap && snap.key;
-      const info = (snap && snap.val) ? snap.val() : null;
-
-      // ✅ baseline(rGet)로 이미 들어온 uid는 fireworks 없이 갱신만
-      const already = (state.missionByUid instanceof Map) ? state.missionByUid.has(uid) : false;
-      applyUidInfo(uid, info, !already);
-    };
-    const onChg = (snap)=>{
-      const uid = snap && snap.key;
-      const info = (snap && snap.val) ? snap.val() : null;
-      applyUidInfo(uid, info, true);
-    };
-    const onRem = (snap)=>{
-      const uid = snap && snap.key;
-      applyUidInfo(uid, null, false);
-    };
-
-    rOnChildAdded(mref, onAdd);
-    rOnChildChanged(mref, onChg);
-    rOnChildRemoved(mref, onRem);
-
-    state.unsubMissionFeed = ()=>{
-      try{
-        rOff(mref, "child_added", onAdd);
-        rOff(mref, "child_changed", onChg);
-        rOff(mref, "child_removed", onRem);
-      }catch(e){}
-    };
+    if(state && state.unsubMissionFeed){ state.unsubMissionFeed(); state.unsubMissionFeed = null; }
+    if(state){
+      state.missionByUid = new Map();
+      state.missionLastByName = new Map();
+      state.missionSuccessCount = 0;
+    }
+    try{ renderMissionSuccessCount(0); }catch(e){}
   }catch(e){}
 }
-
-
 
 function scheduleMissionDayWatcher(){
-  try{
-    if(state._missionDayTimer) clearTimeout(state._missionDayTimer);
-
-    // 서울 자정(+3초)까지 남은 시간 계산
-    const now = new Date();
-    const seoulNow = new Date(now.toLocaleString("en-US", { timeZone:"Asia/Seoul" }));
-    const next = new Date(seoulNow);
-    next.setHours(24, 0, 3, 0);
-    const ms = next.getTime() - seoulNow.getTime();
-
-    state._missionDayTimer = setTimeout(()=>{
-      const dayKey = seoulDateKey();
-      state.myMission = { dayKey, text:"", done:false, doneAt:"" };
-      saveMissionLocal(state.myMission);
-      try{ setMissionButtonState(); }catch(e){}
-      // ✅ 새 dayKey로 재구독 → 카운트 자동 리셋
-      subscribeMissionFeed();
-      scheduleMissionDayWatcher();
-    }, Math.max(2000, ms));
-  }catch(e){}
+  // V91: 오늘의 미션 제거 — 자정 미션 리셋 타이머 사용 안 함
+  try{ if(state && state._missionDayTimer){ clearTimeout(state._missionDayTimer); state._missionDayTimer = null; } }catch(e){}
 }
-
 
 function fxFireworksAt(el){
       try{
@@ -6992,16 +6885,7 @@ function setPatternColorAll(v){
     // ✅ 집중시간(24시간 누적, 자정 리셋) — 전역 유틸
     function loadFocusSeconds(){
       const today = seoulDateKey();
-      // ✅ 미션 로컬 로드 + 날짜 불일치면 초기화
-      try{
-        const m0 = loadMissionLocal();
-        if(m0.dayKey !== today){
-          state.myMission = { dayKey: today, text:"", done:false, doneAt:"" };
-          saveMissionLocal(state.myMission);
-        }else{
-          state.myMission = m0;
-        }
-      }catch(e){ state.myMission = { dayKey: today, text:"", done:false, doneAt:"" }; }
+      // V91: 오늘의 미션 제거 — 로컬 미션값을 새로 만들지 않음
 
       try{
         const day = localStorage.getItem(LS_FOCUS_DAY) || "";
@@ -7537,7 +7421,6 @@ async function ensureMeDoc(){
     sessionStartedAtMs: null,
     bubbleText: (((loadLocalProfile()||{}).bubbleText || "").toString().trim().slice(0,15)),
     theme: defaultTheme(),
-    mission: state.myMission || { dayKey: today, text:"", done:false, doneAt:"" },
     timerHidden: 0,
     lastSeenAtMs: Date.now(),
     updatedAt: Date.now(),
@@ -7573,17 +7456,7 @@ async function ensureMeDoc(){
         });
       }
 
-      // mission seed/rollover
-      try{
-        const m = state.myMission || loadMissionLocal();
-        const need = (!data.mission) || (data.mission?.dayKey !== today);
-        if(need){
-          const m2 = (m.dayKey===today) ? m : { dayKey: today, text:"", done:false, doneAt:"" };
-          state.myMission = m2;
-          saveMissionLocal(m2);
-          await rUpdate(pref, { mission: m2, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
-        }
-      }catch(e){}
+      // V91: 오늘의 미션 제거 — presence.mission 자동 생성/갱신 안 함
 
       // bubbleText seed
       try{
@@ -9800,7 +9673,7 @@ if(photoEnabled){
 const timer = document.createElement("div");
 timer.className = "bigTimer";
       const isMeTile = (p && p.id && state.uid) ? (p.id === state.uid) : false;
-timer.innerHTML = `<span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--:--"}</span>` + `<button class="missionBtn" type="button" data-owner="${escapeHtml(p.id||'')}" data-name="${escapeHtml(normalizeNick(p.name||p.id||''))}" data-me="${isMeTile?'1':'0'}" title="오늘의 미션" aria-label="오늘의 미션"></button>`;
+timer.innerHTML = `<span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--:--"}</span>`;
       const mbtn = timer.querySelector(".missionBtn");
       if(mbtn) updateMissionBtnForTile(mbtn, p);
 
@@ -11329,9 +11202,7 @@ try{
       // ✅ 자동 휴식/자리비움 감지 시작(입장 후)
       try{ bumpActivity(); }catch(e){}
       try{ startActivityWatch(); }catch(e){ console.warn("startActivityWatch failed", e); }
-      // ✅ 미션 성공 인원(로그아웃/재입장에도 유지)
-      subscribeMissionFeed();
-      scheduleMissionDayWatcher();
+      // V91: 오늘의 미션/메달 현황 제거 — 미션 실시간 구독/자정 감시 시작 안 함
       subscribeChat();
       subscribeKicks();
 
@@ -13585,6 +13456,266 @@ joinRoom();
   // 이미 놀이터 안에서 패치 파일을 새로고침한 경우도 즉시 채팅 리스너를 V88로 교체
   try{ setTimeout(()=>setupPetPlayChatRealtimeV88(), 500); }catch(e){}
 
+
+
+  // ===== V93 펫 Firebase 백업/복구 레이어 =====
+  // 기존 localStorage 기반 펫 성장 로직은 그대로 두고, 닉네임별 백업/관리자 보정만 RTDB에 얹는다.
+  const PET_CLOUD_KEY = 'mk_pet_growth_v2';
+  const PET_CLOUD_APPLIED_KEY = 'mk_pet_cloud_applied_v1';
+  const PET_CLOUD_MAX_SEC = 100 * 3600;
+  const PET_CLOUD_MAX_LEVEL = 30;
+  const PET_CLOUD_LEVEL_SEC = PET_CLOUD_MAX_SEC / PET_CLOUD_MAX_LEVEL;
+  const PET_CLOUD_IDS = ['stone','star','moon','sun','cloud','rabbit','cat','dog','fox','chick','whale','bear','octopus','flower','wing','pencil','diamond','deer','heart','ghost','ember'];
+  const PET_CLOUD_NAMES = {
+    stone:'평범한 돌', star:'작은 별', moon:'보름달', sun:'작은 해', cloud:'작은 구름', rabbit:'쫑긋 토끼', cat:'말랑 고양이', dog:'폴짝 강아지', fox:'살랑 여우', chick:'콩알 병아리', whale:'둥실 고래', bear:'포근 곰', octopus:'말랑 문어', flower:'작은 꽃', wing:'보송 날개', pencil:'몽당 연필', diamond:'반짝 다이아', deer:'숲사슴', heart:'하트퐁', ghost:'몽실 유령', ember:'포근 불씨'
+  };
+  let petCloudStarted = false;
+  let petCloudLastHash = '';
+  let petCloudBusy = false;
+
+  function petCloudNick(){
+    try{ return normalizeNick(state.nickname || els.name?.value || '').trim().slice(0,20); }
+    catch(e){ return String(state.nickname || els.name?.value || '').trim().slice(0,20); }
+  }
+  function petCloudKeyForNick(nick){
+    return encodeURIComponent(String(nick || '').trim()).replace(/[.#$\[\]\/]/g, '_');
+  }
+  function rPetBackupRef(roomId, nick){
+    return rRef(rtdb, `${rRoomBase(roomId)}/petBackups/${petCloudKeyForNick(nick)}`);
+  }
+  function petCloudBaseState(){
+    const pets = {};
+    PET_CLOUD_IDS.forEach(id => pets[id] = { totalSec:0 });
+    return { petSystemVersion:'v51', activePetId:'cat', growingPetId:'cat', growthEnabled:true, pets, customNames:{} };
+  }
+  function petCloudReadLocal(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(PET_CLOUD_KEY) || '{}') || {};
+      const base = petCloudBaseState();
+      const st = Object.assign(base, raw);
+      st.pets = Object.assign(base.pets, raw.pets || {});
+      st.customNames = Object.assign({}, raw.customNames || {});
+      PET_CLOUD_IDS.forEach(id=>{
+        st.pets[id] = st.pets[id] || {totalSec:0};
+        st.pets[id].totalSec = Math.max(0, Math.min(PET_CLOUD_MAX_SEC, Math.floor(Number(st.pets[id].totalSec)||0)));
+      });
+      if(!PET_CLOUD_IDS.includes(st.activePetId)) st.activePetId = 'cat';
+      if(!PET_CLOUD_IDS.includes(st.growingPetId)) st.growingPetId = st.activePetId || 'cat';
+      st.growthEnabled = st.growthEnabled !== false;
+      return st;
+    }catch(e){ return petCloudBaseState(); }
+  }
+  function petCloudSaveLocal(st){
+    try{ localStorage.setItem(PET_CLOUD_KEY, JSON.stringify(st || petCloudBaseState())); }catch(e){}
+    try{ window.__MK_PET_V24__?.renderAll?.(); }catch(e){}
+  }
+  function petCloudTotalSec(st){
+    try{ return PET_CLOUD_IDS.reduce((sum,id)=>sum + Math.max(0, Number(st?.pets?.[id]?.totalSec || 0)), 0); }
+    catch(e){ return 0; }
+  }
+  function petCloudDigest(st){
+    try{
+      return JSON.stringify({
+        activePetId:st.activePetId, growingPetId:st.growingPetId, growthEnabled:st.growthEnabled,
+        pets:st.pets, customNames:st.customNames
+      });
+    }catch(e){ return String(Date.now()); }
+  }
+  function petCloudBackupPayload(nick, st, extra={}){
+    return Object.assign({
+      nickname:nick,
+      roomId:state.roomId || '',
+      sourceUid:state.uid || '',
+      petState:st,
+      activePetId:st.activePetId || 'cat',
+      growingPetId:st.growingPetId || st.activePetId || 'cat',
+      totalSecSum:petCloudTotalSec(st),
+      updatedAtMs:Date.now(),
+      schemaVersion:'pet-cloud-v1'
+    }, extra || {});
+  }
+  function petCloudRemoteState(remote){
+    const st = remote && remote.petState ? remote.petState : null;
+    if(!st || typeof st !== 'object') return null;
+    const base = petCloudBaseState();
+    const out = Object.assign(base, st);
+    out.pets = Object.assign(base.pets, st.pets || {});
+    out.customNames = Object.assign({}, st.customNames || {});
+    PET_CLOUD_IDS.forEach(id=>{
+      out.pets[id] = out.pets[id] || {totalSec:0};
+      out.pets[id].totalSec = Math.max(0, Math.min(PET_CLOUD_MAX_SEC, Math.floor(Number(out.pets[id].totalSec)||0)));
+    });
+    if(!PET_CLOUD_IDS.includes(out.activePetId)) out.activePetId = 'cat';
+    if(!PET_CLOUD_IDS.includes(out.growingPetId)) out.growingPetId = out.activePetId || 'cat';
+    return out;
+  }
+  function petCloudAppliedTokens(){
+    try{ return JSON.parse(localStorage.getItem(PET_CLOUD_APPLIED_KEY) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function petCloudMarkApplied(nick, token){
+    if(!token) return;
+    try{
+      const obj = petCloudAppliedTokens();
+      obj[petCloudKeyForNick(nick)] = token;
+      localStorage.setItem(PET_CLOUD_APPLIED_KEY, JSON.stringify(obj));
+    }catch(e){}
+  }
+  async function petCloudMaybeRestoreFromRemote(nick){
+    if(!state.roomId || !nick) return false;
+    try{
+      const snap = await rGet(rPetBackupRef(state.roomId, nick));
+      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+      const remoteState = petCloudRemoteState(remote);
+      if(!remoteState) return false;
+      const local = petCloudReadLocal();
+      const localTotal = petCloudTotalSec(local);
+      const remoteTotal = petCloudTotalSec(remoteState);
+      const token = remote.adminOverrideToken || '';
+      const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
+      const forcedByAdmin = !!token && token !== applied;
+      const shouldRestore = forcedByAdmin || (remoteTotal > localTotal + 30);
+      if(!shouldRestore) return false;
+      petCloudSaveLocal(remoteState);
+      if(token) petCloudMarkApplied(nick, token);
+      petCloudLastHash = petCloudDigest(remoteState);
+      try{ showToast(forcedByAdmin ? '🐾 관리자 펫 보정값을 적용했어!' : '🐾 Firebase 백업에서 펫 정보를 복원했어!'); }catch(e){}
+      return true;
+    }catch(e){ console.warn('[pet cloud] restore failed', e); return false; }
+  }
+  async function petCloudBackupNow(reason='auto'){
+    if(petCloudBusy || !state.roomId || !state.joined) return;
+    const nick = petCloudNick();
+    if(!nick) return;
+    petCloudBusy = true;
+    try{
+      const restored = await petCloudMaybeRestoreFromRemote(nick);
+      const st = petCloudReadLocal();
+      const hash = petCloudDigest(st);
+      if(!restored && hash === petCloudLastHash && reason === 'auto') return;
+      const snap = await rGet(rPetBackupRef(state.roomId, nick));
+      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+      const remoteToken = remote && remote.adminOverrideToken ? String(remote.adminOverrideToken) : '';
+      const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
+      // 아직 적용하지 않은 관리자 보정값이 서버에 있으면, 낮은 로컬값으로 덮지 않는다.
+      if(remoteToken && remoteToken !== applied){ return; }
+      await rSet(rPetBackupRef(state.roomId, nick), petCloudBackupPayload(nick, st, {
+        updatedBy:'client',
+        backupReason:reason,
+        adminOverrideToken:remoteToken || null
+      }));
+      petCloudLastHash = hash;
+    }catch(e){ console.warn('[pet cloud] backup failed', e); }
+    finally{ petCloudBusy = false; }
+  }
+  function petCloudHoursForLevel(level){
+    const lv = Math.max(0, Math.min(30, Math.floor(Number(level)||0)));
+    return Math.round((lv * PET_CLOUD_LEVEL_SEC / 3600) * 10) / 10;
+  }
+  function petCloudFmt(sec){
+    sec = Math.max(0, Math.floor(Number(sec)||0));
+    const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+    return h ? `${h}시간 ${m}분` : `${m}분`;
+  }
+  function petCloudSetAdminStatus(msg){
+    try{ const el = document.getElementById('petAdminStatus'); if(el) el.textContent = msg; }catch(e){}
+  }
+  async function petCloudAdminLoad(){
+    if(!state.adminOk){ showToast('관리자 확인부터!'); return; }
+    const nick = String(document.getElementById('petAdminNick')?.value || '').trim();
+    if(!nick){ showToast('닉네임을 입력해줘'); return; }
+    try{
+      const snap = await rGet(rPetBackupRef(state.roomId, nick));
+      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+      if(!remote){ petCloudSetAdminStatus(`${nick} 님의 펫 백업이 아직 없어요.`); return; }
+      const st = petCloudRemoteState(remote) || petCloudBaseState();
+      const active = st.activePetId || 'cat';
+      const sec = Number(st.pets?.[active]?.totalSec || 0);
+      const lv = Math.min(30, Math.floor(sec / PET_CLOUD_LEVEL_SEC));
+      try{ document.getElementById('petAdminPetId').value = active; }catch(e){}
+      try{ document.getElementById('petAdminLevel').value = String(lv); }catch(e){}
+      try{ document.getElementById('petAdminHours').value = String(Math.round((sec/3600)*10)/10); }catch(e){}
+      try{ document.getElementById('petAdminCustomName').value = String(st.customNames?.[active] || ''); }catch(e){}
+      petCloudSetAdminStatus(`${nick} 님 백업 확인: 대표 펫 ${PET_CLOUD_NAMES[active] || active}, Lv.${lv}, ${petCloudFmt(sec)} · 전체 누적 ${petCloudFmt(petCloudTotalSec(st))} · 마지막 저장 ${remote.updatedAtMs ? new Date(remote.updatedAtMs).toLocaleString('ko-KR') : '-'}`);
+    }catch(e){ console.warn(e); showToast('펫 백업 조회 실패'); }
+  }
+  async function petCloudAdminSave(){
+    if(!state.adminOk){ showToast('관리자 확인부터!'); return; }
+    const nick = String(document.getElementById('petAdminNick')?.value || '').trim();
+    const petId = String(document.getElementById('petAdminPetId')?.value || 'cat');
+    const level = Math.max(0, Math.min(30, Math.floor(Number(document.getElementById('petAdminLevel')?.value || 0))));
+    const hoursRaw = document.getElementById('petAdminHours')?.value;
+    const hours = hoursRaw === '' || hoursRaw == null ? petCloudHoursForLevel(level) : Math.max(0, Math.min(100, Number(hoursRaw)||0));
+    const sec = Math.max(0, Math.min(PET_CLOUD_MAX_SEC, Math.floor(hours * 3600)));
+    const customName = String(document.getElementById('petAdminCustomName')?.value || '').trim().slice(0,20);
+    if(!nick){ showToast('닉네임을 입력해줘'); return; }
+    if(!PET_CLOUD_IDS.includes(petId)){ showToast('펫 종류를 확인해줘'); return; }
+    try{
+      const snap = await rGet(rPetBackupRef(state.roomId, nick));
+      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+      const st = petCloudRemoteState(remote) || petCloudBaseState();
+      st.pets[petId] = st.pets[petId] || {totalSec:0};
+      st.pets[petId].totalSec = sec;
+      st.activePetId = petId;
+      st.growingPetId = petId;
+      st.growthEnabled = st.growthEnabled !== false;
+      st.customNames = st.customNames || {};
+      if(customName) st.customNames[petId] = customName;
+      else delete st.customNames[petId];
+      const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      await rSet(rPetBackupRef(state.roomId, nick), petCloudBackupPayload(nick, st, {
+        updatedBy:'admin',
+        adminUid:state.uid || '',
+        adminOverrideToken:token,
+        adminOverrideAtMs:Date.now()
+      }));
+      petCloudSetAdminStatus(`${nick} 님 펫 보정 저장 완료: ${PET_CLOUD_NAMES[petId] || petId} Lv.${level} / ${petCloudFmt(sec)}. 작가님이 작업방을 새로고침하거나 재접속하면 자동 반영돼요.`);
+      showToast('🐾 펫 보정값 저장 완료!');
+    }catch(e){ console.warn(e); showToast('펫 보정 저장 실패'); }
+  }
+  function petCloudRefreshAdminNickList(){
+    try{
+      const dl = document.getElementById('petAdminNickList');
+      if(!dl || !state.currentParticipants) return;
+      const names = [];
+      state.currentParticipants.forEach(v=>{ const n = String(v?.name || '').trim(); if(n && !names.includes(n)) names.push(n); });
+      dl.innerHTML = names.sort((a,b)=>a.localeCompare(b,'ko')).map(n=>`<option value="${escapeHtml(n)}"></option>`).join('');
+    }catch(e){}
+  }
+  function petCloudBindAdminUI(){
+    try{
+      const lv = document.getElementById('petAdminLevel');
+      const hours = document.getElementById('petAdminHours');
+      if(lv && !lv.dataset.petCloudBound){
+        lv.dataset.petCloudBound = '1';
+        lv.addEventListener('input', ()=>{ if(hours && !hours.matches(':focus')) hours.value = String(petCloudHoursForLevel(lv.value)); });
+      }
+      const load = document.getElementById('petAdminLoad');
+      const save = document.getElementById('petAdminSave');
+      const restoreMine = document.getElementById('petAdminRestoreMine');
+      if(load && !load.dataset.petCloudBound){ load.dataset.petCloudBound='1'; load.addEventListener('click', petCloudAdminLoad); }
+      if(save && !save.dataset.petCloudBound){ save.dataset.petCloudBound='1'; save.addEventListener('click', petCloudAdminSave); }
+      if(restoreMine && !restoreMine.dataset.petCloudBound){ restoreMine.dataset.petCloudBound='1'; restoreMine.addEventListener('click', async()=>{
+        const nick = petCloudNick();
+        if(!nick){ showToast('먼저 닉네임으로 입장해줘'); return; }
+        const ok = await petCloudMaybeRestoreFromRemote(nick);
+        showToast(ok ? '🐾 내 펫을 백업에서 복원했어!' : '복원할 더 높은 백업/관리자 보정값이 없어');
+      }); }
+      petCloudRefreshAdminNickList();
+    }catch(e){}
+  }
+  function petCloudStart(){
+    if(petCloudStarted) return;
+    petCloudStarted = true;
+    petCloudBindAdminUI();
+    setInterval(()=>{ try{ petCloudBindAdminUI(); }catch(e){} }, 5000);
+    setInterval(()=>{ try{ if(state.joined) petCloudBackupNow('auto'); }catch(e){} }, 60000);
+    setTimeout(()=>{ try{ if(state.joined) petCloudBackupNow('startup'); }catch(e){} }, 4500);
+    document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'visible' && state.joined) petCloudBackupNow('visible'); }catch(e){} });
+    window.addEventListener('pagehide', ()=>{ try{ if(state.joined) petCloudBackupNow('pagehide'); }catch(e){} });
+    window.__MK_PET_CLOUD_BACKUP__ = { backupNow:petCloudBackupNow, restoreMine:()=>petCloudMaybeRestoreFromRemote(petCloudNick()), readLocal:petCloudReadLocal };
+  }
+  petCloudStart();
+
   // READY FLAG (bindings complete)
   window.__MK_READY__ = true;
 })();
@@ -14813,54 +14944,54 @@ if(!window.__MK_BOOT_OK__){
 
 
 <!-- V90_SAFE: 브라우저 강력 새로고침 버튼 - localStorage/DB/채팅 로직은 건드리지 않음 -->
-<script id="hardRefreshPatchV90">
+<script id="hardRefreshPatchV91">
 (function(){
   'use strict';
-  async function clearBrowserCachesSafely(){
+  /*
+    V91_SAFE_REFRESH
+    - 기존 V90 버튼은 Cache Storage를 삭제하고 URL에 __hardRefresh 쿼리를 붙였습니다.
+    - 일부 브라우저/PWA 환경에서 이 동작이 “새 앱 주소/새 저장 공간처럼 보이는” 혼선을 만들 수 있어,
+      이제는 Ctrl+Shift+R에 가장 가까운 “현재 주소 그대로 네트워크 재요청”만 수행합니다.
+    - localStorage / sessionStorage / IndexedDB / RTDB / 펫 성장값 / 프로필값 / 서비스워커 등록 해제는 절대 하지 않습니다.
+  */
+  var running = false;
+
+  async function askServiceWorkerForFreshVersion(){
     try{
-      if('caches' in window && window.caches && typeof window.caches.keys === 'function'){
-        const keys = await window.caches.keys();
-        await Promise.all(keys.map(function(key){ return window.caches.delete(key); }));
-      }
+      if(!('serviceWorker' in navigator)) return;
+      var reg = await navigator.serviceWorker.getRegistration('./');
+      if(reg && typeof reg.update === 'function') await reg.update().catch(function(){});
     }catch(e){
-      console.warn('[hard refresh] cache clear skipped', e);
-    }
-    try{
-      if('serviceWorker' in navigator && navigator.serviceWorker && typeof navigator.serviceWorker.getRegistrations === 'function'){
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(function(reg){
-          try{ return (reg && typeof reg.update === 'function') ? reg.update() : Promise.resolve(); }
-          catch(e){ return Promise.resolve(); }
-        }));
-      }
-    }catch(e){
-      console.warn('[hard refresh] service worker update skipped', e);
+      console.warn('[safe refresh] service worker update check skipped', e);
     }
   }
-  function makeCacheBustedUrl(){
-    const url = new URL(window.location.href);
-    url.searchParams.set('__hardRefresh', String(Date.now()));
-    return url.toString();
-  }
-  async function runHardRefresh(){
-    const btn = document.getElementById('hardRefreshBtn');
+
+  async function runSafeRefresh(){
+    if(running) return;
+    running = true;
+    var btn = document.getElementById('hardRefreshBtn');
     try{
       if(btn){
         btn.disabled = true;
         btn.textContent = '🔄새로고침중';
+        btn.title = '현재 주소를 그대로 다시 불러옵니다. 저장 기록은 지우지 않습니다.';
       }
-      await clearBrowserCachesSafely();
+      await askServiceWorkerForFreshVersion();
     }finally{
-      window.location.replace(makeCacheBustedUrl());
+      // replace/searchParams/cache 삭제 금지: 브라우저 기본 새로고침과 같은 경로 유지
+      window.location.reload();
     }
   }
+
   function bind(){
-    const btn = document.getElementById('hardRefreshBtn');
-    if(!btn || btn.dataset.hardRefreshBound === '1') return;
-    btn.dataset.hardRefreshBound = '1';
+    var btn = document.getElementById('hardRefreshBtn');
+    if(!btn || btn.dataset.safeRefreshBound === '1') return;
+    btn.dataset.safeRefreshBound = '1';
+    btn.title = '현재 방을 다시 불러옵니다. 펫/프로필/작업 기록은 삭제하지 않습니다.';
+    btn.setAttribute('aria-label', '안전 새로고침');
     btn.addEventListener('click', function(ev){
       ev.preventDefault();
-      runHardRefresh();
+      runSafeRefresh();
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
