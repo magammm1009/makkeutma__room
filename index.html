@@ -5615,6 +5615,11 @@ function seoulDateKey(){
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
     const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off" 또는 퇴장 버튼에서만 처리.
+    // ✅ V99_COST_LIGHT_1: RTDB 다운로드 경량화 1단계
+    // presence는 child_* 증분 구독을 이미 사용 중이므로, 가장 큰 비용 원인인 heartbeat 쓰기 빈도만 낮춘다.
+    // 온라인 판정은 status=off/onDisconnect 기반이라 30초 heartbeat가 필수는 아님.
+    const PRESENCE_HEARTBEAT_INTERVAL_MS = 120000; // 기존 30초 → 120초
+    const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장만 30초 → 60초
 // ✅ 온라인/오프라인 판정 규칙
 // - 입장하면 온라인 유지(heartbeat 사용 여부와 무관)
 // - '진짜 오프라인'만 타일에서 숨김: status가 'off'/'offline'일 때만
@@ -7721,9 +7726,9 @@ function helperPairKey(){
     function getHelperMode(){
       try{
         const lp = loadLocalProfile() || {};
-        const m = String(lp.helperMode || state.helperMode || "auto");
+        const m = String(lp.helperMode || state.helperMode || "manual");
         return (m === "manual" || m === "auto") ? m : "auto";
-      }catch(e){ return (state.helperMode || "auto"); }
+      }catch(e){ return (state.helperMode || "manual"); }
     }
     function setHelperMode(mode, save=true){
       const m = (mode === "manual") ? "manual" : "auto";
@@ -7742,6 +7747,21 @@ function helperPairKey(){
           saveLocalProfile(lp);
         }catch(e){}
       }
+      // ✅ V100 경량화: 헬퍼를 쓰지 않는 manual 모드에서는 helperPairs 실시간 구독/폴링을 끊음
+      try{
+        if(state.joined){
+          if(m === "auto") startHelperWatch();
+          else{
+            try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
+            state._helperPairUnsub = null;
+            state._helperPairKey = null;
+            if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
+            state.helperConnected = false;
+            state.helperActive = false;
+            updateHelperStatusUI();
+          }
+        }
+      }catch(e){}
     }
 
 
@@ -7917,6 +7937,20 @@ async function pollHelperHeartbeat(){
     }
 
 function startHelperWatch(){
+      // ✅ V100 경량화: 하트헬퍼를 쓰는(auto) 사람만 helperPairs를 읽음
+      // 사용자가 적은 기능이라 기본/수동 모드에서는 실시간 구독과 REST 폴링을 모두 중단해 다운로드를 줄인다.
+      try{
+        if(getHelperMode && getHelperMode() !== "auto"){
+          try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
+          state._helperPairUnsub = null;
+          state._helperPairKey = null;
+          if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
+          state.helperConnected = false;
+          state.helperActive = false;
+          updateHelperStatusUI();
+          return;
+        }
+      }catch(e){}
       // ✅ 가능하면 RTDB SDK onValue로 한 키만 실시간 구독(1초 REST 폴링으로 인한 버퍼링/트래픽 감소)
       try{
         const key = helperPairKey();
@@ -8372,10 +8406,13 @@ function subscribeRoom(){
     renderDashboard();
   };
   try{
-    rOnValue(sref, onSettings);
-    state.unsubRoom = ()=>{ try{ rOff(sref, "value", onSettings); }catch(e){} };
+    // ✅ V100 경량화: settings는 자주 바뀌지 않으므로 실시간 구독(onValue) 대신 1회 조회만 사용
+    // - 관리자 저장 직후에는 로컬 state를 직접 갱신해 UI 반영
+    // - 새로고침/재접속 시 최신 settings를 다시 읽음
+    rGet(sref).then(onSettings).catch((e)=>{ console.warn("[room] get settings failed", e); });
+    state.unsubRoom = null;
   }catch(e){
-    console.warn("[room] subscribe settings failed", e);
+    console.warn("[room] get settings failed", e);
   }
 
   const cref = rDashboardCountsRef(state.roomId);
@@ -8483,6 +8520,11 @@ async function saveDashboard(){
   };
   try{
     await rUpdate(rSettingsRef(state.roomId), { dashboard });
+    // ✅ V100: settings 실시간 구독을 끊었으므로 저장 직후 로컬 상태에 즉시 반영
+    try{
+      state.roomSettings.dashboard = dashboard;
+      renderDashboard();
+    }catch(e){}
     showToast("저장!");
   }catch(e){
     console.warn(e);
@@ -11384,7 +11426,7 @@ try{
       updateClocks();
 
       if(state.hbTimer) clearInterval(state.hbTimer);
-      state.hbTimer = setInterval(heartbeat, 30_000);
+      state.hbTimer = setInterval(heartbeat, PRESENCE_HEARTBEAT_INTERVAL_MS);
 
       try{ localStorage.setItem("mk_last_name", name); }catch(e){}
       els.meHint.textContent = name;
@@ -11396,7 +11438,7 @@ try{
       try{ scheduleAttendanceAutoOpenAfterJoin(); }catch(e){}
       // ✅ 30초마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
-      try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, 30000); }catch(e){}
+      try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, FOCUS_LOCAL_PERSIST_INTERVAL_MS); }catch(e){}
       // ✅ 입장 사운드(모두에게): 나는 즉시 재생, 다른 사람은 sfx 이벤트로 재생
       try{ playSfx("enter"); }catch(e){}
       try{ emitSfx("enter"); }catch(e){}
@@ -13743,6 +13785,7 @@ joinRoom();
       const localTotal = petCloudTotalSec(local);
       const remoteTotal = petCloudTotalSec(remoteState);
       const token = remote.adminOverrideToken || '';
+      try{ petCloudCachedRemoteToken = token || ''; petCloudLastRemoteCheckMs = Date.now(); }catch(e){}
       const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
       const forcedByAdmin = !!token && token !== applied;
       const shouldRestore = forcedByAdmin || (remoteTotal > localTotal + 30);
@@ -13760,19 +13803,41 @@ joinRoom();
     if(!nick) return;
     petCloudBusy = true;
     try{
-      const restored = await petCloudMaybeRestoreFromRemote(nick);
+      const now = Date.now();
+      const reasonStr = String(reason || 'auto');
+      // ✅ V100 경량화: 자동 백업마다 remote rGet을 하지 않음.
+      // - startup/visible/manual/restore/admin 계열 또는 10분에 1회만 원격 백업을 확인
+      // - 평소 60초 자동 백업은 localStorage → RTDB set만 수행하므로 다운로드를 크게 줄임
+      const shouldCheckRemote =
+        reasonStr !== 'auto' ||
+        !petCloudLastRemoteCheckMs ||
+        (now - petCloudLastRemoteCheckMs) > 10 * 60 * 1000;
+
+      let restored = false;
+      let remoteToken = petCloudCachedRemoteToken || '';
+
+      if(shouldCheckRemote){
+        restored = await petCloudMaybeRestoreFromRemote(nick);
+        petCloudLastRemoteCheckMs = now;
+        try{
+          const snap = await rGet(rPetBackupRef(state.roomId, nick));
+          const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+          remoteToken = remote && remote.adminOverrideToken ? String(remote.adminOverrideToken) : '';
+          petCloudCachedRemoteToken = remoteToken || '';
+        }catch(e){}
+      }
+
       const st = petCloudReadLocal();
       const hash = petCloudDigest(st);
-      if(!restored && hash === petCloudLastHash && reason === 'auto') return;
-      const snap = await rGet(rPetBackupRef(state.roomId, nick));
-      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
-      const remoteToken = remote && remote.adminOverrideToken ? String(remote.adminOverrideToken) : '';
+      if(!restored && hash === petCloudLastHash && reasonStr === 'auto') return;
+
       const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
-      // 아직 적용하지 않은 관리자 보정값이 서버에 있으면, 낮은 로컬값으로 덮지 않는다.
+      // 아직 적용하지 않은 관리자 보정값을 확인한 상태라면, 낮은 로컬값으로 덮지 않는다.
       if(remoteToken && remoteToken !== applied){ return; }
+
       await rSet(rPetBackupRef(state.roomId, nick), petCloudBackupPayload(nick, st, {
         updatedBy:'client',
-        backupReason:reason,
+        backupReason:reasonStr,
         adminOverrideToken:remoteToken || null
       }));
       petCloudLastHash = hash;
