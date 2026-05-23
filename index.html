@@ -13727,6 +13727,18 @@ joinRoom();
     try{ return PET_CLOUD_IDS.reduce((sum,id)=>sum + Math.max(0, Number(st?.pets?.[id]?.totalSec || 0)), 0); }
     catch(e){ return 0; }
   }
+  function petCloudLocalNeedsRestoreCheck(st){
+    try{
+      const total = petCloudTotalSec(st);
+      // ✅ V101 경량화: 일반 접속자는 매번 Firebase 백업을 읽지 않는다.
+      // 로컬 펫이 비어 있거나 초기화가 의심될 때만 원격 백업을 확인한다.
+      if(total <= 30) return true;
+      const active = String(st?.activePetId || '');
+      if(!active || !PET_CLOUD_IDS.includes(active)) return true;
+      if(!st?.pets || typeof st.pets !== 'object') return true;
+      return false;
+    }catch(e){ return true; }
+  }
   function petCloudDigest(st){
     try{
       return JSON.stringify({
@@ -13805,13 +13817,16 @@ joinRoom();
     try{
       const now = Date.now();
       const reasonStr = String(reason || 'auto');
-      // ✅ V100 경량화: 자동 백업마다 remote rGet을 하지 않음.
-      // - startup/visible/manual/restore/admin 계열 또는 10분에 1회만 원격 백업을 확인
-      // - 평소 60초 자동 백업은 localStorage → RTDB set만 수행하므로 다운로드를 크게 줄임
+      let st = petCloudReadLocal();
+      const localLooksEmpty = petCloudLocalNeedsRestoreCheck(st);
+
+      // ✅ V101 초경량화: 일반 접속/새로고침마다 petBackups를 읽지 않는다.
+      // - 로컬 펫이 비어 있거나 초기화가 의심될 때만 원격 백업을 1회 확인
+      // - 관리자가 누르는 조회/복원 버튼은 기존처럼 해당 닉네임만 직접 읽음
+      // - 평소 자동 백업은 읽기 없이 localStorage → RTDB update만 수행
       const shouldCheckRemote =
-        reasonStr !== 'auto' ||
-        !petCloudLastRemoteCheckMs ||
-        (now - petCloudLastRemoteCheckMs) > 10 * 60 * 1000;
+        localLooksEmpty &&
+        (reasonStr === 'startup' || reasonStr === 'visible' || reasonStr === 'manual' || reasonStr === 'restore');
 
       let restored = false;
       let remoteToken = petCloudCachedRemoteToken || '';
@@ -13819,27 +13834,30 @@ joinRoom();
       if(shouldCheckRemote){
         restored = await petCloudMaybeRestoreFromRemote(nick);
         petCloudLastRemoteCheckMs = now;
-        try{
-          const snap = await rGet(rPetBackupRef(state.roomId, nick));
-          const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
-          remoteToken = remote && remote.adminOverrideToken ? String(remote.adminOverrideToken) : '';
-          petCloudCachedRemoteToken = remoteToken || '';
-        }catch(e){}
+        remoteToken = petCloudCachedRemoteToken || '';
+        st = petCloudReadLocal();
       }
 
-      const st = petCloudReadLocal();
       const hash = petCloudDigest(st);
       if(!restored && hash === petCloudLastHash && reasonStr === 'auto') return;
 
       const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
-      // 아직 적용하지 않은 관리자 보정값을 확인한 상태라면, 낮은 로컬값으로 덮지 않는다.
+      // 확인된 관리자 보정 토큰이 아직 적용 전이면 로컬값으로 덮지 않는다.
       if(remoteToken && remoteToken !== applied){ return; }
 
-      await rSet(rPetBackupRef(state.roomId, nick), petCloudBackupPayload(nick, st, {
+      // 로컬이 완전 초기화처럼 보일 때는 서버의 정상 백업을 0레벨로 덮어쓰지 않도록 스킵한다.
+      // 새 사용자/새 펫은 실제 작업 시간이 조금 쌓인 뒤부터 자동 백업된다.
+      if(localLooksEmpty && !restored){
+        if(reasonStr !== 'pagehide') petCloudLastHash = hash;
+        return;
+      }
+
+      const payload = petCloudBackupPayload(nick, st, {
         updatedBy:'client',
-        backupReason:reasonStr,
-        adminOverrideToken:remoteToken || null
-      }));
+        backupReason:reasonStr
+      });
+      // rSet 대신 rUpdate: 관리자 보정 토큰/메타데이터가 있을 때 클라이언트 백업이 지우지 않도록 보존한다.
+      await rUpdate(rPetBackupRef(state.roomId, nick), payload);
       petCloudLastHash = hash;
     }catch(e){ console.warn('[pet cloud] backup failed', e); }
     finally{ petCloudBusy = false; }
