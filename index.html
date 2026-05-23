@@ -8746,7 +8746,14 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       if(keepMore) el.appendChild(keepMore);
 
       const frag = document.createDocumentFragment();
-      for(const m of list){
+      // ✅ V94: 화면 렌더 최종 방어선 — 같은 메시지 id는 DOM에 1번만 붙인다.
+      // Firebase에는 1개인데 화면에만 2개씩 보이는 경우는 대부분 구독/렌더 중복이므로
+      // 여기서도 한 번 더 중복을 제거해 작가님 화면이 흔들리지 않게 한다.
+      const seenRenderIds = new Set();
+      for(const m of (Array.isArray(list) ? list : [])){
+        const mid = String(m && m.id ? m.id : `${m && (m.tsMs||m.serverTs)||''}:${m && m.uid||''}:${m && m.text||''}`);
+        if(seenRenderIds.has(mid)) continue;
+        seenRenderIds.add(mid);
         frag.appendChild(makeMsgNode(m));
       }
       el.appendChild(frag);
@@ -8796,6 +8803,15 @@ function subscribeChat(){
   try{ if(state.unsubChat) state.unsubChat(); }catch(e){}
   try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
   try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
+
+  // ✅ V94: 채팅 화면 중복 렌더 방지 토큰
+  // subscribeChat()가 빠르게 2번 실행되거나, 이전 비동기 초기 로드가 늦게 돌아와
+  // child_added 리스너를 다시 붙이면 Firebase에는 1개인데 화면에는 2개씩 보일 수 있음.
+  // 매 구독마다 토큰을 올리고, 오래된 콜백/초기 로드는 즉시 무시한다.
+  state.chatSubSeq = (Number(state.chatSubSeq) || 0) + 1;
+  const chatSubSeq = state.chatSubSeq;
+  const isCurrentChatSub = ()=> !!state.roomId && state.chatSubSeq === chatSubSeq;
+
   state.chatDisplayIds = [];
   state.chatRollingById = {};
   state.chatCache = [];
@@ -8866,6 +8882,7 @@ function subscribeChat(){
   // ✅ render batching: 여러 child_added/changed를 한 프레임에 묶어서 렌더(버벅임 감소)
   let __chatRenderScheduled = false;
   function __scheduleChatRender(){
+    if(!isCurrentChatSub()) return;
     if(__chatRenderScheduled) return;
     __chatRenderScheduled = true;
     const runChatRender = ()=>{
@@ -8875,6 +8892,7 @@ function subscribeChat(){
       requestAnimationFrame(()=>{
       __chatRenderScheduled = false;
       try{
+        if(!isCurrentChatSub()) return;
         const nearBottom = isChatNearBottom();
         state.chatUserNearBottom = nearBottom;
         const list2 = rebuildCacheFromMap();
@@ -8970,6 +8988,7 @@ function subscribeChat(){
   }
 
   async function expandToStayLimit(){
+    if(!isCurrentChatSub()) return;
     if(state.chatStayExpanded) return;
     const current = rebuildCacheFromMap();
     if(current.length >= STAY_LIMIT){
@@ -8981,6 +9000,7 @@ function subscribeChat(){
     if(!oldestTs) { state.chatStayExpanded = true; return; }
     const need = STAY_LIMIT - current.length;
     const older = await loadBeforeTs(oldestTs, Math.min(need, STAY_LIMIT));
+    if(!isCurrentChatSub()) return;
     if(older && older.length){
       // prepend older
       for(const mm of older){
@@ -9000,6 +9020,7 @@ function subscribeChat(){
   }
 
   async function loadMoreOlderOnce(){
+    if(!isCurrentChatSub()) return;
     if(state.chatMoreUsed) return;
     const current = rebuildCacheFromMap();
     if(!current.length) { state.chatMoreUsed = true; return; }
@@ -9007,6 +9028,7 @@ function subscribeChat(){
     if(!oldestTs){ state.chatMoreUsed = true; return; }
 
     const older = await loadBeforeTs(oldestTs, MORE_LIMIT);
+    if(!isCurrentChatSub()) return;
     if(older && older.length){
       // increase window to 40
       state.chatWindowMax = MAX_LIMIT;
@@ -9025,7 +9047,9 @@ function subscribeChat(){
   // initial load 10
   (async ()=>{
     try{
+      if(!isCurrentChatSub()) return;
       const initial = await loadLastOnce(INIT_LIMIT);
+      if(!isCurrentChatSub()) return;
       // seed map
       for(const mm of initial){
         if(mm && mm.id) state.chatRollingById[mm.id] = mm;
@@ -9033,6 +9057,11 @@ function subscribeChat(){
       const list = rebuildCacheFromMap();
       renderChatFull(list, true);
       state.chatDisplayIds = list.map(m=>m.id);
+      // ✅ V95: live child_added가 처음 붙을 때 기존 과거 메시지를 새 메시지처럼 처리하지 않도록 기준 시각 저장
+      try{
+        const allInitial = Object.values(state.chatRollingById || {});
+        state.chatInitialMaxTs = allInitial.reduce((mx, m)=>Math.max(mx, Number(m && (m.tsMs || m.serverTs) || 0)), 0);
+      }catch(e){ state.chatInitialMaxTs = 0; }
       state.chatFirstLoadDone = true;
       try{ state.chatUnseen = 0; hideChatNewBar(true); }catch(e){}
       // ensure UI bits
@@ -9043,10 +9072,12 @@ function subscribeChat(){
       setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 1200);
 
       // live listener: 안정적으로(클라이언트 시계 차이로 누락 방지) 마지막 MAX_LIMIT을 계속 구독
+      if(!isCurrentChatSub()) return;
       const qLive = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
 
       const onAdd = (snap)=>{
         try{
+          if(!isCurrentChatSub()) return;
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
@@ -9087,6 +9118,17 @@ function subscribeChat(){
             return;
           }
 
+          // ✅ V95: qLive 연결 직후 child_added가 기존 과거 메시지를 순차 방출하는 구간 방어
+          // Firebase에는 하나인데 화면/새 메시지 카운트만 흔들리는 현상을 막기 위해,
+          // 초기 로드 시점보다 오래된 메시지는 라이브 신규 메시지로 편입하지 않는다.
+          try{
+            const msgTs = Number(mm.tsMs || mm.serverTs || 0);
+            const initialMaxTs = Number(state.chatInitialMaxTs || 0);
+            if(state.chatFirstLoadDone && initialMaxTs && msgTs && msgTs <= initialMaxTs){
+              return;
+            }
+          }catch(e){}
+
           state.chatRollingById = state.chatRollingById || {};
           state.chatRollingById[id] = mm;
           __scheduleChatRender();
@@ -9100,6 +9142,7 @@ function subscribeChat(){
       const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
       const onChg = (snap)=>{
         try{
+          if(!isCurrentChatSub()) return;
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
@@ -9124,10 +9167,12 @@ function subscribeChat(){
 
     }catch(e){
       console.error(e);
+      if(!isCurrentChatSub()) return;
       // fall back to old onValue if something blows up
       try{
         const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_INIT_LIMIT));
         const onMsgs = (snap)=>{
+          if(!isCurrentChatSub()) return;
           const val = snap && snap.val ? (snap.val() || {}) : {};
           const list = normalizeDocsFromSnapVal(val);
           // enforce stay limit
@@ -9148,6 +9193,7 @@ function subscribeChat(){
   state.unsubChat = ()=>{
     try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
     try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
+    try{ state.unsubChatLive = null; state.unsubChatChg = null; }catch(e){}
   };
 }
 
