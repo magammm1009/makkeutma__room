@@ -8590,6 +8590,7 @@ function __getMyReactOn(msgObj, emoji){
       if(m && m.type === "sys"){
         div.className = "msg system";
                 try{ div.setAttribute("data-msg-id", String(m.id||"")); }catch(e){}
+        try{ div.setAttribute("data-ts-ms", String(Number(m.tsMs || m.serverTs || 0) || 0)); }catch(e){}
 div.innerHTML = `<div class="text">${escapeHtml(m.text || "")}</div>`;
         return div;
       }
@@ -8597,6 +8598,7 @@ div.innerHTML = `<div class="text">${escapeHtml(m.text || "")}</div>`;
       const isMe = (m.uid && state.uid && m.uid === state.uid);
       div.className = "msg " + (isMe ? "me" : "other");
             try{ div.setAttribute("data-msg-id", String(m.id||"")); }catch(e){}
+            try{ div.setAttribute("data-ts-ms", String(Number(m.tsMs || m.serverTs || 0) || 0)); }catch(e){}
             try{ if(m.uid) div.setAttribute("data-uid", String(m.uid)); }catch(e){}
 const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m.uid) : null;
       const emoji = (p && p.theme && p.theme.emoji) ? String(p.theme.emoji) : ((m && m.emoji) ? String(m.emoji) : "💬");
@@ -8727,6 +8729,109 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       }catch(e){}
     }
 
+
+    function dedupeChatDomHard(){
+      try{
+        const el = els.chatList;
+        if(!el) return;
+
+        // 1) Firebase msgId가 같은 공식 말풍선은 하나만 남김
+        const byId = new Set();
+        el.querySelectorAll('.msg').forEach(node=>{
+          const id = String(node.getAttribute('data-msg-id') || '').trim();
+          if(!id) return;
+          if(byId.has(id)){ node.remove(); return; }
+          byId.add(id);
+        });
+
+        // 2) 공식 말풍선(id 있음)과 임시 말풍선(id 없음)이 같은 uid/text면 임시 말풍선을 제거
+        const officialSig = new Set();
+        el.querySelectorAll('.msg[data-msg-id]').forEach(node=>{
+          const id = String(node.getAttribute('data-msg-id') || '').trim();
+          if(!id) return;
+          const uid = String(node.getAttribute('data-uid') || '').trim();
+          const txt = String((node.querySelector('.text')||{}).textContent || '').trim();
+          const name = String((node.querySelector('.chatName')||{}).textContent || '').trim();
+          if(txt) officialSig.add(`${uid}::${name}::${txt}`);
+        });
+        el.querySelectorAll('.msg').forEach(node=>{
+          const id = String(node.getAttribute('data-msg-id') || '').trim();
+          if(id) return;
+          const uid = String(node.getAttribute('data-uid') || '').trim();
+          const txt = String((node.querySelector('.text')||{}).textContent || '').trim();
+          const name = String((node.querySelector('.chatName')||{}).textContent || '').trim();
+          if(txt && officialSig.has(`${uid}::${name}::${txt}`)) node.remove();
+        });
+
+        // 3) V98: 내 채팅만 두 번 보이는 최종 방어선
+        // 일부 브라우저/PWA에서는 RTDB의 로컬 이벤트와 서버 반영 이벤트가 DOM에 연속으로 남을 수 있다.
+        // Firebase에는 1개뿐이라 재접속하면 사라지는 케이스이므로, 화면에서 '인접한 내 동일 말풍선'만 제거한다.
+        const nodes = Array.from(el.querySelectorAll('.msg.me'));
+        let prev = null;
+        for(const node of nodes){
+          if(!node || !node.isConnected) continue;
+          const txt = String((node.querySelector('.text')||{}).textContent || '').trim();
+          const name = String((node.querySelector('.chatName')||{}).textContent || '').trim();
+          const uid = String(node.getAttribute('data-uid') || '').trim();
+          const ts = String(node.getAttribute('data-ts-ms') || '').trim();
+          const id = String(node.getAttribute('data-msg-id') || '').trim();
+          if(!txt){ prev = node; continue; }
+          if(prev && prev.isConnected){
+            const ptxt = String((prev.querySelector('.text')||{}).textContent || '').trim();
+            const pname = String((prev.querySelector('.chatName')||{}).textContent || '').trim();
+            const puid = String(prev.getAttribute('data-uid') || '').trim();
+            const pts = String(prev.getAttribute('data-ts-ms') || '').trim();
+            const pid = String(prev.getAttribute('data-msg-id') || '').trim();
+            const sameWho = (uid && puid) ? uid === puid : name === pname;
+            const sameTs = !!(ts && pts && ts === pts);
+            const sameId = !!(id && pid && id === pid);
+            const oneTemp = !id || !pid;
+            if(sameWho && txt === ptxt && (sameTs || sameId || oneTemp)){
+              // 공식 id가 있는 쪽을 우선 보존
+              if(pid && !id){ node.remove(); continue; }
+              if(id && !pid){ prev.remove(); prev = node; continue; }
+              node.remove();
+              continue;
+            }
+          }
+          prev = node;
+        }
+
+        // 4) 그래도 남은 id 없는 임시 말풍선끼리 완전 동일하면 하나만 남김
+        const tempSig = new Set();
+        el.querySelectorAll('.msg').forEach(node=>{
+          const id = String(node.getAttribute('data-msg-id') || '').trim();
+          if(id) return;
+          const cls = node.className || '';
+          const uid = String(node.getAttribute('data-uid') || '').trim();
+          const txt = String((node.querySelector('.text')||{}).textContent || '').trim();
+          const name = String((node.querySelector('.chatName')||{}).textContent || '').trim();
+          const sig = `${cls}::${uid}::${name}::${txt}`;
+          if(!txt) return;
+          if(tempSig.has(sig)){ node.remove(); return; }
+          tempSig.add(sig);
+        });
+      }catch(e){}
+    }
+
+    function ensureChatDedupeObserver(){
+      try{
+        const el = els.chatList;
+        if(!el || state._chatDedupeObserver) return;
+        let scheduled = false;
+        const obs = new MutationObserver(()=>{
+          if(scheduled) return;
+          scheduled = true;
+          requestAnimationFrame(()=>{
+            scheduled = false;
+            try{ dedupeChatDomHard(); }catch(e){}
+          });
+        });
+        obs.observe(el, { childList:true, subtree:false });
+        state._chatDedupeObserver = obs;
+      }catch(e){}
+    }
+
     function renderChatFull(list, forceBottom){
       const el = els.chatList;
       if(!el) return;
@@ -8746,17 +8851,29 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       if(keepMore) el.appendChild(keepMore);
 
       const frag = document.createDocumentFragment();
-      // ✅ V94: 화면 렌더 최종 방어선 — 같은 메시지 id는 DOM에 1번만 붙인다.
-      // Firebase에는 1개인데 화면에만 2개씩 보이는 경우는 대부분 구독/렌더 중복이므로
-      // 여기서도 한 번 더 중복을 제거해 작가님 화면이 흔들리지 않게 한다.
+      // ✅ V96: 화면 렌더 최종 방어선 강화
+      // RTDB child_added/child_changed가 거의 동시에 들어오거나, 기존 데이터 안의 data.id가 Firebase key를 덮어쓰면
+      // Firebase에는 1개인데 화면에만 2개처럼 보일 수 있다.
+      // 1) Firebase key 기반 id를 우선 사용하고 2) 혹시 id가 비었을 때는 내용 서명으로 한 번 더 막는다.
       const seenRenderIds = new Set();
+      const seenRenderSigs = new Set();
       for(const m of (Array.isArray(list) ? list : [])){
-        const mid = String(m && m.id ? m.id : `${m && (m.tsMs||m.serverTs)||''}:${m && m.uid||''}:${m && m.text||''}`);
-        if(seenRenderIds.has(mid)) continue;
-        seenRenderIds.add(mid);
+        const mid = String(m && m.id ? m.id : "");
+        const sig = `${m && (m.tsMs||m.serverTs)||''}:${m && m.uid||''}:${m && m.name||''}:${m && m.text||''}`;
+        if(mid){
+          if(seenRenderIds.has(mid)) continue;
+          seenRenderIds.add(mid);
+        }else{
+          if(seenRenderSigs.has(sig)) continue;
+          seenRenderSigs.add(sig);
+        }
         frag.appendChild(makeMsgNode(m));
       }
       el.appendChild(frag);
+
+      // ✅ V97: DOM 최종 정리 — "내 채팅만 두 번" 뜨는 로컬 임시 말풍선까지 제거
+      // Firebase에는 1개만 있는데 화면에만 2개면, 공식 msgId가 있는 말풍선 + id 없는 임시 말풍선이 같이 남은 케이스가 많다.
+      try{ dedupeChatDomHard(); ensureChatDedupeObserver(); }catch(e){}
 
       if(nearBottom){
         requestAnimationFrame(()=>{ try{ el.scrollTop = el.scrollHeight; }catch(e){} });
@@ -8843,7 +8960,7 @@ function subscribeChat(){
     const docs = [];
     for(const [id, data] of Object.entries(valObj || {})){
       if(!data) continue;
-      docs.push({ id, ...data });
+      docs.push({ ...data, id });
     }
     docs.sort((a,b)=>{
       const ta = Number(a.serverTs||a.tsMs||0);
@@ -9081,7 +9198,13 @@ function subscribeChat(){
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
-          const mm = { id, ...data };
+          const mm = { ...data, id };
+          // ✅ V96: 같은 key의 live 이벤트가 매우 짧은 시간에 중복 방출되는 브라우저/PWA 케이스 방어
+          state.chatLiveSeenAt = state.chatLiveSeenAt || {};
+          const __seenAt = Number(state.chatLiveSeenAt[id] || 0);
+          const __nowLive = Date.now();
+          if(__seenAt && (__nowLive - __seenAt) < 1200 && state.chatRollingById && state.chatRollingById[id]) return;
+          state.chatLiveSeenAt[id] = __nowLive;
 
           // ✅ Ticker(입장 알림 등): 채팅에 렌더하지 않고 상단 띠로만 표시
           if(mm && mm.type==='ticker'){
@@ -9146,7 +9269,7 @@ function subscribeChat(){
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
-          const mm = { id, ...data };
+          const mm = { ...data, id };
           if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker" || mm.type==="sys")) return;
 
           // update only if we have it
@@ -9410,6 +9533,9 @@ function showJoinTicker(msg){
       const ok = await sendChatCore(text);
       if(ok){
         els.chatInput.value = "";
+        try{ dedupeChatDomHard(); ensureChatDedupeObserver(); }catch(e){}
+        setTimeout(()=>{ try{ dedupeChatDomHard(); }catch(e){} }, 120);
+        setTimeout(()=>{ try{ dedupeChatDomHard(); }catch(e){} }, 650);
         try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){}
       }else{
         // 실패 시 입력값은 보존 (사용자가 그대로 재전송 가능)
