@@ -108,22 +108,6 @@
     button.ghost{display:flex;align-items:center;justify-content:center;gap:6px;background: rgba(255,255,255,.05)}
     a.ghost{text-decoration:none;}
 
-    /* ✅ 출근 버튼: 오늘 미출근이면 살짝 반짝(독촉), 출근 완료면 체크 표시 */
-    @keyframes checkInPulse{
-      0%,100%{ transform: translateY(0); filter: brightness(1); box-shadow: 0 0 0 rgba(255,119,184,0); }
-      50%{ transform: translateY(-1px); filter: brightness(1.15); box-shadow: 0 0 18px rgba(255,119,184,.20); }
-    }
-    #checkInBtn.checkinPulse{
-      animation: none !important;
-      border-color: rgba(255,182,214,.55);
-      box-shadow: 0 0 12px rgba(255,119,184,.14), inset 0 0 0 1px rgba(0,0,0,.15);
-    }
-    #checkInBtn.checkinDone{
-      opacity: .92;
-      border-color: rgba(255,255,255,.18);
-      filter: saturate(.95);
-    }
-
     /* ✅ Topbar 버튼 크기 통일 (기본 모드 Work 버튼 기준) */
 .topCenter button,
 .actions button{
@@ -1891,17 +1875,6 @@
       flex-direction: column;
     }
 
-    /* ✅ 출근 팝업: 닉네임 선택 감지 시 한 번 반짝 */
-    @keyframes attNickPop{
-      0%{ transform: scale(.985); filter: brightness(1); }
-      45%{ transform: scale(1.01); filter: brightness(1.12); }
-      100%{ transform: scale(1); filter: brightness(1); }
-    }
-    .modalOverlay.attSelectPulse .modal{
-      border-color: rgba(255,182,214,.55);
-      box-shadow: 0 0 0 1px rgba(255,182,214,.25), 0 0 24px rgba(255,119,184,.26), 0 24px 70px rgba(0,0,0,.55);
-      animation: attNickPop .65s ease-out 1;
-    }
     .modalHeader{
       padding:12px 14px;
       display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -2419,36 +2392,7 @@ body.railFolded main{ grid-column:1 / -1; }
 body.railFolded .railEdgeBtn{ display:flex !important; opacity:1; pointer-events:auto; }
 
 
-/* ===== 출근(출석) 팝업 모달 ===== */
-.attModal{position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center;}
-.attModal.hidden{display:none !important;}
-.attModal .backdrop{position:absolute; inset:0; background:rgba(0,0,0,.62); backdrop-filter: blur(6px);}
-.attModal .panel{
-  position:relative; z-index:1;
-  width:min(860px, 94vw); height:min(720px, 86vh);
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.14);
-  background: rgba(20, 12, 18, .82);
-  box-shadow: 0 22px 60px rgba(0,0,0,.55);
-  overflow:hidden;
-  display:flex; flex-direction:column;
-}
-.attModal .head{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:12px 12px;
-  border-bottom:1px solid rgba(255,255,255,.12);
-}
-.attModal .head .ttl{font-weight:1100; letter-spacing:-.3px;}
-.attModal .head .xBtn{
-  min-height:40px; border-radius:12px;
-  padding:10px 12px;
-  background: rgba(255,255,255,.06);
-}
-.attModal .attHeadBtns{display:flex; align-items:center; gap:8px; flex-wrap:nowrap;}
-.attModal iframe{flex:1; width:100%; border:0; background:#fff;}
-
-
-    /* ✅ 프로필 모달: 좌측 정렬로 (이모지 삐죽 방지) */
+/* ✅ 프로필 모달: 좌측 정렬로 (이모지 삐죽 방지) */
     #profileModal .modalBody .row{justify-content:flex-start; text-align:left;}
     #profileModal .modalBody .row textarea{width:100%;}
 
@@ -2478,38 +2422,6 @@ body.railFolded .railEdgeBtn{ display:flex !important; opacity:1; pointer-events
       color: rgba(255,255,255,.92);
     }
 
-
-    /* ✅ 출근 버튼(미션처럼 은은한 반짝 테두리) */
-    #checkInBtn{ position:relative; overflow:hidden; }
-    #checkInBtn::after{
-      content:"";
-      position:absolute; inset:-2px;
-      border-radius:12px;
-      pointer-events:none;
-      border:1px solid rgba(255,182,214,.55);
-      box-shadow: 0 0 0 1px rgba(255,182,214,.25), 0 0 18px rgba(255,119,184,.22);
-      opacity:.75;
-      animation: checkInBorderPulse 1.6s ease-in-out infinite;
-    }
-    #checkInBtn::before{
-      content:"";
-      position:absolute; top:-45%; left:-60%;
-      width:60%; height:190%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
-      transform: rotate(20deg) translateX(-140%);
-      animation: checkInShine 2.6s ease-in-out infinite;
-      pointer-events:none;
-      opacity:.55;
-    }
-    @keyframes checkInBorderPulse{
-      0%,100%{opacity:.55; filter:brightness(1);}
-      50%{opacity:1; filter:brightness(1.25);}
-    }
-    @keyframes checkInShine{
-      0%{transform: rotate(20deg) translateX(-140%);}
-      55%{transform: rotate(20deg) translateX(240%);}
-      100%{transform: rotate(20deg) translateX(240%);}
-    }
 
     /* ✅ 휴식중 커피 연기 애니메이션 */
     .coffeeSteam{ position:relative; display:inline-block; margin-right:4px; }
@@ -2603,78 +2515,6 @@ body:not(.joined) #sortModeBtn{ display:none !important; }
 /* 입장 전 안내 카드만 표시 */
 body:not(.joined) #preJoinCard{ display:block; }
 body.joined #preJoinCard{ display:none; }
-
-
-    /* ✅ Daily Notice (입장 공지/출근 유도) */
-    .dailyNoticeModal{
-      position:fixed; inset:0; z-index:10090;
-      display:block;
-    }
-    .dailyNoticeModal.hidden{ display:none; }
-    .dailyNoticeModal .backdrop{
-      position:absolute; inset:0;
-      background: rgba(0,0,0,.62);
-      backdrop-filter: blur(6px);
-    }
-    .dailyNoticeModal .panel{
-      position:relative;
-      width:min(560px, 92vw);
-      margin: min(12vh, 90px) auto 0;
-      background: rgba(18,18,26,.92);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .dailyNoticeModal .head{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:14px 14px 10px;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      background: linear-gradient(90deg, rgba(255,119,184,.16), rgba(255,182,214,.06));
-    }
-    .dailyNoticeModal .ttl{
-      font-weight:1000; letter-spacing:-.3px;
-      display:flex; align-items:center; gap:8px;
-    }
-    .dailyNoticeModal .body{
-      padding:14px;
-      color: rgba(255,255,255,.88);
-      line-height:1.55;
-      font-size: 14px;
-    }
-    .dailyNoticeModal .body .small{
-      margin-top:10px;
-      color: rgba(255,255,255,.62);
-      font-size: 12px;
-    }
-    .dailyNoticeModal .btnRow{
-      display:flex; gap:10px; justify-content:flex-end;
-      padding: 0 14px 14px;
-    }
-    .dailyNoticeModal .btnRow button{
-      border-radius: 14px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.92);
-      cursor:pointer;
-      font-weight:800;
-    }
-    .dailyNoticeModal .btnRow button.primary{
-      border-color: rgba(255,119,184,.35);
-      background: linear-gradient(90deg, rgba(255,119,184,.40), rgba(255,182,214,.18));
-      box-shadow: 0 10px 24px rgba(255,119,184,.12);
-    }
-    .dailyNoticeModal .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
-    .dailyNoticeModal .xBtn{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.88);
-      border-radius: 12px;
-      padding: 8px 10px;
-      cursor:pointer;
-      font-weight:900;
-    }
 
 
     /* ===== V66 펫 놀이터 채팅/액션 최적화 ===== */
@@ -2902,7 +2742,7 @@ body.joined #preJoinCard{ display:none; }
   display:none !important;
 }
 
-/* 모바일/PWA: 출근·상태·퇴장·접속인원 + 내 타일 + 채팅만 */
+/* 모바일/PWA: 상태·퇴장·접속인원 + 내 타일 + 채팅만 */
 @media (max-width: 760px){
   html, body{
     min-width:0 !important;
@@ -2936,7 +2776,6 @@ body.joined #preJoinCard{ display:none; }
     align-items:center !important;
     justify-content:stretch !important;
   }
-  body.joined #checkInBtn,
   body.joined #statusBtn,
   body.joined #onlineBtn{
     width:100% !important;
@@ -3097,17 +2936,12 @@ body.joined #preJoinCard{ display:none; }
   body.joined .brand .dot,
   .recBadge .recDot,
   .stWork,
-  .stIdle,
-  #checkInBtn.checkinPulse{
+  .stIdle{
     animation: none !important;
   }
   .recBadge .recDot{
     box-shadow:none !important;
     transform:none !important;
-  }
-  #checkInBtn.checkinPulse{
-    box-shadow:none !important;
-    filter:none !important;
   }
   /* 오늘의 미션/메달 현황 기능은 화면에서 완전히 제거 */
   .missionBtn,
@@ -3120,6 +2954,17 @@ body.joined #preJoinCard{ display:none; }
     display:none !important;
   }
 </style>
+
+<style id="attendanceRemovalPatchV113">
+  /* V113: 출석 체크 UI/자동 팝업만 제거하고, 출근부 시트 바로가기 버튼은 유지 */
+  #checkInBtn, #attModal, #dailyNoticeModal {
+    display: none !important;
+  }
+  #dashShortcuts{
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  }
+</style>
+
 </head>
 <body>
 <div class="topbar">
@@ -3129,7 +2974,6 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <!-- 가운데: 상태표시 + 내프로필 -->
 <div aria-label="작업 상태" class="topCenter">
-<button class="ghost" disabled="" id="checkInBtn">💌출근💌</button>
 <button class="primary" disabled="" id="statusBtn">☕ 휴식중 ▾</button>
 <div aria-label="상태 선택" class="statusMenu hidden" id="statusMenu" role="menu">
 <div class="modeBtns">
@@ -3602,7 +3446,7 @@ body.joined #preJoinCard{ display:none; }
 <input id="sudaUrl" placeholder="💣 폭파 수다 링크"/>
 </div>
 <div class="row">
-<input id="choolUrl" placeholder="🔥 출근부 링크"/>
+<input id="choolUrl" type="hidden"/>
 <input id="sheetUrl" placeholder="🔗 뽀모 시트 링크"/>
 </div>
 <div class="row">
@@ -3783,92 +3627,8 @@ body.joined #preJoinCard{ display:none; }
     }
 
 
-    // ✅ (v4.2+) 매일 1회 '입장 공지' 팝업 (출근 유도)
-    const __LS_DAILY_NOTICE_DAY = "mk_daily_notice_day_v1";
-    function __dailyNoticeDayKey(){ try{ return __seoulDateKey(); }catch(e){ return ""; } }
-    function __hasSeenDailyNoticeToday(){
-      try{ return localStorage.getItem(__LS_DAILY_NOTICE_DAY) === __dailyNoticeDayKey(); }catch(e){ return false; }
-    }
-    function __markDailyNoticeSeen(){
-      try{ localStorage.setItem(__LS_DAILY_NOTICE_DAY, __dailyNoticeDayKey()); }catch(e){}
-    }
-    function __isAnyModalOpen(){
-      try{
-        const open1 = document.querySelector('#attModal:not(.hidden)');
-        const open2 = document.querySelector('#guideModal[aria-hidden="false"]');
-        const open3 = document.querySelector('#profileModal[aria-hidden="false"]');
-        const open4 = document.querySelector('#onlineModal[aria-hidden="false"]');
-        const open5 = document.querySelector('#dailyNoticeModal:not(.hidden)');
-        return !!(open1||open2||open3||open4||open5);
-      }catch(e){ return false; }
-    }
-    function showDailyNotice(){
-      const modal = document.getElementById("dailyNoticeModal");
-      if(!modal) return;
-      modal.classList.remove("hidden");
-      modal.setAttribute("aria-hidden","false");
-      try{ modal.inert = false; }catch(e){}
-      // 포커스는 주요 버튼으로
-      setTimeout(()=>{ try{ document.getElementById("dailyNoticeGoBtn")?.focus?.(); }catch(e){} },0);
-    }
-    function hideDailyNotice(markSeen=true){
-      const modal = document.getElementById("dailyNoticeModal");
-      if(!modal) return;
-      if(markSeen) __markDailyNoticeSeen();
-      try{ document.activeElement?.blur?.(); }catch(e){}
-      modal.classList.add("hidden");
-      modal.setAttribute("aria-hidden","true");
-      try{ modal.inert = true; }catch(e){}
-      // 포커스 복귀(출근 버튼 쪽)
-      setTimeout(()=>{ try{ document.getElementById("checkInBtn")?.focus?.(); }catch(e){} },0);
-    }
-    function scheduleDailyNotice(){
-      // 입장 후 UI/리스너 안정화 뒤에, 모달 충돌 없을 때만 띄운다(재시도)
-      if(__hasSeenDailyNoticeToday()) return;
-      let tries = 0;
-      const tick = ()=>{
-        tries++;
-        if(__hasSeenDailyNoticeToday()) return;
-        const st = (typeof state!=='undefined') ? state : (window.__mk_state||null);
-        if(!st || !st.joined) return;
-        if(__isAnyModalOpen()){
-          if(tries < 8) return setTimeout(tick, 450);
-          return;
-        }
-        showDailyNotice();
-      };
-      setTimeout(tick, 900);
-    }
-
-
-    // ✅ 출근(출석) 버튼 상태(로컬): 오늘 출근했는지 표시용
-    const __LS_CHECKIN_DAY = "mk_checkin_day";
-    let __lastCheckinUIKey = ""; // 날짜 바뀔 때 UI 갱신
-
-    function __isCheckedInToday(){
-      try{
-        const today = __seoulDateKey();
-        return (localStorage.getItem(__LS_CHECKIN_DAY) || "") === today;
-      }catch(e){ return false; }
-    }
-    function __markCheckedInToday(){
-      try{ localStorage.setItem(__LS_CHECKIN_DAY, __seoulDateKey()); }catch(e){}
-    }
-    function __applyCheckInBtnUI(btn){
-      if(!btn) return;
-      const done = __isCheckedInToday();
-      if(done){
-        btn.textContent = "✅출근완료";
-        btn.classList.add("checkinDone");
-        btn.classList.remove("checkinPulse");
-        btn.setAttribute("data-checkin","done");
-      }else{
-        btn.textContent = "💌출근💌";
-        btn.classList.remove("checkinDone");
-        btn.classList.add("checkinPulse");
-        btn.setAttribute("data-checkin","need");
-      }
-    }
+    // 작업방 내부 입장 공지/출근 유도 팝업은 입장 게이트로 이관됨.
+    // 출석 체크 상태 UI는 입장 게이트로 이관됨.
 
     function focusLoadSeconds(){
       const today = __seoulDateKey();
@@ -5084,7 +4844,7 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
         showToast("🚫 강퇴 처리했어");
       }catch(e){
         // ✅ (v3.3) 이미 joined=true까지 갔다가 중간 초기화(채팅/리스너 등)에서 터진 경우에도 출석 자동팝업은 살린다
-        try{ if(state && state.joined){ setTimeout(()=>{ try{ autoOpenAttendanceIfNeeded(); }catch(_e){} }, 0); } }catch(_e){}
+        /* 출근 자동팝업 복구 로직 제거됨 */
         console.error(e);
         showToast("강퇴 실패(권한/룰 확인)");
       }
@@ -5138,14 +4898,6 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       const tShort = nowTimeStr(true);
       if(els.lastSync) els.lastSync.textContent = tFull;
       if(els.nowClockMain) els.nowClockMain.textContent = tShort;
-      // ✅ 날짜가 바뀌면 출근 버튼 상태도 갱신
-      try{
-        const dk = __seoulDateKey();
-        if(dk !== __lastCheckinUIKey){
-          __lastCheckinUIKey = dk;
-          if(els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn);
-        }
-      }catch(e){}
     }
 
     
@@ -6467,7 +6219,7 @@ function setControlsEnabled(joined){
       els.btnBreak.disabled = !joined;
       els.btnIdle.disabled = !joined;
       try{ if(els.btnTimerReset) els.btnTimerReset.disabled = !joined; }catch(e){}
-      if(els.checkInBtn) els.checkInBtn.disabled = !joined;
+      /* 출근 버튼 제거됨 */
       els.statusBtn.disabled = !joined;
       if(els.btnHelperToggle) els.btnHelperToggle.disabled = !joined;
       try{ if(els.guideBtn) els.guideBtn.style.display = joined ? "" : "none"; }catch(e){}
@@ -6496,7 +6248,7 @@ function setControlsEnabled(joined){
       // ✅ 수다방 LIVE 접속 현황 업데이트(대시보드)
       try{ if(joined) startSudaPresenceWatch_(); else stopSudaPresenceWatch_(); }catch(e){}
       state.joined = joined;
-      try{ if(joined){ scheduleDailyNotice && scheduleDailyNotice(); } }catch(e){}
+      /* 입장 공지/출근 유도 자동 팝업 제거됨 */
       // keep dashboard positioned under ☰
       dockRightRail();
     }
@@ -11430,12 +11182,12 @@ try{
 
       try{ localStorage.setItem("mk_last_name", name); }catch(e){}
       els.meHint.textContent = name;
-      try{ if(els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
+      /* 출근 버튼 UI 갱신 제거됨 */
       // ✅ 출근 팝업(iframe) 미리 웜업해서 버튼 반응 체감 속도 올리기
-      try{ window.warmAttendanceFrame && window.warmAttendanceFrame(); }catch(e){}
+      /* 출근 팝업 iframe 웜업 제거됨 */
       showToast("입장!");
       // ✅ 출근(출석) 자동 팝업: 입장 UI가 안정된 뒤(클릭 이벤트 종료 후) 열기 + 1회 재시도
-      try{ scheduleAttendanceAutoOpenAfterJoin(); }catch(e){}
+      /* 출근/출석 자동 팝업 제거됨 */
       // ✅ 30초마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
       try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, FOCUS_LOCAL_PERSIST_INTERVAL_MS); }catch(e){}
@@ -12180,401 +11932,7 @@ try{
 }catch(e){}
     // 상태 메뉴 토글
     
-    if(els.checkInBtn){
-      try{ __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
-      // ===== 출근(출석) 팝업(구글 시트 연동) =====
-      // ✅ 여기에 '웹앱으로 배포'한 Apps Script URL을 넣어주세요.
-      // 예) https://script.google.com/macros/s/XXXXX/exec
-      const ATTEND_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwlNMg0G7Kt3wcAQtzQ5_zttwxLNT2VndA1ZPBpxo5PdNejRkKvKg220xoJ-L2ElHDz/exec?embedded=1";
-      // 출근(출석) 팝업 내부 이동(1회=닉선택 화면, 2회 이상=완료 화면) 감지용
-      let __attLoadCount = 0;
-      let __attDoneReady = false;
-      function __resetAttendFlow(){
-        __attLoadCount = 0;
-        __attDoneReady = false;
-      }
-
-
-      // ✅ 출근(출석) 팝업: "열리는 반응"을 먼저 빠르게, 로딩은 뒤에서
-const ATTEND_KEEP_WARM = true; // 팝업을 닫아도 iframe을 유지해서 다
-const ATTEND_AUTO_OPEN_ON_JOIN = true;
-const ATTEND_DEBUG = false; // (production)
-
-
-window.__attDbgPanelPush = function(msg){
-  try{
-    const last = document.getElementById("attDbgLast");
-    const log = document.getElementById("attDbgLog");
-    if(last) last.textContent = msg;
-    if(log){
-      const line=document.createElement("div");
-      line.textContent = msg;
-      log.prepend(line);
-    }
-  }catch(e){}
-};
-// --- /ATTEND DEBUG PANEL ---
-
-const __attDbgSeen = Object.create(null);
-function __attDbg(msg, toast=false){
-  try{
-    if(!ATTEND_DEBUG) return;
-    console.log("[ATTEND]", msg);
-    try{ window.__attDbgPanelPush && window.__attDbgPanelPush(msg); }catch(e){}
-    if(toast && typeof showToast === "function") showToast("🐞 " + msg);
-  }catch(e){}
-}
-function __attDbgOnce(key, msg){
-  try{
-    if(!ATTEND_DEBUG) return;
-    if(__attDbgSeen[key]) return;
-    __attDbgSeen[key]=1;
-    __attDbg(msg, true);
-  }catch(e){}
-}
- // 자정 이후 첫 입장/재입장 시, 출석 안 했고 모달도 안 열었으면 자동 팝업
-      // (fix) 출석 팝업을 빠르게 열기 위한 워밍업 로직
-let __attWarmAtMs = 0;
-
-function __buildAttendSrc(cacheBust=true){
-  const u = new URL(ATTEND_WEBAPP_URL);
-  u.searchParams.set("embedded", "1");
-  if(cacheBust) u.searchParams.set("_", String(Date.now()));
-  return u.toString();
-}
-
-const LS_ATTEND_OPEN_DAY = "mk_attend_open_day_v1";
-const LS_ATTEND_AUTO_SHOWN_DAY = "mk_attend_auto_shown_day_v1";
-function __hasOpenedAttendToday(){
-  try{ return (localStorage.getItem(LS_ATTEND_OPEN_DAY) || "") === __seoulDateKey(); }catch(e){ return false; }
-}
-function __markOpenedAttendToday(){
-  try{ localStorage.setItem(LS_ATTEND_OPEN_DAY, __seoulDateKey()); }catch(e){}
-}
-
-function __hasAutoShownAttendToday(){
-  try{ return (localStorage.getItem(LS_ATTEND_AUTO_SHOWN_DAY) || "") === __seoulDateKey(); }catch(e){ return false; }
-}
-function __markAutoShownAttendToday(){
-  try{ localStorage.setItem(LS_ATTEND_AUTO_SHOWN_DAY, __seoulDateKey()); }catch(e){}
-}
-// ✅ "오늘 출근 안했고, 오늘 한 번도 출근 모달을 안 열었으면" 자동 오픈
-
-// ✅ 입장 직후 자동 출근 팝업 스케줄러(클릭/모달 토글 충돌 방지용)
-let __attAutoOpenLastMs = 0;
-function scheduleAttendanceAutoOpenAfterJoin(){
-  try{
-    if(!ATTEND_AUTO_OPEN_ON_JOIN) return;
-    if(!state.joined) return;
-    if(__isCheckedInToday()) return;
-
-    const now = Date.now();
-    if(now - __attAutoOpenLastMs < 5000) return; // 과도한 중복 방지
-    __attAutoOpenLastMs = now;
-
-    // 1차: 입장 UI 안정화 후
-    setTimeout(()=>{ try{ autoOpenAttendanceIfNeeded(); }catch(e){} }, 1100);
-
-    // 2차: 혹시 다른 모달/포커스 충돌로 실패했으면 한 번 더
-    setTimeout(()=>{
-      try{
-        if(__isCheckedInToday()) return;
-        const m = document.getElementById("attModal");
-        const opened = !!(m && !m.classList.contains("hidden"));
-        if(!opened) autoOpenAttendanceIfNeeded();
-      }catch(e){}
-    }, 2300);
-  }catch(e){}
-}
-
-function autoOpenAttendanceIfNeeded(){
-  try{
-    __attDbg("autoOpenAttendanceIfNeeded() called | joined=" + !!state.joined + " | uid=" + (state.uid||"") +
-      " | checkin=" + (localStorage.getItem("mk_checkin_day")||"null") +
-      " | autoShown=" + (localStorage.getItem("mk_attend_auto_shown_day_v1")||"null"), false);
-
-    if(!ATTEND_AUTO_OPEN_ON_JOIN){
-      __attDbgOnce("auto_disabled", "자동출석: ATTEND_AUTO_OPEN_ON_JOIN=false");
-      return;
-    }
-    if(!state.joined){
-      __attDbgOnce("not_joined", "자동출석: 아직 입장(joined) 전이라 스킵");
-      return;
-    }
-
-    // ✅ 오늘 이미 '출근완료'로 찍혀있으면 자동 팝업 X
-    if(__isCheckedInToday()){
-      __attDbgOnce("checked_today", "자동출석: 오늘 출근완료로 판정되어 스킵");
-      return;
-    }
-    // ✅ 자동 팝업은 필요하면 매번 시도(중복은 '모달 이미 열림' 체크로 방지)
-
-
-    // ✅ 이미 모달이 열려있으면 중복 오픈 방지
-    try{
-      const m = document.getElementById("attModal");
-      if(m && !m.classList.contains("hidden")){
-        __attDbgOnce("already_open", "자동출석: 모달이 이미 열려있어서 스킵");
-        return;
-      }
-    }catch(e){}
-
-    // ✅ openAttendanceModal이 window에 안 붙어있는 환경(스코프/번들)도 대비
-    const fn = (typeof window.openAttendanceModal === "function")
-      ? window.openAttendanceModal
-      : (typeof openAttendanceModal === "function" ? openAttendanceModal : null);
-
-    if(!fn){
-      __attDbgOnce("no_fn", "자동출석: openAttendanceModal 함수를 찾지 못함");
-      return;
-    }
-
-    // ✅ DOM이 아직 준비되지 않았거나(초기 join 직후) 모달 엘리먼트가 없으면 잠깐 재시도
-    let tries = 0;
-    setTimeout(()=>{ (function tryOpen(){
-      tries++;
-      const modal = document.getElementById("attModal");
-      const frame = document.getElementById("attFrame");
-
-      if(!modal || !frame){
-        if(tries === 1) __attDbgOnce("dom_not_ready", "자동출석: 모달 DOM 준비 대기중…");
-        if(tries <= 40) return setTimeout(tryOpen, 150);
-        __attDbgOnce("dom_timeout", "자동출석: 모달 DOM을 끝내 찾지 못함(타임아웃)");
-        return;
-      }
-
-      __attDbg("tryOpen #" + tries + " | modal=" + !!modal + " frame=" + !!frame, false);
-
-      try{ fn(); }catch(e){
-        __attDbgOnce("fn_throw", "자동출석: openAttendanceModal 호출 중 예외(" + (e && e.message ? e.message : "unknown") + ")");
-      }
-
-      // ✅ 실제로 열렸는지 확인 후에만 '자동 표시' 기록
-      setTimeout(()=>{
-        try{
-          const m2 = document.getElementById("attModal");
-          const opened = !!(m2 && !m2.classList.contains("hidden"));
-          if(opened){
-            __attDbgOnce("opened_ok", "자동출석: ✅ 모달이 열렸어!");
-          }else{
-            __attDbgOnce("opened_fail", "자동출석: ⚠️ 열기 시도했지만 hidden 상태(다른 모달/포커스 충돌 가능)");
-          }
-        }catch(e){}
-      }, 120);
-    })(); }, 380);
-  }catch(e){
-    try{ __attDbgOnce("outer_throw", "자동출석: 바깥 try에서 예외(" + (e && e.message ? e.message : "unknown") + ")"); }catch(_e){}
-  }
-}
-
-
-window.warmAttendanceFrame = function warmAttendanceFrame(){
-  try{
-    if(!ATTEND_KEEP_WARM) return;
-    if(!state.joined) return;
-    const frame = document.getElementById("attFrame");
-    if(!frame) return;
-    if(!ATTEND_WEBAPP_URL || ATTEND_WEBAPP_URL.includes("PASTE_YOUR")) return;
-    // 이미 뭔가 로딩 중/완료면 그대로 둠
-    if(frame.src && frame.src !== "about:blank") return;
-    frame.src = __buildAttendSrc(false);
-    __attWarmAtMs = Date.now();
-  }catch(e){}
-}
-
-function openAttendanceModal(){
-  __resetAttendFlow();
-  const modal = document.getElementById("attModal");
-  const frame = document.getElementById("attFrame");
-  if(!modal || !frame) return;
-  // ✅ '실제로' 모달을 열 수 있을 때만 오늘 오픈 기록을 찍는다
-  try{ __markOpenedAttendToday && __markOpenedAttendToday(); }catch(e){}
-
-  if(!ATTEND_WEBAPP_URL || ATTEND_WEBAPP_URL.includes("PASTE_YOUR")) {
-    showToast("⚠️ 출근 웹앱 URL을 아직 안 넣었어!");
-    return;
-  }
-
-  // ✅ 먼저 모달을 즉시 보여주고(체감 반응 개선), iframe 로딩은 다음 프레임에서
-  modal.classList.remove("hidden");
-  modal.setAttribute("aria-hidden","false");
-  try{ modal.inert = false; }catch(e){}
-  // 포커스는 닫기 버튼으로
-  setTimeout(()=>{ try{ document.getElementById("attCloseBtn")?.focus?.(); }catch(e){} },0);
-
-  // 이미 웜업되어 있거나(about:blank가 아님) 최근에 로딩했다면 그대로 사용
-  const hasWarm = (frame.src && frame.src !== "about:blank");
-  const isFresh = (__attWarmAtMs && (Date.now() - __attWarmAtMs) < 30*60*1000);
-
-  if(ATTEND_KEEP_WARM && hasWarm && isFresh){
-    // 그대로 보여주기
-    return;
-  }
-
-  // cache-bust + embedded flag (다음 프레임에서 세팅)
-  requestAnimationFrame(()=>{
-    try{
-      frame.src = __buildAttendSrc(true);
-      __attWarmAtMs = Date.now();
-    }catch(e){}
-  });
-}
-
-// ✅ 자동팝업/외부호출을 위해 전역(window)에 확실히 연결
-try{ window.openAttendanceModal = openAttendanceModal; }catch(e){}
-
-function closeAttendanceModal(opts={}){
-  const modal = document.getElementById("attModal");
-  const frame = document.getElementById("attFrame");
-  if(!modal || !frame) return;
-
-  // ✅ Chrome 'aria-hidden + focus' 경고/차단 방지: 먼저 포커스 빼기
-  try{
-    const active = document.activeElement;
-    if(active && modal.contains(active)) active.blur?.();
-  }catch(e){}
-
-  // 숨김 처리
-  modal.classList.add("hidden");
-  try{ modal.setAttribute("aria-hidden","true"); }catch(e){}
-  try{ modal.inert = true; }catch(e){}
-
-  // ✅ 사용자가 '완료 화면(2번째 로드 이후)'까지 보고 닫는 경우 → 그 시점에 출근완료 처리
-  try{
-    const fromUser = !!opts.fromUser;
-    if(fromUser && __attDoneReady){
-      __markCheckedInToday();
-      if(els && els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn);
-      showToast("✅ 출근 기록 완료!");
-    }
-  }catch(e){}
-
-  // iframe reset (기본은 웜업 유지, 옵션에 따라 초기화)
-  try{
-    const keepWarm = (typeof opts.keepWarm === "boolean") ? opts.keepWarm : true;
-    if(!keepWarm){
-      frame.src = "about:blank";
-    }
-  }catch(e){}
-
-  // 포커스 복귀(출근 버튼) → 접근성 + 다음 키보드 조작 안정화
-  setTimeout(()=>{
-    try{ document.getElementById("checkInBtn")?.focus?.(); }catch(e){}
-  }, 0);
-}
-
-      // 닫기 버튼/배경 클릭
-      (function wireAttendanceModal(){
-        const modal = document.getElementById("attModal");
-        const closeBtn = document.getElementById("attCloseBtn");
-        const frame = document.getElementById("attFrame");
-
-        // ✅ iframe 로드 횟수로 "완료 화면까지 왔는지" 추정 (cross-origin 안전)
-        if(frame){
-          frame.addEventListener("load", ()=>{
-            try{
-              // 모달이 열려있는 동안만 카운트
-              const isOpen = modal && !modal.classList.contains("hidden");
-              if(!isOpen) return;
-              __attLoadCount = (__attLoadCount || 0) + 1;
-              if(__attLoadCount >= 2) __attDoneReady = true;
-              // ✅ 닉네임 선택(보통 2번째 로드) 감지: 한 번 반짝 애니메이션
-              if(__attLoadCount === 2){
-                try{
-                  modal.classList.add("attSelectPulse");
-                  setTimeout(()=>{ try{ modal.classList.remove("attSelectPulse"); }catch(e){} }, 650);
-                  showToast("✅ 닉네임 선택!", 1200);
-                }catch(e){}
-              }
-            }catch(e){}
-          });
-        }
-        if(closeBtn) closeBtn.addEventListener("click", ()=>closeAttendanceModal({fromUser:true}));
-        const doneBtn = document.getElementById("attDoneBtn");
-        if(doneBtn) doneBtn.addEventListener("click", ()=>{
-          try{ __markCheckedInToday(); if(els && els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
-          showToast("✅ 출근완료로 표시했어!");
-          closeAttendanceModal({fromUser:true});
-          // 출근하면 자동 '작업중'으로 변경(기존 의도 유지)
-          try{ if(state && state.uid) setStatus("work"); }catch(e){}
-        });
-
-        // ✅ Daily Notice(입장 공지) 버튼 연결
-        const dn = document.getElementById("dailyNoticeModal");
-        const dnGo = document.getElementById("dailyNoticeGoBtn");
-        const dnLater = document.getElementById("dailyNoticeLaterBtn");
-        const dnCloseX = document.getElementById("dailyNoticeCloseX");
-        if(dn){
-          // backdrop 클릭 닫기
-          dn.addEventListener("click", (e)=>{
-            try{
-              const t = e.target;
-              if(t && (t.getAttribute?.("data-close")==="1" || t.classList?.contains("backdrop"))){
-                hideDailyNotice(true);
-              }
-            }catch(err){}
-          });
-
-          if(dnGo) dnGo.addEventListener("click", ()=>{
-            hideDailyNotice(true);
-            // 출근 모달은 사용자가 눌렀을 때만 열어(충돌 방지)
-            setTimeout(()=>{ try{ openAttendanceModal(); }catch(e){} }, 80);
-          });
-          if(dnLater) dnLater.addEventListener("click", ()=>hideDailyNotice(true));
-          if(dnCloseX) dnCloseX.addEventListener("click", ()=>hideDailyNotice(true));
-        }
-
-        if(modal) modal.addEventListener("click", (ev)=>{
-          const t = ev.target;
-          if(t && t.dataset && t.dataset.close) closeAttendanceModal({fromUser:true});
-        });
-        // ESC 닫기
-        document.addEventListener("keydown", (ev)=>{
-          if(ev.key === "Escape") closeAttendanceModal({fromUser:true});
-        });
-
-        // Apps Script(iframe) → 작업방으로 완료 신호 받기
-        window.addEventListener("message", async (ev)=>{
-          try{
-            let data = ev && ev.data;
-            // ✅ Apps Script 쪽이 문자열로 보내거나(JSON 문자열) 타입 키가 다를 때도 받기
-            if(typeof data === "string"){
-              const s = data.trim();
-              if(s === "ATTENDANCE_DONE"){
-                data = {type:"ATTENDANCE_DONE"};
-              }else if(s.startsWith("{") || s.startsWith("[")){
-                try{ data = JSON.parse(s); }catch(e){}
-              }
-            }
-            if(!data || typeof data !== "object") return;
-            const t = String(data.type || data.event || "").toUpperCase();
-            if(t !== "ATTENDANCE_DONE") return;
-
-
-            closeAttendanceModal();
-            const nick = data.nickname ? ` (${data.nickname})` : "";
-            showToast("✅ 출근 기록 완료!" + nick);
-            // ✅ 토스트가 바로 보이도록 한 프레임 양보
-            try{ await new Promise(r=>requestAnimationFrame(r)); }catch(e){}
-            // ✅ 오늘 출근 완료로 표시(버튼 텍스트/뱃지)
-            try{ __markCheckedInToday(); if(els.checkInBtn) __applyCheckInBtnUI(els.checkInBtn); }catch(e){}
-
-            // 기존 출근 버튼 동작 유지: 출근하면 자동 '작업중'으로 변경
-            if(state && state.uid){
-              try{ await setStatus("work"); }catch(e){}
-            }
-          }catch(e){}
-        });
-      })();
-
-      els.checkInBtn.addEventListener("click", async ()=>{
-        try{
-          try{ if(!state.uid){ state.uid = (auth && auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : state.uid; } }catch(_e){}
-          openAttendanceModal();
-        }catch(e){}
-      });
-}
-;
+    /* 출근/출석 버튼 및 Apps Script 팝업 로직 제거됨: 입장 게이트에서 처리합니다. */
 els.statusBtn.addEventListener("click", (ev)=>{
       ev.stopPropagation();
       els.statusMenu.classList.toggle("hidden");
@@ -14007,38 +13365,7 @@ if(!window.__MK_BOOT_OK__){
     })();
   </script>
 <!-- ✅ 입장 공지(매일 1회) : 출근 유도 팝업 -->
-<div aria-hidden="true" class="dailyNoticeModal hidden" id="dailyNoticeModal">
-<div class="backdrop" data-close="1"></div>
-<div aria-label="오늘의 공지" aria-modal="true" class="panel" role="dialog">
-<div class="head">
-<div class="ttl">📌 오늘의 공지</div>
-<button aria-label="닫기" class="xBtn" id="dailyNoticeCloseX" type="button">닫기 ✖</button>
-</div>
-<div class="body">
-<div style="font-weight:900; font-size:15px; margin-bottom:6px;">출근 체크 잊지 말기 💗</div>
-<div>작업방 입장 후 <b>출근(출석)</b>만 한 번 눌러주면, <b>출석 현황</b>에는 하루 1회만 반영되고, 나머지 기록은 <b>AttendanceLog</b>로 남아요!</div>
-<div class="small">※ 오늘은 이 팝업이 <b>처음 1번</b>만 뜹니닷. (닫기/출근 버튼을 누르면 오늘은 더 안 떠요)</div>
-</div>
-<div class="btnRow">
-<button id="dailyNoticeLaterBtn" type="button">나중에</button>
-<button class="primary" id="dailyNoticeGoBtn" type="button">💌 출근 체크하러 가기</button>
-</div>
-</div>
-</div>
-<!-- ✅ 출근(출석) 팝업 -->
-<div aria-hidden="true" class="attModal hidden" id="attModal">
-<div class="backdrop" data-close="1"></div>
-<div aria-label="출근" aria-modal="true" class="panel" role="dialog">
-<div class="head">
-<div class="ttl">💌 출근 체크(시트랑 연동 중! 조금만 기다려주시기&gt;&lt;)</div>
-<div class="attHeadBtns">
-<button class="xBtn" id="attCloseBtn" type="button">닫기 ✖</button>
-<button class="ghost tight" id="attDoneBtn" title="출근을 완료했다면 눌러서 표시할 수 있어요" type="button">✅ 완료</button>
-</div>
-</div>
-<iframe id="attFrame" referrerpolicy="no-referrer" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" title="출근(출석)"></iframe>
-</div>
-</div>
+<!-- 출근/출석 팝업 제거됨: 입장 게이트에서 출석 체크를 담당합니다. -->
 <!-- 📖 Guide Modal -->
 <div aria-hidden="true" class="modalOverlay" id="guideModal">
 <div aria-modal="true" class="modal" role="dialog" style="width:min(720px, 92vw);">
@@ -14076,10 +13403,7 @@ if(!window.__MK_BOOT_OK__){
 ✅자동 감지가 싫으신 분들은 수동 선택
 ✅직접 현재 상황을 자유롭게 선택하면서 작업하시면 됩니다.
 
-➍출근 도장
-✅기존 출근처럼 팝업에서 닉네임 선택(자동 기록)
-
-➎ 그외 기능
+➍ 그외 기능
 👉퇴장 버튼 옆 톱니바퀴에서 입장 소리 온오프 선택 가능
 👉내 프로필에서 자유롭게 프로필 타일을 꾸미기(⚡​플꾸타임~~~!!)
 👉대시 보드 화면 위로 접기, 대시보드/채팅창 사이드 접기 가능
