@@ -4428,6 +4428,7 @@ onlineBtn: $("onlineBtn"),
       sudaUrl: $("sudaUrl"),
       choolUrl: $("choolUrl"),
       sheetUrl: $("sheetUrl"),
+      dashApiUrl: $("dashApiUrl"),
       saveDash: $("saveDash"),
 
       toast: $("toast"),
@@ -8286,12 +8287,14 @@ async function unlockAdmin(){
 
 async function saveDashboard(){
   if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  // ✅ V115: dashApiUrl 입력칸이 els에 누락되면 저장 시 빈 값으로 덮이는 문제 방지
+  const dashApiInput = els.dashApiUrl || $("dashApiUrl");
   const dashboard = {
     pomoUrl: (els.pomoUrl.value || "").trim(),
     sudaUrl: (els.sudaUrl.value || "").trim(),
     choolUrl: (els.choolUrl.value || "").trim(),
     sheetUrl: (els.sheetUrl.value || "").trim(),
-    dashApiUrl: (els.dashApiUrl && els.dashApiUrl.value ? els.dashApiUrl.value : "").trim(),
+    dashApiUrl: (dashApiInput && dashApiInput.value ? dashApiInput.value : "").trim(),
   };
   try{
     await rUpdate(rSettingsRef(state.roomId), { dashboard });
