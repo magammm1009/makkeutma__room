@@ -5599,24 +5599,47 @@ function normalizeDashApiUrl(raw){
     function __extractDashCounts(data){
       let pomo = null, suda = null;
       if(!data || typeof data !== "object") return {pomo:null, suda:null};
-      // our standard
-      if(data.pomoCount != null) pomo = data.pomoCount;
-      if(data.sudaCount != null) suda = data.sudaCount;
-      if(data.pomo != null && typeof data.pomo !== "object") pomo = data.pomo;
-      if(data.suda != null && typeof data.suda !== "object") suda = data.suda;
-      // Apps Script counts format: {pomo:{activeCount}, suda:{activeCount}}
-      if(data.pomo && typeof data.pomo === "object"){
-        if(data.pomo.activeCount != null) pomo = data.pomo.activeCount;
-        else if(data.pomo.count != null) pomo = data.pomo.count;
+
+      // ✅ V114: 뽀모 Apps Script counts API 호환 강화
+      // - top-level activeCount/count/total/pomoCount가 "공용 뽀모" 숫자일 수 있음.
+      // - nested data.pomo/data.suda가 있더라도, 이미 top-level에서 얻은 값을 0/null로 덮어쓰지 않음.
+      // - 기존 통합 API({pomoCount,sudaCount}, {pomo:{activeCount},suda:{activeCount}})도 유지.
+      const pickCount = (v)=>{
+        const r = coerceCount(v);
+        return (r === "" || r == null) ? null : r;
+      };
+
+      // 1) 가장 명확한 표준 키 우선
+      if(data.pomoCount != null) pomo = pickCount(data.pomoCount);
+      if(data.sudaCount != null) suda = pickCount(data.sudaCount);
+
+      // 2) 뽀모 단독 API 형태: {activeCount:3}, {count:3}, {total:3}
+      if(pomo == null && data.activeCount != null) pomo = pickCount(data.activeCount);
+      if(pomo == null && data.count != null) pomo = pickCount(data.count);
+      if(pomo == null && data.total != null && typeof data.total !== "object") pomo = pickCount(data.total);
+
+      // 3) 짧은 키 형태
+      if(pomo == null && data.pomo != null && typeof data.pomo !== "object") pomo = pickCount(data.pomo);
+      if(suda == null && data.suda != null && typeof data.suda !== "object") suda = pickCount(data.suda);
+
+      // 4) nested object 형태. 단, top-level 값이 이미 있으면 덮어쓰지 않음.
+      if(pomo == null && data.pomo && typeof data.pomo === "object"){
+        if(data.pomo.activeCount != null) pomo = pickCount(data.pomo.activeCount);
+        else if(data.pomo.count != null) pomo = pickCount(data.pomo.count);
+        else if(data.pomo.total != null) pomo = pickCount(data.pomo.total);
       }
-      if(data.suda && typeof data.suda === "object"){
-        if(data.suda.activeCount != null) suda = data.suda.activeCount;
-        else if(data.suda.count != null) suda = data.suda.count;
+      if(suda == null && data.suda && typeof data.suda === "object"){
+        if(data.suda.activeCount != null) suda = pickCount(data.suda.activeCount);
+        else if(data.suda.count != null) suda = pickCount(data.suda.count);
+        else if(data.suda.total != null) suda = pickCount(data.suda.total);
       }
+
+      // 5) {total:{pomo:...,suda:...}} 형태
       if(data.total && typeof data.total === "object"){
-        if(pomo==null && data.total.pomo != null) pomo = data.total.pomo;
-        if(suda==null && data.total.suda != null) suda = data.total.suda;
+        if(pomo == null && data.total.pomo != null) pomo = pickCount(data.total.pomo);
+        if(suda == null && data.total.suda != null) suda = pickCount(data.total.suda);
       }
+
       return {pomo, suda};
     }
 function ensureDashPolling(){
@@ -8275,6 +8298,12 @@ async function saveDashboard(){
     // ✅ V100: settings 실시간 구독을 끊었으므로 저장 직후 로컬 상태에 즉시 반영
     try{
       state.roomSettings.dashboard = dashboard;
+      // ✅ V114: 설정 저장 직후 1회 조회 구조에서도 새 API URL로 즉시 폴링 시작
+      // 기존에는 새로고침 전까지 대시보드 인원 API가 실제 호출되지 않을 수 있었음.
+      try{
+        state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
+        ensureDashPolling();
+      }catch(_e){}
       renderDashboard();
     }catch(e){}
     showToast("저장!");
