@@ -8368,11 +8368,26 @@ function __getMyReactOn(msgObj, emoji){
 
   for(const key of keysToTry){
     try{
-      const myLeaf = rChild(base, `${key}/${emoji}/${state.uid}`);
-      if(wantOn){
-        await rSet(myLeaf, 1);
-      }else{
-        await rRemove(myLeaf);
+      // ✅ V101: 리액션도 기존 messages와 날짜별 messagesByDate에 같이 반영
+      const dayKey = (()=>{
+        try{
+          if(msgObj && (msgObj.dayKey || msgObj.dateKey)) return String(msgObj.dayKey || msgObj.dateKey);
+          return __seoulDateKeyFromMs(Number((msgObj && (msgObj.tsMs || msgObj.serverTs)) || Date.now()));
+        }catch(e){ return __seoulDateKeyFromMs(Date.now()); }
+      })();
+      const updates = {};
+      updates[`${rRoomBase(state.roomId)}/messages/${msgId}/${key}/${emoji}/${state.uid}`] = wantOn ? 1 : null;
+      updates[`${rRoomBase(state.roomId)}/messagesByDate/${dayKey}/${msgId}/${key}/${emoji}/${state.uid}`] = wantOn ? 1 : null;
+      try{
+        await rUpdate(rRef(rtdb), updates);
+      }catch(_fanoutErr){
+        // messagesByDate rules가 아직 없으면 앱이 멈추지 않도록 기존 경로만 임시 저장
+        const myLeaf = rChild(base, `${key}/${emoji}/${state.uid}`);
+        if(wantOn){
+          await rSet(myLeaf, 1);
+        }else{
+          await rRemove(myLeaf);
+        }
       }
 
       // ✅ 로컬 캐시도 즉시 반영(렌더 지연/권한 실패 구분)
@@ -8745,7 +8760,9 @@ function subscribeChat(){
   // clean up existing listeners
   try{ if(state.unsubChat) state.unsubChat(); }catch(e){}
   try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
+  try{ if(state.unsubChatChgPrev) state.unsubChatChgPrev(); }catch(e){}
   try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
+  try{ if(state.chatDayRolloverTimer){ clearInterval(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
 
   // ✅ V94: 채팅 화면 중복 렌더 방지 토큰
   // subscribeChat()가 빠르게 2번 실행되거나, 이전 비동기 초기 로드가 늦게 돌아와
@@ -8763,24 +8780,33 @@ function subscribeChat(){
   state.chatDidPrependOnce = false;
 
   // limits (requested)
-  const INIT_LIMIT = 10;   // 입장 시 표시할 채팅 수
-  const STAY_LIMIT = 20;   // 입장 유지 시 표시할 채팅 수
-  const MORE_LIMIT = 20;   // 더보기 1회
+  const INIT_LIMIT = 20;   // ✅ V102: 입장 시 최근 채팅 20개 표시
+  const STAY_LIMIT = 20;   // 기본 표시 20개 유지
+  const MORE_LIMIT = 20;   // 더보기 1회: 과거 20개 추가
   const MAX_LIMIT  = 40;   // 총 최대(20+20)
 
   // ✅ v90 chat-normalize hotfix
   // 입장 알림(ticker), 사운드(sfx), 미션 이벤트가 messages 경로에 같이 저장되어도
   // limitToLast(10/20)가 시스템 이벤트만 가져와 채팅이 빈 것처럼 보이지 않게
   // 원본은 넉넉히 읽고, 실제 채팅만 필터링한 뒤 화면 표시 수를 제한합니다.
-  const RAW_INIT_LIMIT = 160;
-  const RAW_MORE_LIMIT = 160;
-  const RAW_LIVE_LIMIT = 220;
+  const RAW_INIT_LIMIT = 80;  // ✅ V101: 날짜별 버킷만 읽으므로 raw 범위 축소(다운로드 절감)
+  const RAW_MORE_LIMIT = 80;
+  const RAW_LIVE_LIMIT = 100;
 
   state.chatWindowMax = STAY_LIMIT;     // currently enforced visible window
   state.chatMoreUsed = false;           // 더보기 사용 여부(1회)
-  state.chatStayExpanded = false;       // 10 -> 20 확장 완료 여부
+  state.chatStayExpanded = true;        // ✅ V102: 처음부터 20개 표시하므로 자동 확장 불필요
 
-  const root = rMessagesRootRef(state.roomId);
+  // ✅ V102: 기본 구독은 오늘 날짜 버킷.
+  // 단, 자정 직후 대화 맥락이 끊기지 않도록 초기/더보기 조회는 오늘+어제 버킷을 작게 병합한다.
+  const chatDayKey = __seoulDateKeyFromMs(Date.now());
+  const prevChatDayKey = __seoulDateKeyFromMs(Date.now() - 24*60*60*1000);
+  state.chatDayKey = chatDayKey;
+  state.prevChatDayKey = prevChatDayKey;
+  const root = rMessagesByDateRootRef(state.roomId, chatDayKey);
+  const prevRoot = rMessagesByDateRootRef(state.roomId, prevChatDayKey);
+  const historyRoots = (prevChatDayKey && prevChatDayKey !== chatDayKey) ? [prevRoot, root] : [root];
+  const legacyRoot = rMessagesRootRef(state.roomId); // rules 미적용/비상시 fallback 전용
 
   function normalizeDocsFromSnapVal(valObj){
     const docs = [];
@@ -8911,23 +8937,49 @@ function subscribeChat(){
     bar.style.display = (can && atTop) ? "flex" : "none";
   }
 
+  function mergeAndLimitChatDocs(chunks, n){
+    const byId = {};
+    for(const arr of (chunks || [])){
+      for(const m of (arr || [])){
+        if(!m) continue;
+        const id = String(m.id || `${m.tsMs||m.serverTs||''}_${m.uid||''}_${m.text||''}`);
+        byId[id] = m;
+      }
+    }
+    const merged = Object.values(byId);
+    merged.sort((a,b)=>{
+      const ta = Number(a.serverTs||a.tsMs||0);
+      const tb = Number(b.serverTs||b.tsMs||0);
+      if(ta !== tb) return ta - tb;
+      return String(a.id||"").localeCompare(String(b.id||""));
+    });
+    return merged.slice(-Math.max(1, Number(n)||20));
+  }
+
   async function loadLastOnce(n){
+    // ✅ V102: 오늘+어제 날짜 버킷을 작게 읽고, 시간순으로 합쳐 최근 n개만 표시
     const rawN = Math.max(Number(n)||0, RAW_INIT_LIMIT);
-    const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(rawN));
-    const snap = await rGet(q);
-    const val = snap && snap.val ? (snap.val() || {}) : {};
-    return normalizeDocsFromSnapVal(val);
+    const chunks = await Promise.all(historyRoots.map(async (rr)=>{
+      const q = rQuery(rr, rOrderByChild("tsMs"), rLimitToLast(rawN));
+      const snap = await rGet(q);
+      const val = snap && snap.val ? (snap.val() || {}) : {};
+      return normalizeDocsFromSnapVal(val);
+    }));
+    return mergeAndLimitChatDocs(chunks, n);
   }
 
   async function loadBeforeTs(ts, n){
-    // load older messages (endAt(ts-1)) up to n
+    // ✅ V102: 더보기는 현재 화면의 가장 오래된 메시지 이전 20개를 오늘+어제 버킷에서 병합 조회
     const end = Number(ts||0) - 1;
     if(!end || end < 0) return [];
     const rawN = Math.max(Number(n)||0, RAW_MORE_LIMIT);
-    const q = rQuery(root, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(rawN));
-    const snap = await rGet(q);
-    const val = snap && snap.val ? (snap.val() || {}) : {};
-    return normalizeDocsFromSnapVal(val);
+    const chunks = await Promise.all(historyRoots.map(async (rr)=>{
+      const q = rQuery(rr, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(rawN));
+      const snap = await rGet(q);
+      const val = snap && snap.val ? (snap.val() || {}) : {};
+      return normalizeDocsFromSnapVal(val);
+    }));
+    return mergeAndLimitChatDocs(chunks, n);
   }
 
   async function expandToStayLimit(){
@@ -9011,8 +9063,7 @@ function subscribeChat(){
       ensureChatMoreUI();
       updateChatMoreUI();
 
-      // auto expand to 20 after "stay"
-      setTimeout(()=>{ try{ expandToStayLimit().then(()=>{ ensureChatMoreUI(); updateChatMoreUI(); }); }catch(e){} }, 1200);
+      // ✅ V102: 처음부터 최근 20개를 표시하므로 10→20 자동 확장 타이머는 사용하지 않음
 
       // live listener: 안정적으로(클라이언트 시계 차이로 누락 방지) 마지막 MAX_LIMIT을 계속 구독
       if(!isCurrentChatSub()) return;
@@ -9108,6 +9159,13 @@ function subscribeChat(){
       rOnChildChanged(qChg, onChg);
       state.unsubChatChg = ()=>{ try{ rOff(qChg, "child_changed", onChg); }catch(e){} };
 
+      // ✅ V102: 화면에 어제 메시지가 섞여 있을 수 있으므로, 어제 버킷의 리액션/수정도 가볍게 반영
+      if(prevChatDayKey && prevChatDayKey !== chatDayKey){
+        const qChgPrev = rQuery(prevRoot, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
+        rOnChildChanged(qChgPrev, onChg);
+        state.unsubChatChgPrev = ()=>{ try{ rOff(qChgPrev, "child_changed", onChg); }catch(e){} };
+      }
+
       // attach scroll-top watcher for "more" bar
       if(els.chatList && !state._chatMoreScrollHooked){
         state._chatMoreScrollHooked = true;
@@ -9119,7 +9177,10 @@ function subscribeChat(){
       if(!isCurrentChatSub()) return;
       // fall back to old onValue if something blows up
       try{
-        const q = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_INIT_LIMIT));
+        // 날짜별 경로가 rules 문제 등으로 실패하면 기존 messages 경로로만 임시 fallback.
+        // 이 경우 과금 절감 효과가 줄어드니 콘솔에서 messagesByDate 권한을 확인해야 한다.
+        try{ showToast("날짜별 채팅 경로 확인 필요: 기존 채팅 경로로 임시 연결했어요", 4200); }catch(_e){}
+        const q = rQuery(legacyRoot, rOrderByChild("tsMs"), rLimitToLast(RAW_INIT_LIMIT));
         const onMsgs = (snap)=>{
           if(!isCurrentChatSub()) return;
           const val = snap && snap.val ? (snap.val() || {}) : {};
@@ -9138,11 +9199,26 @@ function subscribeChat(){
     }
   })();
 
+  // ✅ V101: 자정이 지나면 새 날짜 버킷으로 자동 재구독
+  try{
+    state.chatDayRolloverTimer = setInterval(()=>{
+      try{
+        if(!state.roomId) return;
+        const nextDay = __seoulDateKeyFromMs(Date.now());
+        if(nextDay && nextDay !== state.chatDayKey){
+          subscribeChat();
+        }
+      }catch(e){}
+    }, 60000);
+  }catch(e){}
+
   // unified unsubscribe
   state.unsubChat = ()=>{
     try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
     try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
-    try{ state.unsubChatLive = null; state.unsubChatChg = null; }catch(e){}
+    try{ if(state.unsubChatChgPrev) state.unsubChatChgPrev(); }catch(e){}
+    try{ if(state.chatDayRolloverTimer){ clearInterval(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
+    try{ state.unsubChatLive = null; state.unsubChatChg = null; state.unsubChatChgPrev = null; }catch(e){}
   };
 }
 
@@ -9429,6 +9505,7 @@ async function sendChatCore(text, isFlush=false){
       name: normalizeNick(myName),
       text: String(text).slice(0,500),
       tsMs: Date.now(),
+      dayKey: __seoulDateKeyFromMs(Date.now()),
       // serverTs는 정렬 안정화 보조(원하면 활용)
       serverTs: rServerTimestamp(),
       // ✅ 채팅 이모지(denormalize): presence가 늦게 도착해도 채팅 이모지가 "💬"로 통일되는 현상 방지
