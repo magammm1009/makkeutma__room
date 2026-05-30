@@ -16,6 +16,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
 <title>MagamMagam</title>
+<!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
     :root{
@@ -6195,7 +6196,7 @@ function dockRightRail(){
 
               // presence 폴링(15초)
               try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
-              __pollTimer = setInterval(refreshPresenceOnce_, 15000);
+              __pollTimer = setInterval(refreshPresenceOnce_, 60000);
             }
           }catch(e){
             console.warn("[suda presence] session poll error", e);
@@ -6204,7 +6205,7 @@ function dockRightRail(){
         }
 
         // 세션 폴링: 15초마다 확인 (자정 폭파 대응)
-        __pollSessionTimer = setInterval(refreshSessionAndMaybeSwap_, 15000);
+        __pollSessionTimer = setInterval(refreshSessionAndMaybeSwap_, 60000);
 
         // 첫 실행
         refreshSessionAndMaybeSwap_();
@@ -6980,6 +6981,11 @@ function rChatMsgRef(roomId, msgId){ return rMessageRef(roomId, msgId); }
 try{ window.ChatMsgRef = rChatMsgRef; }catch(e){}
 
 function rMissionsRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId)}/missions/${dayKey}`); }
+// ✅ V103_SAFE_PROFILE_COST_PATCH
+// 최신 프로필은 profiles/{uid} 한 칸에 덮어쓰기 저장합니다.
+// profileUpdates는 과거 로그가 계속 쌓여 RTDB 다운로드/스토리지 비용을 키우므로 더 이상 기본 저장하지 않습니다.
+function rProfilesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles`); }
+function rProfileRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles/${uid}`); }
 function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profileUpdates`); }
 function rPlaygroundActiveRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/active`); }
 function rPlaygroundActiveRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/active/${uid}`); }
@@ -7189,6 +7195,54 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
       return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, petDisplaySlot:"none", showPetInPhotoSlot:false, petSlotBgColor:"#1b1720", petSlotBgTransparent:false, petSlotMotion:"bounce", petSlotId:"cat", petSlotLv:0, petSlotName:"", emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
     }
 
+// ✅ V103_SAFE_PROFILE_COST_PATCH
+// profileUpdates 로그 대신 profiles/{uid} 최신값만 저장하기 위한 안전 정규화 함수
+function buildCurrentProfilePayload({uid, name, theme, bubbleText, autoBreakMin, autoIdleMin, source}){
+  const now = Date.now();
+  const safeName = String(name || '').trim().slice(0, 40);
+  const safeBubble = String(bubbleText || '').trim().slice(0, 15);
+  const safeTheme = Object.assign({}, theme || defaultTheme());
+  return {
+    uid: String(uid || ''),
+    name: safeName,
+    bubbleText: safeBubble,
+    theme: safeTheme,
+    autoBreakMin: Math.min(180, Math.max(1, Number(autoBreakMin || 10))),
+    autoIdleMin: Math.min(180, Math.max(1, Number(autoIdleMin || 15))),
+    updatedAtMs: now,
+    source: source || 'profile_current_v103'
+  };
+}
+
+async function ensureCurrentProfileMirror(existingPresence){
+  // 입장 시 내 최신 프로필 칸이 없으면 presence/localProfile에서 1회만 보강합니다.
+  // profileUpdates 전체를 읽지 않으므로, 운영 중 다운로드 폭탄을 만들지 않습니다.
+  try{
+    if(!state.roomId || !state.uid) return;
+    const profRef = rProfileRef(state.roomId, state.uid);
+    const snap = await rGet(profRef);
+    if(snap && snap.exists && snap.exists()) return;
+
+    const lp = loadLocalProfile() || {};
+    const src = existingPresence || {};
+    const theme = src.theme || lp.theme || defaultTheme();
+    const bubbleText = (src.bubbleText !== undefined && src.bubbleText !== null) ? src.bubbleText : (lp.bubbleText || '');
+    const name = src.name || state.nickname || lp.nickname || (els.name?.value || '').trim();
+    const payload = buildCurrentProfilePayload({
+      uid: state.uid,
+      name,
+      theme,
+      bubbleText,
+      autoBreakMin: src.autoBreakMin || lp.autoBreakMin || 10,
+      autoIdleMin: src.autoIdleMin || lp.autoIdleMin || 15,
+      source: 'presence_seed_v103'
+    });
+    await rSet(profRef, payload);
+  }catch(e){
+    console.warn('[profiles] mirror seed skipped', e);
+  }
+}
+
 async function ensureMeDoc(){
   // ✅ RTDB presence로 마이그레이션(프로필/상태/타이머/미션)
   const pref = rMePresenceRef(state.roomId, state.uid);
@@ -7262,6 +7316,11 @@ async function ensureMeDoc(){
         }
       }catch(e){}
     }
+
+    // ✅ V103: 최신 프로필 단일 저장소(profiles/{uid})를 안전하게 1회 보강
+    try{
+      await ensureCurrentProfileMirror(data || seed);
+    }catch(e){}
 
     // ✅ presence onDisconnect (브라우저/네트워크 끊기면 자동 제거)
     try{
@@ -7971,15 +8030,35 @@ async function transitionTo(nextStatus, source="manual"){
 
       const pref = rMePresenceRef(state.roomId, state.uid);
       await rUpdate(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+
+      // ✅ V103_SAFE_PROFILE_COST_PATCH
+      // 최신 프로필은 profiles/{uid}에 덮어쓰기 저장합니다.
+      // 기존 profileUpdates push 로그는 비용 원인이므로 기본 비활성화합니다.
       try{
-        await rPush(rProfileUpdatesRootRef(state.roomId), {
+        const payload = buildCurrentProfilePayload({
           uid: state.uid,
           name: state.nickname || (els.name?.value||"").trim(),
-          tsMs: Date.now(),
-          type: "profile_update",
           theme,
-          bubbleText
+          bubbleText,
+          autoBreakMin,
+          autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))),
+          source: 'apply_profile_v103'
         });
+        await rSet(rProfileRef(state.roomId, state.uid), payload);
+      }catch(e){ console.warn('[profiles] set failed', e); }
+
+      // 긴급 롤백용: localStorage.mk_keep_profile_updates_v1 = "1" 일 때만 레거시 로그를 남김
+      try{
+        if(localStorage.getItem('mk_keep_profile_updates_v1') === '1'){
+          await rPush(rProfileUpdatesRootRef(state.roomId), {
+            uid: state.uid,
+            name: state.nickname || (els.name?.value||"").trim(),
+            tsMs: Date.now(),
+            type: "profile_update",
+            theme,
+            bubbleText
+          });
+        }
       }catch(e){}
 
 
@@ -8154,6 +8233,7 @@ function subscribeRoom(){
   // ✅ RTDB로 마이그레이션: 대시보드 링크/관리자해시 + (선택) 집계값
   try{ if(state.unsubRoom) state.unsubRoom(); }catch(e){}
   try{ if(state.unsubDashCounts) state.unsubDashCounts(); }catch(e){}
+  try{ if(state._dashCountsTimer){ clearInterval(state._dashCountsTimer); state._dashCountsTimer = null; } }catch(e){}
   state.unsubRoom = null;
   state.unsubDashCounts = null;
   if(!state.nonChatEnabled){ return; }
@@ -8198,8 +8278,15 @@ function subscribeRoom(){
     renderDashboard();
   };
   try{
-    rOnValue(cref, onCounts);
-    state.unsubDashCounts = ()=>{ try{ rOff(cref, "value", onCounts); }catch(e){} };
+    // ✅ V103 비용절감: dashboard/counts는 초 단위 실시간이 필요하지 않으므로 onValue 구독 대신 60초 폴링
+    const loadCountsOnce = ()=>{
+      try{ rGet(cref).then(onCounts).catch(()=>{}); }catch(e){}
+    };
+    loadCountsOnce();
+    state._dashCountsTimer = setInterval(loadCountsOnce, 60000);
+    state.unsubDashCounts = ()=>{
+      try{ if(state._dashCountsTimer){ clearInterval(state._dashCountsTimer); state._dashCountsTimer = null; } }catch(e){}
+    };
   }catch(e){}
 }
 
