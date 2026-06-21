@@ -3456,6 +3456,11 @@ body.joined #preJoinCard{ display:none; }
 <div class="row">
 <button class="primary" id="saveDash">저장</button>
 </div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="sudaCloseRoom" type="button">💣 오늘 수다방 닫기</button>
+<button class="ghost" id="sudaCopyOwnerUid" type="button">🔐 관리자 수다 ID 복사</button>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">수다방 닫기는 <b>새 입장만</b> 막아요. 이미 들어가 있는 수다방은 새로고침하거나 나갈 때까지 유지됩니다.</div>
 <div class="hr"></div>
 <div class="hint">🐾 펫 백업/복구 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
@@ -4431,6 +4436,8 @@ onlineBtn: $("onlineBtn"),
       sheetUrl: $("sheetUrl"),
       dashApiUrl: $("dashApiUrl"),
       saveDash: $("saveDash"),
+      sudaCloseRoom: $("sudaCloseRoom"),
+      sudaCopyOwnerUid: $("sudaCopyOwnerUid"),
 
       toast: $("toast"),
     };
@@ -5405,6 +5412,95 @@ function openUrl(url){
     // - 정적 호스팅(GitHub Pages)라 '완전한 보안'은 불가능하지만,
     //   최소한 직접 URL만 알고 들어오는 케이스는 대부분 차단 가능.
     function __toRoomKey(v){return String(v||'').replace(/[.#$\[\]\/]/g,'_');}
+
+    // =====================
+    // 💣 Event-only Suda Room Gate
+    // - 관리자 인증(state.adminOk) 후에만 오늘의 수다방을 "열기" 상태로 전환합니다.
+    // - 일반 참여자는 방장이 연 당일에만 입장 티켓을 받을 수 있습니다.
+    // - SUDA_ADMIN_UID를 설정하고 RTDB rules와 함께 쓰면, 관리자 브라우저 외의 활성화 시도도 차단됩니다.
+    // =====================
+    const SUDA_ADMIN_UID = "__REPLACE_WITH_YOUR_SUDA_ADMIN_UID__"; // 🔐 관리자 수다 ID 복사 값으로 반드시 교체
+    const SUDA_ACCESS_STATE_VERSION = "event-gate-v1";
+    function sudaAccessStatePath_(gateKey){
+      return `rooms/${gateKey}/access/sudaRoomState`;
+    }
+    function isSudaRoomOpenToday_(v){
+      return !!(v && v.active === true && String(v.dayKey || "") === String(seoulDateKey()));
+    }
+    function makeSudaGateError_(code, message){
+      const err = new Error(message);
+      err.code = code;
+      return err;
+    }
+    async function getSudaRoomAccessState_(gateKey){
+      const snap = await rGet(rRef(sudaRtdb, sudaAccessStatePath_(gateKey)));
+      return (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+    }
+    async function ensureSudaRoomOpen_(gateKey, sudaUid){
+      const current = await getSudaRoomAccessState_(gateKey);
+      if(isSudaRoomOpenToday_(current)) return current;
+
+      if(!state.adminOk){
+        throw makeSudaGateError_("SUDA_ROOM_CLOSED", "수다방은 방장이 열 때까지 대기 중이에요.");
+      }
+      if(SUDA_ADMIN_UID && String(SUDA_ADMIN_UID) !== String(sudaUid || "")){
+        throw makeSudaGateError_("SUDA_ADMIN_DEVICE_MISMATCH", "이 브라우저는 수다방을 열도록 등록된 관리자 기기가 아니에요.");
+      }
+
+      const now = Date.now();
+      const next = {
+        active: true,
+        dayKey: seoulDateKey(),
+        openedAtMs: now,
+        openedBy: String(state.nickname || "방장").slice(0, 20),
+        openedBySudaUid: String(sudaUid || ""),
+        version: SUDA_ACCESS_STATE_VERSION,
+        updatedAtMs: now
+      };
+      await rSet(rRef(sudaRtdb, sudaAccessStatePath_(gateKey)), next);
+      return next;
+    }
+    async function closeSudaRoomForToday_(){
+      if(!state.joined){ showToast("입장하고 닫아줘! 💗"); return; }
+      if(!state.adminOk){ showToast("관리자 비번 확인부터!"); return; }
+      try{
+        if(!sudaAuth.currentUser) await signInAnonymously(sudaAuth);
+        const gateKey = __toRoomKey(String((typeof FIXED_ROOM_ID !== "undefined" && FIXED_ROOM_ID) ? FIXED_ROOM_ID : "magamm").trim());
+        const sudaUid = String(sudaAuth.currentUser?.uid || "");
+        if(SUDA_ADMIN_UID && String(SUDA_ADMIN_UID) !== sudaUid){
+          throw makeSudaGateError_("SUDA_ADMIN_DEVICE_MISMATCH", "이 브라우저는 수다방을 닫도록 등록된 관리자 기기가 아니에요.");
+        }
+        const before = await getSudaRoomAccessState_(gateKey);
+        await rSet(rRef(sudaRtdb, sudaAccessStatePath_(gateKey)), {
+          ...before,
+          active: false,
+          dayKey: seoulDateKey(),
+          closedAtMs: Date.now(),
+          closedBy: String(state.nickname || "방장").slice(0, 20),
+          closedBySudaUid: sudaUid,
+          version: SUDA_ACCESS_STATE_VERSION,
+          updatedAtMs: Date.now()
+        });
+        showToast("💣 수다방을 닫았어. 이제 새 입장은 막혀요.", 3400);
+      }catch(err){
+        console.warn("closeSudaRoomForToday failed", err);
+        showToast((err && err.message) || "수다방 닫기에 실패했어.", 3400);
+      }
+    }
+    async function copySudaOwnerUid_(){
+      if(!state.adminOk){ showToast("관리자 비번 확인부터!"); return; }
+      try{
+        if(!sudaAuth.currentUser) await signInAnonymously(sudaAuth);
+        const uid = String(sudaAuth.currentUser?.uid || "").trim();
+        if(!uid) throw new Error("수다방 관리자 ID를 읽지 못했어.");
+        try{ await navigator.clipboard.writeText(uid); }catch(_){ window.prompt("아래 관리자 수다 ID를 복사해 주세요.", uid); }
+        showToast("🔐 관리자 수다 ID를 복사했어!");
+      }catch(err){
+        console.warn("copySudaOwnerUid failed", err);
+        showToast((err && err.message) || "관리자 수다 ID 복사에 실패했어.", 3400);
+      }
+    }
+
 async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
@@ -5458,6 +5554,11 @@ async function openSudaWithTicket(baseUrl){
         if(!uid){ uid = String(sudaAuth.currentUser?.uid || "").trim(); }
         if(!uid) throw new Error("missing uid");
 
+        // ✅ 이벤트성 수다방: 방장이 관리자 인증 후 연 당일에만 티켓 발급
+        const sudaUid = String(sudaAuth.currentUser?.uid || "").trim();
+        if(!sudaUid) throw new Error("missing suda auth uid");
+        const accessState = await ensureSudaRoomOpen_(gateKey, sudaUid);
+
         // 티켓 저장
         const ticketPath = `rooms/${gateKey}/access/sudaTickets/${tid}`;
         showToast("수다방 여는 중…(티켓 발급)");
@@ -5465,11 +5566,15 @@ async function openSudaWithTicket(baseUrl){
           rSet(rRef(sudaRtdb, ticketPath), {
             // ✅ 세션키 방식: 수다방에서 ticket.sk === localStorage(skKey) 일 때만 통과
             sk,
-            // uid는 레거시/디버그용(있으면 넣고 없어도 됨)
-            uid: (uid || ""),
+            // 수다방 Firebase의 실제 익명 UID를 함께 기록합니다.
+            // (티켓 검사 자체는 session key를 사용하므로 기존 동작은 유지됩니다.)
+            uid: (sudaUid || uid || ""),
+            issuedByUid: (sudaUid || ""),
             createdAtMs: now,
             expAtMs,
             usedAtMs: 0,
+            accessDayKey: String(accessState.dayKey || seoulDateKey()),
+            accessOpenedAtMs: Number(accessState.openedAtMs || 0),
             by: (state.nick || ""),
             ua: (navigator.userAgent || "").slice(0,120)
           }),
@@ -5489,6 +5594,10 @@ async function openSudaWithTicket(baseUrl){
       }catch(err){
         console.error("openSudaWithTicket failed:", err);
         const msg = (err && err.message) ? err.message : String(err);
+        if(err && (err.code === "SUDA_ROOM_CLOSED" || err.code === "SUDA_ADMIN_DEVICE_MISMATCH")){
+          showToast(msg, 3500);
+          return;
+        }
         alert("수다방을 여는 중 문제가 생겼어 😢\n\n" + msg + "\n\n- boomboom 프로젝트: Anonymous 로그인 활성화\n- boomboom RTDB rules: auth!=null로 write 허용\n을 확인해줘!");
       }
     }
@@ -12698,6 +12807,8 @@ try{
       if(btn){ e.preventDefault(); btn.click(); }
     });
     els.saveDash.addEventListener("click", saveDashboard);
+    if(els.sudaCloseRoom) els.sudaCloseRoom.addEventListener("click", closeSudaRoomForToday_);
+    if(els.sudaCopyOwnerUid) els.sudaCopyOwnerUid.addEventListener("click", copySudaOwnerUid_);
 
     els.sendBtn.addEventListener("click", sendChat);
 
