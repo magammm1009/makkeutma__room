@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam v14</title><!-- SUDA_AUTH_RESTORE_UID_SYNC_V14 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4232,7 +4232,7 @@ function loadLocalProfile(){
       collection, onSnapshot, serverTimestamp, addDoc, query, orderBy, limit, runTransaction
     , enableIndexedDbPersistence, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
@@ -4256,6 +4256,47 @@ const auth = getAuth(app);
     const sudaApp = initializeApp(sudaFirebaseConfig, "sudaApp");
     const sudaAuth = getAuth(sudaApp);
     const sudaRtdb = getDatabase(sudaApp, sudaFirebaseConfig.databaseURL);
+
+    // ✅ v14: 수다방과 같은 named app(sudaApp)의 기존 익명 로그인 복원을 먼저 기다립니다.
+    // 이전에는 currentUser가 아직 복원되기 전에 바로 새 익명 로그인을 만들어,
+    // 메인 작업방과 수다방의 관리자 UID가 갈라질 수 있었습니다.
+    let __sudaAuthReadyPromise = null;
+    function ensureSudaAuthReady_(){
+      if(__sudaAuthReadyPromise) return __sudaAuthReadyPromise;
+      __sudaAuthReadyPromise = (async ()=>{
+        try{ await setPersistence(sudaAuth, browserLocalPersistence); }catch(_e){}
+        const restoredUser = await new Promise((resolve)=>{
+          let settled = false;
+          let unsub = null;
+          const finish = (user)=>{
+            if(settled) return;
+            settled = true;
+            try{ if(unsub) unsub(); }catch(_e){}
+            resolve(user || null);
+          };
+          const timer = setTimeout(()=>finish(sudaAuth.currentUser || null), 3000);
+          try{
+            unsub = onAuthStateChanged(sudaAuth, (user)=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(user || null);
+            }, ()=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(sudaAuth.currentUser || null);
+            });
+          }catch(_e){
+            try{ clearTimeout(timer); }catch(_e2){}
+            finish(sudaAuth.currentUser || null);
+          }
+        });
+        if(restoredUser) return restoredUser;
+        const cred = await signInAnonymously(sudaAuth);
+        return cred.user;
+      })().catch((err)=>{
+        __sudaAuthReadyPromise = null;
+        throw err;
+      });
+      return __sudaAuthReadyPromise;
+    }
 
     // DOM
     const $ = (id) => document.getElementById(id);
@@ -5421,7 +5462,7 @@ function openUrl(url){
     // - 방 활성화는 관리자 설정 안의 "오늘 수다방 열기" 버튼에서만 가능합니다.
     // - 상태 버전을 함께 검사해, 이전 테스트/구버전의 active 상태가 남아 있어도 자동 입장하지 않습니다.
     // =====================
-    const SUDA_ADMIN_UID = "carcV95666TnsWK072Jnmas9lMk1"; // 🔐 관리자 수다 ID 복사 값으로 반드시 교체
+    const SUDA_ADMIN_UID = "carcV95666TnsWK072Jnmas9lMk1"; // ✅ v14: 수다방 v13 + RTDB Rules의 방장 UID와 동기화
     const SUDA_ACCESS_STATE_VERSION = "event-gate-v4-host-explicit";
     function sudaAccessStatePath_(gateKey){
       return `rooms/${gateKey}/access/sudaRoomState`;
@@ -5458,8 +5499,8 @@ function openUrl(url){
       return current;
     }
     async function getSudaAdminUid_(){
-      if(!sudaAuth.currentUser) await signInAnonymously(sudaAuth);
-      const uid = String(sudaAuth.currentUser?.uid || "").trim();
+      const user = await ensureSudaAuthReady_();
+      const uid = String(user?.uid || sudaAuth.currentUser?.uid || "").trim();
       if(!uid) throw makeSudaGateError_("SUDA_ADMIN_UID_MISSING", "수다방 관리자 ID를 읽지 못했어.");
       return uid;
     }
@@ -5474,7 +5515,7 @@ function openUrl(url){
       }
       const uid = await getSudaAdminUid_();
       if(String(SUDA_ADMIN_UID) !== uid){
-        throw makeSudaGateError_("SUDA_ADMIN_DEVICE_MISMATCH", "이 브라우저는 수다방을 열도록 등록된 관리자 기기가 아니에요.");
+        throw makeSudaGateError_("SUDA_ADMIN_DEVICE_MISMATCH", "이 브라우저의 수다방 로그인 ID가 등록된 방장 ID와 달라요. v14는 기존 수다방 로그인을 먼저 복원하니, 새로고침 뒤 다시 시도해 주세요.");
       }
       return uid;
     }
@@ -5583,13 +5624,11 @@ async function openSudaWithTicket(baseUrl){
         const now = Date.now();
         const expAtMs = now + 5*60*1000;
 
-        // boomboom 프로젝트에도 익명 로그인(프로젝트별로 토큰이 달라서 필요)
-        if(!sudaAuth.currentUser){
-          showToast("수다방 로그인 중…");
-          await withTimeout(signInAnonymously(sudaAuth), 15000, "signInAnonymously");
-        }
-        // uid 보정: sudaAuth의 익명 uid를 우선 사용
-        if(!uid){ uid = String(sudaAuth.currentUser?.uid || "").trim(); }
+        // ✅ v14: 기존 수다방 익명 로그인 복원을 먼저 기다린 뒤, 없을 때만 새 로그인 생성
+        showToast("수다방 로그인 확인 중…");
+        const sudaUser = await withTimeout(ensureSudaAuthReady_(), 15000, "sudaAuthRestore");
+        // uid 보정: 수다방 Firebase의 실제 익명 uid를 우선 사용
+        if(!uid){ uid = String(sudaUser?.uid || sudaAuth.currentUser?.uid || "").trim(); }
         if(!uid) throw new Error("missing uid");
 
         // ✅ v4: 대시보드 수다 버튼은 방을 절대 열지 않습니다.
