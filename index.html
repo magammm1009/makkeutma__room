@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam v14</title><!-- SUDA_AUTH_RESTORE_UID_SYNC_V14 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam v15</title><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -3459,9 +3459,9 @@ body.joined #preJoinCard{ display:none; }
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="primary" id="sudaOpenRoom" type="button">💣 오늘 수다방 열기</button>
 <button class="ghost" id="sudaCloseRoom" type="button">💣 오늘 수다방 닫기</button>
-<button class="ghost" id="sudaCopyOwnerUid" type="button">🔐 관리자 수다 ID 복사</button>
+<button class="ghost" id="sudaCopyOwnerUid" type="button">🪪 메인 수다 제어 ID 복사</button>
 </div>
-<div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 관리자 인증 + 등록된 관리자 수다 ID가 모두 맞을 때만 작동해요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요.</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 관리자 인증 + 연결된 메인 제어 ID가 모두 맞을 때만 작동해요. 처음 한 번은 <b>메인 수다 제어 ID 복사</b> → 수다방의 <b>💣 세션 폭파 관리</b>에서 등록해 주세요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요.</div>
 <div class="hr"></div>
 <div class="hint">🐾 펫 백업/복구 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
@@ -5462,14 +5462,31 @@ function openUrl(url){
     // - 방 활성화는 관리자 설정 안의 "오늘 수다방 열기" 버튼에서만 가능합니다.
     // - 상태 버전을 함께 검사해, 이전 테스트/구버전의 active 상태가 남아 있어도 자동 입장하지 않습니다.
     // =====================
-    const SUDA_ADMIN_UID = "carcV95666TnsWK072Jnmas9lMk1"; // ✅ v14: 수다방 v13 + RTDB Rules의 방장 UID와 동기화
+    // ✅ v15: 메인 작업방과 수다방은 서로 다른 배포 주소라 익명 Firebase UID가 공유되지 않습니다.
+    // 따라서 수다방의 세션 방장 UID와, 메인 작업방에서 열기/닫기를 할 제어 UID를 분리합니다.
+    // 메인 제어 UID는 수다방 방장이 수다방 메뉴에서 한 번 등록합니다.
+    const SUDA_SESSION_ADMIN_UID = "carcV95666TnsWK072Jnmas9lMk1";
     const SUDA_ACCESS_STATE_VERSION = "event-gate-v4-host-explicit";
+    const SUDA_GATE_CONTROL_PATH = "sudaHub/gateControlV1";
+    const SUDA_GATE_CONTROL_SCHEMA = "boom-gate-control-v15";
     function sudaAccessStatePath_(gateKey){
       return `rooms/${gateKey}/access/sudaRoomState`;
     }
-    function hasConfiguredSudaAdminUid_(){
-      const v = String(SUDA_ADMIN_UID || "").trim();
-      return !!v && !v.includes("__REPLACE_WITH_YOUR_SUDA_ADMIN_UID__");
+    async function getSudaGateControl_(){
+      try{
+        await ensureSudaAuthReady_();
+        const snap = await rGet(rRef(sudaRtdb, SUDA_GATE_CONTROL_PATH));
+        const raw = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+        return {
+          mainGateUid: String(raw.mainGateUid || "").trim(),
+          updatedAt: Number(raw.updatedAt || 0) || 0,
+          schemaVersion: String(raw.schemaVersion || "")
+        };
+      }catch(err){
+        const e = makeSudaGateError_("SUDA_GATE_CONTROL_UNREADABLE", "메인 수다방 제어 연결 정보를 읽지 못했어. 수다방 RTDB Rules v15가 Publish됐는지 확인해 주세요.");
+        e.cause = err;
+        throw e;
+      }
     }
     function isSudaRoomOpenToday_(v){
       return !!(
@@ -5507,15 +5524,20 @@ function openUrl(url){
     async function assertSudaHostAuthority_(){
       if(!state.joined) throw makeSudaGateError_("SUDA_NOT_JOINED", "입장한 뒤에 수다방을 열 수 있어요.");
       if(!state.adminOk) throw makeSudaGateError_("SUDA_ADMIN_REQUIRED", "관리자 인증 후에만 수다방을 열 수 있어요.");
-      if(!hasConfiguredSudaAdminUid_()){
+      const uid = await getSudaAdminUid_();
+      const control = await getSudaGateControl_();
+      const registeredUid = String(control.mainGateUid || "").trim();
+      if(!registeredUid){
         throw makeSudaGateError_(
-          "SUDA_ADMIN_UID_NOT_CONFIGURED",
-          "SUDA_ADMIN_UID가 아직 설정되지 않았어. ‘관리자 수다 ID 복사’ 값으로 코드와 Rules를 같은 값으로 채워 주세요."
+          "SUDA_MAIN_GATE_NOT_PAIRED",
+          "메인 작업방 제어 ID가 아직 등록되지 않았어. 여기서 ‘🪪 메인 수다 제어 ID 복사’를 누른 뒤, 수다방 ☰ → 💣 세션 폭파 관리 → ‘🔗 메인 작업방 제어 ID 등록’에서 한 번 붙여넣어 주세요."
         );
       }
-      const uid = await getSudaAdminUid_();
-      if(String(SUDA_ADMIN_UID) !== uid){
-        throw makeSudaGateError_("SUDA_ADMIN_DEVICE_MISMATCH", "이 브라우저의 수다방 로그인 ID가 등록된 방장 ID와 달라요. v14는 기존 수다방 로그인을 먼저 복원하니, 새로고침 뒤 다시 시도해 주세요.");
+      if(registeredUid !== uid){
+        throw makeSudaGateError_(
+          "SUDA_MAIN_GATE_MISMATCH",
+          "이 브라우저의 메인 수다 제어 ID가 등록된 값과 달라요. ‘🪪 메인 수다 제어 ID 복사’로 현재 값을 복사한 뒤, 수다방 관리자 메뉴에서 다시 등록해 주세요."
+        );
       }
       return uid;
     }
@@ -5572,11 +5594,11 @@ function openUrl(url){
       if(!state.adminOk){ showToast("관리자 비번 확인부터!"); return; }
       try{
         const uid = await getSudaAdminUid_();
-        try{ await navigator.clipboard.writeText(uid); }catch(_){ window.prompt("아래 관리자 수다 ID를 복사해 주세요.", uid); }
-        showToast("🔐 관리자 수다 ID를 복사했어!");
+        try{ await navigator.clipboard.writeText(uid); }catch(_){ window.prompt("아래 메인 수다 제어 ID를 복사해 주세요.", uid); }
+        showToast("🪪 메인 수다 제어 ID를 복사했어! 수다방 ☰ → 💣 세션 폭파 관리에서 등록해 주세요.", 4600);
       }catch(err){
         console.warn("copySudaOwnerUid failed", err);
-        showToast((err && err.message) || "관리자 수다 ID 복사에 실패했어.", 3400);
+        showToast((err && err.message) || "메인 수다 제어 ID 복사에 실패했어.", 3400);
       }
     }
 
