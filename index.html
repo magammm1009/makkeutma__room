@@ -2966,6 +2966,895 @@ body.joined #preJoinCard{ display:none; }
   }
 </style>
 
+
+
+<style id="responsiveRailChatSafeV104">
+/* ===== V104 반응형 작업방 안전 패치 =====
+   - 좁은 브라우저/모바일에서도 상태 수정·가이드·바로가기·채팅을 모두 유지
+   - 데이터, 인증, 채팅 동기화, 타이머 로직은 수정하지 않음
+*/
+@media (max-width: 760px){
+  /* 상단의 상태 수정은 유지하고, 타일 메뉴의 가이드/바로가기 버튼도 한 줄 도구막대로 노출 */
+  body.joined .wrap{
+    height:calc(100dvh - 104px) !important;
+    max-height:calc(100dvh - 104px) !important;
+  }
+
+  body.joined .wrap > main{
+    flex:0 1 clamp(168px, 30dvh, 220px) !important;
+    height:clamp(168px, 30dvh, 220px) !important;
+    max-height:clamp(168px, 30dvh, 220px) !important;
+  }
+
+  body.joined .gridHead{
+    display:flex !important;
+    flex:0 0 auto !important;
+    min-height:38px !important;
+    padding:0 0 4px !important;
+    overflow:visible !important;
+  }
+  body.joined .gridHead .title,
+  body.joined .gridHead .joinTicker,
+  body.joined #sortModeBtn,
+  body.joined #layoutToggleBtn{
+    display:none !important;
+  }
+  body.joined .gridHead .right{
+    position:relative !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:6px !important;
+    width:100% !important;
+    margin:0 !important;
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    padding:0 0 2px !important;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.joined .gridHead .right::-webkit-scrollbar{display:none;}
+  body.joined .gridHead .right > button{
+    flex:0 0 auto !important;
+    min-height:36px !important;
+    padding:8px 10px !important;
+    font-size:12px !important;
+  }
+  body.joined #viewMenu{
+    position:fixed !important;
+    top:62px !important;
+    left:8px !important;
+    right:8px !important;
+    width:auto !important;
+    max-height:calc(100dvh - 78px) !important;
+    overflow:auto !important;
+  }
+
+  /* 내 타일은 남기되, 채팅 영역을 침범하지 않도록 내부에서만 스크롤 */
+  body.joined .gridScroll{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+  }
+  body.joined .grid .tile.mineTile{
+    min-height:220px !important;
+    max-height:none !important;
+  }
+  body.joined .grid .tile.mineTile .content{
+    min-height:220px !important;
+  }
+
+  /* 기존에는 모바일에서 대시보드를 통째로 숨겼음.
+     여기서는 "바로가기 전용 압축 바"로 바꾸어 항상 남긴다. */
+  body.joined .sidebar{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+  }
+  body.joined #dashboardCard{
+    display:block !important;
+    flex:0 0 auto !important;
+    min-height:0 !important;
+  }
+  body.joined #dashboardCard .dashHead{
+    display:none !important;
+  }
+  body.joined #dashboardCard .body{
+    padding:6px !important;
+    gap:0 !important;
+  }
+  body.joined #dashboardCard .dashFoldBody{
+    display:flex !important;
+    gap:6px !important;
+  }
+  body.joined #dashboardCard .dashRow{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:6px !important;
+  }
+  body.joined #dashboardCard .dashBox{
+    min-height:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+  body.joined #dashboardCard .dashTitle,
+  body.joined #dashboardCard .dashBig,
+  body.joined #dashboardCard .dashFoot{
+    display:none !important;
+  }
+  body.joined #dashboardCard .dashBox > .btnRow{
+    display:flex !important;
+  }
+  body.joined #dashboardCard .dashGo{
+    min-height:36px !important;
+    padding:8px 10px !important;
+    font-size:0 !important;
+  }
+  body.joined #goPomo::before{
+    content:"⏰ 뽀모";
+    font-size:12px;
+  }
+  body.joined #goSuda::before{
+    content:"💣 수다";
+    font-size:12px;
+  }
+  body.joined #dashShortcuts{
+    display:grid !important;
+    grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+    gap:6px !important;
+  }
+  body.joined #dashShortcuts button{
+    min-height:34px !important;
+    padding:7px 3px !important;
+  }
+  body.joined #dashShortcuts .btnLabel{
+    margin-left:0 !important;
+    font-size:10px !important;
+    letter-spacing:-.65px !important;
+  }
+
+  /* 채팅은 남은 높이를 전부 사용하고, 목록만 내부 스크롤한다. */
+  body.joined .chatCard,
+  body.joined #chatCard{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  body.joined #chatCard .body.chatBody{
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined #chatCard .chatList{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:auto !important;
+  }
+
+  /* 아주 낮은 화면에서도 전송 칸과 바로가기 바를 우선 보장 */
+  @media (max-height: 620px){
+    body.joined .wrap > main{
+      flex-basis:148px !important;
+      height:148px !important;
+      max-height:148px !important;
+    }
+    body.joined .grid .tile.mineTile,
+    body.joined .grid .tile.mineTile .content{
+      min-height:200px !important;
+    }
+    body.joined #dashboardCard .body{
+      padding:5px !important;
+    }
+    body.joined #dashboardCard .dashGo{
+      min-height:32px !important;
+    }
+    body.joined #dashShortcuts button{
+      min-height:31px !important;
+      padding:6px 2px !important;
+    }
+  }
+}
+</style>
+
+<style id="compactAutoFoldChatFixV105">
+/* ===== V105 축소 화면 자동 접힘 + 채팅 고정 패치 =====
+   - 760px 이하: 대시보드는 제목줄만 남기고 자동 접힘
+   - 내 타일은 상태·닉네임·작업 시간만 남기는 미니 카드로 자동 전환
+   - 채팅은 "목록만 스크롤 / 입력창은 항상 하단" 구조로 고정
+   - Firebase, RTDB, 타이머, 채팅 전송 로직은 수정하지 않음
+*/
+
+/* 좁고 낮은 데스크톱 창에서는 대시보드만 자동 접어 채팅 높이를 먼저 확보 */
+@media (min-width:761px) and (max-width:920px) and (max-height:720px){
+  body.joined #dashboardCard{
+    flex:0 0 42px !important;
+    min-height:42px !important;
+    max-height:42px !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .dashHead{
+    min-height:42px !important;
+    padding:8px 12px !important;
+    border-bottom:0 !important;
+  }
+  body.joined #dashboardCard .dashHead h3::after{
+    content:"자동 접힘";
+    margin-left:8px;
+    font-size:11px;
+    font-weight:800;
+    color:var(--muted);
+  }
+  body.joined #dashboardCard .dashHeadRight,
+  body.joined #dashboardCard .body,
+  body.joined #dashboardCard .dashFoldBody{
+    display:none !important;
+  }
+}
+
+@media (max-width:760px){
+  /* 화면 전체를 상단바 + 남은 작업영역으로 나눠야, 낮은 창에서도 채팅 입력창이 밀려나가지 않음 */
+  html, body{
+    height:100vh !important;
+    height:100dvh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined{
+    display:flex !important;
+    flex-direction:column !important;
+    height:100vh !important;
+    height:100dvh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined .topbar{
+    flex:0 0 auto !important;
+  }
+
+  /* 이전의 고정 px 높이를 없애고, 상단바를 제외한 모든 남은 높이를 wrap에 배정 */
+  body.joined .wrap{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    display:grid !important;
+    grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:clamp(88px, 17dvh, 128px) minmax(0, 1fr) !important;
+    gap:8px !important;
+    padding:8px !important;
+    overflow:hidden !important;
+  }
+
+  /* 위: 바로가기 도구막대 + 내 미니 프로필 */
+  body.joined .wrap > main{
+    grid-column:1 !important;
+    grid-row:1 !important;
+    display:grid !important;
+    grid-template-rows:36px minmax(0, 1fr) !important;
+    flex:none !important;
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    padding-right:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined .gridHead{
+    display:flex !important;
+    min-height:36px !important;
+    height:36px !important;
+    padding:0 0 4px !important;
+    overflow:hidden !important;
+  }
+  body.joined .gridHead .title,
+  body.joined .gridHead .joinTicker,
+  body.joined #sortModeBtn,
+  body.joined #layoutToggleBtn{
+    display:none !important;
+  }
+  body.joined .gridHead .right{
+    display:flex !important;
+    width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+    gap:6px !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.joined .gridHead .right::-webkit-scrollbar{display:none;}
+  body.joined .gridHead .right > button{
+    flex:0 0 auto !important;
+    min-height:32px !important;
+    padding:7px 9px !important;
+    font-size:11px !important;
+  }
+  body.joined #viewMenu{
+    position:fixed !important;
+    top:58px !important;
+    left:8px !important;
+    right:8px !important;
+    width:auto !important;
+    max-height:calc(100dvh - 74px) !important;
+    overflow:auto !important;
+  }
+
+  /* 내 프로필은 한 줄 미니 카드: 상태·닉네임·작업 시간만 표시 */
+  body.joined .gridScroll{
+    min-height:0 !important;
+    height:auto !important;
+    overflow:hidden !important;
+    padding:0 !important;
+  }
+  body.joined .grid{
+    display:block !important;
+    height:100% !important;
+    min-height:0 !important;
+    padding:0 !important;
+  }
+  body.joined .grid .tile:not(.mineTile){display:none !important;}
+  body.joined .grid .tile.mineTile{
+    display:block !important;
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    overflow:hidden !important;
+  }
+  body.joined .grid .tile.mineTile .content{
+    display:grid !important;
+    grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-rows:minmax(0, 1fr) !important;
+    align-items:center !important;
+    gap:8px !important;
+    height:100% !important;
+    min-height:0 !important;
+    padding:6px 8px !important;
+  }
+  body.joined .grid .tile.mineTile .statusBar{
+    grid-column:1 !important;
+    min-width:0 !important;
+    justify-content:flex-start !important;
+  }
+  body.joined .grid .tile.mineTile .statusLeft{
+    width:100% !important;
+    min-width:0 !important;
+    gap:6px !important;
+    flex-wrap:nowrap !important;
+    justify-content:flex-start !important;
+  }
+  body.joined .grid .tile.mineTile .badge{
+    flex:0 0 32px !important;
+    width:32px !important;
+    min-height:32px !important;
+    height:32px !important;
+    padding:0 !important;
+    border-radius:10px !important;
+  }
+  body.joined .grid .tile.mineTile .badge span:not(:first-child){display:none !important;}
+  body.joined .grid .tile.mineTile .stIcon{
+    width:22px !important;
+    height:22px !important;
+    margin:0 !important;
+    border-radius:8px !important;
+  }
+  body.joined .grid .tile.mineTile .namePill{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    min-height:32px !important;
+    height:32px !important;
+    padding:0 10px !important;
+    font-size:12px !important;
+    border-radius:10px !important;
+  }
+  body.joined .grid .tile.mineTile .bigTimer{
+    grid-column:2 !important;
+    min-width:0 !important;
+    margin:0 !important;
+    justify-content:flex-end !important;
+    font-size:clamp(17px, 5.6vw, 24px) !important;
+    letter-spacing:-.7px !important;
+    line-height:1 !important;
+  }
+  body.joined .grid .tile.mineTile .bottomStack{display:none !important;}
+
+  /* 아래: 대시보드 헤더만 남긴 뒤, 채팅이 남은 세로 공간을 독점 */
+  body.joined .sidebar{
+    grid-column:1 !important;
+    grid-row:2 !important;
+    position:relative !important;
+    top:auto !important;
+    order:initial !important;
+    width:100% !important;
+    max-width:none !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    margin:0 !important;
+    display:grid !important;
+    grid-template-rows:42px minmax(0, 1fr) !important;
+    gap:8px !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard{
+    display:block !important;
+    align-self:stretch !important;
+    min-height:42px !important;
+    height:42px !important;
+    max-height:42px !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .dashHead{
+    display:flex !important;
+    min-height:42px !important;
+    height:42px !important;
+    padding:8px 12px !important;
+    border-bottom:0 !important;
+  }
+  body.joined #dashboardCard .dashHead h3::after{
+    content:"자동 접힘";
+    margin-left:8px;
+    font-size:11px;
+    font-weight:800;
+    color:var(--muted);
+  }
+  body.joined #dashboardCard .dashHeadRight,
+  body.joined #dashboardCard .body,
+  body.joined #dashboardCard .dashFoldBody{
+    display:none !important;
+  }
+
+  /* 핵심: 카드 → 본문 → 목록이 모두 min-height:0인 flex/grid 체인이라 입력줄은 절대 잘리지 않음 */
+  body.joined #chatCard,
+  body.joined .chatCard{
+    grid-row:2 !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    height:100% !important;
+    max-height:none !important;
+    margin:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+  }
+  body.joined #chatCard > h3{
+    flex:0 0 auto !important;
+    min-height:40px !important;
+    padding:9px 10px !important;
+  }
+  body.joined #chatCard .body.chatBody{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:8px !important;
+    padding:8px !important;
+    overflow:hidden !important;
+  }
+  body.joined #chatCard .embedBar,
+  body.joined #chatCard .chatNewBar,
+  body.joined #chatCard .chatInputRow{
+    flex:0 0 auto !important;
+  }
+  body.joined #chatCard .chatList{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.joined #chatCard .chatInputRow{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    min-height:38px !important;
+    padding-top:0 !important;
+    position:relative !important;
+    z-index:2 !important;
+  }
+  body.joined #chatCard .chatInputRow input{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    min-height:38px !important;
+  }
+  body.joined #chatCard .chatInputRow button{
+    flex:0 0 64px !important;
+    min-width:64px !important;
+    min-height:38px !important;
+    padding:8px !important;
+  }
+
+  /* 가로가 아주 좁거나 가로보기처럼 화면 높이가 낮아져도 입력줄을 우선 유지 */
+  @media (max-height:480px){
+    body.joined .wrap{
+      grid-template-rows:78px minmax(0, 1fr) !important;
+      gap:6px !important;
+      padding:6px !important;
+    }
+    body.joined .wrap > main{grid-template-rows:32px minmax(0, 1fr) !important;}
+    body.joined .gridHead{min-height:32px !important; height:32px !important; padding-bottom:2px !important;}
+    body.joined .gridHead .right > button{min-height:30px !important; padding:6px 8px !important;}
+    body.joined .grid .tile.mineTile .content{padding:5px 7px !important;}
+    body.joined .grid .tile.mineTile .badge,
+    body.joined .grid .tile.mineTile .namePill{min-height:28px !important; height:28px !important;}
+    body.joined .grid .tile.mineTile .badge{flex-basis:28px !important; width:28px !important;}
+    body.joined .sidebar{grid-template-rows:38px minmax(0, 1fr) !important; gap:6px !important;}
+    body.joined #dashboardCard,
+    body.joined #dashboardCard .dashHead{min-height:38px !important; height:38px !important;}
+    body.joined #chatCard > h3{min-height:36px !important; padding:8px 10px !important;}
+    body.joined #chatCard .body.chatBody{gap:6px !important; padding:6px !important;}
+    body.joined #chatCard .chatInputRow,
+    body.joined #chatCard .chatInputRow input,
+    body.joined #chatCard .chatInputRow button{min-height:34px !important;}
+  }
+}
+</style>
+
+<style id="mobileChatVisibleFixV106">
+/* ===== V106: 축소 화면 채팅 카드 0px 접힘 방지 =====
+   V105의 sidebar grid 구조를 모바일에서 flex 구조로 덮어씁니다.
+   대시보드는 42px만 차지하고, 채팅 카드는 남은 세로 공간을 항상 사용합니다.
+*/
+@media (max-width:760px){
+  /* topbar의 실제 높이를 제외한 공간을 wrap에 확정 배정 */
+  html,
+  body{
+    height:100vh !important;
+    height:100dvh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined{
+    display:grid !important;
+    grid-template-rows:auto minmax(0, 1fr) !important;
+    height:100vh !important;
+    height:100dvh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined .topbar{
+    grid-row:1 !important;
+    min-width:0 !important;
+  }
+
+  body.joined .wrap{
+    grid-row:2 !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:hidden !important;
+  }
+
+  /* V105의 sidebar grid를 flex로 교체.
+     dashboard=42px, chat=남은 높이 전체라는 계산이 항상 유지된다. */
+  body.joined .sidebar{
+    display:flex !important;
+    flex-direction:column !important;
+    grid-template-rows:none !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:hidden !important;
+  }
+
+  body.joined #dashboardCard{
+    flex:0 0 42px !important;
+    height:42px !important;
+    min-height:42px !important;
+    max-height:42px !important;
+  }
+
+  /* grid-row 값이 남아 있으면 일부 브라우저에서 높이 계산이 0으로 떨어질 수 있어 해제 */
+  body.joined #chatCard,
+  body.joined .chatCard{
+    grid-row:auto !important;
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 0 !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:hidden !important;
+  }
+
+  body.joined #chatCard > h3{
+    flex:0 0 auto !important;
+  }
+
+  body.joined #chatCard .body.chatBody{
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined #chatCard .chatList{
+    display:block !important;
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+
+  body.joined #chatCard .chatInputRow{
+    display:flex !important;
+    flex:0 0 auto !important;
+    min-height:38px !important;
+    margin-top:0 !important;
+  }
+}
+</style>
+
+<style id="mobileDashboardMiniChatDockV107">
+/* ===== V107: 모바일/최소폭 대시보드 미니화 + 채팅 독립 도킹 =====
+   - 대시보드는 접지 않고, 두 현황 + 바로가기 아이콘만 남기는 미니 바
+   - 채팅 카드는 부모 높이 계산에 의존하지 않고 대시보드 바로 아래에 고정
+   - Firebase/RTDB/타이머/채팅 데이터 로직은 수정하지 않음
+*/
+@media (max-width:760px){
+  /* 대시보드: 접는 대신 프로필처럼 한 줄 미니 바 형태로 유지 */
+  body.joined .sidebar{
+    display:block !important;
+    position:relative !important;
+    grid-column:1 !important;
+    grid-row:2 !important;
+    align-self:start !important;
+    width:100% !important;
+    height:64px !important;
+    min-height:64px !important;
+    max-height:64px !important;
+    margin:0 !important;
+    overflow:visible !important;
+    z-index:12 !important;
+  }
+  body.joined #dashboardCard{
+    display:block !important;
+    width:100% !important;
+    height:64px !important;
+    min-height:64px !important;
+    max-height:64px !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .dashHead{
+    display:none !important;
+  }
+  body.joined #dashboardCard .body{
+    display:block !important;
+    height:100% !important;
+    padding:6px !important;
+    overflow:hidden !important;
+  }
+  /* 이전에 저장된 '대시보드 접힘' 상태가 있어도 모바일에서는 미니 바를 항상 보인다. */
+  body.joined #dashboardCard .dashFoldBody,
+  body.joined #dashboardCard .dashFoldBody.isHidden{
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:stretch !important;
+    gap:6px !important;
+    width:100% !important;
+    height:100% !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.joined #dashboardCard .dashFoldBody::-webkit-scrollbar{display:none;}
+  body.joined #dashboardCard .dashRow{
+    display:flex !important;
+    flex:0 0 auto !important;
+    align-items:stretch !important;
+    gap:6px !important;
+    height:100% !important;
+  }
+  body.joined #dashboardCard .dashBox{
+    display:flex !important;
+    flex:0 0 114px !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:5px !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:4px 7px !important;
+    border-radius:12px !important;
+    background:rgba(255,214,233,.10) !important;
+    border:1px solid rgba(255,182,214,.20) !important;
+  }
+  body.joined #dashboardCard .dashTitle{
+    display:block !important;
+    white-space:nowrap !important;
+    font-size:10px !important;
+    line-height:1 !important;
+    font-weight:1000 !important;
+  }
+  body.joined #dashboardCard .dashBig{
+    display:block !important;
+    white-space:nowrap !important;
+    font-size:17px !important;
+    line-height:1 !important;
+    font-weight:1100 !important;
+  }
+  body.joined #dashboardCard .dashBig span[style]{
+    font-size:10px !important;
+    margin-left:2px !important;
+  }
+  body.joined #dashboardCard .dashBox > .btnRow,
+  body.joined #dashboardCard .dashFoot{
+    display:none !important;
+  }
+  body.joined #dashShortcuts{
+    display:flex !important;
+    flex:0 0 auto !important;
+    align-items:stretch !important;
+    gap:6px !important;
+    height:100% !important;
+  }
+  body.joined #dashShortcuts button{
+    display:flex !important;
+    flex:0 0 36px !important;
+    width:36px !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:0 !important;
+    border-radius:12px !important;
+  }
+  body.joined #dashShortcuts .btnLabel{
+    margin:0 !important;
+    font-size:0 !important;
+  }
+  body.joined #goMacHelper .btnLabel::before{content:"🍎"; font-size:14px;}
+  body.joined #goWinHelper .btnLabel::before{content:"🪟"; font-size:14px;}
+  body.joined #goChool .btnLabel::before{content:"🔥"; font-size:14px;}
+  body.joined #goSheet .btnLabel::before{content:"📎"; font-size:14px;}
+
+  /* 채팅은 sidebar/flex/grid 높이 계산에서 분리한다.
+     대시보드의 실제 하단 좌표는 V107 스크립트가 --mk-mobile-chat-top에 넣는다. */
+  body.joined #chatCard,
+  body.joined .chatCard{
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    top:var(--mk-mobile-chat-top, 330px) !important;
+    bottom:max(8px, env(safe-area-inset-bottom)) !important;
+    width:auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    margin:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    z-index:11 !important;
+  }
+  body.joined #chatCard > h3{
+    flex:0 0 auto !important;
+    min-height:38px !important;
+    padding:9px 10px !important;
+  }
+  body.joined #chatCard .body.chatBody{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    padding:8px !important;
+    gap:8px !important;
+    overflow:hidden !important;
+  }
+  body.joined #chatCard .embedBar,
+  body.joined #chatCard .chatNewBar,
+  body.joined #chatCard .chatInputRow{
+    flex:0 0 auto !important;
+  }
+  body.joined #chatCard .chatList{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.joined #chatCard .chatInputRow{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    min-height:38px !important;
+    position:relative !important;
+    z-index:1 !important;
+  }
+  body.joined #chatCard .chatInputRow input{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    min-height:38px !important;
+  }
+  body.joined #chatCard .chatInputRow button{
+    flex:0 0 64px !important;
+    min-width:64px !important;
+    min-height:38px !important;
+  }
+
+  /* 매우 낮은 창에서도 입력창을 우선 살리고, 대시보드만 조금 더 압축한다. */
+  @media (max-height:560px){
+    body.joined .sidebar,
+    body.joined #dashboardCard{
+      height:52px !important;
+      min-height:52px !important;
+      max-height:52px !important;
+    }
+    body.joined #dashboardCard .body{padding:5px !important;}
+    body.joined #dashboardCard .dashBox{flex-basis:104px !important; padding:3px 6px !important;}
+    body.joined #dashboardCard .dashTitle{font-size:9px !important;}
+    body.joined #dashboardCard .dashBig{font-size:15px !important;}
+    body.joined #dashShortcuts button{flex-basis:31px !important; width:31px !important;}
+    body.joined #chatCard > h3{min-height:34px !important; padding:7px 9px !important;}
+    body.joined #chatCard .body.chatBody{padding:6px !important; gap:6px !important;}
+    body.joined #chatCard .chatInputRow,
+    body.joined #chatCard .chatInputRow input,
+    body.joined #chatCard .chatInputRow button{min-height:34px !important;}
+  }
+}
+</style>
+<script id="mobileDashboardMiniChatDockScriptV107">
+/* V107: CSS만으로는 부모 레이아웃의 실제 높이를 신뢰할 수 없어서,
+   모바일에서 대시보드 하단을 기준으로 채팅 시작점을 계산한다. */
+(function(){
+  const mq = window.matchMedia ? window.matchMedia('(max-width: 760px)') : null;
+  let raf = 0;
+  function syncMobileChatDock(){
+    try{
+      const body = document.body;
+      const chat = document.getElementById('chatCard');
+      const dashboard = document.getElementById('dashboardCard');
+      if(!body || !chat || !dashboard || !body.classList.contains('joined') || (mq && !mq.matches)) return;
+      const vv = window.visualViewport;
+      const visibleH = Math.round((vv && vv.height) || window.innerHeight || 0);
+      const rect = dashboard.getBoundingClientRect();
+      const idealTop = Math.round(rect.bottom + 8);
+      /* 입력줄이 최소한 122px은 남도록 하며, 낮은 화면에서는 카드가 일부 겹쳐도 전송칸을 우선 보호한다. */
+      const maxTop = Math.max(156, visibleH - 122);
+      const top = Math.max(156, Math.min(idealTop, maxTop));
+      chat.style.setProperty('--mk-mobile-chat-top', top + 'px');
+    }catch(_e){}
+  }
+  function scheduleSync(){
+    if(raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function(){
+      raf = requestAnimationFrame(syncMobileChatDock);
+    });
+  }
+  function bind(){
+    scheduleSync();
+    window.addEventListener('resize', scheduleSync, {passive:true});
+    window.addEventListener('orientationchange', scheduleSync, {passive:true});
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', scheduleSync, {passive:true});
+      window.visualViewport.addEventListener('scroll', scheduleSync, {passive:true});
+    }
+    const observer = new MutationObserver(scheduleSync);
+    observer.observe(document.body, {attributes:true, attributeFilter:['class']});
+    const dashboard = document.getElementById('dashboardCard');
+    if(dashboard && window.ResizeObserver){
+      new ResizeObserver(scheduleSync).observe(dashboard);
+    }
+    /* 입장 직후 타일/대시보드가 한 번 더 렌더되는 시간까지 보정 */
+    setTimeout(scheduleSync, 120);
+    setTimeout(scheduleSync, 700);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, {once:true});
+  else bind();
+})();
+</script>
+
 </head>
 <body>
 <div class="topbar">
