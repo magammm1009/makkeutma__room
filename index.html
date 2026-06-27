@@ -3855,6 +3855,109 @@ body.joined #preJoinCard{ display:none; }
 })();
 </script>
 
+
+
+<!-- V112_COMPACT_PET_AND_HEADER: narrow desktop/mobile header + pet level badge -->
+<style id="v112CompactPetAndHeader">
+/* 화면이 좁아질 때 펫 별명 대신 레벨만: 긴 이름이 명찰 밖으로 나오지 않도록 완전히 전환 */
+@media (max-width: 1100px){
+  .idPhoto.petSlotOn .petSlotNameTag{
+    width:auto !important;
+    min-width:0 !important;
+    max-width:calc(100% - 12px) !important;
+    overflow:hidden !important;
+    text-overflow:clip !important;
+    padding:5px 10px !important;
+    font-size:0 !important;
+    line-height:1 !important;
+  }
+  .idPhoto.petSlotOn .petSlotNameTag::after{
+    content:"Lv." attr(data-pet-level);
+    font-size:11px;
+    line-height:1;
+    letter-spacing:0;
+    white-space:nowrap;
+  }
+}
+
+/* 축소 작업방: 상태 / 접속 인원 / 퇴장을 같은 한 줄로 */
+@media (max-width: 1100px){
+  body.joined .topbar{
+    display:grid !important;
+    grid-template-columns:minmax(0, 1.18fr) minmax(0, .92fr) minmax(0, .72fr) !important;
+    align-items:center !important;
+    gap:8px !important;
+    padding:8px !important;
+  }
+  body.joined .brand,
+  body.joined .topPills,
+  body.joined #profileBtn,
+  body.joined #installPwaBtn,
+  body.joined #menuBtn,
+  body.joined #meHint,
+  body.joined .actions input,
+  body.joined #joinBtn,
+  body.joined #dataSaverBtn{
+    display:none !important;
+  }
+  body.joined .topCenter,
+  body.joined .actions{
+    display:contents !important;
+  }
+  body.joined #statusBtn{
+    grid-column:1 !important;
+    grid-row:1 !important;
+  }
+  body.joined #onlineBtn{
+    grid-column:2 !important;
+    grid-row:1 !important;
+  }
+  body.joined #leaveBtn{
+    grid-column:3 !important;
+    grid-row:1 !important;
+  }
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #leaveBtn{
+    display:flex !important;
+    width:100% !important;
+    min-width:0 !important;
+    min-height:40px !important;
+    height:40px !important;
+    padding:8px 7px !important;
+    font-size:12px !important;
+    line-height:1 !important;
+    justify-content:center !important;
+    white-space:nowrap !important;
+  }
+  body.joined .statusMenu{
+    position:fixed !important;
+    top:58px !important;
+    left:8px !important;
+    right:8px !important;
+    transform:none !important;
+    width:auto !important;
+    max-height:calc(100svh - 72px) !important;
+    overflow:auto !important;
+  }
+}
+@media (max-width: 420px){
+  body.joined .topbar{
+    grid-template-columns:minmax(0, 1.16fr) minmax(0, .95fr) minmax(0, .72fr) !important;
+    gap:5px !important;
+    padding:6px !important;
+  }
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #leaveBtn{
+    min-height:37px !important;
+    height:37px !important;
+    padding:7px 4px !important;
+    font-size:11px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="topbar">
@@ -8207,6 +8310,7 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         if(opts.nameTag && petName){
           const tag = document.createElement("span");
           tag.className = "petSlotNameTag";
+          tag.dataset.petLevel = String(Math.max(0, Math.floor(Number(petLv) || 0)));
           tag.textContent = formatPetNameTag(petName);
           box.appendChild(tag);
         }
@@ -15431,6 +15535,11 @@ if(!window.__MK_BOOT_OK__){
     const sec = clampSec(st.pets[id]?.totalSec);
     const lv = levelOf(sec);
 
+    // ✅ V113: 좁은 화면에서는 펫 카드가 이름/이미지 대신 레벨만 표시할 수 있도록
+    // 현재 레벨을 대시보드 DOM에 별도로 보관한다. 데스크톱 표시는 기존과 동일하다.
+    const dashInner = document.getElementById('petDashInner');
+    if(dashInner) dashInner.dataset.petLevel = String(lv);
+
     // ✅ V86: 대시보드 펫 애니메이션 끊김 방지
     // 기존에는 renderDash()가 5초 주기/성장 tick마다 petHeroArt.innerHTML을 다시 넣어서
     // CSS animation이 계속 0초부터 재시작될 수 있었다. 펫 종류/레벨이 바뀔 때만 SVG DOM을 교체한다.
@@ -15445,7 +15554,12 @@ if(!window.__MK_BOOT_OK__){
 
     const name = document.getElementById('petHeroName');
     const nextName = displayName(id);
-    if(name && name.textContent !== nextName) name.textContent = nextName;
+    if(name){
+      // 텍스트 이름은 기본 화면/접근성용으로 계속 유지하고, 좁은 화면 CSS가 data-pet-level만 꺼내 쓴다.
+      name.dataset.petLevel = String(lv);
+      name.setAttribute('aria-label', `펫 레벨 ${lv}`);
+      if(name.textContent !== nextName) name.textContent = nextName;
+    }
     const status = document.getElementById('petHeroStatus'); if(status) status.textContent = '';
     const exp = document.getElementById('petHeroExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
     const bar = document.getElementById('petHeroBar'); if(bar) bar.style.width = pctOfLevel(sec) + '%';
@@ -15981,5 +16095,127 @@ if(!window.__MK_BOOT_OK__){
 })();
 </script>
 
+
+<!-- V113_COMPACT_PET_LEVEL_ONLY: 모바일/좁은 창 대시보드 펫은 레벨 전용 표시 -->
+<style id="v113CompactPetLevelOnly">
+/*
+  V112가 프로필 타일(.idPhoto)만 겨냥해서, 실제 모바일 미니 대시보드의
+  .petDashBox에는 펫 이미지와 이름이 그대로 남아 있었습니다.
+  이 규칙은 그 별도 렌더러만 대상으로 하므로 일반 타일/펫 상세보기/놀이터에는 영향이 없습니다.
+*/
+@media (max-width: 760px){
+  body.joined #dashboardCard .petDashBox{
+    flex:0 0 114px !important;
+    min-width:114px !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .petDashBox::before{
+    display:none !important;
+  }
+  body.joined #dashboardCard .petDashInner{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:0 8px !important;
+    gap:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .petHeroArtWrap{
+    display:none !important;
+  }
+  body.joined #dashboardCard .petHeroInfo{
+    display:flex !important;
+    flex:0 1 auto !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:auto !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .petHeroName{
+    display:block !important;
+    width:auto !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    font-size:0 !important;
+    line-height:1 !important;
+    letter-spacing:0 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:clip !important;
+  }
+  body.joined #dashboardCard .petHeroName::after{
+    content:"Lv." attr(data-pet-level);
+    display:block;
+    font-size:13px;
+    line-height:1;
+    font-weight:1100;
+    letter-spacing:0;
+    color:rgba(255,214,233,.96);
+    text-shadow:0 0 12px rgba(255,119,184,.28);
+    white-space:nowrap;
+  }
+}
+@media (max-width: 420px){
+  body.joined #dashboardCard .petDashBox{
+    flex-basis:102px !important;
+    min-width:102px !important;
+  }
+  body.joined #dashboardCard .petHeroName::after{
+    font-size:12px;
+  }
+}
+</style>
+
+<!-- V114_COMPACT_HEADER_CENTER_AND_DENSE_GAP: 좁은 창 버튼 세로 중앙 + 메인/대시보드 여백 정리 -->
+<style id="v114CompactHeaderCenterAndDenseGap">
+/*
+  표시 전용 안전 패치입니다.
+  - 상태 / 접속 인원 / 퇴장 버튼의 실제 flex 교차축을 중앙으로 고정합니다.
+  - 761~1100px의 좁은 데스크톱에서만 메인 그리드와 우측 대시보드 사이의 빈 공간을 줄입니다.
+  - Firebase, RTDB, 타이머, 펫, 채팅 렌더링/이벤트 로직은 수정하지 않습니다.
+*/
+@media (max-width:1100px){
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #leaveBtn{
+    align-items:center !important;
+    justify-content:center !important;
+    text-align:center !important;
+  }
+}
+
+/* 모바일 전환 직전의 좁은 데스크톱: 대시보드 폭과 빈 레일을 함께 다듬습니다. */
+@media (min-width:761px) and (max-width:1100px){
+  body.joined .wrap{
+    /* 대시보드는 충분한 폭을 남기되, 기존 340px 고정 레일의 과한 여백은 제거 */
+    grid-template-columns:minmax(0, 1fr) clamp(300px, 28vw, 320px) !important;
+    gap:6px !important;
+    padding:10px !important;
+  }
+  body.joined .wrap > main{
+    padding-right:0 !important;
+  }
+  body.joined .gridScroll{
+    padding-right:0 !important;
+  }
+  body.joined .grid{
+    /* 같은 타일 크기는 유지하면서 우측 대시보드 쪽으로만 밀착 */
+    justify-content:end !important;
+    gap:7px !important;
+  }
+  body.joined .sidebar{
+    gap:8px !important;
+  }
+}
+</style>
 </body>
 </html>
