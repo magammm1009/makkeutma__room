@@ -4024,7 +4024,7 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <main>
 <div class="gridHead">
-<div class="title">✒️지금 시간 <span id="nowClockMain">--:--:--</span></div>
+<div class="title">✒️ <span id="nowClockMain">--:--:--</span></div>
 <div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker">
 <div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
 </div>
@@ -4101,7 +4101,7 @@ body.joined #preJoinCard{ display:none; }
 <button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
 <button class="ghost" id="goWinHelper" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
 <button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근부</span></button>
-<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모시트</span></button>
+<button class="ghost" id="goSheet" title="뽀모시트"><span class="btnLabel">📎뽀모시트</span></button>
 </div>
 </div>
 </div>
@@ -7201,10 +7201,21 @@ function dockRightRail(){
         };
         reset(dash, "docked");
         reset(chat, "dockedChat");
+        if(chat) chat.classList.remove('mediumChatRail');
         return;
       }
 
-      const wide = window.innerWidth > 980;
+      /*
+       * V115: 좁은 데스크톱(981~1100px)에서는 v112가 #menuBtn을 숨깁니다.
+       * 숨겨진 버튼의 0px 좌표를 기준으로 도킹하면 우측 레일 전체가 화면 밖으로
+       * 밀려날 수 있으므로, 메뉴 버튼이 실제로 보이는 넓은 화면에서만 도킹합니다.
+       */
+      const anchorRect = anchor.getBoundingClientRect();
+      const wide = (
+        window.innerWidth > 1100 &&
+        anchorRect.width > 0 &&
+        anchorRect.height > 0
+      );
 
       const reset = (el, cls)=>{
         if(!el) return;
@@ -7219,13 +7230,48 @@ function dockRightRail(){
         el.style.overflow = "";
       };
 
-      if(!wide){
+      /*
+       * V116: 761~1100px에서는 대시보드는 원래 sidebar 자리에 두고,
+       * 채팅만 실제 대시보드 하단부터 화면 아래까지 독립 고정한다.
+       * sidebar의 flex 잔여 높이 계산에 맡기면 대시보드 콘텐츠 높이에 따라
+       * 채팅이 한 줄 높이로 압축될 수 있기 때문이다.
+       */
+      const mediumRail = window.innerWidth >= 761 && window.innerWidth <= 1100;
+      if(mediumRail){
         reset(dash, "docked");
-        reset(chat, "dockedChat");
+        if(chat){
+          const sidebar = document.querySelector('.sidebar');
+          const dr = dash.getBoundingClientRect();
+          const sr = sidebar ? sidebar.getBoundingClientRect() : dr;
+          const left = Math.max(8, Math.round(sr.left));
+          const width = Math.max(280, Math.round(sr.width || dr.width));
+          const chatTop = Math.max(12, Math.round(dr.bottom + 8));
+          const bottomPad = 12;
+
+          chat.classList.remove('dockedChat');
+          chat.classList.add('mediumChatRail');
+          ensureChatLayout();
+          chat.style.position = 'fixed';
+          chat.style.left = left + 'px';
+          chat.style.right = 'auto';
+          chat.style.top = chatTop + 'px';
+          chat.style.width = width + 'px';
+          chat.style.height = `calc(100vh - ${chatTop + bottomPad}px)`;
+          chat.style.maxHeight = `calc(100vh - ${chatTop + bottomPad}px)`;
+          chat.style.overflow = 'hidden';
+          chat.style.zIndex = '30';
+        }
         return;
       }
 
-      const r = anchor.getBoundingClientRect();
+      if(!wide){
+        reset(dash, "docked");
+        reset(chat, "dockedChat");
+        if(chat) chat.classList.remove('mediumChatRail');
+        return;
+      }
+
+      const r = anchorRect;
       const right = Math.max(10, window.innerWidth - r.right);
       const top = Math.max(12, r.bottom + 18);     // ✅ 상단바↔대시보드 여백
       const gap = 12;                               // ✅ 대시보드↔채팅 여백
@@ -7242,6 +7288,7 @@ function dockRightRail(){
         const chatTop = Math.max(dr.bottom + gap, top + 56);
         const bottomPad = 14;
 
+        chat.classList.remove('mediumChatRail');
         chat.classList.add("dockedChat");
         ensureChatLayout();
         chat.style.position = "fixed";
@@ -16217,5 +16264,98 @@ if(!window.__MK_BOOT_OK__){
   }
 }
 </style>
+
+<!-- V115_CHAT_DOCKING_SAFE: 981~1100px 숨은 메뉴 기준 도킹 차단 + 채팅 레일 복구 -->
+<style id="v115ChatDockingSafe">
+/*
+  V112에서는 1100px 이하에서 #menuBtn을 숨깁니다.
+  이 구간에서 이전 도킹 인라인 스타일이 남아도 채팅이 화면 바깥으로 이동하지 않도록,
+  대시보드와 채팅을 원래의 sidebar flex 흐름으로 강제 복귀합니다.
+  모바일(760px 이하)의 독립 채팅 도킹 규칙은 건드리지 않습니다.
+*/
+@media (min-width:761px) and (max-width:1100px){
+  body.joined:not(.railFolded) .sidebar{
+    display:flex !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined:not(.railFolded) #dashboardCard.docked,
+  body.joined:not(.railFolded) #chatCard.dockedChat{
+    position:static !important;
+    inset:auto !important;
+    width:auto !important;
+    max-width:none !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+  }
+
+  body.joined:not(.railFolded) #dashboardCard.docked{
+    flex:0 0 auto !important;
+    overflow:hidden !important;
+  }
+
+  body.joined:not(.railFolded) #chatCard.dockedChat,
+  body.joined:not(.railFolded) #chatCard{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined:not(.railFolded) #chatCard .body.chatBody{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  body.joined:not(.railFolded) #chatCard .chatList{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  body.joined:not(.railFolded) #chatCard .chatInputRow{
+    display:flex !important;
+    flex:0 0 auto !important;
+  }
+}
+</style>
+
+<!-- V116_MEDIUM_CHAT_FULLHEIGHT: 761~1100px 대시보드 하단 채팅 전체 높이 보장 -->
+<style id="v116MediumChatFullHeight">
+@media (min-width:761px) and (max-width:1100px){
+  body.joined:not(.railFolded) #chatCard.mediumChatRail{
+    position:fixed !important;
+    display:flex !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard.mediumChatRail .body.chatBody{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard.mediumChatRail .chatList{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+  }
+}
+</style>
+
 </body>
 </html>
