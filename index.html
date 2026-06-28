@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam v15</title><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam v15</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4105,6 +4105,7 @@ body.joined #preJoinCard{ display:none; }
 </div>
 </div>
 </div>
+</div><!-- /#dashboardCard : V118 구조 복구 -->
 <div class="card chatCard" id="chatCard">
 <h3>💬 채팅 <span class="tiny">(채팅창&amp;대시보드 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
 <div class="body chatBody">
@@ -7181,139 +7182,40 @@ const writeCountsToRTDB = (counts)=>{
     }
 
 function dockRightRail(){
+      /*
+       * V118: 대시보드와 채팅은 데스크톱에서 항상 같은 sidebar 안의
+       * normal-flow 레일을 공유한다. 예전처럼 메뉴 버튼 좌표를 기준으로
+       * fixed 도킹하면, 창 폭 변화·대시보드 접기 시 sidebar 자리와 실제
+       * 카드 좌표가 갈라져 빈 공간과 채팅 잘림이 생길 수 있었다.
+       *
+       * 모바일(760px 이하)은 V107의 전용 미니 대시보드/채팅 도킹 CSS가
+       * 처리하므로, 이 함수는 어떤 화면 폭에서도 오래 남은 도킹 인라인
+       * 스타일만 안전하게 초기화한다.
+       */
       const dash = els.dashboardCard || document.getElementById("dashboardCard");
       const chat = els.chatCard || document.getElementById("chatCard");
-      const anchor = els.menuBtn;
-      if(!dash || !anchor) return;
-
-      if(document.body.classList.contains("railFolded")){
-        const reset = (el, cls)=>{
-          if(!el) return;
-          el.classList.remove(cls);
-          el.style.position = "";
-          el.style.top = "";
-          el.style.right = "";
-          el.style.left = "";
-          el.style.width = "";
-          el.style.maxHeight = "";
-          el.style.height = "";
-          el.style.overflow = "";
-        };
-        reset(dash, "docked");
-        reset(chat, "dockedChat");
-        if(chat) chat.classList.remove('mediumChatRail');
-        return;
-      }
-
-      /*
-       * V115: 좁은 데스크톱(981~1100px)에서는 v112가 #menuBtn을 숨깁니다.
-       * 숨겨진 버튼의 0px 좌표를 기준으로 도킹하면 우측 레일 전체가 화면 밖으로
-       * 밀려날 수 있으므로, 메뉴 버튼이 실제로 보이는 넓은 화면에서만 도킹합니다.
-       */
-      const anchorRect = anchor.getBoundingClientRect();
-      const wide = (
-        window.innerWidth > 1100 &&
-        anchorRect.width > 0 &&
-        anchorRect.height > 0
-      );
-
-      const reset = (el, cls)=>{
+      const reset = (el, classes)=>{
         if(!el) return;
-        el.classList.remove(cls);
+        String(classes || "").split(/\s+/).filter(Boolean).forEach((cls)=>el.classList.remove(cls));
         el.style.position = "";
         el.style.top = "";
         el.style.right = "";
         el.style.left = "";
+        el.style.bottom = "";
         el.style.width = "";
-        el.style.maxHeight = "";
+        el.style.maxWidth = "";
         el.style.height = "";
+        el.style.maxHeight = "";
         el.style.overflow = "";
         el.style.zIndex = "";
+        el.style.margin = "";
       };
-
-      /*
-       * V116: 761~1100px에서는 대시보드는 원래 sidebar 자리에 두고,
-       * 채팅만 실제 대시보드 하단부터 화면 아래까지 독립 고정한다.
-       * sidebar의 flex 잔여 높이 계산에 맡기면 대시보드 콘텐츠 높이에 따라
-       * 채팅이 한 줄 높이로 압축될 수 있기 때문이다.
-       */
-      const mediumRail = window.innerWidth >= 761 && window.innerWidth <= 1100;
-      if(mediumRail){
-        reset(dash, "docked");
-        if(chat){
-          const sidebar = document.querySelector('.sidebar');
-          const dr = dash.getBoundingClientRect();
-          const sr = sidebar ? sidebar.getBoundingClientRect() : dr;
-          const left = Math.max(8, Math.round(sr.left));
-          const width = Math.max(280, Math.round(sr.width || dr.width));
-          const chatTop = Math.max(12, Math.round(dr.bottom + 8));
-          const bottomPad = 12;
-
-          chat.classList.remove('dockedChat');
-          chat.classList.add('mediumChatRail');
-          ensureChatLayout();
-          chat.style.position = 'fixed';
-          chat.style.left = left + 'px';
-          chat.style.right = 'auto';
-          chat.style.top = chatTop + 'px';
-          chat.style.width = width + 'px';
-          chat.style.height = `calc(100vh - ${chatTop + bottomPad}px)`;
-          chat.style.maxHeight = `calc(100vh - ${chatTop + bottomPad}px)`;
-          chat.style.overflow = 'hidden';
-          chat.style.zIndex = '30';
-        }
-        return;
-      }
-
-      if(!wide){
-        reset(dash, "docked");
-        reset(chat, "dockedChat");
-        if(chat) chat.classList.remove('mediumChatRail');
-        return;
-      }
-
-      const r = anchorRect;
-      const right = Math.max(10, window.innerWidth - r.right);
-      const top = Math.max(12, r.bottom + 18);     // ✅ 상단바↔대시보드 여백
-      const gap = 12;                               // ✅ 대시보드↔채팅 여백
-
-      /*
-       * V117: 대시보드를 fixed로 옮긴 직후 getBoundingClientRect()를 읽으면,
-       * 일부 브라우저에서 이전 sidebar 좌표가 한 프레임 남아 채팅만 본문 위로
-       * 떠버릴 수 있다. 채팅의 가로 위치는 항상 같은 right 기준으로 고정하고,
-       * 세로 위치도 대시보드의 실제 높이만 사용해 계산한다.
-       */
-      const railWidth = Math.max(260, Math.round(dash.getBoundingClientRect().width || 340));
-      dash.classList.add("docked");
-      dash.style.top = top + "px";
-      dash.style.right = right + "px";
-      dash.style.width = railWidth + "px";
-      dash.style.maxHeight = `calc(100vh - ${top + 18}px)`;
-      dash.style.overflow = "auto";
-
-      if(chat){
-        const dashHeight = Math.max(1, Math.ceil(dash.getBoundingClientRect().height || dash.offsetHeight || 1));
-        const chatTop = Math.max(top + dashHeight + gap, top + 56);
-        const bottomPad = 14;
-
-        chat.classList.remove('mediumChatRail');
-        chat.classList.add("dockedChat");
-        ensureChatLayout();
-        chat.style.position = "fixed";
-        chat.style.left = "auto";
-        chat.style.right = right + "px";
-        chat.style.top = chatTop + "px";
-        chat.style.width = railWidth + "px";
-        chat.style.height = `calc(100vh - ${chatTop + bottomPad}px)`;
-        chat.style.maxHeight = `calc(100vh - ${chatTop + bottomPad}px)`;
-        chat.style.overflow = "hidden";
-        chat.style.zIndex = "55";
-      }
+      reset(dash, "docked");
+      reset(chat, "dockedChat mediumChatRail");
     }
 
 
 
-    
     // ✅ 입장 전 정보 최소화: 접속 인원은 "대략치"로만 표시
     function approxOnlineBucket(n){
       n = Number(n||0);
@@ -16398,5 +16300,106 @@ if(!window.__MK_BOOT_OK__){
   }
 }
 </style>
+
+
+<!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL: 대시보드·채팅을 하나의 정상 흐름 레일로 고정 -->
+<style id="v118StableDesktopSidebarRail">
+/*
+  데스크톱/좁은 데스크톱에서는 우측 레일을 fixed로 떼어내지 않습니다.
+  그래서 대시보드를 접어도 채팅은 같은 사이드바 안에서 바로 위로 올라오며,
+  그리드와 우측 레일 사이에 유령 여백이 남지 않습니다.
+*/
+@media (min-width:761px){
+  /* 상단바가 한 줄/두 줄로 바뀌어도 wrap은 항상 실제 남은 높이만 사용 */
+  body.joined{
+    display:flex !important;
+    flex-direction:column !important;
+    height:100vh !important;
+    height:100dvh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined .topbar{
+    flex:0 0 auto !important;
+  }
+  body.joined .wrap{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) .wrap{
+    grid-template-columns:minmax(0, 1fr) clamp(300px, 27vw, 340px) !important;
+    gap:10px !important;
+    padding:12px !important;
+  }
+  body.joined:not(.railFolded) .wrap > main{
+    padding-right:0 !important;
+    min-width:0 !important;
+  }
+  body.joined:not(.railFolded) .sidebar{
+    position:relative !important;
+    top:auto !important;
+    align-self:stretch !important;
+    justify-self:stretch !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    margin:0 !important;
+    gap:10px !important;
+    overflow:hidden !important;
+  }
+
+  /* 예전 도킹 클래스/인라인 값이 남아도 반드시 sidebar 흐름으로 복귀 */
+  body.joined:not(.railFolded) #dashboardCard,
+  body.joined:not(.railFolded) #dashboardCard.docked{
+    position:static !important;
+    inset:auto !important;
+    width:auto !important;
+    max-width:none !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+    flex:0 0 auto !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard,
+  body.joined:not(.railFolded) #chatCard.dockedChat,
+  body.joined:not(.railFolded) #chatCard.mediumChatRail{
+    position:static !important;
+    inset:auto !important;
+    width:auto !important;
+    max-width:none !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard .body.chatBody{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard .chatList{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+  body.joined:not(.railFolded) #chatCard .chatInputRow{
+    flex:0 0 auto !important;
+  }
+}
+</style>
+
 </body>
 </html>
