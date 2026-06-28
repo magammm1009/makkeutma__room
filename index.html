@@ -4024,7 +4024,7 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <main>
 <div class="gridHead">
-<div class="title">✒️ <span id="nowClockMain">--:--:--</span></div>
+<div class="title">✒️<span id="nowClockMain">--:--:--</span></div>
 <div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker">
 <div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
 </div>
@@ -4101,7 +4101,7 @@ body.joined #preJoinCard{ display:none; }
 <button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
 <button class="ghost" id="goWinHelper" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
 <button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근부</span></button>
-<button class="ghost" id="goSheet" title="뽀모시트"><span class="btnLabel">📎뽀모시트</span></button>
+<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모시트</span></button>
 </div>
 </div>
 </div>
@@ -7228,6 +7228,7 @@ function dockRightRail(){
         el.style.maxHeight = "";
         el.style.height = "";
         el.style.overflow = "";
+        el.style.zIndex = "";
       };
 
       /*
@@ -7276,28 +7277,37 @@ function dockRightRail(){
       const top = Math.max(12, r.bottom + 18);     // ✅ 상단바↔대시보드 여백
       const gap = 12;                               // ✅ 대시보드↔채팅 여백
 
+      /*
+       * V117: 대시보드를 fixed로 옮긴 직후 getBoundingClientRect()를 읽으면,
+       * 일부 브라우저에서 이전 sidebar 좌표가 한 프레임 남아 채팅만 본문 위로
+       * 떠버릴 수 있다. 채팅의 가로 위치는 항상 같은 right 기준으로 고정하고,
+       * 세로 위치도 대시보드의 실제 높이만 사용해 계산한다.
+       */
+      const railWidth = Math.max(260, Math.round(dash.getBoundingClientRect().width || 340));
       dash.classList.add("docked");
       dash.style.top = top + "px";
       dash.style.right = right + "px";
+      dash.style.width = railWidth + "px";
       dash.style.maxHeight = `calc(100vh - ${top + 18}px)`;
       dash.style.overflow = "auto";
 
       if(chat){
-        // chat should sit right under dashboard, same width, and stretch down.
-        const dr = dash.getBoundingClientRect();
-        const chatTop = Math.max(dr.bottom + gap, top + 56);
+        const dashHeight = Math.max(1, Math.ceil(dash.getBoundingClientRect().height || dash.offsetHeight || 1));
+        const chatTop = Math.max(top + dashHeight + gap, top + 56);
         const bottomPad = 14;
 
         chat.classList.remove('mediumChatRail');
         chat.classList.add("dockedChat");
         ensureChatLayout();
         chat.style.position = "fixed";
+        chat.style.left = "auto";
         chat.style.right = right + "px";
         chat.style.top = chatTop + "px";
-        chat.style.width = dr.width + "px";
+        chat.style.width = railWidth + "px";
         chat.style.height = `calc(100vh - ${chatTop + bottomPad}px)`;
         chat.style.maxHeight = `calc(100vh - ${chatTop + bottomPad}px)`;
         chat.style.overflow = "hidden";
+        chat.style.zIndex = "55";
       }
     }
 
@@ -16357,5 +16367,36 @@ if(!window.__MK_BOOT_OK__){
 }
 </style>
 
+
+<!-- V117_WIDE_CHAT_RAIL_ALIGNMENT: 넓은 창에서 대시보드 우측 레일 고정 -->
+<style id="v117WideChatRailAlignment">
+@media (min-width:1101px){
+  body.joined:not(.railFolded) #dashboardCard.docked{
+    position:fixed !important;
+    z-index:60 !important;
+  }
+  body.joined:not(.railFolded) #chatCard.dockedChat{
+    position:fixed !important;
+    left:auto !important;
+    z-index:55 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard.dockedChat .body.chatBody{
+    display:flex !important;
+    flex:1 1 0 !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  body.joined:not(.railFolded) #chatCard.dockedChat .chatList{
+    flex:1 1 0 !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+  }
+}
+</style>
 </body>
 </html>
