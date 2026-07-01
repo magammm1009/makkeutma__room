@@ -16614,5 +16614,98 @@ if(!window.__MK_BOOT_OK__){
 }
 </style>
 
+
+<!-- V121_MEDIUM_PET_DASH_CENTER_SAFE: 761~1100px 펫 카드 중앙 정렬 + 단계적 축소 -->
+<style id="v121MediumPetDashCenterSafe">
+/*
+  표시 전용 안전 패치입니다.
+  - 761~1100px에서는 대시보드가 2열을 유지해 펫 카드 폭이 좁아집니다.
+  - 이 구간에서 펫을 세로 중앙 정렬하고, 카드 폭에 맞춰 작게 보여줍니다.
+  - 760px 이하에서는 기존 V113의 '레벨만 표시' 규칙이 그대로 이어집니다.
+  - 펫 데이터/성장/클릭 모달/RTDB/채팅 로직은 건드리지 않습니다.
+*/
+@media (min-width:761px) and (max-width:1100px){
+  /* 펫 일러스트·그림자만 카드 안에서 안전하게 끝내기 */
+  body.joined #dashboardCard .petDashBox{
+    overflow:hidden !important;
+  }
+
+  /* 가로 118px 고정 레이아웃을 세로 중앙 정렬로 전환 */
+  body.joined #dashboardCard .petDashInner{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-width:0 !important;
+    min-height:132px !important;
+    height:100% !important;
+    padding:8px 6px !important;
+    gap:5px !important;
+    overflow:hidden !important;
+  }
+
+  /* 화면이 줄수록 펫 프레임과 본체도 함께 줄여 항상 가운데에 남기기 */
+  body.joined #dashboardCard .petHeroArtWrap{
+    width:clamp(72px, 8vw, 88px) !important;
+    height:clamp(72px, 8vw, 88px) !important;
+    min-width:0 !important;
+    flex:0 0 auto !important;
+    margin:0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  body.joined #dashboardCard .petStageArt.hero{
+    width:clamp(68px, 7.3vw, 82px) !important;
+    height:clamp(68px, 7.3vw, 82px) !important;
+    flex:0 0 auto !important;
+  }
+
+  /* 펫 이름도 이미지 아래에서 카드 중앙으로 고정 */
+  body.joined #dashboardCard .petHeroInfo{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-width:0 !important;
+    flex:0 0 auto !important;
+    overflow:hidden !important;
+  }
+  body.joined #dashboardCard .petHeroName{
+    display:block !important;
+    width:auto !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    text-align:center !important;
+    font-size:clamp(11px, 1.25vw, 13px) !important;
+    line-height:1.1 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+}
+
+/* 761px 전환점 바로 위에서는 한 번 더 작게: 다음 단계(760px 이하 레벨 전용)와 자연스럽게 연결 */
+@media (min-width:761px) and (max-width:880px){
+  body.joined #dashboardCard .petDashInner{
+    min-height:124px !important;
+    padding:7px 4px !important;
+    gap:4px !important;
+  }
+  body.joined #dashboardCard .petHeroArtWrap{
+    width:70px !important;
+    height:70px !important;
+  }
+  body.joined #dashboardCard .petStageArt.hero{
+    width:66px !important;
+    height:66px !important;
+  }
+  body.joined #dashboardCard .petHeroName{
+    font-size:11px !important;
+  }
+}
+</style>
 </body>
 </html>
