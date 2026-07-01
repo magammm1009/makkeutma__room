@@ -4100,8 +4100,9 @@ body.joined #preJoinCard{ display:none; }
 <div class="btnRow" id="dashShortcuts">
 <button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
 <button class="ghost" id="goWinHelper" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
-<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근부</span></button>
-<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모시트</span></button>
+<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근</span></button>
+<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎시트</span></button>
+<button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
 </div>
 </div>
 </div>
@@ -4442,6 +4443,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="row">
 <input id="choolUrl" type="hidden"/>
 <input id="sheetUrl" placeholder="🔗 뽀모 시트 링크"/>
+<input id="homeworkUrl" placeholder="📚 숙제장 링크"/>
 </div>
 <div class="row">
 <input id="dashApiUrl" placeholder="📡 대시보드 인원 API (Apps Script .../exec?api=counts&amp;callback=cb)"/>
@@ -5340,6 +5342,7 @@ const auth = getAuth(app);
       goSuda: $("goSuda"),
       goChool: $("goChool"),
       goSheet: $("goSheet"),
+      goHomework: $("goHomework"),
       goMacHelper: $("goMacHelper"),
       goWinHelper: $("goWinHelper"),
 
@@ -5469,6 +5472,7 @@ onlineBtn: $("onlineBtn"),
       sudaUrl: $("sudaUrl"),
       choolUrl: $("choolUrl"),
       sheetUrl: $("sheetUrl"),
+      homeworkUrl: $("homeworkUrl"),
       dashApiUrl: $("dashApiUrl"),
       saveDash: $("saveDash"),
       sudaOpenRoom: $("sudaOpenRoom"),
@@ -5544,7 +5548,7 @@ chatUnseen: 0,
       adminOk: false,
       adminHash: null,
       roomSettings: {
-        dashboard: {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+        dashboard: {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
         adminHash: null,
         ownerUid: null
@@ -7427,6 +7431,7 @@ function setControlsEnabled(joined){
       if(els.goWinHelper) els.goWinHelper.disabled = !joined;
       if(els.goChool) els.goChool.disabled = !joined;
       if(els.goSheet) els.goSheet.disabled = !joined;
+      if(els.goHomework) els.goHomework.disabled = !joined;
 
       // lamp
       document.body.classList.toggle("joined", joined);
@@ -8162,7 +8167,7 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
           createdAt: serverTimestamp(),
           title: roomId,
           adminHash: null,
-          dashboard: { pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
+          dashboard: { pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
           dashCounts: { pomoCount:null, sudaCount:null, updatedAtMs: null }
         });
       }
@@ -9378,6 +9383,10 @@ async function transitionTo(nextStatus, source="manual"){
     }
     if(els.goChool) els.goChool.onclick = ()=>openUrlJoined(d.choolUrl);
     if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
+    if(els.goHomework){
+      els.goHomework.disabled = !d.homeworkUrl;
+      els.goHomework.onclick = d.homeworkUrl ? ()=>openUrlJoined(d.homeworkUrl) : null;
+    }
     if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(MAC_HELPER_URL);
     if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(WIN_HELPER_URL);
 
@@ -9385,6 +9394,7 @@ async function transitionTo(nextStatus, source="manual"){
     if(els.sudaUrl) els.sudaUrl.value = d.sudaUrl || "";
     if(els.choolUrl) els.choolUrl.value = d.choolUrl || "";
     if(els.sheetUrl) els.sheetUrl.value = d.sheetUrl || "";
+    if(els.homeworkUrl) els.homeworkUrl.value = d.homeworkUrl || "";
     if(els.dashApiUrl) els.dashApiUrl.value = d.dashApiUrl || "";
   }catch(e){}
 }
@@ -9403,7 +9413,7 @@ function subscribeRoom(){
   const onSettings = (snap)=>{
     const r = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
     const dash = Object.assign(
-      {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+      {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
       (r.dashboard || {})
     );
     state.roomSettings.dashboard = dash;
@@ -9542,6 +9552,7 @@ async function saveDashboard(){
     sudaUrl: (els.sudaUrl.value || "").trim(),
     choolUrl: (els.choolUrl.value || "").trim(),
     sheetUrl: (els.sheetUrl.value || "").trim(),
+    homeworkUrl: (els.homeworkUrl && els.homeworkUrl.value ? els.homeworkUrl.value : "").trim(),
     dashApiUrl: (dashApiInput && dashApiInput.value ? dashApiInput.value : "").trim(),
   };
   try{
@@ -16397,6 +16408,208 @@ if(!window.__MK_BOOT_OK__){
   }
   body.joined:not(.railFolded) #chatCard .chatInputRow{
     flex:0 0 auto !important;
+  }
+}
+</style>
+
+
+<!-- V119_SAFE_COMPACT_SETTINGS_HOMEWORK_LAYOUT: 표시·링크 설정 확장 전용 패치 -->
+<style id="v119SafeCompactSettingsHomeworkLayout">
+/*
+  V119 안전 패치
+  - 축소 헤더에서도 설정(⚙️)을 퇴장 버튼 바로 왼쪽에 유지
+  - 대시보드 바로가기를 5칸으로 균등 정렬하고, 긴 글자는 버튼 안에서만 자연스럽게 줄바꿈
+  - 761~1100px 구간의 프로필 펫/사진 묶음을 안전 폭으로 가운데 정렬
+  - 관리자 설정창의 버튼·섹션 간격만 다듬음 (Firebase/RTDB/채팅/타이머 로직은 건드리지 않음)
+*/
+
+/* 대시보드 바로가기: 다섯 칸 균등 정렬 */
+#dashShortcuts{
+  grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+  align-items:stretch;
+}
+#dashShortcuts > button{
+  min-width:0 !important;
+  min-height:38px !important;
+  padding:6px 2px !important;
+  white-space:normal !important;
+  overflow:hidden;
+  text-align:center !important;
+}
+#dashShortcuts .btnLabel{
+  display:block;
+  width:100%;
+  max-width:100%;
+  white-space:normal !important;
+  overflow-wrap:anywhere;
+  word-break:keep-all;
+  text-align:center !important;
+  font-size:9px !important;
+  line-height:1.12 !important;
+  letter-spacing:-.7px !important;
+}
+
+/* 축소 헤더: 설정 버튼을 퇴장 바로 왼쪽에 고정 */
+@media (max-width:1100px){
+  body.joined .topbar{
+    grid-template-columns:minmax(0, 1.18fr) minmax(0, .92fr) 42px minmax(0, .72fr) !important;
+  }
+  body.joined #menuBtn{
+    display:flex !important;
+    grid-column:3 !important;
+    grid-row:1 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-width:0 !important;
+    min-height:40px !important;
+    height:40px !important;
+    padding:0 !important;
+    font-size:15px !important;
+    line-height:1 !important;
+  }
+  body.joined #leaveBtn{
+    grid-column:4 !important;
+    grid-row:1 !important;
+  }
+}
+@media (max-width:420px){
+  body.joined .topbar{
+    grid-template-columns:minmax(0, 1.16fr) minmax(0, .95fr) 37px minmax(0, .72fr) !important;
+  }
+  body.joined #menuBtn{
+    min-height:37px !important;
+    height:37px !important;
+    font-size:14px !important;
+  }
+}
+
+/* 모바일 미니 대시보드에서는 바로가기 이름 대신 아이콘만 유지 */
+@media (max-width:760px){
+  body.joined #dashShortcuts button{
+    flex:0 0 36px !important;
+    width:36px !important;
+  }
+  body.joined #goHomework .btnLabel::before{content:"📚"; font-size:14px;}
+}
+
+/* 중간 폭 타일: 펫/사진이 카드 밖으로 한쪽만 도드라져 보이지 않도록 중앙 폭을 보정 */
+@media (min-width:761px) and (max-width:1100px){
+  .tile .mediaRow{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:4px !important;
+  }
+  /* 펫을 표시하는 카드에만 안전 폭을 적용해 일반 사진 카드 크기는 그대로 유지 */
+  .tile .mediaRow:has(.petSlotOn) > .avatar{
+    width:min(var(--emoSize, 60px), 52px) !important;
+    height:min(var(--emoSize, 60px), 52px) !important;
+    flex:0 0 auto !important;
+  }
+  .tile .mediaRow:has(.petSlotOn) > .idPhoto{
+    width:min(var(--photoSize, 108px), 92px) !important;
+    height:min(var(--photoSize, 108px), 92px) !important;
+    flex:0 0 auto !important;
+  }
+  .tile .mediaRow:has(.petSlotOn) > .avatar.petSlotOn,
+  .tile .mediaRow:has(.petSlotOn) > .idPhoto.petSlotOn{
+    isolation:isolate;
+  }
+}
+
+/* 관리자 설정: 버튼이 서로 붙지 않도록 섹션·행 간격을 가볍게 정돈 */
+#settingsModal .modal{
+  width:min(880px, 100%);
+}
+#settingsModal .modalBody{
+  padding:16px 18px 20px;
+  gap:16px !important;
+}
+#settingsModal .row{
+  align-items:center;
+  gap:10px 12px !important;
+  margin:1px 0;
+}
+#settingsModal #adminArea > .hr{
+  margin:8px 0 !important;
+}
+#settingsModal #adminArea > .hint{
+  margin-top:2px;
+}
+#settingsModal #adminArea > .tiny{
+  margin:0 0 4px !important;
+}
+#settingsModal #adminArea > .row{
+  margin:2px 0;
+}
+#settingsModal #saveDash,
+#settingsModal #sudaOpenRoom,
+#settingsModal #sudaCloseRoom,
+#settingsModal #sudaCopyOwnerUid,
+#settingsModal #petAdminLoad,
+#settingsModal #petAdminSave,
+#settingsModal #petAdminRestoreMine{
+  flex:0 1 auto !important;
+  min-width:142px !important;
+  min-height:40px;
+  margin:1px 0;
+}
+#settingsModal #petAdminStatus{
+  margin-top:4px !important;
+}
+@media (max-width:600px){
+  #settingsModal .modalBody{
+    padding:13px 14px 16px;
+    gap:13px !important;
+  }
+  #settingsModal #adminArea > .row{
+    gap:9px 10px !important;
+  }
+  #settingsModal #saveDash,
+  #settingsModal #sudaOpenRoom,
+  #settingsModal #sudaCloseRoom,
+  #settingsModal #sudaCopyOwnerUid,
+  #settingsModal #petAdminLoad,
+  #settingsModal #petAdminSave,
+  #settingsModal #petAdminRestoreMine{
+    flex:1 1 150px !important;
+    min-width:0 !important;
+  }
+}
+</style>
+
+<!-- V120_FINAL_MOBILE_SHORTCUT_SAFETY: V119 데스크톱 패치가 모바일 압축 바를 덮지 않도록 복구 -->
+<style id="v120FinalMobileShortcutSafety">
+/* V119의 공통 바로가기 글자/높이 규칙은 데스크톱용입니다.
+   760px 이하에서는 기존 V107의 ‘아이콘 전용 42px 압축 바’를 그대로 유지합니다. */
+@media (max-width:760px){
+  body.joined #dashShortcuts > button{
+    flex:0 0 36px !important;
+    width:36px !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:0 !important;
+    white-space:nowrap !important;
+  }
+  body.joined #dashShortcuts .btnLabel{
+    display:block !important;
+    font-size:0 !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    overflow-wrap:normal !important;
+    word-break:normal !important;
+    letter-spacing:0 !important;
+  }
+  body.joined #goHomework .btnLabel::before{
+    content:"📚" !important;
+    display:inline-block;
+    font-size:14px !important;
+    line-height:1 !important;
   }
 }
 </style>
