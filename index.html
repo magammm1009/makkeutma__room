@@ -16493,34 +16493,6 @@ if(!window.__MK_BOOT_OK__){
   body.joined #goHomework .btnLabel::before{content:"📚"; font-size:14px;}
 }
 
-/* 중간 폭 타일: 펫/사진이 카드 밖으로 한쪽만 도드라져 보이지 않도록 중앙 폭을 보정 */
-@media (min-width:761px) and (max-width:1100px){
-  .tile .mediaRow{
-    width:100% !important;
-    min-width:0 !important;
-    max-width:100% !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    gap:4px !important;
-  }
-  /* 펫을 표시하는 카드에만 안전 폭을 적용해 일반 사진 카드 크기는 그대로 유지 */
-  .tile .mediaRow:has(.petSlotOn) > .avatar{
-    width:min(var(--emoSize, 60px), 52px) !important;
-    height:min(var(--emoSize, 60px), 52px) !important;
-    flex:0 0 auto !important;
-  }
-  .tile .mediaRow:has(.petSlotOn) > .idPhoto{
-    width:min(var(--photoSize, 108px), 92px) !important;
-    height:min(var(--photoSize, 108px), 92px) !important;
-    flex:0 0 auto !important;
-  }
-  .tile .mediaRow:has(.petSlotOn) > .avatar.petSlotOn,
-  .tile .mediaRow:has(.petSlotOn) > .idPhoto.petSlotOn{
-    isolation:isolate;
-  }
-}
-
 /* 관리자 설정: 버튼이 서로 붙지 않도록 섹션·행 간격을 가볍게 정돈 */
 #settingsModal .modal{
   width:min(880px, 100%);
@@ -16707,5 +16679,66 @@ if(!window.__MK_BOOT_OK__){
   }
 }
 </style>
+
+<!-- V122_DASHBOARD_PET_ONLY_PROFILE_RESTORE: 대시보드 펫만 축소, 프로필 타일 원래 크기 복원 -->
+<style id="v122DashboardPetOnlyProfileRestore">
+/*
+  V121의 대시보드 펫 중앙 정렬은 유지합니다.
+  프로필 타일(.tile)의 펫/사진 슬롯에는 크기·명찰 전환 규칙을 적용하지 않습니다.
+  데이터·타이머·채팅·펫 성장 로직에는 관여하지 않는 CSS 전용 복원입니다.
+*/
+@media (min-width:761px) and (max-width:1100px){
+  /* 프로필 카드의 미디어 행은 원래 레이아웃과 크기를 그대로 사용 */
+  .tile .mediaRow{
+    width:auto !important;
+    min-width:initial !important;
+    max-width:none !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:var(--tileGap, 10px) !important;
+  }
+  .tile .mediaRow:has(.petSlotOn) > .avatar{
+    width:var(--emoSize, 60px) !important;
+    height:var(--emoSize, 60px) !important;
+    flex:0 0 auto !important;
+  }
+  .tile .mediaRow:has(.petSlotOn) > .idPhoto{
+    width:var(--photoSize, 108px) !important;
+    height:var(--photoSize, 108px) !important;
+    flex:0 0 auto !important;
+  }
+
+  /* 프로필 카드 펫은 Lv. 전용으로 줄이지 않고 기존 이름 명찰을 유지 */
+  .idPhoto.petSlotOn .petSlotNameTag{
+    width:max-content !important;
+    min-width:42px !important;
+    max-width:min(118px, 42vw) !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    padding:4px 9px 5px !important;
+    font-size:10.5px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+  }
+  .idPhoto.petSlotOn .petSlotNameTag::after{
+    content:none !important;
+    display:none !important;
+  }
+}
+
+/* V121은 대시보드 전용으로 유지: 다른 펫 슬롯에는 전혀 영향 없음 */
+@media (min-width:761px) and (max-width:1100px){
+  body.joined #dashboardCard .petDashBox,
+  body.joined #dashboardCard .petDashInner,
+  body.joined #dashboardCard .petHeroArtWrap,
+  body.joined #dashboardCard .petStageArt.hero,
+  body.joined #dashboardCard .petHeroInfo,
+  body.joined #dashboardCard .petHeroName{
+    /* 선택자 범위를 대시보드 내부로 고정하는 안전 표식 */
+  }
+}
+</style>
+
 </body>
 </html>
