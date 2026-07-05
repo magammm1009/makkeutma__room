@@ -14703,6 +14703,88 @@ joinRoom();
   // READY FLAG (bindings complete)
   window.__MK_READY__ = true;
 })();
+
+
+// ===== V124 펫 놀이터 배경 전환·동기화 안정화 =====
+// - 계절별 이미지가 캐시되었거나 일부 파일이 늦게 도착해도 선택 즉시 화면이 달라지도록
+//   이미지 + 계절별 그라데이션 폴백을 한 세트로 적용합니다.
+// - 기존 RTDB 저장 위치와 다른 놀이터/채팅/펫 로직은 건드리지 않습니다.
+const __MK_PET_PLAY_BG_FIX_VERSION_V124 = "20260705-pgbgfix1";
+const __MK_PET_PLAY_BG_ASSETS_V124 = Object.freeze({
+  spring: "./assets/playground/spring.jpg?v=" + __MK_PET_PLAY_BG_FIX_VERSION_V124,
+  summer: "./assets/playground/summer.jpg?v=" + __MK_PET_PLAY_BG_FIX_VERSION_V124,
+  autumn: "./assets/playground/autumn.jpg?v=" + __MK_PET_PLAY_BG_FIX_VERSION_V124,
+  winter: "./assets/playground/winter.jpg?v=" + __MK_PET_PLAY_BG_FIX_VERSION_V124
+});
+const __MK_PET_PLAY_BG_FALLBACKS_V124 = Object.freeze({
+  spring: "linear-gradient(150deg, #9cd8f0 0%, #d9f2c9 54%, #ffd0df 100%)",
+  summer: "linear-gradient(150deg, #5dbfe5 0%, #bdefff 42%, #78bd68 43%, #3c8e57 100%)",
+  autumn: "linear-gradient(150deg, #465a7a 0%, #d99b4a 46%, #a74f2e 74%, #5d2632 100%)",
+  winter: "linear-gradient(150deg, #172348 0%, #6176aa 48%, #dcecff 100%)"
+});
+function __mkPetPlayBgImageValueV124(theme){
+  const safe = normalizePetPlayBgTheme(theme);
+  const fallback = __MK_PET_PLAY_BG_FALLBACKS_V124[safe] || __MK_PET_PLAY_BG_FALLBACKS_V124.spring;
+  const asset = __MK_PET_PLAY_BG_ASSETS_V124[safe] || __MK_PET_PLAY_BG_ASSETS_V124.spring;
+  return `${fallback}, url("${asset}")`;
+}
+function __mkPreloadPetPlayBackgroundsV124(){
+  try{
+    if(window.__MK_PET_PLAY_BG_PRELOADED_V124__) return;
+    window.__MK_PET_PLAY_BG_PRELOADED_V124__ = true;
+    window.__MK_PET_PLAY_BG_IMAGES_V124__ = Object.values(__MK_PET_PLAY_BG_ASSETS_V124).map(src=>{
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+      return image;
+    });
+  }catch(e){}
+}
+applyPetPlayBgTheme = function(v){
+  const theme = normalizePetPlayBgTheme(v);
+  try{
+    const el = els.grid?.querySelector?.(":scope > .petPlayground") || document.querySelector(".petPlayground");
+    if(el){
+      PET_PLAY_BG_THEMES.forEach(t=>el.classList.remove("bg-" + t));
+      el.classList.add("bg-" + theme);
+      el.dataset.petPlayBgTheme = theme;
+      // class 적용만으로는 이전 PWA 정적 캐시가 남은 환경에서 같은 화면처럼 보일 수 있어,
+      // 여기서도 새 버전의 이미지를 포함한 값을 직접 지정합니다.
+      el.style.setProperty("background-image", __mkPetPlayBgImageValueV124(theme), "important");
+      el.style.setProperty("background-size", "cover", "important");
+      el.style.setProperty("background-position", "center center", "important");
+      el.style.setProperty("background-repeat", "no-repeat", "important");
+    }
+    const select = document.getElementById("petPlayBgSelect");
+    if(select && select.value !== theme) select.value = theme;
+  }catch(e){
+    console.warn("[pet playground] background apply failed", e);
+  }
+  return theme;
+};
+setPetPlayBgTheme = async function(v){
+  const theme = normalizePetPlayBgTheme(v);
+  const now = Date.now();
+  const payload = { bgTheme: theme, bgUpdatedAt: now, bgUpdatedBy: state.uid || "" };
+  window.__MK_PET_PLAY_SETTINGS__ = Object.assign({}, window.__MK_PET_PLAY_SETTINGS__ || {}, payload);
+  __mkPreloadPetPlayBackgroundsV124();
+  applyPetPlayBgTheme(theme);
+  try{
+    if(!state.roomId) return;
+    await rUpdate(rPlaygroundSettingsRef(state.roomId), payload);
+    try{ showToast(`🐾 ${petPlayBgLabel(theme)} 배경으로 바꿨어!`); }catch(_e){}
+  }catch(e){
+    // 화면 전환은 유지하고, 공유 저장만 실패했을 때만 안내합니다.
+    console.warn("[pet playground] background save failed", e);
+    try{ showToast("배경은 바뀌었지만 모두에게 저장하지 못했어. 연결이나 권한을 확인해 줘!"); }catch(_e){}
+  }
+};
+try{
+  __mkPreloadPetPlayBackgroundsV124();
+  const __currentPetPlayThemeV124 = normalizePetPlayBgTheme(window.__MK_PET_PLAY_SETTINGS__?.bgTheme);
+  applyPetPlayBgTheme(__currentPetPlayThemeV124);
+}catch(e){}
+
 </script>
 <script>
     // Fallback: if ES module didn't execute (common when opening via file://), show a clear hint
@@ -15999,7 +16081,7 @@ if(!window.__MK_BOOT_OK__){
       if(!('serviceWorker' in navigator)) return;
       // file:// 로 직접 열었을 때는 등록하지 않음. HTTPS/GitHub Pages/Firebase Hosting에서 작동.
       if(window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') return;
-      var reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      var reg = await navigator.serviceWorker.register('./sw.js?v=20260705-pgbgfix1', { scope: './' });
       // 기존 탭의 실시간 작업을 방해하지 않도록 update 확인만 수행.
       if(reg && typeof reg.update === 'function') reg.update().catch(function(){});
     }catch(e){
@@ -16737,6 +16819,41 @@ if(!window.__MK_BOOT_OK__){
   body.joined #dashboardCard .petHeroName{
     /* 선택자 범위를 대시보드 내부로 고정하는 안전 표식 */
   }
+}
+</style>
+
+
+
+<!-- V124_PET_PLAYGROUND_BACKGROUND_SWITCH_FIX -->
+<style id="v124PetPlaygroundBackgroundSwitchFix">
+/* 배경 파일이 새로 배포되거나 일시적으로 불러와지지 않아도 계절별 화면이 구분됩니다. */
+.petPlayground.bg-spring{
+  background-image:
+    linear-gradient(150deg, rgba(156,216,240,.20), rgba(217,242,201,.10) 54%, rgba(255,208,223,.18)),
+    url("./assets/playground/spring.jpg?v=20260705-pgbgfix1") !important;
+}
+.petPlayground.bg-summer{
+  background-image:
+    linear-gradient(150deg, rgba(93,191,229,.16), rgba(189,239,255,.06) 42%, rgba(120,189,104,.14) 43%, rgba(60,142,87,.20)),
+    url("./assets/playground/summer.jpg?v=20260705-pgbgfix1") !important;
+}
+.petPlayground.bg-autumn{
+  background-image:
+    linear-gradient(150deg, rgba(70,90,122,.12), rgba(217,155,74,.16) 46%, rgba(167,79,46,.18) 74%, rgba(93,38,50,.20)),
+    url("./assets/playground/autumn.jpg?v=20260705-pgbgfix1") !important;
+}
+.petPlayground.bg-winter{
+  background-image:
+    linear-gradient(150deg, rgba(23,35,72,.18), rgba(97,118,170,.14) 48%, rgba(220,236,255,.16)),
+    url("./assets/playground/winter.jpg?v=20260705-pgbgfix1") !important;
+}
+.petPlayground.bg-spring,
+.petPlayground.bg-summer,
+.petPlayground.bg-autumn,
+.petPlayground.bg-winter{
+  background-size:cover !important;
+  background-position:center center !important;
+  background-repeat:no-repeat !important;
 }
 </style>
 
