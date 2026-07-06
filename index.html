@@ -14724,7 +14724,7 @@ joinRoom();
   }
   petCloudStart();
 
-  /* ================= ✅ 손캠(HandCam) V2 SAFE + BUTTON FIX =================
+  /* ================= ✅ 손캠(HandCam) V2 SAFE + BUTTON FIX + ECONOMY CAP =================
      - Cloudflare Realtime SFU 기반 웹캠 송출 (최대 6명, 선착순)
      - RTDB: rooms/{roomId}/handcam/live/{slotId} (슬롯 0~5)
      - 각 슬롯을 개별 트랜잭션으로 확보해, Rules에서 본인 슬롯만 수정 가능
@@ -14996,9 +14996,11 @@ joinRoom();
             // 손캠 목적이라 모바일에서는 후면 카메라를 우선 제안하고,
             // 데스크톱/후면 카메라 없는 기기에서는 가능한 카메라를 그대로 사용.
             facingMode: { ideal: "environment" },
-            width: { ideal: 480 },
-            height: { ideal: 360 },
-            frameRate: { ideal: 15, max: 20 }
+            // 비용 방어용: 손캠은 4:3 저해상도·15fps로 제한합니다.
+            // max를 함께 지정해 브라우저가 고해상도 카메라 원본을 잡는 일을 막습니다.
+            width: { ideal: 320, max: 320 },
+            height: { ideal: 240, max: 240 },
+            frameRate: { ideal: 15, max: 15 }
           },
           audio: false
         });
@@ -15054,6 +15056,22 @@ joinRoom();
         if(!track) throw new Error("no video track");
         trackName = `hc_${uid}_${Date.now().toString(36)}`;
         const tr = pc.addTransceiver(track, { direction: "sendonly" });
+
+        // 비용 방어용 송출 상한: 해상도와 별개로 WebRTC가 여유 대역폭을 과하게 쓰지 않게 합니다.
+        // 브라우저가 지원하지 않는 경우에도 손캠 연결 자체는 계속 진행합니다.
+        try{
+          const sender = tr.sender;
+          const params = sender && sender.getParameters ? sender.getParameters() : null;
+          if(params){
+            params.encodings = params.encodings && params.encodings.length ? params.encodings : [{}];
+            params.encodings[0].maxBitrate = 300000; // 300 kbps
+            params.encodings[0].maxFramerate = 15;
+            params.degradationPreference = "maintain-framerate";
+            await sender.setParameters(params);
+          }
+        }catch(e){
+          console.warn("[handcam] bitrate cap unavailable; continuing with camera limits", e);
+        }
 
         // Cloudflare Realtime currently validates sessionDescription even at session creation.
         // Build the initial local offer first, then create the session with that SDP.
