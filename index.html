@@ -14759,9 +14759,15 @@ joinRoom();
       const stEl = document.createElement("style");
       stEl.id = "handcamStyleV2";
       stEl.textContent = `
-        .tile .handcamBox{ position:relative; width:100%; aspect-ratio:4/3; margin:6px 0 4px;
-          border-radius:12px; overflow:hidden; background:rgba(0,0,0,.35); z-index:2; }
-        .tile .handcamBox video{ width:100%; height:100%; object-fit:cover; display:block; }
+        /* 손캠은 타일 내부에 내용을 추가하는 대신, 타일 전체를 영상으로 전환합니다.
+           현재 타일은 정사각형·overflow:hidden 구조라 본문 중간에 넣으면 영상이 아래로 밀려 잘렸습니다. */
+        .tile.hcLiveTile .handcamBox{
+          position:absolute !important; inset:0 !important; width:auto !important; height:auto !important;
+          aspect-ratio:auto !important; margin:0 !important; border-radius:inherit !important;
+          overflow:hidden; background:#000; z-index:20;
+        }
+        .tile.hcLiveTile .handcamBox video{ width:100%; height:100%; object-fit:cover; display:block; }
+        .tile.hcLiveTile .handcamBox .hcTag{ z-index:2; }
         .tile .handcamBox .hcTag{ position:absolute; left:6px; top:6px; font-size:11px; font-weight:800;
           color:#fff; background:rgba(255,64,129,.9); padding:2px 8px; border-radius:999px; letter-spacing:.4px;
           display:flex; align-items:center; gap:4px; }
@@ -15285,8 +15291,10 @@ joinRoom();
           let box = tile.querySelector(".handcamBox");
 
           if(!live){
+            tile.classList.remove("hcLiveTile");
             if(box) box.remove();
           }else{
+            tile.classList.add("hcLiveTile");
             if(!box){
               box = document.createElement("div");
               box.className = "handcamBox";
