@@ -3958,6 +3958,98 @@ body.joined #preJoinCard{ display:none; }
 }
 </style>
 
+
+<!-- V120_SINGLE_LINE_COMPACT_HEADER: 761~1100px 헤더 버튼 내용폭 한 줄 정렬 -->
+<style id="v120SingleLineCompactHeader">
+/*
+  좁은 데스크톱/PWA 창에서도 헤더를 두 줄로 늘리지 않습니다.
+  상태·접속 인원·설정·퇴장·손캠·손캠 보기를 각각 내용 폭만 차지하도록 정리합니다.
+  모바일(760px 이하)의 기존 전용 레이아웃은 그대로 둡니다.
+*/
+@media (min-width:761px) and (max-width:1100px){
+  body.joined .topbar{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:7px !important;
+    padding:8px 10px !important;
+    min-width:0 !important;
+  }
+  body.joined .topCenter,
+  body.joined .actions{
+    display:flex !important;
+    flex:0 1 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:7px !important;
+    flex-wrap:nowrap !important;
+  }
+  body.joined .topCenter{ order:1 !important; }
+  body.joined .actions{ order:2 !important; }
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #menuBtn,
+  body.joined #leaveBtn,
+  body.joined .topCenter .hcBtn,
+  body.joined .topCenter .hcViewBtn{
+    position:static !important;
+    display:inline-flex !important;
+    flex:0 0 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    height:40px !important;
+    min-height:40px !important;
+    padding:0 12px !important;
+    font-size:12px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  body.joined #menuBtn{
+    width:40px !important;
+    padding:0 !important;
+    font-size:15px !important;
+  }
+  body.joined #statusBtn{ min-width:112px !important; }
+  body.joined #onlineBtn{ min-width:88px !important; }
+  body.joined #leaveBtn{ min-width:70px !important; }
+  body.joined .topCenter .hcBtn{ min-width:104px !important; }
+  body.joined .topCenter .hcViewBtn{ min-width:126px !important; }
+  body.joined .statusMenu{
+    top:calc(100% + 8px) !important;
+    left:8px !important;
+    right:8px !important;
+    transform:none !important;
+    width:auto !important;
+  }
+}
+/* 아주 좁은 데스크톱에서도 두 줄 전환 대신 글자/여백만 한 단계 압축 */
+@media (min-width:761px) and (max-width:880px){
+  body.joined .topbar{ gap:5px !important; padding:7px 8px !important; }
+  body.joined .topCenter, body.joined .actions{ gap:5px !important; }
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #menuBtn,
+  body.joined #leaveBtn,
+  body.joined .topCenter .hcBtn,
+  body.joined .topCenter .hcViewBtn{
+    height:38px !important;
+    min-height:38px !important;
+    padding:0 9px !important;
+    font-size:11px !important;
+  }
+  body.joined #menuBtn{ width:38px !important; padding:0 !important; }
+  body.joined #statusBtn{ min-width:100px !important; }
+  body.joined #onlineBtn{ min-width:76px !important; }
+  body.joined #leaveBtn{ min-width:62px !important; }
+  body.joined .topCenter .hcBtn{ min-width:94px !important; }
+  body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
+}
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -17661,6 +17753,88 @@ if(!window.__MK_BOOT_OK__){
   background-size:cover !important;
   background-position:center center !important;
   background-repeat:no-repeat !important;
+}
+</style>
+
+
+
+<!-- V125_HEADER_SINGLELINE_OVERLAP_FIX: V119 grid override 차단 -->
+<style id="v125HeaderSingleLineOverlapFix">
+/* V119의 max-width:1100px grid 규칙이 V120 뒤에서 다시 적용되어
+   접속 인원·퇴장이 한 칸에 겹치던 문제를, 마지막 CSS 우선순위로 복구합니다. */
+@media (min-width:761px) and (max-width:1100px){
+  body.joined .topbar{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:7px !important;
+    padding:8px 10px !important;
+    min-width:0 !important;
+  }
+  body.joined .topCenter,
+  body.joined .actions{
+    display:flex !important;
+    flex:0 1 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:7px !important;
+    flex-wrap:nowrap !important;
+  }
+  body.joined .topCenter{ order:1 !important; }
+  body.joined .actions{ order:2 !important; }
+
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #menuBtn,
+  body.joined #leaveBtn,
+  body.joined .topCenter .hcBtn,
+  body.joined .topCenter .hcViewBtn{
+    position:static !important;
+    grid-column:auto !important;
+    grid-row:auto !important;
+    display:inline-flex !important;
+    flex:0 0 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    height:40px !important;
+    min-height:40px !important;
+    padding:0 12px !important;
+    font-size:12px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  body.joined #statusBtn{ min-width:112px !important; }
+  body.joined #onlineBtn{ min-width:88px !important; order:1 !important; }
+  body.joined #menuBtn{ width:40px !important; padding:0 !important; font-size:15px !important; order:2 !important; }
+  body.joined #leaveBtn{ min-width:70px !important; order:3 !important; }
+  body.joined .topCenter .hcBtn{ min-width:104px !important; }
+  body.joined .topCenter .hcViewBtn{ min-width:126px !important; }
+}
+@media (min-width:761px) and (max-width:880px){
+  body.joined .topbar{ gap:5px !important; padding:7px 8px !important; }
+  body.joined .topCenter, body.joined .actions{ gap:5px !important; }
+  body.joined #statusBtn,
+  body.joined #onlineBtn,
+  body.joined #menuBtn,
+  body.joined #leaveBtn,
+  body.joined .topCenter .hcBtn,
+  body.joined .topCenter .hcViewBtn{
+    height:38px !important;
+    min-height:38px !important;
+    padding:0 9px !important;
+    font-size:11px !important;
+  }
+  body.joined #statusBtn{ min-width:100px !important; }
+  body.joined #onlineBtn{ min-width:76px !important; }
+  body.joined #menuBtn{ width:38px !important; padding:0 !important; }
+  body.joined #leaveBtn{ min-width:62px !important; }
+  body.joined .topCenter .hcBtn{ min-width:94px !important; }
+  body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
 }
 </style>
 
