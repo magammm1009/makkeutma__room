@@ -14433,6 +14433,9 @@ joinRoom();
   let petCloudStarted = false;
   let petCloudLastHash = '';
   let petCloudBusy = false;
+  // V125: 자동 백업/복원 흐름에서 참조되는 원격 관리자 토큰 캐시
+  let petCloudCachedRemoteToken = '';
+  let petCloudLastRemoteCheckMs = 0;
 
   function petCloudNick(){
     try{ return normalizeNick(state.nickname || els.name?.value || '').trim().slice(0,20); }
@@ -15011,6 +15014,8 @@ joinRoom();
       }
 
       hc.pending = { stream, roomId, uid, slotId };
+      // 권한 허용 직후 내 타일에 즉시 로컬 미리보기를 붙입니다.
+      scheduleMount();
 
       let pc = null;
       let sessionId = "";
@@ -15072,6 +15077,7 @@ joinRoom();
 
         hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId };
         hc.pending = null;
+        scheduleMount();
       }catch(e){
         console.warn("[handcam] publish failed:", e);
         hc.pending = null;
@@ -15080,6 +15086,7 @@ joinRoom();
         await clearReservedSlot(roomId, slotId);
         hc.starting = false;
         updateMyBtn();
+        scheduleMount();
         showToast(friendlyHandcamError(e, "손캠 연결에 실패했어요. 잠시 후 다시 시도해 주세요"));
         return;
       }
@@ -15270,7 +15277,11 @@ joinRoom();
         grid.querySelectorAll(".tile").forEach(tile=>{
           const uid = String(tile.dataset.uid || "");
           if(!uid) return;
-          const live = canShowVideo && HC_LIVE.has(uid);
+          // 내 카메라는 RTDB ready:true 반영을 기다리지 않고, 권한 허용 직후부터 미리보기를 보여 줍니다.
+          // 이렇게 해야 SFU/RTDB 반영이 잠깐 늦어도 내 타일이 바로 손캠 상태로 전환됩니다.
+          const isMine = uid === String(state.uid || "");
+          const localStream = (hc.my && hc.my.stream) || (hc.pending && hc.pending.stream) || null;
+          const live = canShowVideo && (HC_LIVE.has(uid) || (isMine && !!localStream));
           let box = tile.querySelector(".handcamBox");
 
           if(!live){
@@ -15299,7 +15310,7 @@ joinRoom();
 
             const vd = box.querySelector("video");
             let stream = null;
-            if(uid === String(state.uid || "") && hc.my) stream = hc.my.stream;
+            if(isMine) stream = localStream;
             else if(hc.view){
               const p = hc.view.pulls.get(uid);
               stream = p && p.stream || null;
