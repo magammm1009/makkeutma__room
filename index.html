@@ -4511,6 +4511,7 @@ body.joined #preJoinCard{ display:none; }
 <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 <button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
 <button class="danger" id="ctxForceOff" type="button">🫥 로그아웃 처리</button>
+<button class="danger" id="ctxHandcamOff" type="button">📹 손캠 끄기</button>
 <button id="ctxClose" type="button">닫기</button>
 </div>
 <div class="toast" id="toast">저장했어!</div>
@@ -5324,6 +5325,7 @@ const auth = getAuth(app);
       ctxPinToggle: $("ctxPinToggle"),
       ctxKick: $("ctxKick"),
       ctxForceOff: $("ctxForceOff"),
+      ctxHandcamOff: $("ctxHandcamOff"),
       ctxClose: $("ctxClose"),
       ctxStatusWork: $("ctxStatusWork"),
       ctxStatusBreak: $("ctxStatusBreak"),
@@ -5748,14 +5750,35 @@ function toast(msg, ms=1600){
         const byId = new Map(arr.map(p => [p && p.id, p]));
         const out = [];
         const used = new Set();
+        const myUid = String(state.uid || "");
 
-        // 1) 나(항상 1등)
-        if(state.uid && byId.has(state.uid)){
-          out.push(byId.get(state.uid));
-          used.add(state.uid);
+        // 1) 내 타일은 어떤 정렬보다 항상 맨 첫 번째.
+        if(myUid && byId.has(myUid)){
+          out.push(byId.get(myUid));
+          used.add(myUid);
         }
 
-        // 2) 즐겨찾기 2명
+        // 2) 손캠 송출자는 내 타일 바로 뒤. 송출을 시작한 순서(ts)대로 정렬.
+        try{
+          const hcLive = window.__MK_HANDCAM_LIVE__;
+          if(hcLive && hcLive.size){
+            const live = [];
+            for(const p of arr){
+              const id = String(p && p.id || "");
+              const info = hcLive.get(id);
+              if(info && !used.has(id)) live.push({ p, info, id });
+            }
+            live.sort((a,b)=>{
+              const ta = Number(a.info && a.info.ts || 0);
+              const tb = Number(b.info && b.info.ts || 0);
+              if(ta !== tb) return ta - tb;
+              return String(a.p && a.p.name || "").localeCompare(String(b.p && b.p.name || ""), "ko");
+            });
+            for(const item of live){ out.push(item.p); used.add(item.id); }
+          }
+        }catch(e){}
+
+        // 3) 즐겨찾기는 손캠 그룹 다음에 유지.
         for(const uid of pins){
           if(byId.has(uid) && !used.has(uid)){
             out.push(byId.get(uid));
@@ -5763,28 +5786,12 @@ function toast(msg, ms=1600){
           }
         }
 
-        // 3) 나머지(기존 순서 유지)
+        // 4) 나머지는 기존 정렬 순서 유지.
         for(const p of arr){
           const id = p && p.id;
           if(!id || used.has(id)) continue;
           out.push(p);
         }
-
-        // ✅ 손캠: 손캠 송출자는 항상 맨 위, 닉네임 가나다순
-        try{
-          const hcLive = window.__MK_HANDCAM_LIVE__;
-          if(hcLive && hcLive.size){
-            const live = [], rest = [];
-            for(const p of out){
-              if(p && hcLive.has(String(p.id||""))) live.push(p);
-              else rest.push(p);
-            }
-            if(live.length){
-              live.sort((a,b)=> String(a?.name||"").localeCompare(String(b?.name||""), "ko"));
-              return live.concat(rest);
-            }
-          }
-        }catch(e){}
         return out;
       }catch(e){
         return arr;
@@ -5809,6 +5816,7 @@ function toast(msg, ms=1600){
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
       if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
       if(els.ctxForceOff) els.ctxForceOff.style.display = isStatus ? "none" : "";
+      if(els.ctxHandcamOff) els.ctxHandcamOff.style.display = isStatus ? "none" : "";
       // Close button is always visible
     }
 
@@ -5854,6 +5862,13 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       ));
       els.ctxKick.disabled = !canKick;
       if(els.ctxForceOff) els.ctxForceOff.disabled = !canKick;
+      // 손캠 강제 종료는 현재 송출 중인 타일에서만 활성화합니다.
+      if(els.ctxHandcamOff){
+        const live = window.__MK_HANDCAM_LIVE__;
+        const isLive = !!(live && live.has(String(p.id || "")));
+        els.ctxHandcamOff.disabled = !canKick || !isLive;
+        els.ctxHandcamOff.textContent = isLive ? "📹 손캠 끄기" : "📹 손캠 미송출";
+      }
 
       // ✅ Pin(상단 고정) 버튼 라벨/활성화
       if(els.ctxPinToggle){
@@ -6168,6 +6183,32 @@ async function requestForceOff(targetUid, targetName){
   }
 }
 
+
+
+// ✅ 관리자: 손캠만 즉시 종료 (강퇴/로그아웃과 분리)
+async function requestForceHandcamOff(targetUid, targetName){
+  if(!state.roomId || !state.uid || !targetUid) return;
+  const isOwner = !!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid);
+  const isAdmin = !!state.adminOk;
+  if(!(isOwner || isAdmin)){
+    showToast("📹 손캠 종료는 관리자만 가능해");
+    return;
+  }
+  try{
+    const live = window.__MK_HANDCAM_LIVE__;
+    const info = live && live.get(String(targetUid));
+    if(!info || info.slotId === undefined || info.slotId === null){
+      showToast("📹 현재 손캠을 켜고 있지 않아");
+      return;
+    }
+    // 룰스에서 ownerUid는 모든 고정 슬롯 삭제가 가능하도록 이미 허용돼 있습니다.
+    await rRemove(rRef(rtdb, `${rRoomBase(state.roomId)}/handcam/live/${String(info.slotId)}`));
+    showToast(`📹 ${targetName || info.name || targetUid}님의 손캠을 껐어`);
+  }catch(e){
+    console.warn("[handcam] admin stop failed", e);
+    showToast("📹 손캠 종료 실패(관리자 권한/rules 확인)");
+  }
+}
 
 async function fetchMissionsByMonth(roomId, monthKey){
   try{
@@ -14065,6 +14106,15 @@ try{
         const t = state.ctxTarget || {};
         hideCtxMenu();
         if(t.uid) await requestForceOff(t.uid, t.name);
+      });
+    }
+
+    if(els.ctxHandcamOff){
+      els.ctxHandcamOff.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) await requestForceHandcamOff(t.uid, t.name);
       });
     }
 
