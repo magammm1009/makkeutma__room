@@ -14749,8 +14749,13 @@ joinRoom();
       queue: Promise.resolve(),
       mountT: null,
       lifecycleBusy: false,
-      gridObserver: null
+      gridObserver: null,
+      // 기본값 OFF: 실제 원격 WebRTC 구독은 사용자가 보기 버튼을 눌렀을 때만 시작합니다.
+      viewerEnabled: false
     };
+
+    // 손캠 시청은 기본 OFF. 브라우저별로 개인 설정을 저장해 불필요한 SFU egress를 막습니다.
+    try{ hc.viewerEnabled = localStorage.getItem("mkHandcamViewerEnabledV1") === "1"; }catch(e){ hc.viewerEnabled = false; }
 
     // ---------- 스타일 주입 ----------
     try{
@@ -14768,9 +14773,11 @@ joinRoom();
         }
         .tile.hcLiveTile .handcamBox video{ width:100%; height:100%; object-fit:cover; display:block; }
         .tile.hcLiveTile .handcamBox .hcTag{ z-index:2; }
-        .tile .handcamBox .hcTag{ position:absolute; left:6px; top:6px; font-size:11px; font-weight:800;
-          color:#fff; background:rgba(255,64,129,.9); padding:2px 8px; border-radius:999px; letter-spacing:.4px;
-          display:flex; align-items:center; gap:4px; }
+        .tile .handcamBox .hcTag{ position:absolute; left:6px; top:6px; max-width:calc(100% - 12px); font-size:11px; font-weight:800;
+          color:#fff; background:rgba(255,64,129,.92); padding:3px 9px; border-radius:999px; letter-spacing:.25px;
+          display:flex; align-items:center; gap:5px; box-shadow:0 4px 12px rgba(0,0,0,.24); }
+        .tile .handcamBox .hcName{ min-width:0; max-width:12em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tile .handcamBox .hcLabel{ flex:0 0 auto; white-space:nowrap; }
         .tile .handcamBox .hcTag::before{ content:""; width:6px; height:6px; border-radius:50%;
           background:#fff; animation:hcBlink 1.2s ease-in-out infinite; }
         @keyframes hcBlink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
@@ -14783,7 +14790,17 @@ joinRoom();
           box-shadow:0 5px 16px rgba(0,0,0,.20); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
         .topCenter .hcBtn.on{ background:rgba(255,64,129,.95); border-color:rgba(255,255,255,.65); color:#fff; }
         .topCenter .hcBtn:disabled{ opacity:.55; cursor:not-allowed; }
-        body:not(.joined) .topCenter .hcBtn{ display:none !important; }
+        .topCenter .hcViewBtn{ flex:0 0 auto; border:1px solid rgba(255,214,233,.35);
+          cursor:pointer; border-radius:12px; font-size:12px; line-height:1; font-weight:900;
+          min-height:40px; padding:10px 12px; background:rgba(255,255,255,.06); color:#ffe2ef;
+          box-shadow:0 5px 16px rgba(0,0,0,.16); }
+        .topCenter .hcViewBtn.on{ background:rgba(255,182,214,.22); border-color:rgba(255,182,214,.72); color:#fff; }
+        body:not(.joined) .topCenter .hcBtn, body:not(.joined) .topCenter .hcViewBtn{ display:none !important; }
+        .tile .hcLiveHint{ position:absolute; top:8px; left:8px; z-index:19; max-width:calc(100% - 16px);
+          display:inline-flex; align-items:center; gap:6px; min-height:27px; padding:5px 9px; border-radius:999px;
+          background:rgba(18,18,26,.78); border:1px solid rgba(255,182,214,.42); color:#fff;
+          font-size:11px; font-weight:900; backdrop-filter:blur(7px); pointer-events:none; }
+        .tile .hcLiveHint .hcHintName{ max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         @media (max-width:760px){
           .topCenter .hcBtn{ min-height:40px; padding:10px 10px; font-size:11px; }
         }
@@ -14841,7 +14858,7 @@ joinRoom();
       return rRef(rtdb, `${rRoomBase(roomId || state.roomId)}/handcam/live/${String(slotId)}`);
     }
 
-    function hcCanReceive(){
+    function hcCanDisplay(){
       try{
         const grid = els && els.grid;
         if(!state.joined || !grid || !grid.isConnected) return false;
@@ -14849,9 +14866,12 @@ joinRoom();
         if(grid.classList.contains("compact5") || grid.classList.contains("playgroundMode")) return false;
         const rect = grid.getBoundingClientRect();
         return rect.width > 8 && rect.height > 8;
-      }catch(e){
-        return false;
-      }
+      }catch(e){ return false; }
+    }
+
+    function hcCanReceive(){
+      // 핵심 절약 장치: 시청 OFF면 Cloudflare 원격 트랙을 아예 구독하지 않습니다.
+      return !!hc.viewerEnabled && hcCanDisplay();
     }
 
     // ---------- 재정렬(기존 파이프라인 재사용) ----------
@@ -15278,22 +15298,38 @@ joinRoom();
         const grid = els && els.grid;
         if(!grid) return;
         ensureHeaderBtn();
-        const canShowVideo = hcCanReceive();
+        const canDisplay = hcCanDisplay();
+        const canReceive = hcCanReceive();
 
         grid.querySelectorAll(".tile").forEach(tile=>{
           const uid = String(tile.dataset.uid || "");
           if(!uid) return;
-          // 내 카메라는 RTDB ready:true 반영을 기다리지 않고, 권한 허용 직후부터 미리보기를 보여 줍니다.
-          // 이렇게 해야 SFU/RTDB 반영이 잠깐 늦어도 내 타일이 바로 손캠 상태로 전환됩니다.
+          // 내 카메라는 항상 로컬 미리보기를 표시합니다. 타인 영상만 ‘손캠 보기’ ON에서 수신합니다.
           const isMine = uid === String(state.uid || "");
           const localStream = (hc.my && hc.my.stream) || (hc.pending && hc.pending.stream) || null;
-          const live = canShowVideo && (HC_LIVE.has(uid) || (isMine && !!localStream));
+          const isRemoteLive = !isMine && HC_LIVE.has(uid);
+          const live = canDisplay && ((isMine && !!localStream) || (canReceive && isRemoteLive));
           let box = tile.querySelector(".handcamBox");
+          let hint = tile.querySelector(".hcLiveHint");
 
-          if(!live){
+          // 시청 OFF일 때는 타인의 타일을 원래 모습으로 유지하되, LIVE 상태만 가볍게 표시합니다.
+          if(isRemoteLive && !canReceive){
+            if(box) box.remove();
+            tile.classList.remove("hcLiveTile");
+            if(!hint){
+              hint = document.createElement("div");
+              hint.className = "hcLiveHint";
+              hint.innerHTML = '<span class="hcHintName"></span><span>💗 LIVE</span>';
+              tile.appendChild(hint);
+            }
+            const n = hint.querySelector(".hcHintName");
+            if(n){ const d = HC_LIVE.get(uid) || {}; n.textContent = normalizeNick(d.name || tile.querySelector(".namePill, .name")?.textContent || "손님"); }
+          }else if(!live){
             tile.classList.remove("hcLiveTile");
             if(box) box.remove();
+            if(hint) hint.remove();
           }else{
+            if(hint) hint.remove();
             tile.classList.add("hcLiveTile");
             if(!box){
               box = document.createElement("div");
@@ -15305,7 +15341,16 @@ joinRoom();
               vd.setAttribute("playsinline", "");
               const tag = document.createElement("div");
               tag.className = "hcTag";
-              tag.textContent = "손캠 LIVE";
+              const nameEl = document.createElement("span");
+              nameEl.className = "hcName";
+              const liveInfo = HC_LIVE.get(uid) || {};
+              const displayName = normalizeNick(liveInfo.name || (isMine && state.nickname) || tile.querySelector(".namePill, .name")?.textContent || "손님");
+              nameEl.textContent = displayName;
+              const labelEl = document.createElement("span");
+              labelEl.className = "hcLabel";
+              labelEl.textContent = "손캠 LIVE";
+              tag.appendChild(nameEl);
+              tag.appendChild(labelEl);
               box.appendChild(vd);
               box.appendChild(tag);
 
@@ -15314,6 +15359,14 @@ joinRoom();
               if(bar && bar.nextSibling) content.insertBefore(box, bar.nextSibling);
               else if(bar) content.appendChild(box);
               else content.appendChild(box);
+            }
+
+            const tag = box.querySelector(".hcTag");
+            const nameEl = tag && tag.querySelector(".hcName");
+            if(nameEl){
+              const liveInfo = HC_LIVE.get(uid) || {};
+              const displayName = normalizeNick(liveInfo.name || (isMine && state.nickname) || tile.querySelector(".namePill, .name")?.textContent || "손님");
+              nameEl.textContent = displayName;
             }
 
             const vd = box.querySelector("video");
@@ -15337,41 +15390,46 @@ joinRoom();
 
     function ensureHeaderBtn(){
       try{
-        // 작업 상태 버튼 바로 오른쪽: 타일 레이아웃·닉네임과 분리된 안전한 제어 위치
-        const host = (els && els.statusBtn && els.statusBtn.parentElement)
-          || document.querySelector(".topCenter");
+        const host = (els && els.statusBtn && els.statusBtn.parentElement) || document.querySelector(".topCenter");
         if(!host) return;
 
         let btn = host.querySelector(":scope > .hcBtn");
         if(!btn){
           btn = document.createElement("button");
-          btn.className = "hcBtn ghost";
-          btn.type = "button";
-          btn.id = "handcamBtn";
-          btn.setAttribute("aria-label", "손캠 켜기");
-          btn.addEventListener("click", (ev)=>{
-            ev.preventDefault();
-            ev.stopPropagation();
-            if(hc.my) stopMyCam(false);
-            else startMyCam();
-          });
-          // statusBtn 바로 뒤에 삽입: ‘작업 상태’의 오른쪽에 항상 고정
+          btn.className = "hcBtn ghost"; btn.type = "button"; btn.id = "handcamBtn";
+          btn.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(hc.my) stopMyCam(false); else startMyCam(); });
           const statusBtn = els && els.statusBtn;
-          if(statusBtn && statusBtn.parentElement === host){
-            statusBtn.insertAdjacentElement("afterend", btn);
-          }else{
-            host.insertBefore(btn, host.firstChild || null);
-          }
+          if(statusBtn && statusBtn.parentElement === host) statusBtn.insertAdjacentElement("afterend", btn);
+          else host.insertBefore(btn, host.firstChild || null);
         }
 
-        const n = HC_LIVE.size;
-        const iAmLive = !!hc.my;
-        const joined = !!state.joined;
+        let viewBtn = host.querySelector(":scope > .hcViewBtn");
+        if(!viewBtn){
+          viewBtn = document.createElement("button");
+          viewBtn.className = "hcViewBtn ghost"; viewBtn.type = "button"; viewBtn.id = "handcamViewBtn";
+          viewBtn.addEventListener("click", async (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            hc.viewerEnabled = !hc.viewerEnabled;
+            try{ localStorage.setItem("mkHandcamViewerEnabledV1", hc.viewerEnabled ? "1" : "0"); }catch(e){}
+            if(!hc.viewerEnabled) await closeViewer();
+            syncPulls(); scheduleMount(); updateMyBtn();
+            showToast(hc.viewerEnabled ? "💗 손캠 보기를 켰어요" : "💗 손캠 보기를 껐어요 — 영상 수신을 멈췄어요");
+          });
+          btn.insertAdjacentElement("afterend", viewBtn);
+        }
+
+        const n = HC_LIVE.size, iAmLive = !!hc.my, joined = !!state.joined;
         btn.classList.toggle("on", iAmLive);
         btn.textContent = hc.starting ? "📹 연결 중…" : (iAmLive ? "📹 손캠 끄기" : `📹 손캠 ${n}/${HC_MAX}`);
         btn.disabled = !joined || hc.starting || (!iAmLive && n >= HC_MAX);
         btn.title = !joined ? "입장 후에 손캠을 켤 수 있어요" : (iAmLive ? "손캠 송출 종료" : `손캠 켜기 (선착순 ${HC_MAX}명)`);
         btn.setAttribute("aria-label", btn.title);
+
+        viewBtn.classList.toggle("on", hc.viewerEnabled);
+        viewBtn.textContent = hc.viewerEnabled ? "💗 손캠 보기 ON" : "💗 손캠 보기 OFF";
+        viewBtn.disabled = !joined;
+        viewBtn.title = hc.viewerEnabled ? "손캠 영상 수신을 끄기" : "손캠 영상을 보기";
+        viewBtn.setAttribute("aria-label", viewBtn.title);
       }catch(e){}
     }
 
@@ -15454,7 +15512,8 @@ joinRoom();
       start: startMyCam,
       stop: ()=>stopMyCam(false),
       live: HC_LIVE,
-      refresh: ()=>{ lifecycleTick(); syncPulls(); scheduleMount(); }
+      refresh: ()=>{ lifecycleTick(); syncPulls(); scheduleMount(); },
+      setViewer: async (on)=>{ hc.viewerEnabled = !!on; try{ localStorage.setItem("mkHandcamViewerEnabledV1", hc.viewerEnabled ? "1" : "0"); }catch(e){} if(!hc.viewerEnabled) await closeViewer(); syncPulls(); scheduleMount(); updateMyBtn(); }
     };
   })();
 
