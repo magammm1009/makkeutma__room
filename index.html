@@ -511,8 +511,122 @@
       -webkit-overflow-scrolling: touch;
       white-space:nowrap;
     }
-    .reactPicker.open{ display:flex; }
-    .reactPick{ padding:6px 9px; font-size:14px; }
+    /* ✅ V127: 리액션 선택창을 2열 미니 팔레트로 압축 — 세로 과확장 방지 */
+    .reactPicker.open{ display:grid; }
+    .reactPicker{
+      grid-template-columns: repeat(2, 30px);
+      align-items:center;
+      justify-content:center;
+      width:max-content;
+      max-width:76px;
+      gap:5px;
+      padding:6px;
+      margin-left:auto !important;
+      margin-right:4px;
+      overflow:visible;
+    }
+    .reactPick{
+      width:30px;
+      min-width:30px;
+      height:30px;
+      min-height:30px;
+      padding:0;
+      font-size:15px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+    }
+    .reactLabel{display:none;}
+
+    /* ✅ V128: 리액션 선택창은 채팅을 세로로 밀지 않도록 가로 한 줄로 고정 */
+    .reactPicker.open{
+      display:flex !important;
+      flex-direction:row !important;
+      align-items:center !important;
+      justify-content:flex-end !important;
+    }
+    .reactPicker{
+      grid-template-columns:none !important;
+      width:auto !important;
+      max-width:100% !important;
+      overflow-x:auto !important;
+      overflow-y:hidden !important;
+      white-space:nowrap !important;
+      flex-wrap:nowrap !important;
+      gap:5px !important;
+      padding:6px 7px !important;
+      margin-left:28px !important;
+      margin-right:4px !important;
+      scrollbar-width:none;
+    }
+    .reactPicker::-webkit-scrollbar{display:none;}
+    .reactPick{
+      width:28px !important;
+      min-width:28px !important;
+      height:28px !important;
+      min-height:28px !important;
+      padding:0 !important;
+      font-size:15px !important;
+      flex:0 0 auto !important;
+    }
+
+
+    /* ✅ V129: 짧은 채팅도 리액션 한 줄이 잘리지 않도록 말풍선 폭 확보 */
+    .msg.reactOpen,
+    .msg:has(.reactPicker.open){
+      min-width: min(270px, 92%) !important;
+      max-width: 92% !important;
+    }
+    .msg.reactOpen .reactPicker,
+    .msg:has(.reactPicker.open) .reactPicker{
+      width: max-content !important;
+      max-width: calc(100vw - 96px) !important;
+      justify-content:flex-start !important;
+      margin-right:0 !important;
+    }
+    @media (max-width: 420px){
+      .msg.reactOpen,
+      .msg:has(.reactPicker.open){ min-width: min(248px, 94%) !important; max-width:94% !important; }
+    }
+
+    .chatLink{
+      color:#ffd2e7;
+      font-weight:900;
+      text-decoration:underline;
+      text-underline-offset:2px;
+      word-break:break-all;
+    }
+    .petFullMini{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      margin-left:6px;
+      padding:2px 6px;
+      border-radius:999px;
+      background:rgba(255,214,110,.16);
+      border:1px solid rgba(255,214,110,.38);
+      color:rgba(255,245,210,.96);
+      font-size:10px;
+      font-weight:1100;
+      line-height:1;
+      flex:0 0 auto;
+    }
+    .petHeroFullCount{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      margin-top:2px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,214,110,.34);
+      background:rgba(255,214,110,.12);
+      color:rgba(255,246,217,.96);
+      font-size:11px;
+      font-weight:1100;
+      line-height:1.1;
+    }
 
     /* ✅ photo off: keep slot so emoji doesn't shift */
     .idPhoto.photoOff{ visibility:hidden; }
@@ -624,6 +738,26 @@
       gap:6px;
     }
     .grid.compact5 .namePill{flex:1; min-width:0; min-height:40px; padding:0 12px; font-size:13px; line-height:1; border-radius:12px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+    /* ✅ V129: 프로필 타일용 만렙 펫 배지 */
+    .petFullTileBadge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:40px;
+      padding:0 8px;
+      border-radius:12px;
+      border:1px solid rgba(255,215,120,.42);
+      background:rgba(255,215,120,.14);
+      color:rgba(255,255,255,.96);
+      font-size:12px;
+      font-weight:1100;
+      line-height:1;
+      white-space:nowrap;
+      box-shadow:0 10px 22px rgba(255,190,90,.08);
+    }
+    .grid.compact5 .petFullTileBadge{min-height:36px; padding:0 7px; font-size:11px;}
+
     .grid.compact5 .bigTimer{
       font-size: clamp(16px, 2.6vw, 22px);
       justify-content:center;
@@ -8453,6 +8587,10 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         theme.petSlotName = info.name || "";
         theme.petSlotMotion = getProfilePetSlotMotion();
         theme.petSlotVersion = "v56";
+        const col = (typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo() : {fullCount:0,totalCount:21};
+        theme.petFullCount = col.fullCount;
+        theme.petFullTotal = col.totalCount;
+        theme.petFullVersion = "v126";
       }catch(e){
         theme.petDisplaySlot = normalizePetDisplaySlot(theme);
         theme.showPetInPhotoSlot = (theme.petDisplaySlot === "photo");
@@ -8468,22 +8606,60 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
         if(!state || !state.uid || !state.roomId) return;
         const me = state.currentParticipants?.get?.(state.uid);
         const slot = normalizePetDisplaySlot(me?.theme || {});
-        if(slot === "none") return;
         const info = getLocalPetSlotInfo();
-        const key = `${info.id}:${info.lv}:${info.name||""}`;
+        const col = (typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo() : {fullCount:0,totalCount:21};
+        const key = `${slot}:${info.id}:${info.lv}:${info.name||""}:${col.fullCount}/${col.totalCount}`;
         if(!force && window.__MK_LAST_PET_SLOT_KEY__ === key) return;
         window.__MK_LAST_PET_SLOT_KEY__ = key;
-        await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-          "theme/petSlotId": info.id,
-          "theme/petSlotLv": info.lv,
-          "theme/petSlotName": info.name || "",
-          "theme/petSlotMotion": normalizePetSlotMotion(me?.theme?.petSlotMotion || "bounce"),
-          "theme/petSlotVersion": "v56",
+        const patch = {
+          "theme/petFullCount": col.fullCount,
+          "theme/petFullTotal": col.totalCount,
+          "theme/petFullVersion": "v126",
           updatedAt: Date.now(),
           lastSeenAtMs: Date.now()
-        });
+        };
+        if(slot !== "none"){
+          patch["theme/petSlotId"] = info.id;
+          patch["theme/petSlotLv"] = info.lv;
+          patch["theme/petSlotName"] = info.name || "";
+          patch["theme/petSlotMotion"] = normalizePetSlotMotion(me?.theme?.petSlotMotion || "bounce");
+          patch["theme/petSlotVersion"] = "v56";
+        }
+        // ✅ V128: heartbeat 의존 없이 공개 프로필에도 같이 저장한다.
+        // 다른 사람 화면은 profiles/{uid}를 보조로 읽어 만렙 펫 현황을 표시한다.
+        try{
+          const updates = {};
+          Object.entries(patch).forEach(([k,v])=>{
+            updates[`${rRoomBase(state.roomId)}/presence/${state.uid}/${k}`] = v;
+          });
+          const profPatch = {
+            updatedAtMs: Date.now(),
+            source: 'pet_public_v128',
+            uid: String(state.uid),
+            name: String(state.nickname || els.name?.value || '').trim().slice(0,40),
+            [`theme/petFullCount`]: col.fullCount,
+            [`theme/petFullTotal`]: col.totalCount,
+            [`theme/petFullVersion`]: 'v128'
+          };
+          if(slot !== 'none'){
+            profPatch[`theme/petSlotId`] = info.id;
+            profPatch[`theme/petSlotLv`] = info.lv;
+            profPatch[`theme/petSlotName`] = info.name || '';
+            profPatch[`theme/petSlotMotion`] = normalizePetSlotMotion(me?.theme?.petSlotMotion || 'bounce');
+            profPatch[`theme/petSlotVersion`] = 'v56';
+          }
+          Object.entries(profPatch).forEach(([k,v])=>{
+            updates[`${rRoomBase(state.roomId)}/profiles/${state.uid}/${k}`] = v;
+          });
+          await rUpdate(rRef(rtdb), updates);
+        }catch(e){
+          await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
+        }
         if(me){
-          me.theme = Object.assign({}, me.theme || {}, { petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"", petSlotVersion:"v56" });
+          me.theme = Object.assign({}, me.theme || {}, {
+            petFullCount:col.fullCount, petFullTotal:col.totalCount, petFullVersion:"v126",
+            petSlotId:info.id, petSlotLv:info.lv, petSlotName:info.name||"", petSlotVersion:"v56"
+          });
           state.currentParticipants.set(state.uid, me);
         }
       }catch(e){}
@@ -8507,6 +8683,9 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
           petSlotId: lp.theme.petSlotId || getLocalPetSlotInfo().id,
           petSlotLv: normalizePublicPetLevel(lp.theme) || getLocalPetSlotInfo().lv,
           petSlotName: lp.theme.petSlotName || getLocalPetSlotInfo().name || "",
+          petFullCount: Number(lp.theme.petFullCount || 0),
+          petFullTotal: Number(lp.theme.petFullTotal || 21),
+          petFullVersion: lp.theme.petFullVersion || "v126",
           emojiBg: clampHexColor(lp.theme.emojiBg || "#2b2b2b"),
           emojiBgTransparent: (lp.theme.emojiBgTransparent === true || lp.theme.emojiBgTransparent === "true"),
           bubbleColor: clampHexColor(lp.theme.bubbleColor || lp.theme.bgColor || "#ffd0e2"),
@@ -8519,7 +8698,7 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
           photoSize: Number(lp.theme.photoSize || 68)
         };
       }
-      return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, petDisplaySlot:"none", showPetInPhotoSlot:false, petSlotBgColor:"#1b1720", petSlotBgTransparent:false, petSlotMotion:"bounce", petSlotId:"cat", petSlotLv:0, petSlotName:"", emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
+      return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, petDisplaySlot:"none", showPetInPhotoSlot:false, petSlotBgColor:"#1b1720", petSlotBgTransparent:false, petSlotMotion:"bounce", petSlotId:"cat", petSlotLv:0, petSlotName:"", petFullCount:0, petFullTotal:21, petFullVersion:"v126", emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
     }
 
 // ✅ V103_SAFE_PROFILE_COST_PATCH
@@ -8686,6 +8865,14 @@ async function heartbeat(){
         patch["theme/petPlayMode"] = playOn ? "playground" : "default";
         patch["theme/petPlayVersion"] = "v57";
       }catch(e){}
+      // ✅ V127: 만렙 펫 현황은 각 사용자 브라우저의 로컬 펫 성장 데이터에서 계산된다.
+      // heartbeat에 함께 실어 보내야 다른 작가님들 타일에도 자연스럽게 표시된다.
+      try{
+        const col = (typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo() : {fullCount:0,totalCount:21};
+        patch["theme/petFullCount"] = Math.max(0, Math.floor(Number(col.fullCount || 0)));
+        patch["theme/petFullTotal"] = Math.max(1, Math.floor(Number(col.totalCount || 21)));
+        patch["theme/petFullVersion"] = "v127";
+      }catch(e){}
     }
 
     await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
@@ -8714,6 +8901,12 @@ function startRtdbConnectionWatch(){
               updatedAt: now,
               sessionStartedAtMs: (st === "work") ? (state._workSessionStartedAtMs || now) : null
             };
+            try{
+              const col = (typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo() : {fullCount:0,totalCount:21};
+              patch["theme/petFullCount"] = Math.max(0, Math.floor(Number(col.fullCount || 0)));
+              patch["theme/petFullTotal"] = Math.max(1, Math.floor(Number(col.totalCount || 21)));
+              patch["theme/petFullVersion"] = "v127";
+            }catch(e){}
             rUpdate(rMePresenceRef(state.roomId, state.uid), patch).catch(()=>{});
             heartbeat();
           }
@@ -9299,6 +9492,9 @@ async function transitionTo(nextStatus, source="manual"){
         petSlotLv: getLocalPetSlotInfo().lv,
         petSlotName: getLocalPetSlotInfo().name || "",
         petSlotVersion: "v56",
+        petFullCount: ((typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo().fullCount : 0),
+        petFullTotal: ((typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo().totalCount : 21),
+        petFullVersion: "v127",
         petPlayX: loadMyPlayPos().x,
         petPlayY: loadMyPlayPos().y,
         petPlayVersion: "v56",
@@ -9743,15 +9939,34 @@ async function saveDashboard(){
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
       }[c]));
     }
+    // ✅ V126: 채팅 링크 자동 바로가기
+    function linkifyChatText(s){
+      try{
+        const escaped = escapeHtml(s || "");
+        return escaped.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi, (raw)=>{
+          let url = String(raw || "");
+          let tail = "";
+          while(/[.,!?;:)]$/.test(url)){ tail = url.slice(-1) + tail; url = url.slice(0, -1); }
+          const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+          return `<a class="chatLink" href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
+        });
+      }catch(e){
+        return escapeHtml(s || "");
+      }
+    }
     const CHAT_MAX_VIEW = 100;
     // If mission events share the same collection, fetch a bit more so chat still shows up to 70.
     const CHAT_QUERY_LIMIT = 10; // ✅ always load last 10 to reduce reads (first/re-entry)
     const CHAT_KEEP_MAX = 50;   // ✅ while staying in room, keep up to 50 in memory/UI
-    // ✅ Reactions (간단 이모지)
+    // ✅ V126: Reactions 확장 (기존 key 유지 + 추가 감정)
     const REACTS = [
-      { k:"heart", e:"❤️" },
-      { k:"boom",  e:"👍" },
-      { k:"fire",  e:"🔥" },
+      { k:"heart",   e:"❤️", label:"하트" },
+      { k:"boom",    e:"👍", label:"좋아요" },
+      { k:"fire",    e:"🔥", label:"불타요" },
+      { k:"laugh",   e:"🤣", label:"웃김" },
+      { k:"sad",     e:"😢", label:"슬픔" },
+      { k:"sigh",    e:"😮‍💨", label:"한숨" },
+      { k:"fanfare", e:"🎉", label:"팡파레" },
     ];
 
     
@@ -9852,7 +10067,7 @@ function __getMyReactOn(msgObj, emoji){
         div.className = "msg system";
                 try{ div.setAttribute("data-msg-id", String(m.id||"")); }catch(e){}
         try{ div.setAttribute("data-ts-ms", String(Number(m.tsMs || m.serverTs || 0) || 0)); }catch(e){}
-div.innerHTML = `<div class="text">${escapeHtml(m.text || "")}</div>`;
+div.innerHTML = `<div class="text">${linkifyChatText(m.text || "")}</div>`;
         return div;
       }
 
@@ -9866,7 +10081,7 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       const nick = (m.name || (p && p.name) || "익명");
       div.innerHTML = `
         <div class="meta"><span><span class="chatEmoji">${escapeHtml(emoji)}</span><span class="chatName">${escapeHtml(nick)}</span></span></div>
-        <div class="text">${escapeHtml(m.text || "")}</div>
+        <div class="text">${linkifyChatText(m.text || "")}</div>
       `;
 
       // theme-based text colors (if provided)
@@ -9900,6 +10115,8 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
             b.className = "reactBtn reactChip" + (on ? " on" : "");
             b.setAttribute("data-react-key", r.k);
             b.setAttribute("data-msg-id", m.id);
+            b.title = `${r.label || r.k} ${cnt}`;
+            b.setAttribute("aria-label", `${r.label || r.k} ${cnt}`);
             b.innerHTML = `${escapeHtml(r.e)}<span class="reactCount">${cnt}</span>`;
             chips.appendChild(b);
           }
@@ -9927,7 +10144,9 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
             b.className = "reactBtn reactPick" + (on ? " on" : "");
             b.setAttribute("data-react-key", r.k);
             b.setAttribute("data-msg-id", m.id);
-            b.innerHTML = `${escapeHtml(r.e)}`;
+            b.title = r.label || r.k;
+            b.setAttribute("aria-label", r.label || r.k);
+            b.innerHTML = `${escapeHtml(r.e)}<span class="reactLabel">${escapeHtml(r.label || "")}</span>`;
             picker.appendChild(b);
           }
           div.appendChild(picker);
@@ -10999,6 +11218,7 @@ async function sendChatCore(text, isFlush=false){
         petMotionSeedMs:p.petMotionSeedMs,
         petSlotBgColor:p.theme?.petSlotBgColor,
         petSlotBgTransparent:p.theme?.petSlotBgTransparent,
+        petFullCount:p.theme?.petFullCount, petFullTotal:p.theme?.petFullTotal,
         bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl, photoEnabled:p.theme?.photoEnabled, showPet:p.theme?.showPetInPhotoSlot, petDisplaySlot:p.theme?.petDisplaySlot, petId:p.theme?.petSlotId, petLv:p.theme?.petSlotLv,
         // ✅ text colors (added v47): must be part of key so tile rerenders when only text colors change
         nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
@@ -11080,6 +11300,17 @@ async function sendChatCore(text, isFlush=false){
       _nameMini.textContent = _miniName + (!isOnlinePresence(p) ?"🚫":"");
       namePill.appendChild(_nameFull);
       namePill.appendChild(_nameMini);
+      try{
+        const fullCnt = Math.max(0, Math.floor(Number(p.theme?.petFullCount ?? p.petFullCount ?? 0)));
+        const fullTotal = Math.max(1, Math.floor(Number(p.theme?.petFullTotal ?? p.petFullTotal ?? 21)));
+        if(fullCnt > 0){
+          const pf = document.createElement("span");
+          pf.className = "petFullMini";
+          pf.textContent = `🏆${fullCnt}`;
+          pf.title = `만렙 펫 ${fullCnt}/${fullTotal}`;
+          namePill.appendChild(pf);
+        }
+      }catch(e){}
       const nameAccent = clampHexColor(p.theme?.bubbleColor || p.theme?.bgColor || "#ffd0e2");
       namePill.style.background = hexToRgba(nameAccent, 0.22);
       namePill.style.borderColor = hexToRgba(nameAccent,0.55);
@@ -11087,6 +11318,16 @@ async function sendChatCore(text, isFlush=false){
 
       statusLeft.appendChild(b);
       statusLeft.appendChild(namePill);
+      // ✅ V130: 만렙 펫 현황을 개인 프로필 타일 상단 영역에 항상 표시(0개도 현황으로 노출)
+      try{
+        const fullCnt2 = Math.max(0, Math.floor(Number(p.theme?.petFullCount ?? p.petFullCount ?? 0)));
+        const fullTotal2 = Math.max(1, Math.floor(Number(p.theme?.petFullTotal ?? p.petFullTotal ?? 21)));
+        const petMedal = document.createElement("div");
+        petMedal.className = "petFullTileBadge";
+        petMedal.textContent = `🏆${fullCnt2}/${fullTotal2}`;
+        petMedal.title = `만렙 펫 ${fullCnt2}/${fullTotal2}`;
+        statusLeft.appendChild(petMedal);
+      }catch(e){}
 
       const medal = document.createElement("div");
       medal.className = "missionMedal hidden";
@@ -11507,6 +11748,21 @@ t.appendChild(bg);
       const petLv = Math.max(0, Math.min(30, Number((local && local.lv) ?? av?.petLv ?? normalizePublicPetLevel(p?.theme) ?? 0)));
       const petName = String((local && local.name) || av?.petName || p?.theme?.petSlotName || "").trim();
       return { id: petId, lv: petLv, name: petName || "이름 없는 펫" };
+    }
+    // ✅ V126: 프로필/타일에 공유할 만렙 펫 현황
+    function getLocalPetCollectionInfo(){
+      try{
+        const raw = JSON.parse(localStorage.getItem("mk_pet_growth_v2") || "{}") || {};
+        const pets = raw.pets || {};
+        const ids = Object.keys(pets);
+        const total = Math.max(0, ids.length || 21);
+        let full = 0;
+        ids.forEach(id=>{
+          const sec = Math.max(0, Number(pets[id]?.totalSec || 0));
+          if(sec >= 100 * 3600) full++;
+        });
+        return { fullCount:full, totalCount:total, label:`🏆${full}/${total}` };
+      }catch(e){ return { fullCount:0, totalCount:21, label:"🏆0/21" }; }
     }
     function schedulePetPlaygroundPosSave(pos){
       try{
@@ -12335,6 +12591,38 @@ t.appendChild(bg);
     }
 
 
+    // ✅ V128: 만렙 펫 현황은 heartbeat가 없어도 보이도록 profiles/{uid} 최신값도 함께 구독/병합
+    function normalizePetFullPublicInfo(src){
+      try{
+        const t = (src && src.theme) ? src.theme : (src || {});
+        const full = Math.max(0, Math.floor(Number(t.petFullCount ?? src?.petFullCount ?? 0)));
+        const total = Math.max(1, Math.floor(Number(t.petFullTotal ?? src?.petFullTotal ?? 21)));
+        const ver = String(t.petFullVersion || src?.petFullVersion || '');
+        return { fullCount: full, totalCount: total, version: ver };
+      }catch(e){ return { fullCount:0, totalCount:21, version:'' }; }
+    }
+
+    function mergePublicProfileIntoParticipant(p){
+      try{
+        if(!p || !p.id || !(state.publicProfiles instanceof Map)) return p;
+        const prof = state.publicProfiles.get(String(p.id));
+        if(!prof) return p;
+        const hasPetFullPublic = !!(prof && (((prof.theme||{}).petFullCount !== undefined) || prof.petFullCount !== undefined));
+        if(!hasPetFullPublic) return p;
+        const inf = normalizePetFullPublicInfo(prof);
+        const theme = Object.assign({}, p.theme || {});
+        // presence 값이 없거나 0이어도 profiles 최신값(0/전체 포함)을 보조 출처로 사용한다.
+        const cur = Math.max(0, Math.floor(Number(theme.petFullCount ?? p.petFullCount ?? 0)));
+        if(cur <= 0 || inf.fullCount >= cur || theme.petFullCount === undefined){
+          theme.petFullCount = inf.fullCount;
+          theme.petFullTotal = inf.totalCount;
+          theme.petFullVersion = inf.version || theme.petFullVersion || 'v128-profile';
+          return Object.assign({}, p, { theme });
+        }
+      }catch(e){}
+      return p;
+    }
+
     // Join / Leave
     async function subscribeParticipants(){
       if(state.unsubParticipants) state.unsubParticipants();
@@ -12349,6 +12637,9 @@ t.appendChild(bg);
 
       // ✅ 증분 수신용 맵(전체 스냅샷 onValue 대신 child_* 이벤트로 갱신)
       state.currentParticipants = new Map();
+      state.publicProfiles = new Map();
+      try{ if(state.profileUnsubs instanceof Map){ state.profileUnsubs.forEach(off=>{ try{ off(); }catch(_e){} }); state.profileUnsubs.clear(); } }catch(e){}
+      state.profileUnsubs = new Map();
       // ✅ V71: 재구독/방 전환 시 이전 방 타일 캐시 잔상 방지
       try{ state.lastRendered?.clear?.(); }catch(e){}
 
@@ -12361,7 +12652,10 @@ t.appendChild(bg);
 
           try{
             const map = (state.currentParticipants instanceof Map) ? state.currentParticipants : new Map();
-            const arr = Array.from(map.values()).filter(Boolean);
+            // ✅ V129: presence가 갱신되어도 profiles/{uid}의 만렙 펫 공개값을 매 렌더에 재병합
+            const arr = Array.from(map.values()).filter(Boolean).map(p=>{
+              try{ return mergePublicProfileIntoParticipant(p); }catch(_e){ return p; }
+            });
 
             // 정렬: lastSeen desc
             arr.sort((a,b)=> Number(b.lastSeenAtMs||0) - Number(a.lastSeenAtMs||0));
@@ -12446,7 +12740,8 @@ t.appendChild(bg);
           const uid = snap && snap.key;
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid || !data) return;
-          const p = { id: uid, ...data };
+          attachPublicProfileForUid(uid);
+          const p = mergePublicProfileIntoParticipant({ id: uid, ...data });
           state.currentParticipants.set(uid, p);
           scheduleRecalc();
         }catch(e){}
@@ -12459,6 +12754,7 @@ t.appendChild(bg);
           if(!uid) return;
           if(!data){
             state.currentParticipants.delete(uid);
+            detachPublicProfileForUid(uid);
           }else{
             const p = { id: uid, ...data };
             state.currentParticipants.set(uid, p);
@@ -12470,13 +12766,47 @@ t.appendChild(bg);
       const onRem = (snap)=>{
         try{
           const uid = snap && snap.key;
-          if(uid) state.currentParticipants.delete(uid);
+          if(uid){ state.currentParticipants.delete(uid); detachPublicProfileForUid(uid); }
           scheduleRecalc();
         }catch(e){}
       };
 
       // child_moved: 정렬 키(lastSeenAtMs) 변경으로 순서가 바뀔 때 발생할 수 있음 → 그냥 재계산
       const onMov = (snap)=>{ try{ onChg(snap); }catch(e){} };
+
+      // ✅ V128: profiles/{uid}에서 만렙 펫 공개 현황을 보조로 읽는다.
+      // rules가 profiles/$uid 단위 read를 허용하므로, 루트 목록 구독 대신 온라인 uid별로 가볍게 구독한다.
+      if(!(state.profileUnsubs instanceof Map)) state.profileUnsubs = new Map();
+      const attachPublicProfileForUid = (uid)=>{
+        try{
+          uid = String(uid || '');
+          if(!uid || state.profileUnsubs.has(uid)) return;
+          const pref = rProfileRef(state.roomId, uid);
+          const onProf = (snap)=>{
+            try{
+              const data = (snap && snap.val) ? snap.val() : null;
+              if(!data) return;
+              state.publicProfiles.set(uid, data);
+              const oldP = state.currentParticipants.get(uid);
+              if(oldP){
+                state.currentParticipants.set(uid, mergePublicProfileIntoParticipant(oldP));
+                scheduleRecalc();
+              }
+            }catch(e){}
+          };
+          rOnValue(pref, onProf);
+          state.profileUnsubs.set(uid, ()=>{ try{ rOff(pref, 'value', onProf); }catch(e){} });
+        }catch(e){}
+      };
+      const detachPublicProfileForUid = (uid)=>{
+        try{
+          uid = String(uid || '');
+          const off = state.profileUnsubs?.get?.(uid);
+          if(off) off();
+          state.profileUnsubs?.delete?.(uid);
+          state.publicProfiles?.delete?.(uid);
+        }catch(e){}
+      };
 
       rOnChildAdded(q, onAdd);
       rOnChildChanged(q, onChg);
@@ -12489,6 +12819,13 @@ t.appendChild(bg);
           rOff(q, "child_changed", onChg);
           rOff(q, "child_removed", onRem);
           rOff(q, "child_moved", onMov);
+          try{
+            if(state.profileUnsubs instanceof Map){
+              state.profileUnsubs.forEach(off=>{ try{ off(); }catch(_e){} });
+              state.profileUnsubs.clear();
+            }
+            state.publicProfiles?.clear?.();
+          }catch(_e){}
         }catch(e){}
       };
 
@@ -12559,6 +12896,8 @@ async function joinRoom(){
       setControlsEnabled(true);
       await ensureRoom(state.roomId);
       await ensureMeDoc();
+      // ✅ V128: heartbeat 없이도 보이도록 입장 직후 만렙 펫 현황을 presence + profiles에 1회 공개 저장
+      try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){}
       // ✅ v75: 이번 접속 시점 기준으로 프로필 펫 모션 시작점을 분산
       try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }); }catch(_e){}
       // ✅ (A) 입장 시 관리자 비번(선택) 입력하면 즉시 관리자 모드 언락
@@ -12711,6 +13050,14 @@ try{
       if(state.hbTimer) clearInterval(state.hbTimer);
       state.hbTimer = setInterval(heartbeat, PRESENCE_HEARTBEAT_INTERVAL_MS);
 
+      // ✅ V128: 하트비트/헬퍼를 쓰지 않는 작가님도 만렙 펫 현황은 가끔 공개 프로필에 갱신
+      try{
+        if(state.petPublicTimer) clearInterval(state.petPublicTimer);
+        state.petPublicTimer = setInterval(()=>{
+          try{ if(state.joined && window.__MK_REFRESH_MY_PET_SLOT__) window.__MK_REFRESH_MY_PET_SLOT__(false); }catch(e){}
+        }, 60000);
+      }catch(e){}
+
       try{ localStorage.setItem("mk_last_name", name); }catch(e){}
       els.meHint.textContent = name;
       /* 출근 버튼 UI 갱신 제거됨 */
@@ -12759,6 +13106,7 @@ try{
       if(state.unsubChat) state.unsubChat();
       if(state.unsubKick) state.unsubKick();
       if(state.unsubMissionFeed) state.unsubMissionFeed();
+      try{ if(state.petPublicTimer) clearInterval(state.petPublicTimer); state.petPublicTimer = null; }catch(e){}
       state.unsubParticipants = null;
       state.unsubRoom = null;
       state.unsubChat = null;
@@ -14057,6 +14405,7 @@ try{
           document.querySelectorAll(".reactPicker.open").forEach(p=>{
             if(exceptMsgEl && exceptMsgEl.contains(p)) return;
             p.classList.remove("open");
+            try{ p.closest(".msg")?.classList?.remove("reactOpen"); }catch(_e){}
           });
         }catch(e){}
       }
@@ -14069,6 +14418,7 @@ try{
           const picker = msgEl ? msgEl.querySelector(".reactPicker") : null;
           if(picker){
             const open = picker.classList.toggle("open");
+            try{ msgEl?.classList?.toggle("reactOpen", !!open); }catch(_e){}
             if(picker.classList.contains("open")){ try{ picker.scrollLeft = 0; }catch(e){} }
             if(open) closeAllReactPickers(msgEl);
           }
@@ -16506,6 +16856,16 @@ if(!window.__MK_BOOT_OK__){
   const pctOfLevel = sec => { const s=clampSec(sec); return s>=MAX_SEC ? 100 : Math.round(((s % LEVEL_SEC) / LEVEL_SEC) * 100); };
   const hoursText = sec => { const n = Math.floor((clampSec(sec)/3600)*10)/10; return Number.isInteger(n) ? String(n) : n.toFixed(1); };
   const fmtPetTime = sec => { sec=Math.max(0,Math.floor(Number(sec)||0)); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60); return h ? `${h}시간 ${m}분` : `${m}분`; };
+  // ✅ V126: 만렙 펫 수 집계(100시간/Lv.30 달성 펫)
+  function petFullCountOf(st){
+    try{ return PETS.reduce((n,p)=> n + (clampSec(st?.pets?.[p.id]?.totalSec || 0) >= MAX_SEC ? 1 : 0), 0); }catch(e){ return 0; }
+  }
+  function petFullTotal(){ try{ return PETS.length; }catch(e){ return 0; } }
+  function petFullLabel(st){
+    const c = petFullCountOf(st);
+    const t = petFullTotal();
+    return `🏆 만렙 ${c}/${t}`;
+  }
 
   function baseState(){
     const pets={};
@@ -16646,7 +17006,7 @@ if(!window.__MK_BOOT_OK__){
     box.dataset.petReady = 'v33';
     box.classList.add('petDashBox');
     const row = box.closest('.dashRow'); if(row) row.classList.add('petDashRowReady');
-    box.innerHTML = `<div class="petDashInner petDashOnlyCurrent" id="petDashInner" title="펫 상세 정보 열기"><div class="petHeroArtWrap"><div id="petHeroArt"></div></div><div class="petHeroInfo"><div class="petHeroName" id="petHeroName">작은 고양이</div></div></div>`;
+    box.innerHTML = `<div class="petDashInner petDashOnlyCurrent" id="petDashInner" title="펫 상세 정보 열기"><div class="petHeroArtWrap"><div id="petHeroArt"></div></div><div class="petHeroInfo"><div class="petHeroName" id="petHeroName">작은 고양이</div><div class="petHeroFullCount" id="petHeroFullCount">🏆 만렙 0/0</div></div></div>`;
     box.addEventListener('click', openModal);
   }
   function renderDash(){
@@ -16681,6 +17041,12 @@ if(!window.__MK_BOOT_OK__){
       name.setAttribute('aria-label', `펫 레벨 ${lv}`);
       if(name.textContent !== nextName) name.textContent = nextName;
     }
+    const fullCountEl = document.getElementById('petHeroFullCount');
+    if(fullCountEl){
+      const label = petFullLabel(st);
+      if(fullCountEl.textContent !== label) fullCountEl.textContent = label;
+      fullCountEl.title = 'Lv.30까지 키운 펫 수';
+    }
     const status = document.getElementById('petHeroStatus'); if(status) status.textContent = '';
     const exp = document.getElementById('petHeroExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
     const bar = document.getElementById('petHeroBar'); if(bar) bar.style.width = pctOfLevel(sec) + '%';
@@ -16706,7 +17072,7 @@ if(!window.__MK_BOOT_OK__){
     if(!ov){ ov = document.createElement('div'); ov.id='petModal'; document.body.appendChild(ov); }
     if(ov.dataset.petV2 === 'v24') return;
     ov.dataset.petV2 = 'v24'; ov.className = 'modalOverlay petModalV2'; ov.setAttribute('aria-hidden','true');
-    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="펫 상세 정보"><div class="modalHeader"><div class="t">펫 상세 정보</div><button id="petCloseBtn" class="ghost" type="button">×</button></div><div class="petV24Body"><div class="petSection"><div class="petSectionTitle"><span>펫 종류</span><span class="tiny">원하는 펫을 선택해 주세요</span></div><div id="petLibrary" class="petLibrary"></div></div><div class="petSection"><div class="petSectionTitle">현재 펫</div><div class="petCurrentPanel"><div id="petCurrentArt" class="petCurrentArt"></div><div class="petCurrentInfo"><div class="lv" id="petCurrentLv">Lv.0 / 30</div><h4 id="petCurrentName">작은 고양이</h4><div class="meta"><span>성장 경험치</span><b id="petCurrentExp">0 / 100시간</b></div><div class="petHeroProgress"><i id="petCurrentBar"></i></div><div class="meta"><span>다음 성장까지</span><b id="petCurrentNext">-</b></div><div class="tip">✨ 작업중 상태일 때만 펫 성장 시간이 누적돼요.<br>총 100시간에 Lv.30까지 성장하고, Lv.5 단위로 외형 변화가 또렷하게 바뀝니다.</div></div></div></div><div class="petSection"><div class="petSectionTitle">펫 설정</div><div class="petSelectLine"><div class="petSelectMini"><label>성장 중인 펫</label><select id="petGrowingSelect"></select></div><div class="petSelectMini"><label>활성 펫</label><select id="petActiveSelect"></select></div></div><div class="petNameEditV24"><input id="petNameEditInput" placeholder="선택한 펫 별명" maxlength="16"><button id="petNameSaveBtn" class="primary" type="button">별명 저장</button><button id="petNameResetBtn" class="ghost" type="button">초기화</button></div><div class="petGrowthSwitchLine"><div class="tiny">펫 성장 누적 ON/OFF</div><button id="petGrowthSwitch" class="petSwitchV2" type="button" aria-label="펫 성장 누적"></button></div><div class="petGrowthSwitchLine"><div class="tiny">현재 펫 성장 경험치</div><button id="petGrowthResetBtn" class="ghost" type="button">성장 초기화</button></div></div></div></div>`;
+    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="펫 상세 정보"><div class="modalHeader"><div class="t">펫 상세 정보</div><button id="petCloseBtn" class="ghost" type="button">×</button></div><div class="petV24Body"><div class="petSection"><div class="petSectionTitle"><span>펫 종류</span><span class="tiny">원하는 펫을 선택해 주세요</span></div><div id="petLibrary" class="petLibrary"></div></div><div class="petSection"><div class="petSectionTitle">현재 펫</div><div class="petCurrentPanel"><div id="petCurrentArt" class="petCurrentArt"></div><div class="petCurrentInfo"><div class="lv" id="petCurrentLv">Lv.0 / 30</div><div class="petHeroFullCount" id="petCurrentFullCount">🏆 만렙 0/0</div><h4 id="petCurrentName">작은 고양이</h4><div class="meta"><span>성장 경험치</span><b id="petCurrentExp">0 / 100시간</b></div><div class="petHeroProgress"><i id="petCurrentBar"></i></div><div class="meta"><span>다음 성장까지</span><b id="petCurrentNext">-</b></div><div class="tip">✨ 작업중 상태일 때만 펫 성장 시간이 누적돼요.<br>총 100시간에 Lv.30까지 성장하고, Lv.5 단위로 외형 변화가 또렷하게 바뀝니다.</div></div></div></div><div class="petSection"><div class="petSectionTitle">펫 설정</div><div class="petSelectLine"><div class="petSelectMini"><label>성장 중인 펫</label><select id="petGrowingSelect"></select></div><div class="petSelectMini"><label>활성 펫</label><select id="petActiveSelect"></select></div></div><div class="petNameEditV24"><input id="petNameEditInput" placeholder="선택한 펫 별명" maxlength="16"><button id="petNameSaveBtn" class="primary" type="button">별명 저장</button><button id="petNameResetBtn" class="ghost" type="button">초기화</button></div><div class="petGrowthSwitchLine"><div class="tiny">펫 성장 누적 ON/OFF</div><button id="petGrowthSwitch" class="petSwitchV2" type="button" aria-label="펫 성장 누적"></button></div><div class="petGrowthSwitchLine"><div class="tiny">현재 펫 성장 경험치</div><button id="petGrowthResetBtn" class="ghost" type="button">성장 초기화</button></div></div></div></div>`;
     ov.addEventListener('click', e => { if(e.target === ov) closeModal(); });
     ov.querySelector('#petCloseBtn')?.addEventListener('click', closeModal);
     ov.querySelector('#petGrowthSwitch')?.addEventListener('click', () => { const st=loadState(); st.growthEnabled=!st.growthEnabled; saveState(st); renderAll(); });
@@ -16731,6 +17097,7 @@ if(!window.__MK_BOOT_OK__){
     const art=document.getElementById('petCurrentArt'); if(art){ art.innerHTML = petArt(active, lv, 'current'); ensureSizeControls(); }
     const nm=document.getElementById('petCurrentName'); if(nm) nm.textContent = displayName(active);
     const lvE=document.getElementById('petCurrentLv'); if(lvE) lvE.textContent = `Lv.${lv} / 30`;
+    const fullE=document.getElementById('petCurrentFullCount'); if(fullE) fullE.textContent = petFullLabel(st);
     const exp=document.getElementById('petCurrentExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
     const bar=document.getElementById('petCurrentBar'); if(bar) bar.style.width = pctOfLevel(sec)+'%';
     const next=document.getElementById('petCurrentNext'); if(next){ const remain=sec>=MAX_SEC ? 0 : LEVEL_SEC - (sec % LEVEL_SEC); next.textContent = sec>=MAX_SEC ? '최종 성장 완료' : fmtPetTime(remain); }
