@@ -14867,14 +14867,18 @@ joinRoom();
   petCloudStart();
 
   /* ================= ✅ 손캠(HandCam) V2 SAFE + BUTTON FIX + ECONOMY CAP =================
-     - Cloudflare Realtime SFU 기반 웹캠 송출 (최대 6명, 선착순)
-     - RTDB: rooms/{roomId}/handcam/live/{slotId} (슬롯 0~5)
+     - Cloudflare Realtime SFU 기반 웹캠 송출 (최대 9명, 선착순)
+     - RTDB: rooms/{roomId}/handcam/live/{slotId} (슬롯 0~8)
      - 각 슬롯을 개별 트랜잭션으로 확보해, Rules에서 본인 슬롯만 수정 가능
      - ready:false로 슬롯만 먼저 확보 → 실제 송출 성공 뒤 ready:true로 공개
      - 기본 타일이 보일 때만 원격 영상을 구독해 미니/모바일/백그라운드 데이터 낭비 방지
   */
   (function(){
-    const HC_MAX = 6;
+    const HC_MAX = 9;
+    // V4 안정화: RTDB/WebRTC가 잠깐 흔들려도 내 손캠을 즉시 끄지 않고 복구를 먼저 시도합니다.
+    const HC_SELF_RECOVER_MS = 7000;
+    const HC_PENDING_RECOVER_MS = 6500;
+    const HC_PC_FAIL_GRACE_MS = 8000;
     // ⛳ 배포한 Cloudflare Worker 주소로 교체하세요. 반드시 /api/calls까지 포함합니다.
     const HC_WORKER_URL = "https://magam-handcam-worker.sukk5753.workers.dev/api/calls";
 
@@ -14892,6 +14896,9 @@ joinRoom();
       mountT: null,
       lifecycleBusy: false,
       gridObserver: null,
+      liveMissingTimer: null,
+      pendingMissingTimer: null,
+      publishFailTimer: null,
       // 기본값 OFF: 실제 원격 WebRTC 구독은 사용자가 보기 버튼을 눌렀을 때만 시작합니다.
       viewerEnabled: false
     };
@@ -15030,6 +15037,82 @@ joinRoom();
       }catch(e){}
     }
 
+    // ---------- 내 손캠 생존/복구 보조 ----------
+    function hcClearTimer(name){
+      try{ if(hc[name]) clearTimeout(hc[name]); }catch(e){}
+      hc[name] = null;
+    }
+
+    async function refreshOwnLive(reason){
+      const my = hc.my;
+      if(!my || !my.roomId || my.slotId === null || my.slotId === undefined) return false;
+      const uid = String(my.uid || state.uid || "");
+      if(!uid || !my.sessionId || !my.trackName) return false;
+      const ref = hcSlotRef(my.roomId, my.slotId);
+      const payload = {
+        uid,
+        name: normalizeNick(state.nickname || my.name || uid),
+        sessionId: my.sessionId,
+        trackName: my.trackName,
+        ts: Date.now(),
+        ready: true
+      };
+      try{
+        const tx = await rRunTransaction(ref, (cur)=>{
+          if(cur && String(cur.uid || "") !== uid) return; // 같은 슬롯을 다른 사람이 이미 가져갔으면 덮어쓰지 않음
+          return payload;
+        });
+        const own = tx && tx.committed && tx.snapshot && tx.snapshot.val && tx.snapshot.val();
+        if(!own || String(own.uid || "") !== uid) return false;
+        try{ await rOnDisconnect(ref).remove(); }catch(e){}
+        return true;
+      }catch(e){
+        console.warn("[handcam] refreshOwnLive failed", reason, e);
+        return false;
+      }
+    }
+
+    function scheduleOwnLiveMissingCheck(){
+      hcClearTimer("liveMissingTimer");
+      const target = hc.my;
+      const uid = String(target && target.uid || state.uid || "");
+      if(!target || !uid) return;
+      hc.liveMissingTimer = setTimeout(async()=>{
+        hc.liveMissingTimer = null;
+        try{
+          if(!hc.my || hc.my !== target || HC_LIVE.has(uid)) return;
+          const ok = await refreshOwnLive("live-missing");
+          if(ok){
+            scheduleMount();
+            return;
+          }
+          setTimeout(()=>{
+            try{
+              if(hc.my === target && uid && !HC_LIVE.has(uid)){
+                stopMyCam(true).catch(()=>{});
+              }
+            }catch(e){}
+          }, 1600);
+        }catch(e){}
+      }, HC_SELF_RECOVER_MS);
+    }
+
+    function schedulePendingMissingCheck(rawLive){
+      hcClearTimer("pendingMissingTimer");
+      const target = hc.pending;
+      if(!target) return;
+      hc.pendingMissingTimer = setTimeout(()=>{
+        hc.pendingMissingTimer = null;
+        try{
+          const cur = hc.pending;
+          if(!cur || cur !== target) return;
+          const liveNow = rawLive || {};
+          if(Object.prototype.hasOwnProperty.call(liveNow, String(cur.slotId))) return;
+          stopMyCam(true).catch(()=>{});
+        }catch(e){}
+      }, HC_PENDING_RECOVER_MS);
+    }
+
     // ---------- live 스냅샷 수신 ----------
     function onLiveSnap(snap){
       try{
@@ -15057,15 +15140,15 @@ joinRoom();
         HC_LIVE.clear();
         for(const [k, d] of next) HC_LIVE.set(k, d);
 
-        // 내 라이브 레코드가 강제 정리됐거나 네트워크 단절로 사라진 경우, 로컬 카메라도 정리.
+        // 내 라이브 레코드가 잠깐 사라져도 바로 끄지 않고, 먼저 슬롯 복구를 시도합니다.
+        // RTDB onDisconnect가 순간 네트워크 단절에도 실행될 수 있어서 즉시 stop하면 손캠이 혼자 꺼질 수 있습니다.
         const myUid = String(hc.my && hc.my.uid || state.uid || "");
-        if(hc.my && myUid && !HC_LIVE.has(myUid)){
-          stopMyCam(true).catch(()=>{});
-        }
-        // ready:false 상태에서 누군가 내 예약 레코드를 삭제한 경우에도 카메라/슬롯을 정리.
-        if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slotId))){
-          stopMyCam(true).catch(()=>{});
-        }
+        if(hc.my && myUid && !HC_LIVE.has(myUid)) scheduleOwnLiveMissingCheck();
+        else hcClearTimer("liveMissingTimer");
+
+        // 시작 중 ready:false 예약 슬롯이 잠깐 사라지는 경우도 짧게 유예합니다.
+        if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slotId))) schedulePendingMissingCheck(v);
+        else hcClearTimer("pendingMissingTimer");
 
         syncPulls();
         if(changed) hcResort();
@@ -15075,7 +15158,7 @@ joinRoom();
 
     // ---------- 송출 시작/종료 ----------
     async function reserveSlot(roomId, uid, nickname){
-      // 6개의 고정 슬롯을 하나씩 확보합니다.
+      // HC_MAX개의 고정 슬롯을 하나씩 확보합니다.
       // transaction이 live 전체가 아니라 live/{slotId}에서 실행되므로,
       // RTDB Rules가 다른 사람의 슬롯 수정을 허용할 필요가 없습니다.
       const start = Math.floor(Math.random() * HC_MAX);
@@ -15229,13 +15312,27 @@ joinRoom();
         }
 
         const stopWhenEnded = ()=>{
+          // 카메라 권한/장치가 실제로 끝난 경우는 자동 복구가 불가능하므로 정리합니다.
           if(hc.my && hc.my.pc === pc) stopMyCam(true).catch(()=>{});
         };
         track.addEventListener("ended", stopWhenEnded, { once:true });
         pc.addEventListener("connectionstatechange", ()=>{
           try{
-            if(hc.my && hc.my.pc === pc && ["failed", "closed"].includes(pc.connectionState)){
-              stopMyCam(true).catch(()=>{});
+            if(!(hc.my && hc.my.pc === pc)) return;
+            const st = pc.connectionState;
+            if(st === "connected"){
+              hcClearTimer("publishFailTimer");
+              refreshOwnLive("pc-connected").catch(()=>{});
+            }else if(st === "failed" || st === "closed"){
+              hcClearTimer("publishFailTimer");
+              const target = hc.my;
+              hc.publishFailTimer = setTimeout(()=>{
+                try{
+                  if(hc.my === target && hc.my && hc.my.pc === pc && (pc.connectionState === "failed" || pc.connectionState === "closed")){
+                    stopMyCam(true).catch(()=>{});
+                  }
+                }catch(e){}
+              }, HC_PC_FAIL_GRACE_MS);
             }
           }catch(e){}
         });
@@ -15261,7 +15358,7 @@ joinRoom();
           ready: true
         });
 
-        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId };
+        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname };
         hc.pending = null;
         scheduleMount();
       }catch(e){
@@ -15290,6 +15387,9 @@ joinRoom();
       hc.my = null;
       hc.pending = null;
       hc.starting = false;
+      hcClearTimer("liveMissingTimer");
+      hcClearTimer("pendingMissingTimer");
+      hcClearTimer("publishFailTimer");
 
       const active = my || pending;
       try{
@@ -15653,19 +15753,20 @@ joinRoom();
 
     document.addEventListener("visibilitychange", ()=>{
       syncPulls();
-      if(document.visibilityState === "visible") scheduleMount();
+      if(document.visibilityState === "visible"){
+        refreshOwnLive("visible").catch(()=>{});
+        scheduleMount();
+      }
     });
 
+    setInterval(()=>{ try{ if(hc.my) refreshOwnLive("heartbeat").catch(()=>{}); }catch(e){} }, 10000);
     setInterval(()=>{ lifecycleTick(); }, 1200);
     lifecycleTick();
 
     window.addEventListener("pagehide", ()=>{
-      try{
-        const active = hc.my || hc.pending;
-        if(active && active.roomId && active.slotId !== null && active.slotId !== undefined){
-          rRemove(hcSlotRef(active.roomId, active.slotId));
-        }
-      }catch(e){}
+      // pagehide는 앱 전환/브라우저 BFCache에서도 발생할 수 있어 손캠을 직접 삭제하지 않습니다.
+      // 실제 탭 종료·네트워크 단절 정리는 onDisconnect에 맡기고, 정상 퇴장은 stopMyCam/teardownAll에서 처리합니다.
+      try{ if(hc.my) refreshOwnLive("pagehide").catch(()=>{}); }catch(e){}
     });
 
     window.__MK_HANDCAM__ = {
