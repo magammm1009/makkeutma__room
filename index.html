@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam </title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam v15</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -5861,11 +5861,20 @@ function toast(msg, ms=1600){
               if(info && !used.has(id)) live.push({ p, info, id });
             }
             live.sort((a,b)=>{
-              const ta = Number(a.info && a.info.ts || 0);
-              const tb = Number(b.info && b.info.ts || 0);
+              // ✅ HANDCAM_ORDER_STABLE_V2
+              // 정렬은 live.ts를 직접 쓰지 않고, 손캠이 처음 관측된 순간 고정한 orderAt을 우선 사용합니다.
+              // 이렇게 해야 live.ts가 heartbeat/복구/구버전 클라이언트에서 갱신되어도 타일 순서가 흔들리지 않습니다.
+              const order = window.__MK_HANDCAM_ORDER__;
+              const oa = order && order.get ? order.get(String(a.id || "")) : null;
+              const ob = order && order.get ? order.get(String(b.id || "")) : null;
+              const ta = Number(oa && oa.orderAt || a.info && a.info.ts || 0);
+              const tb = Number(ob && ob.orderAt || b.info && b.info.ts || 0);
               if(ta !== tb) return ta - tb;
-              const sa = Number(a.info && a.info.slotId);
-              const sb = Number(b.info && b.info.slotId);
+              const qa = Number(oa && oa.seq || 0);
+              const qb = Number(ob && ob.seq || 0);
+              if(qa !== qb) return qa - qb;
+              const sa = Number(oa && oa.slotId || a.info && a.info.slotId);
+              const sb = Number(ob && ob.slotId || b.info && b.info.slotId);
               if(Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) return sa - sb;
               return String(a.id || "").localeCompare(String(b.id || ""), "ko");
             });
@@ -14888,6 +14897,14 @@ joinRoom();
     const HC_LIVE = new Map(); // uid -> {name, sessionId, trackName, ts}
     window.__MK_HANDCAM_LIVE__ = HC_LIVE; // tileKey / applyPinnedOrder에서 참조
 
+    // ✅ HANDCAM_ORDER_STABLE_V2
+    // live 레코드의 ts가 heartbeat/복구/구버전 클라이언트 때문에 다시 찍혀도
+    // 화면 정렬은 “처음 관측한 손캠 시작 순서”로 고정합니다.
+    const HC_ORDER = new Map(); // uid -> { orderAt, seq, slotId, lastSeenAt }
+    let HC_ORDER_SEQ = 0;
+    window.__MK_HANDCAM_ORDER__ = HC_ORDER;
+    const HC_ORDER_KEEP_MS = 30000;
+
     const hc = {
       my: null,        // {pc, stream, sessionId, trackName, mid, roomId, uid, slotId}
       pending: null,     // {stream, roomId, uid, slotId}: 슬롯만 확보하고 아직 공개 전인 시작 단계
@@ -15125,6 +15142,41 @@ joinRoom();
       }, HC_PENDING_RECOVER_MS);
     }
 
+    function updateHandcamStableOrder(next){
+      try{
+        const now = Date.now();
+        const alive = new Set();
+        for(const [uid, d] of next){
+          const key = String(uid || "");
+          if(!key) continue;
+          alive.add(key);
+          const rawTs = Number(d && d.ts || 0);
+          const rawSlot = Number(d && d.slotId);
+          const prev = HC_ORDER.get(key);
+          if(prev){
+            // 이미 잡힌 순서는 뒤로 밀지 않습니다. 단, 더 이른 시작값이 들어오면 보정합니다.
+            if(rawTs > 0 && (!prev.orderAt || rawTs < prev.orderAt)) prev.orderAt = rawTs;
+            if(Number.isFinite(rawSlot)) prev.slotId = rawSlot;
+            prev.lastSeenAt = now;
+          }else{
+            HC_ORDER.set(key, {
+              orderAt: rawTs > 0 ? rawTs : now,
+              seq: ++HC_ORDER_SEQ,
+              slotId: Number.isFinite(rawSlot) ? rawSlot : 9999,
+              lastSeenAt: now
+            });
+          }
+        }
+        // 순간 누락/복구 때문에 순서가 리셋되지 않도록 짧게 보존하고, 진짜 꺼진 뒤에만 제거합니다.
+        for(const [uid, info] of Array.from(HC_ORDER.entries())){
+          if(alive.has(uid)) continue;
+          if(!info || now - Number(info.lastSeenAt || 0) > HC_ORDER_KEEP_MS){
+            HC_ORDER.delete(uid);
+          }
+        }
+      }catch(e){}
+    }
+
     // ---------- live 스냅샷 수신 ----------
     function onLiveSnap(snap){
       try{
@@ -15148,6 +15200,8 @@ joinRoom();
             if(!o || o.sessionId !== d.sessionId || o.trackName !== d.trackName || Number(o.ts || 0) !== Number(d.ts || 0) || String(o.name || "") !== String(d.name || "")){ changed = true; break; }
           }
         }
+
+        updateHandcamStableOrder(next);
 
         HC_LIVE.clear();
         for(const [k, d] of next) HC_LIVE.set(k, d);
