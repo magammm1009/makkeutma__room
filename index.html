@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam v15</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam </title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -5864,7 +5864,10 @@ function toast(msg, ms=1600){
               const ta = Number(a.info && a.info.ts || 0);
               const tb = Number(b.info && b.info.ts || 0);
               if(ta !== tb) return ta - tb;
-              return String(a.p && a.p.name || "").localeCompare(String(b.p && b.p.name || ""), "ko");
+              const sa = Number(a.info && a.info.slotId);
+              const sb = Number(b.info && b.info.slotId);
+              if(Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) return sa - sb;
+              return String(a.id || "").localeCompare(String(b.id || ""), "ko");
             });
             for(const item of live){ out.push(item.p); used.add(item.id); }
           }
@@ -15049,12 +15052,14 @@ joinRoom();
       const uid = String(my.uid || state.uid || "");
       if(!uid || !my.sessionId || !my.trackName) return false;
       const ref = hcSlotRef(my.roomId, my.slotId);
+      const liveNow = HC_LIVE.get(uid) || {};
+      const stableTs = Number(my.startedAt || liveNow.ts || 0) || Date.now();
       const payload = {
         uid,
         name: normalizeNick(state.nickname || my.name || uid),
         sessionId: my.sessionId,
         trackName: my.trackName,
-        ts: Date.now(),
+        ts: stableTs,
         ready: true
       };
       try{
@@ -15064,6 +15069,7 @@ joinRoom();
         });
         const own = tx && tx.committed && tx.snapshot && tx.snapshot.val && tx.snapshot.val();
         if(!own || String(own.uid || "") !== uid) return false;
+        try{ my.startedAt = Number(own.ts || stableTs); }catch(e){}
         try{ await rOnDisconnect(ref).remove(); }catch(e){}
         return true;
       }catch(e){
@@ -15097,17 +15103,23 @@ joinRoom();
       }, HC_SELF_RECOVER_MS);
     }
 
-    function schedulePendingMissingCheck(rawLive){
+    function schedulePendingMissingCheck(){
       hcClearTimer("pendingMissingTimer");
       const target = hc.pending;
       if(!target) return;
-      hc.pendingMissingTimer = setTimeout(()=>{
+      hc.pendingMissingTimer = setTimeout(async()=>{
         hc.pendingMissingTimer = null;
         try{
           const cur = hc.pending;
           if(!cur || cur !== target) return;
-          const liveNow = rawLive || {};
-          if(Object.prototype.hasOwnProperty.call(liveNow, String(cur.slotId))) return;
+          // 스냅샷이 일시적으로 비어 보인 것인지, 실제로 슬롯이 사라졌는지 한 번 더 확인합니다.
+          // 이전 스냅샷 값을 그대로 믿고 정리하면 시작 중 손캠이 혼자 꺼질 수 있습니다.
+          let slotVal = null;
+          try{
+            const ss = await rGet(hcSlotRef(cur.roomId, cur.slotId));
+            slotVal = ss && ss.val ? ss.val() : null;
+          }catch(_e){}
+          if(slotVal && String(slotVal.uid || "") === String(cur.uid || state.uid || "")) return;
           stopMyCam(true).catch(()=>{});
         }catch(e){}
       }, HC_PENDING_RECOVER_MS);
@@ -15133,7 +15145,7 @@ joinRoom();
         if(!changed){
           for(const [k, d] of next){
             const o = HC_LIVE.get(k);
-            if(!o || o.sessionId !== d.sessionId || o.trackName !== d.trackName){ changed = true; break; }
+            if(!o || o.sessionId !== d.sessionId || o.trackName !== d.trackName || Number(o.ts || 0) !== Number(d.ts || 0) || String(o.name || "") !== String(d.name || "")){ changed = true; break; }
           }
         }
 
@@ -15147,7 +15159,7 @@ joinRoom();
         else hcClearTimer("liveMissingTimer");
 
         // 시작 중 ready:false 예약 슬롯이 잠깐 사라지는 경우도 짧게 유예합니다.
-        if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slotId))) schedulePendingMissingCheck(v);
+        if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slotId))) schedulePendingMissingCheck();
         else hcClearTimer("pendingMissingTimer");
 
         syncPulls();
@@ -15157,7 +15169,7 @@ joinRoom();
     }
 
     // ---------- 송출 시작/종료 ----------
-    async function reserveSlot(roomId, uid, nickname){
+    async function reserveSlot(roomId, uid, nickname, startedAt){
       // HC_MAX개의 고정 슬롯을 하나씩 확보합니다.
       // transaction이 live 전체가 아니라 live/{slotId}에서 실행되므로,
       // RTDB Rules가 다른 사람의 슬롯 수정을 허용할 필요가 없습니다.
@@ -15172,13 +15184,13 @@ joinRoom();
             return {
               uid: String(uid),
               name: String(nickname || uid).slice(0, 40),
-              ts: Date.now(),
+              ts: Number(startedAt || Date.now()),
               ready: false
             };
           });
 
           const own = tx && tx.committed && tx.snapshot && tx.snapshot.val && tx.snapshot.val();
-          if(own && String(own.uid || "") === String(uid)) return slotId;
+          if(own && String(own.uid || "") === String(uid)) return { slotId, startedAt: Number(own.ts || startedAt || Date.now()) };
         }catch(e){
           // 다음 슬롯을 시도합니다.
         }
@@ -15237,14 +15249,17 @@ joinRoom();
       }
 
       const nickname = normalizeNick(state.nickname || state.currentParticipants?.get?.(uid)?.name || uid);
+      const startedAt = Date.now();
 
-      let slotId = null;
+      let slotInfo = null;
       try{
-        slotId = await reserveSlot(roomId, uid, nickname);
+        slotInfo = await reserveSlot(roomId, uid, nickname, startedAt);
       }catch(e){
-        slotId = null;
+        slotInfo = null;
       }
-      if(slotId === null){
+      const slotId = slotInfo && slotInfo.slotId;
+      const stableStartedAt = Number(slotInfo && slotInfo.startedAt || startedAt);
+      if(slotId === null || slotId === undefined){
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
         hc.starting = false;
         updateMyBtn();
@@ -15266,7 +15281,7 @@ joinRoom();
         return;
       }
 
-      hc.pending = { stream, roomId, uid, slotId };
+      hc.pending = { stream, roomId, uid, slotId, startedAt: stableStartedAt };
       // 권한 허용 직후 내 타일에 즉시 로컬 미리보기를 붙입니다.
       scheduleMount();
 
@@ -15354,11 +15369,11 @@ joinRoom();
           name: nickname,
           sessionId,
           trackName,
-          ts: Date.now(),
+          ts: stableStartedAt,
           ready: true
         });
 
-        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname };
+        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname, startedAt: stableStartedAt };
         hc.pending = null;
         scheduleMount();
       }catch(e){
