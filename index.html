@@ -3626,6 +3626,139 @@ body.joined #preJoinCard{ display:none; }
     body.joined #chatCard .chatInputRow button{min-height:34px !important;}
   }
 }
+
+
+/* ===== V132: 상단 상태줄 살짝 확대 + 펫 메달 색상은 닉네임 설정과 연동 ===== */
+.statusBar{min-width:0; overflow:hidden;}
+.statusLeft{
+  flex-wrap:nowrap !important;
+  gap:5px !important;
+  max-width:100%;
+  overflow:hidden;
+}
+.statusLeft .badge,
+.statusLeft .namePill,
+.statusLeft .petFullTileBadge,
+.statusLeft .missionMedal{
+  min-height:32px !important;
+  height:32px !important;
+  border-radius:11px !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  flex:0 0 auto;
+}
+.statusLeft .badge{
+  padding:0 8px !important;
+  font-size:11.5px !important;
+  max-width:72px;
+}
+.statusLeft .namePill{
+  flex:1 1 auto !important;
+  min-width:48px !important;
+  max-width:82px !important;
+  padding:0 8px !important;
+  font-size:11.5px !important;
+}
+.statusLeft .petFullTileBadge{
+  padding:0 7px !important;
+  font-size:11px !important;
+  max-width:62px;
+}
+.statusLeft .missionMedal{
+  padding:0 7px !important;
+  font-size:13px !important;
+  max-width:40px;
+}
+.namePill .petFullMini{display:none !important;}
+.grid.compact5 .statusLeft{gap:5px !important;}
+.grid.compact5 .badge,
+.grid.compact5 .namePill,
+.grid.compact5 .petFullTileBadge,
+.grid.compact5 .missionMedal{
+  min-height:30px !important;
+  height:30px !important;
+  font-size:10.8px !important;
+  border-radius:10px !important;
+}
+.grid.compact5 .badge{max-width:66px !important; padding:0 7px !important;}
+.grid.compact5 .namePill{max-width:76px !important; padding:0 7px !important;}
+.grid.compact5 .petFullTileBadge{max-width:58px !important; padding:0 6px !important;}
+.grid.compact5 .missionMedal{font-size:12.5px !important; padding:0 6px !important;}
+
+
+/* ===== V133: 상태 버튼 4글자(휴식중/자리비움) 잘림 방지 + 한 줄 유지 최종 보정 ===== */
+.statusLeft{
+  gap:4px !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
+}
+.statusLeft .badge{
+  min-width:76px !important;
+  max-width:92px !important;
+  padding:0 8px !important;
+  font-size:11.2px !important;
+  letter-spacing:-.55px !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  flex:0 0 auto !important;
+}
+.statusLeft .badge .stIcon{
+  flex:0 0 auto !important;
+  margin-right:2px !important;
+}
+.statusLeft .badge span{
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+.statusLeft .namePill{
+  min-width:38px !important;
+  max-width:74px !important;
+  padding:0 7px !important;
+  font-size:11.1px !important;
+  letter-spacing:-.55px !important;
+  flex:1 1 auto !important;
+}
+.statusLeft .petFullTileBadge{
+  min-width:45px !important;
+  max-width:58px !important;
+  padding:0 5px !important;
+  font-size:10.5px !important;
+  letter-spacing:-.55px !important;
+  flex:0 0 auto !important;
+}
+.statusLeft .missionMedal{
+  min-width:30px !important;
+  max-width:34px !important;
+  padding:0 5px !important;
+  flex:0 0 auto !important;
+}
+.grid.compact5 .statusLeft{gap:4px !important;}
+.grid.compact5 .badge{
+  min-width:74px !important;
+  max-width:88px !important;
+  padding:0 7px !important;
+  font-size:10.8px !important;
+  letter-spacing:-.6px !important;
+}
+.grid.compact5 .namePill{
+  min-width:34px !important;
+  max-width:68px !important;
+  padding:0 6px !important;
+  font-size:10.7px !important;
+}
+.grid.compact5 .petFullTileBadge{
+  min-width:43px !important;
+  max-width:54px !important;
+  padding:0 5px !important;
+  font-size:10px !important;
+}
+.grid.compact5 .missionMedal{
+  min-width:28px !important;
+  max-width:32px !important;
+  padding:0 4px !important;
+}
+
 </style>
 
 <style id="mobileChatVisibleFixV106">
@@ -10312,10 +10445,33 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       }catch(e){}
     }
 
+    // ✅ V99 reaction picker persist: 새 채팅/리렌더가 올라와도 사용자가 열어둔 리액션 선택창 유지
+    function getOpenReactMsgId(){
+      try{
+        if(state && state.openReactMsgId) return String(state.openReactMsgId);
+        const p = document.querySelector(".reactPicker.open");
+        return p ? String(p.getAttribute("data-msg-id") || "") : "";
+      }catch(e){ return ""; }
+    }
+    function restoreOpenReactPicker(msgId){
+      try{
+        msgId = String(msgId || "");
+        if(!msgId) return;
+        const safeId = (window.CSS && CSS.escape) ? CSS.escape(msgId) : msgId.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+        const picker = els.chatList ? els.chatList.querySelector(`.reactPicker[data-msg-id="${safeId}"]`) : null;
+        if(!picker) return;
+        const msgEl = picker.closest(".msg");
+        picker.classList.add("open");
+        if(msgEl) msgEl.classList.add("reactOpen");
+        try{ picker.scrollLeft = 0; }catch(e){}
+      }catch(e){}
+    }
+
     function renderChatFull(list, forceBottom){
       const el = els.chatList;
       if(!el) return;
       const nearBottom = (typeof forceBottom === "boolean") ? forceBottom : isChatNearBottom();
+      const keepOpenReactMsgId = getOpenReactMsgId();
 
       // ✅ keep "more" bar (inside chatList) across full re-renders
       let keepMore = null;
@@ -10350,6 +10506,8 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
         frag.appendChild(makeMsgNode(m));
       }
       el.appendChild(frag);
+      // ✅ V99: full re-render 뒤에도 열어둔 리액션 팔레트 복구
+      if(keepOpenReactMsgId) requestAnimationFrame(()=>restoreOpenReactPicker(keepOpenReactMsgId));
 
       // ✅ V97: DOM 최종 정리 — "내 채팅만 두 번" 뜨는 로컬 임시 말풍선까지 제거
       // Firebase에는 1개만 있는데 화면에만 2개면, 공식 msgId가 있는 말풍선 + id 없는 임시 말풍선이 같이 남은 케이스가 많다.
@@ -11300,17 +11458,6 @@ async function sendChatCore(text, isFlush=false){
       _nameMini.textContent = _miniName + (!isOnlinePresence(p) ?"🚫":"");
       namePill.appendChild(_nameFull);
       namePill.appendChild(_nameMini);
-      try{
-        const fullCnt = Math.max(0, Math.floor(Number(p.theme?.petFullCount ?? p.petFullCount ?? 0)));
-        const fullTotal = Math.max(1, Math.floor(Number(p.theme?.petFullTotal ?? p.petFullTotal ?? 21)));
-        if(fullCnt > 0){
-          const pf = document.createElement("span");
-          pf.className = "petFullMini";
-          pf.textContent = `🏆${fullCnt}`;
-          pf.title = `만렙 펫 ${fullCnt}/${fullTotal}`;
-          namePill.appendChild(pf);
-        }
-      }catch(e){}
       const nameAccent = clampHexColor(p.theme?.bubbleColor || p.theme?.bgColor || "#ffd0e2");
       namePill.style.background = hexToRgba(nameAccent, 0.22);
       namePill.style.borderColor = hexToRgba(nameAccent,0.55);
@@ -11326,6 +11473,12 @@ async function sendChatCore(text, isFlush=false){
         petMedal.className = "petFullTileBadge";
         petMedal.textContent = `🏆${fullCnt2}/${fullTotal2}`;
         petMedal.title = `만렙 펫 ${fullCnt2}/${fullTotal2}`;
+        // ✅ V132: 펫 메달 배경/테두리/폰트색도 닉네임 설정값과 연동
+        try{
+          petMedal.style.background = hexToRgba(nameAccent, 0.22);
+          petMedal.style.borderColor = hexToRgba(nameAccent, 0.55);
+          if(p.theme?.nameColor) petMedal.style.color = clampHexColor(p.theme.nameColor);
+        }catch(e){}
         statusLeft.appendChild(petMedal);
       }catch(e){}
 
@@ -14407,6 +14560,11 @@ try{
             p.classList.remove("open");
             try{ p.closest(".msg")?.classList?.remove("reactOpen"); }catch(_e){}
           });
+          if(!exceptMsgEl && state) state.openReactMsgId = "";
+          else if(exceptMsgEl && state){
+            const p = exceptMsgEl.querySelector(".reactPicker.open");
+            state.openReactMsgId = p ? String(p.getAttribute("data-msg-id") || "") : "";
+          }
         }catch(e){}
       }
 
@@ -14419,6 +14577,7 @@ try{
           if(picker){
             const open = picker.classList.toggle("open");
             try{ msgEl?.classList?.toggle("reactOpen", !!open); }catch(_e){}
+            try{ state.openReactMsgId = open ? String(tgl.getAttribute("data-msg-id") || "") : ""; }catch(_e){}
             if(picker.classList.contains("open")){ try{ picker.scrollLeft = 0; }catch(e){} }
             if(open) closeAllReactPickers(msgEl);
           }
