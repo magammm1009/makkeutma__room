@@ -4805,7 +4805,8 @@ body.joined #preJoinCard{ display:none; }
 <input id="homeworkUrl" placeholder="📚 숙제장 링크"/>
 </div>
 <div class="row">
-<input id="dashApiUrl" placeholder="📡 대시보드 인원 API (Apps Script .../exec?api=counts&amp;callback=cb)"/>
+<input id="pomoApiUrl" placeholder="⏰ 뽀모 인원 API (선택: Apps Script .../exec?api=active)"/>
+<input id="dashApiUrl" placeholder="📡 통합 인원 API (선택: pomo+suda counts)"/>
 </div>
 <div class="row">
 <button class="primary" id="saveDash">저장</button>
@@ -5830,6 +5831,7 @@ onlineBtn: $("onlineBtn"),
       adminUnlock: $("adminUnlock"),
       adminArea: $("adminArea"),
       pomoUrl: $("pomoUrl"),
+      pomoApiUrl: $("pomoApiUrl"),
       sudaUrl: $("sudaUrl"),
       choolUrl: $("choolUrl"),
       sheetUrl: $("sheetUrl"),
@@ -5909,7 +5911,7 @@ chatUnseen: 0,
       adminOk: false,
       adminHash: null,
       roomSettings: {
-        dashboard: {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+        dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
         adminHash: null,
         ownerUid: null
@@ -7167,6 +7169,12 @@ async function openSudaWithTicket(baseUrl){
         if(res && res.ok){
           const ct = (res.headers.get("content-type") || "").toLowerCase();
           const txt = await res.text();
+          // ✅ V130: GitHub Pages 같은 정적 앱 HTML은 JSONP로 다시 주입하지 않음
+          // 공용 뽀모가 GitHub 독립 앱이 되면 pomoUrl 자체는 HTML이라 인원 API가 아니기 때문.
+          if(ct.includes("text/html") || /^\s*</.test(String(txt||""))){
+            cb(new Error("not json api"));
+            return;
+          }
           // JSON only
           try{
             const data = JSON.parse(txt);
@@ -7286,6 +7294,7 @@ function ensureDashPolling(){
       const dashUrl = normalizeDashApiUrl(rawDashUrl);
 
       const pomoBase = (dashCfg.pomoUrl ? String(dashCfg.pomoUrl).trim() : "");
+      const pomoApiBase = (dashCfg.pomoApiUrl ? String(dashCfg.pomoApiUrl).trim() : "");
       const sudaBase = (dashCfg.sudaUrl ? String(dashCfg.sudaUrl).trim() : "");
 
       function normalizeActiveApiUrl(raw){
@@ -7293,9 +7302,9 @@ function ensureDashPolling(){
         if(!s) return "";
         try{
           const u = new URL(s);
-          // Apps Script exec root → default to ?api=active
+          // Apps Script exec root → default to ?api=active, but preserve explicit ?api=counts/custom
           if(u.hostname.includes("script.google.com") && u.pathname.includes("/macros/s/") && u.pathname.endsWith("/exec")){
-            u.searchParams.set("api","active");
+            if(!u.searchParams.has("api")) u.searchParams.set("api","active");
             return u.toString();
           }
           if(!u.searchParams.has("api")) u.searchParams.set("api","active");
@@ -7304,6 +7313,69 @@ function ensureDashPolling(){
           if(/\bapi=/.test(s)) return s;
           return s + (s.includes("?") ? "&" : "?") + "api=active";
         }
+      }
+      function isLikelyCountApiUrl(raw){
+        const s = String(raw||"").trim();
+        if(!s) return false;
+        try{
+          const u = new URL(s, location.href);
+          const host = u.hostname.toLowerCase();
+          const pathq = (u.pathname + "?" + u.search).toLowerCase();
+          if(host.includes("script.google.com") || host.includes("script.googleusercontent.com")) return true;
+          if(u.searchParams.has("api") || u.searchParams.has("callback")) return true;
+          if(/\b(active|counts?|presence|online)\b/.test(pathq)) return true;
+          return false;
+        }catch(e){
+          return /script\.google\.com|script\.googleusercontent\.com|[?&]api=|active|counts?|presence|online/i.test(s);
+        }
+      }
+      function siblingConfigUrl(raw){
+        try{
+          const u = new URL(raw, location.href);
+          if(isLikelyCountApiUrl(u.toString())) return "";
+          u.hash = "";
+          u.search = "";
+          if(!u.pathname.endsWith("/")){
+            u.pathname = u.pathname.replace(/\/[^\/]*$/, "/");
+          }
+          u.pathname = u.pathname.replace(/\/+$/, "/") + "config.js";
+          return u.toString();
+        }catch(e){ return ""; }
+      }
+      function extractAppsScriptExecUrl(txt){
+        try{
+          const s = String(txt||"").replace(/\\\//g, "/");
+          const m = s.match(/https:\/\/script\.google\.com\/macros\/s\/[^\s"'`<>\)]+\/exec/g);
+          return m && m[0] ? m[0] : "";
+        }catch(e){ return ""; }
+      }
+      let __pomoApiResolveCache = { key:"", url:"", at:0 };
+      async function resolvePomoActiveApiUrl(){
+        const explicit = normalizeActiveApiUrl(pomoApiBase);
+        if(explicit) return explicit;
+        if(isLikelyCountApiUrl(pomoBase)) return normalizeActiveApiUrl(pomoBase);
+
+        // GitHub Pages 등 정적 뽀모 앱이면 옆의 config.js에서 Apps Script 백엔드 URL 자동 탐색
+        const cfgUrl = siblingConfigUrl(pomoBase);
+        if(!cfgUrl) return "";
+        const now = Date.now();
+        if(__pomoApiResolveCache.key === cfgUrl && (now - __pomoApiResolveCache.at) < 60000){
+          return __pomoApiResolveCache.url || "";
+        }
+        __pomoApiResolveCache = { key:cfgUrl, url:"", at:now };
+        try{
+          const res = await fetch(cfgUrl + (cfgUrl.includes("?") ? "&" : "?") + "_=" + now, { cache:"no-store", credentials:"omit", mode:"cors" });
+          if(res && res.ok){
+            const txt = await res.text();
+            const found = extractAppsScriptExecUrl(txt);
+            if(found){
+              const api = normalizeActiveApiUrl(found);
+              __pomoApiResolveCache = { key:cfgUrl, url:api, at:Date.now() };
+              return api;
+            }
+          }
+        }catch(e){}
+        return "";
       }
       function loadActiveCount(url){
         return new Promise((resolve)=>{
@@ -7321,6 +7393,7 @@ function ensureDashPolling(){
         if(state.dashPollTimer){ clearInterval(state.dashPollTimer); state.dashPollTimer=null; }
         state.dashPollUrl = "";
         state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
+        try{ if(els.pomoOk) els.pomoOk.textContent = "API 필요"; }catch(e){}
       }
 
 
@@ -7466,46 +7539,55 @@ const writeCountsToRTDB = (counts)=>{
     // ---------- /수다방 모달 ----------
 ;
 
-      // ---- case A: 통합 counts API ----
-      if(dashUrl){
-        if(state.dashPollUrl === dashUrl && state.dashPollTimer) return;
-        if(state.dashPollTimer) clearInterval(state.dashPollTimer);
-        state.dashPollUrl = dashUrl;
-
-        const tick = ()=>{
-          loadJsonAny(dashUrl, (err, data)=>{
-            if(err) return;
-            if(!data || typeof data !== "object") return;
+      function loadDashCounts(url){
+        return new Promise((resolve)=>{
+          if(!url){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null}); return; }
+          loadJsonAny(url, (err, data)=>{
+            if(err || !data || typeof data !== "object"){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null}); return; }
             const c = __extractDashCounts(data);
             const upd  = (data.updatedAtMs != null) ? Number(data.updatedAtMs) : Date.now();
-            state.localDashCounts = {pomoCount: coerceCount(c.pomo), sudaCount: coerceCount(c.suda), updatedAtMs: upd};
-            renderDashboard();
-            writeCountsToRTDB(state.localDashCounts);
+            resolve({ok:true, pomo:coerceCount(c.pomo), suda:coerceCount(c.suda), updatedAtMs:upd});
           });
-        };
-        tick();
-        state.dashPollTimer = setInterval(tick, 10_000);
-        return;
+        });
+      }
+      async function tickDashboardCounts(){
+        const dash = await loadDashCounts(dashUrl);
+        const pomoApi = await resolvePomoActiveApiUrl();
+        const sudaApi = isLikelyCountApiUrl(sudaBase) ? normalizeActiveApiUrl(sudaBase) : "";
+
+        const [pcDirect, scDirect] = await Promise.all([
+          (dash.pomo == null && pomoApi) ? loadActiveCount(pomoApi) : Promise.resolve(null),
+          (dash.suda == null && sudaApi) ? loadActiveCount(sudaApi) : Promise.resolve(null)
+        ]);
+
+        const pomoCount = coerceCount(dash.pomo != null ? dash.pomo : pcDirect);
+        const sudaCount = coerceCount(dash.suda != null ? dash.suda : scDirect);
+        const updatedAtMs = Number(dash.updatedAtMs || Date.now());
+
+        try{
+          if(els.pomoOk){
+            if(pomoCount != null) els.pomoOk.textContent = "연결됨";
+            else if(pomoApi || dashUrl) els.pomoOk.textContent = "응답 없음";
+            else els.pomoOk.textContent = "API 필요";
+          }
+        }catch(e){}
+
+        state.localDashCounts = {pomoCount, sudaCount, updatedAtMs};
+        renderDashboard();
+        writeCountsToRTDB(state.localDashCounts);
       }
 
-      // ---- case B: 각 채팅앱 직접 폴링(?api=active) ----
-      const po = normalizeActiveApiUrl(pomoBase);
-      const su = normalizeActiveApiUrl(sudaBase);
-      const key = `direct|${po}|${su}`;
-      if(!po && !su){ stop(); return; }
+      // ---- case A/B 통합: 통합 API + 뽀모 전용 API + config.js 자동탐색을 함께 처리 ----
+      const sudaApiSeed = isLikelyCountApiUrl(sudaBase) ? normalizeActiveApiUrl(sudaBase) : "";
+      const key = `dash-v130|dash:${dashUrl}|pomoApi:${pomoApiBase}|pomo:${pomoBase}|suda:${sudaApiSeed}`;
+      if(!dashUrl && !pomoApiBase && !pomoBase && !sudaApiSeed){ stop(); return; }
 
       if(state.dashPollUrl === key && state.dashPollTimer) return;
       if(state.dashPollTimer) clearInterval(state.dashPollTimer);
       state.dashPollUrl = key;
 
-      const tickDirect = async ()=>{
-        const [pc, sc] = await Promise.all([loadActiveCount(po), loadActiveCount(su)]);
-        state.localDashCounts = {pomoCount: pc, sudaCount: sc, updatedAtMs: Date.now()};
-        renderDashboard();
-        writeCountsToRTDB(state.localDashCounts);
-      };
-      tickDirect();
-      state.dashPollTimer = setInterval(tickDirect, 10_000);
+      tickDashboardCounts();
+      state.dashPollTimer = setInterval(tickDashboardCounts, 10_000);
     }
 
     
@@ -8595,7 +8677,7 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
           createdAt: serverTimestamp(),
           title: roomId,
           adminHash: null,
-          dashboard: { pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
+          dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
           dashCounts: { pomoCount:null, sudaCount:null, updatedAtMs: null }
         });
       }
@@ -9881,6 +9963,7 @@ async function transitionTo(nextStatus, source="manual"){
     if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(WIN_HELPER_URL);
 
     if(els.pomoUrl) els.pomoUrl.value = d.pomoUrl || "";
+    if(els.pomoApiUrl) els.pomoApiUrl.value = d.pomoApiUrl || "";
     if(els.sudaUrl) els.sudaUrl.value = d.sudaUrl || "";
     if(els.choolUrl) els.choolUrl.value = d.choolUrl || "";
     if(els.sheetUrl) els.sheetUrl.value = d.sheetUrl || "";
@@ -9903,7 +9986,7 @@ function subscribeRoom(){
   const onSettings = (snap)=>{
     const r = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
     const dash = Object.assign(
-      {pomoUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+      {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
       (r.dashboard || {})
     );
     state.roomSettings.dashboard = dash;
@@ -10037,8 +10120,10 @@ async function saveDashboard(){
   if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
   // ✅ V115: dashApiUrl 입력칸이 els에 누락되면 저장 시 빈 값으로 덮이는 문제 방지
   const dashApiInput = els.dashApiUrl || $("dashApiUrl");
+  const pomoApiInput = els.pomoApiUrl || $("pomoApiUrl");
   const dashboard = {
     pomoUrl: (els.pomoUrl.value || "").trim(),
+    pomoApiUrl: (pomoApiInput && pomoApiInput.value ? pomoApiInput.value : "").trim(),
     sudaUrl: (els.sudaUrl.value || "").trim(),
     choolUrl: (els.choolUrl.value || "").trim(),
     sheetUrl: (els.sheetUrl.value || "").trim(),
