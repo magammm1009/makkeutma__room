@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam v15</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -18617,6 +18617,82 @@ if(!window.__MK_BOOT_OK__){
   body.joined .topCenter .hcBtn{ min-width:94px !important; }
   body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
 }
+</style>
+
+
+
+<!-- V130_REACTION_FIT_AND_PET_DETAIL_STATIC: 리액션 7개 한 줄 표시 + 펫 상세 모달 본체 둥둥 효과 제거 -->
+<style id="v130ReactionFitAndPetDetailStatic">
+  /* 좁은 채팅창에서도 7개 리액션이 잘리지 않도록 선택 버튼만 소형화 */
+  .reactPicker{
+    gap:3px !important;
+    padding:4px 5px !important;
+  }
+  .reactPicker .reactPick{
+    width:23px !important;
+    min-width:23px !important;
+    height:23px !important;
+    min-height:23px !important;
+    padding:0 !important;
+    font-size:13px !important;
+    line-height:1 !important;
+  }
+  @media (max-width:420px){
+    .reactPicker{
+      gap:2px !important;
+      padding:3px !important;
+      margin-left:22px !important;
+    }
+    .reactPicker .reactPick{
+      width:21px !important;
+      min-width:21px !important;
+      height:21px !important;
+      min-height:21px !important;
+      font-size:12px !important;
+    }
+  }
+
+  /* 펫 상세 정보 모달의 현재 펫 본체만 정지 — 하트/성장/대시보드/놀이터 모션은 유지 */
+  #petModal.petModalV2 .petStageArt.current{
+    animation:none !important;
+    transform:translate3d(0,0,0) !important;
+    will-change:auto !important;
+  }
+  #petModal.petModalV2 .petStageArt.current img{
+    will-change:auto !important;
+  }
+</style>
+
+
+
+<!-- V132_PET_SELECT_TEXT_CONTRAST: 펫 설정/놀이터 배경 선택 글자 대비 보정 -->
+<style id="v132PetSelectTextContrast">
+  /* 펫 상세 정보 > 펫 설정: 닫힌 선택창의 현재 펫 이름을 밝게 표시 */
+  #petModal.petModalV2 #petGrowingSelect,
+  #petModal.petModalV2 #petActiveSelect{
+    color:rgba(255,255,255,.96) !important;
+    -webkit-text-fill-color:rgba(255,255,255,.96) !important;
+    color-scheme:dark;
+  }
+  #petModal.petModalV2 #petGrowingSelect option,
+  #petModal.petModalV2 #petActiveSelect option{
+    color:#17121b !important;
+    -webkit-text-fill-color:#17121b !important;
+    background:#fff !important;
+  }
+
+  /* 펫놀이터 배경 선택: 밝은 배경 위에서도 선택값과 목록이 또렷하게 표시 */
+  #petPlayBgSelect.petPlayBgSelect{
+    color:#17121b !important;
+    -webkit-text-fill-color:#17121b !important;
+    background:rgba(255,255,255,.94) !important;
+    border-color:rgba(20,15,28,.20) !important;
+    color-scheme:light;
+  }
+  #petPlayBgSelect.petPlayBgSelect option{
+    color:#17121b !important;
+    background:#fff !important;
+  }
 </style>
 
 </body>
