@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4821,9 +4821,9 @@ body.joined #preJoinCard{ display:none; }
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="primary" id="sudaOpenRoom" type="button">💣 오늘 수다방 열기</button>
 <button class="ghost" id="sudaCloseRoom" type="button">💣 오늘 수다방 닫기</button>
-<button class="ghost" id="sudaCopyOwnerUid" type="button">🪪 메인 수다 제어 ID 복사</button>
+<button class="ghost" id="sudaCopyOwnerUid" type="button">🪪 제어 ID 복사(예비)</button>
 </div>
-<div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 관리자 인증 + 연결된 메인 제어 ID가 모두 맞을 때만 작동해요. 처음 한 번은 <b>메인 수다 제어 ID 복사</b> → 수다방의 <b>💣 세션 폭파 관리</b>에서 등록해 주세요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요.</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 메인 작업방 관리자 인증 후 현재 브라우저의 수다 제어 ID를 자동으로 연결·복구해요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요. 제어 ID 복사는 자동 연결이 막힐 때만 사용하는 예비 기능이에요.</div>
 <div class="hr"></div>
 <div class="hint">🐾 펫 백업/복구 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
@@ -6914,8 +6914,21 @@ function openUrl(url){
     const SUDA_ACCESS_STATE_VERSION = "event-gate-v4-host-explicit";
     const SUDA_GATE_CONTROL_PATH = "sudaHub/gateControlV1";
     const SUDA_GATE_CONTROL_SCHEMA = "boom-gate-control-v15";
+    // ✅ V137: 관리자 비밀번호 증명으로 현재 메인 브라우저 UID를 자동 연결
+    // 수다방 ownerUid는 건드리지 않고 gateControl만 갱신합니다.
+    const SUDA_GATE_PAIRING_MODE = "password-v17";
+    let __sudaAdminProofHash = ""; // 현재 페이지 메모리에만 보관
+    function rememberSudaAdminProof_(hash){
+      const clean = String(hash || "").trim().toLowerCase();
+      if(/^[a-f0-9]{64}$/.test(clean)) __sudaAdminProofHash = clean;
+    }
     function sudaAccessStatePath_(gateKey){
       return `rooms/${gateKey}/access/sudaRoomState`;
+    }
+    function isSudaPermissionDenied_(err){
+      const code = String(err?.code || "").toLowerCase();
+      const msg = String(err?.message || err || "").toLowerCase();
+      return code.includes("permission-denied") || code.includes("permission_denied") || msg.includes("permission_denied") || msg.includes("permission denied");
     }
     async function getSudaGateControl_(){
       try{
@@ -6925,13 +6938,49 @@ function openUrl(url){
         return {
           mainGateUid: String(raw.mainGateUid || "").trim(),
           updatedAt: Number(raw.updatedAt || 0) || 0,
-          schemaVersion: String(raw.schemaVersion || "")
+          schemaVersion: String(raw.schemaVersion || ""),
+          pairingMode: String(raw.pairingMode || ""),
+          unreadable: false
         };
       }catch(err){
-        const e = makeSudaGateError_("SUDA_GATE_CONTROL_UNREADABLE", "메인 수다방 제어 연결 정보를 읽지 못했어. 수다방 RTDB Rules v15가 Publish됐는지 확인해 주세요.");
+        // V17 Rules에서는 등록되지 않은 UID가 gateControl을 읽지 못하는 것이 정상입니다.
+        if(isSudaPermissionDenied_(err)){
+          return {mainGateUid:"", updatedAt:0, schemaVersion:"", pairingMode:"", unreadable:true};
+        }
+        const e = makeSudaGateError_("SUDA_GATE_CONTROL_UNREADABLE", "메인 수다방 제어 연결 정보를 읽지 못했어. 네트워크 상태와 수다방 RTDB Rules를 확인해 주세요.");
         e.cause = err;
         throw e;
       }
+    }
+    async function pairSudaMainGateWithPassword_(uid, proofHash){
+      const cleanUid = String(uid || "").trim();
+      const cleanHash = String(proofHash || "").trim().toLowerCase();
+      if(!cleanUid) throw makeSudaGateError_("SUDA_ADMIN_UID_MISSING", "수다방 관리자 ID를 읽지 못했어.");
+      if(!/^[a-f0-9]{64}$/.test(cleanHash)){
+        throw makeSudaGateError_("SUDA_ADMIN_REAUTH_REQUIRED", "관리자 설정에서 비밀번호를 다시 인증한 뒤 수다방 열기를 눌러 주세요.");
+      }
+      try{
+        await rSet(rRef(sudaRtdb, SUDA_GATE_CONTROL_PATH), {
+          mainGateUid: cleanUid,
+          updatedAt: Date.now(),
+          updatedBy: cleanUid,
+          schemaVersion: SUDA_GATE_CONTROL_SCHEMA,
+          pairingMode: SUDA_GATE_PAIRING_MODE,
+          passwordHash: cleanHash
+        });
+      }catch(err){
+        const e = makeSudaGateError_(
+          "SUDA_GATE_AUTO_PAIR_FAILED",
+          "수다방 제어 ID 자동 연결에 실패했어. 수다방 관리자 비밀번호가 메인 작업방 비밀번호와 다르면 이어서 한 번만 입력해 주세요."
+        );
+        e.cause = err;
+        throw e;
+      }
+      const verified = await getSudaGateControl_();
+      if(String(verified.mainGateUid || "").trim() !== cleanUid){
+        throw makeSudaGateError_("SUDA_GATE_PAIR_VERIFY_FAILED", "수다방 제어 ID 자동 연결을 확인하지 못했어. 잠시 뒤 다시 눌러 주세요.");
+      }
+      return verified;
     }
     function isSudaRoomOpenToday_(v){
       return !!(
@@ -6970,19 +7019,27 @@ function openUrl(url){
       if(!state.joined) throw makeSudaGateError_("SUDA_NOT_JOINED", "입장한 뒤에 수다방을 열 수 있어요.");
       if(!state.adminOk) throw makeSudaGateError_("SUDA_ADMIN_REQUIRED", "관리자 인증 후에만 수다방을 열 수 있어요.");
       const uid = await getSudaAdminUid_();
-      const control = await getSudaGateControl_();
-      const registeredUid = String(control.mainGateUid || "").trim();
-      if(!registeredUid){
-        throw makeSudaGateError_(
-          "SUDA_MAIN_GATE_NOT_PAIRED",
-          "메인 작업방 제어 ID가 아직 등록되지 않았어. 여기서 ‘🪪 메인 수다 제어 ID 복사’를 누른 뒤, 수다방 ☰ → 💣 세션 폭파 관리 → ‘🔗 메인 작업방 제어 ID 등록’에서 한 번 붙여넣어 주세요."
-        );
+      let control = await getSudaGateControl_();
+      let registeredUid = String(control.mainGateUid || "").trim();
+
+      // ✅ V137: UID가 달라졌거나 미등록이면 관리자 인증 비밀번호로 자동 재연결
+      if(!registeredUid || registeredUid !== uid){
+        try{
+          control = await pairSudaMainGateWithPassword_(uid, __sudaAdminProofHash);
+        }catch(firstErr){
+          // 메인/수다 관리자 비밀번호가 서로 다른 기존 환경만 1회 보조 입력
+          const separatePass = String(window.prompt(
+            "수다방 관리자 비밀번호가 메인 작업방 비밀번호와 다르면 한 번만 입력해 주세요.\n같은 비밀번호라면 취소 후 RTDB Rules v17 적용 여부를 확인해 주세요.",
+            ""
+          ) || "").trim();
+          if(!separatePass) throw firstErr;
+          const separateHash = await sha256Hex(separatePass);
+          control = await pairSudaMainGateWithPassword_(uid, separateHash);
+        }
+        registeredUid = String(control.mainGateUid || "").trim();
       }
       if(registeredUid !== uid){
-        throw makeSudaGateError_(
-          "SUDA_MAIN_GATE_MISMATCH",
-          "이 브라우저의 메인 수다 제어 ID가 등록된 값과 달라요. ‘🪪 메인 수다 제어 ID 복사’로 현재 값을 복사한 뒤, 수다방 관리자 메뉴에서 다시 등록해 주세요."
-        );
+        throw makeSudaGateError_("SUDA_MAIN_GATE_MISMATCH", "수다방 제어 ID 자동 연결이 완료되지 않았어. 관리자 인증 후 다시 눌러 주세요.");
       }
       return uid;
     }
@@ -10160,6 +10217,7 @@ async function unlockAdmin(){
       await rUpdate(rSettingsRef(state.roomId), { adminHash: hash });
       state.adminHash = hash;
       state.adminOk = true;
+      rememberSudaAdminProof_(hash);
       els.adminArea.style.display = "block";
       showToast("비번 등록!");
       // ✅ 최초 등록 시, 강퇴 권한(Owner UID)도 현재 UID로 고정
@@ -10187,6 +10245,7 @@ async function unlockAdmin(){
 
   if(hash === state.adminHash){
     state.adminOk = true;
+    rememberSudaAdminProof_(hash);
 
     // ✅ 비번 언락 = 관리자 권한. (브라우저/기기 바뀌어 uid가 달라도) 강퇴가 되도록 ownerUid를 현재 uid로 재클레임한다.
     // - Firestore rules가 room.ownerUid 기반인 경우를 커버하기 위해 RTDB + Firestore 둘 다 갱신.
@@ -10225,6 +10284,7 @@ async function unlockAdmin(){
     showToast("확인 완료!");
   }else{
     state.adminOk = false;
+    __sudaAdminProofHash = "";
     els.adminArea.style.display = "none";
     showToast("비번이 달라…");
   }
@@ -14304,6 +14364,7 @@ async function verifyAdminPass(pass){
       await rUpdate(rSettingsRef(state.roomId), { adminHash: hash });
       state.adminHash = hash;
       state.adminOk = true;
+      rememberSudaAdminProof_(hash);
       return true;
     }catch(e){
       console.warn(e);
@@ -14313,9 +14374,11 @@ async function verifyAdminPass(pass){
 
   if(hash === state.adminHash){
     state.adminOk = true;
+    rememberSudaAdminProof_(hash);
     return true;
   }
   state.adminOk = false;
+  __sudaAdminProofHash = "";
   return false;
 }
 
