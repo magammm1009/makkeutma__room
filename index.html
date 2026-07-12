@@ -4389,7 +4389,6 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="right"><button aria-label="업데이트 안내" class="ghost layoutToggle" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
 <button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="현재 방을 안전하게 다시 불러옵니다(기록 삭제 없음)" type="button">🔄새로고침</button>
-<button aria-label="폭파 수다방 열기" class="ghost layoutToggle" id="goSudaMini" title="폭파 수다방 열기" type="button">💣수다</button>
 <button aria-label="가이드 보기" class="ghost layoutToggle" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
 <!-- 보기/정렬 메뉴 -->
@@ -4433,28 +4432,36 @@ body.joined #preJoinCard{ display:none; }
 <div class="body">
 <div class="dashFoldBody" id="dashFoldBody">
 <div class="dashRow">
-<div class="dashBox">
+<div class="dashBox dashLinksBox">
+<div class="dashServiceBlock dashServicePomo">
 <div class="dashTitle">⏰ 공용 뽀모</div>
-<div class="dashBig"><span id="pomoCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
+<div class="dashServiceLine">
+<div class="dashBig"><span id="pomoCount">—</span><span class="dashCountUnit">명</span></div>
 <div class="btnRow">
-<button class="primary dashGo" id="goPomo" title="바로가기">👉💗</button>
+<button class="primary dashGo" id="goPomo" title="공용 뽀모 바로가기">👉💗</button>
+</div>
 </div>
 <div class="dashFoot">
 <span>연결: <b id="pomoOk">연결됨</b></span>
 <span class="chip">LIVE</span>
 </div>
 </div>
-<div class="dashBox">
+<div aria-hidden="true" class="dashServiceDivider"></div>
+<div class="dashServiceBlock dashServiceSuda">
 <div class="dashTitle">💣 폭파 수다</div>
-<div class="dashBig"><span id="sudaCount">—</span><span style="font-size:16px;font-weight:900;margin-left:6px">명</span></div>
+<div class="dashServiceLine">
+<div class="dashBig"><span id="sudaCount">—</span><span class="dashCountUnit">명</span></div>
 <div class="btnRow">
-<button class="primary dashGo" id="goSuda" title="바로가기">👉💗</button>
+<button class="primary dashGo" id="goSuda" title="수다방 바로가기">👉💗</button>
+</div>
 </div>
 <div class="dashFoot">
 <span>연결: <b id="sudaOk">연결됨</b></span>
 <span class="chip">LIVE</span>
 </div>
 </div>
+</div>
+<div aria-label="펫 대시보드" class="dashBox petDashSlot"></div>
 </div>
 <div class="btnRow" id="dashShortcuts">
 <button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
@@ -6845,6 +6852,17 @@ function seoulDateKey(){
       }).formatToParts(new Date()).reduce((a,p)=> (a[p.type]=p.value, a), {});
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
+
+    // ✅ V134: KST 날짜의 자정 시각(ms). 절전/백그라운드 복귀 후에도 오늘 시간만 계산하기 위한 기준점
+    function seoulDayStartMs(dayKey = seoulDateKey()){
+      try{
+        const [y,m,d] = String(dayKey || "").split("-").map(Number);
+        if(!y || !m || !d) return Date.now();
+        return Date.UTC(y, m - 1, d, 0, 0, 0, 0) - (9 * 60 * 60 * 1000);
+      }catch(e){
+        return Date.now();
+      }
+    }
     const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off" 또는 퇴장 버튼에서만 처리.
     // ✅ V99_COST_LIGHT_1: RTDB 다운로드 경량화 1단계
     // presence는 child_* 증분 구독을 이미 사용 중이므로, 가장 큰 비용 원인인 heartbeat 쓰기 빈도만 낮춘다.
@@ -8368,6 +8386,12 @@ function setPatternColorAll(v){
       try{
         const me = state.currentParticipants.get(state.uid);
         if(!me) return;
+        const today = seoulDateKey();
+        // ✅ V134: 전날 presence를 오늘 누적값으로 저장하면 자정 리셋 0초가 다시 옛 시간으로 덮인다.
+        if(String(me.dateKey || "") !== String(today)){
+          try{ ensureFocusDayCurrent("persistGuard"); }catch(_e){}
+          return;
+        }
         const totalNow = computeDisplayedTotal(me); // seconds
         focusSaveSeconds(totalNow);
       }catch(e){}
@@ -9064,6 +9088,8 @@ async function ensureMeDoc(){
 async function heartbeat(){
   if(!state.roomId || !state.uid) return;
   try{
+    // ✅ V134: 절전 복귀 직후 전날 시작시각을 다시 올리기 전에 날짜를 먼저 보정
+    try{ await ensureFocusDayCurrent("heartbeat"); }catch(_e){}
     const now = Date.now();
     const st = (state.myStatus || "break");
     const patch = { lastSeenAtMs: now, updatedAt: now };
@@ -9136,11 +9162,105 @@ function startRtdbConnectionWatch(){
 
 
     function computeDisplayedTotal(p){
-      const base = Number(p.totalSecondsToday || 0);
-      if(p.status === "work" && p.sessionStartedAtMs){
-        return base + Math.max(0, (Date.now() - p.sessionStartedAtMs)/1000);
+      const now = Date.now();
+      const today = seoulDateKey();
+      const recordDay = String(p?.dateKey || "");
+      const dayStart = seoulDayStartMs(today);
+
+      // ✅ V134: 전날부터 열린 탭/절전 복귀 중에는 전날 base와 시작시각을 그대로 더하지 않는다.
+      if(recordDay !== String(today)){
+        if(p?.status === "work"){
+          const rawStart = Number(p?.sessionStartedAtMs || 0);
+          const safeStart = Math.max(dayStart, rawStart || dayStart);
+          return Math.max(0, (now - safeStart) / 1000);
+        }
+        return 0;
+      }
+
+      const base = Math.max(0, Number(p?.totalSecondsToday || 0));
+      if(p?.status === "work" && p?.sessionStartedAtMs){
+        return base + Math.max(0, (now - Number(p.sessionStartedAtMs))/1000);
       }
       return base;
+    }
+
+    // ✅ V134: 자정 롤오버 단일 처리기
+    // setInterval이 절전 중 멈춰도 visibility/pageshow/focus/heartbeat/tick에서 다시 확인한다.
+    let __focusRolloverPromise = null;
+    async function ensureFocusDayCurrent(reason="watch"){
+      try{
+        if(!state || !state.joined || !state.uid || !state.roomId) return false;
+        const today = seoulDateKey();
+        const me = state.currentParticipants?.get?.(state.uid) || null;
+        const recordDay = String(me?.dateKey || "");
+        const lastDay = String(state._lastDayKey || "");
+        const crossedByClock = !!lastDay && lastDay !== String(today);
+        const stalePresence = !!me && recordDay !== String(today);
+        // 네트워크가 끊긴 순간 로컬만 먼저 보정됐을 수 있으므로, 원격 반영 대기 표식도 재시도 조건에 포함
+        const pendingRemote = String(state.__focusRolloverPendingDay || "") === String(today);
+
+        let localDay = "";
+        try{ localDay = String(localStorage.getItem(LS_FOCUS_DAY) || ""); }catch(_e){}
+        if(!crossedByClock && !stalePresence && !pendingRemote){
+          state._lastDayKey = today;
+          if(localDay !== String(today) && me){
+            try{ focusSaveSeconds(Math.max(0, Math.floor(computeDisplayedTotal(me)))); }catch(_e){}
+          }
+          return false;
+        }
+
+        if(__focusRolloverPromise) return __focusRolloverPromise;
+        __focusRolloverPromise = (async()=>{
+          const now = Date.now();
+          const dayStart = seoulDayStartMs(today);
+          const current = state.currentParticipants?.get?.(state.uid) || me || {};
+          const rawStatus = String(current.status || state.myStatus || "break");
+          const status = ["work","break","idle","away"].includes(rawStatus) ? rawStatus : "break";
+          const sessionStart = status === "work" ? dayStart : null;
+          const todaySec = status === "work" ? Math.max(0, Math.floor((now - dayStart) / 1000)) : 0;
+
+          focusSaveSeconds(todaySec);
+          state._lastDayKey = today;
+          state.myStatus = status;
+          state._workSessionStartedAtMs = sessionStart || 0;
+          state.__lastFocusPersistAtMs = now;
+          state.__lastFocusPersistSec = todaySec;
+
+          if(current && typeof current === "object"){
+            const fixed = Object.assign({}, current, {
+              dateKey: today,
+              totalSecondsToday: 0,
+              sessionStartedAtMs: sessionStart,
+              status,
+              statusSource: `midnightRollover:${reason}`,
+              updatedAt: now,
+              lastSeenAtMs: now,
+            });
+            try{ state.currentParticipants.set(state.uid, fixed); }catch(_e){}
+          }
+
+          state.__focusRolloverPendingDay = today;
+          await rUpdate(rMePresenceRef(state.roomId, state.uid), {
+            dateKey: today,
+            totalSecondsToday: 0,
+            sessionStartedAtMs: sessionStart,
+            status,
+            statusSource: `midnightRollover:${reason}`,
+            updatedAt: now,
+            lastSeenAtMs: now,
+          });
+          state.__focusRolloverPendingDay = "";
+          try{ syncMyStatusUI(); }catch(_e){}
+          return true;
+        })();
+
+        try{ return await __focusRolloverPromise; }
+        finally{ __focusRolloverPromise = null; }
+      }catch(e){
+        __focusRolloverPromise = null;
+        console.warn("[focus rollover] failed", reason, e);
+        return false;
+      }
     }
 
     // --- 활동 감지 (집중 시간 자동 전환) ---
@@ -9160,6 +9280,7 @@ function startRtdbConnectionWatch(){
           // ✅ 탭이 백그라운드로 가도 오늘 작업시간 로컬에 저장
           if(state && state.joined) persistMyFocusToLocal();
         }else if(document.visibilityState === "visible"){
+          try{ ensureFocusDayCurrent("visible"); }catch(_e){}
           bumpActivity();
         }
       }catch(e){}
@@ -9184,6 +9305,11 @@ function startRtdbConnectionWatch(){
       window.addEventListener("pagehide", ()=>{ markOfflineBestEffort(); }, {capture:true});
       window.addEventListener("beforeunload", ()=>{ markOfflineBestEffort(); }, {capture:true});
     })();
+
+    // ✅ V134: macOS 잠자기·모바일 백그라운드·BFCache 복귀에서 자정 누락 즉시 복구
+    window.addEventListener("pageshow", ()=>{ try{ ensureFocusDayCurrent("pageshow"); }catch(_e){}; });
+    window.addEventListener("focus", ()=>{ try{ ensureFocusDayCurrent("focus"); }catch(_e){}; });
+    window.addEventListener("online", ()=>{ try{ ensureFocusDayCurrent("online"); }catch(_e){}; });
 
 
     function stopActivityWatch(){
@@ -9630,24 +9756,11 @@ function startHelperWatch(){
         }
       }, 15000);
 
-      // ✅ 자정(KST) 넘어가면 집중시간 로컬/내 문서 리셋
+      // ✅ V134: 자정(KST) 롤오버 — 전날 누적을 다시 저장하지 않는 단일 처리기 사용
       if(state.dayWatchTimer) clearInterval(state.dayWatchTimer);
       state._lastDayKey = state._lastDayKey || seoulDateKey();
-      state.dayWatchTimer = setInterval(async ()=>{
-        try{
-          const dk = seoulDateKey();
-          if(!state._lastDayKey) state._lastDayKey = dk;
-          if(state._lastDayKey !== dk){
-            state._lastDayKey = dk;
-            focusSaveSeconds(0);
-            // 내가 방에 들어와 있는 상태면 내 문서도 리셋
-            if(state.uid && state.roomId){
-              const pref = rMePresenceRef(state.roomId, state.uid);
-              try{ setHelperMode("manual"); }catch(e){}
-              try{ await transitionTo("break","manualMidnight"); }catch(e){}
-            }
-          }
-        }catch(e){}
+      state.dayWatchTimer = setInterval(()=>{
+        try{ ensureFocusDayCurrent("minuteWatch"); }catch(e){}
       }, 60000);
 
     }
@@ -9655,7 +9768,8 @@ function startHelperWatch(){
     
 async function transitionTo(nextStatus, source="manual"){
   // ✅ 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
-  persistMyFocusToLocal();
+  // V134: 자정 전용 전환에서는 전날 값을 다시 저장하지 않는다.
+  if(source !== "manualMidnight" && source !== "midnightRollover") persistMyFocusToLocal();
   if(!state.roomId || !state.uid) return;
   const now = Date.now();
 
@@ -11690,6 +11804,8 @@ t.appendChild(bg);
       return t;
     }
     function updateTimersLive(){
+      // ✅ V134: 절전으로 minute watcher가 건너뛰어도 첫 화면 tick에서 즉시 롤오버
+      try{ if(state.joined) ensureFocusDayCurrent("uiTick"); }catch(_e){}
       for(const [uid, rec] of state.lastRendered.entries()){
         const p = state.currentParticipants.get(uid);
         if(!p || !rec || !rec.el) continue;
@@ -17245,7 +17361,7 @@ if(!window.__MK_BOOT_OK__){
 
   function replaceDashCard(){
     const go = document.getElementById('goSuda');
-    const box = document.querySelector('.petDashBox') || (go ? go.closest('.dashBox') : null);
+    const box = document.querySelector('.petDashBox') || document.querySelector('.petDashSlot') || (go ? go.closest('.dashBox') : null);
     if(!box || box.dataset.petReady === 'v33') return;
     box.dataset.petReady = 'v33';
     box.classList.add('petDashBox');
@@ -18693,6 +18809,154 @@ if(!window.__MK_BOOT_OK__){
     color:#17121b !important;
     background:#fff !important;
   }
+</style>
+
+
+
+<!-- V135_COMPACT_POMO_SUDA_STACK: 공용 뽀모 카드 안에 수다방 바로가기 함께 배치 -->
+<style id="v135CompactPomoSudaStack">
+/*
+  - 공용 뽀모/수다방의 접속 인원과 바로가기 버튼을 한 줄로 압축합니다.
+  - 기존 수다 카드 자리는 펫 카드 전용 슬롯으로 유지합니다.
+  - ID와 클릭/인원 갱신 로직은 그대로 사용합니다.
+*/
+body:not(.joined) #dashboardCard .dashLinksBox,
+body.joined #dashboardCard .dashLinksBox{
+  min-height:142px !important;
+  height:auto !important;
+  max-height:none !important;
+  padding:7px 8px !important;
+  gap:5px !important;
+  overflow:hidden !important;
+}
+#dashboardCard .dashLinksBox{
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+}
+#dashboardCard .dashServiceBlock{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+#dashboardCard .dashServiceBlock .dashTitle{
+  justify-content:flex-start;
+  text-align:left;
+  font-size:11px;
+  line-height:1.1;
+  white-space:nowrap;
+}
+#dashboardCard .dashServiceLine{
+  display:grid;
+  grid-template-columns:minmax(44px, .72fr) minmax(64px, 1.28fr);
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+#dashboardCard .dashServiceLine .dashBig{
+  display:flex;
+  align-items:baseline;
+  justify-content:flex-start;
+  min-width:0;
+  font-size:21px;
+  line-height:1;
+  letter-spacing:-.8px;
+  white-space:nowrap;
+}
+#dashboardCard .dashCountUnit{
+  margin-left:3px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:-.2px;
+}
+#dashboardCard .dashServiceLine .btnRow{
+  display:block;
+  min-width:0;
+}
+#dashboardCard .dashServiceLine .dashGo{
+  width:100%;
+  min-width:0;
+  min-height:30px;
+  padding:6px 8px;
+  border-radius:10px;
+  font-size:12px;
+  line-height:1;
+}
+#dashboardCard .dashServiceBlock .dashFoot{
+  font-size:9px;
+  line-height:1;
+  gap:5px;
+}
+#dashboardCard .dashServiceBlock .chip{
+  padding:3px 6px;
+  font-size:9px;
+  line-height:1;
+}
+#dashboardCard .dashServiceDivider{
+  flex:0 0 1px;
+  width:100%;
+  background:rgba(255,255,255,.11);
+}
+#dashboardCard .petDashSlot:empty{
+  min-height:142px;
+}
+
+/* 좁은 창에서는 두 바로가기만 나란히 보여 기존 미니 바 높이를 유지합니다. */
+@media (max-width:760px){
+  body.joined #dashboardCard .dashLinksBox{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+    flex:0 0 116px !important;
+    min-width:116px !important;
+    min-height:0 !important;
+    height:100% !important;
+    padding:4px !important;
+    gap:4px !important;
+    border-radius:12px !important;
+  }
+  body.joined #dashboardCard .dashServiceBlock{
+    display:flex !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    min-width:0 !important;
+    height:100% !important;
+    gap:0 !important;
+  }
+  body.joined #dashboardCard .dashServiceBlock .dashTitle,
+  body.joined #dashboardCard .dashServiceBlock .dashBig,
+  body.joined #dashboardCard .dashServiceBlock .dashFoot,
+  body.joined #dashboardCard .dashServiceDivider{
+    display:none !important;
+  }
+  body.joined #dashboardCard .dashServiceLine,
+  body.joined #dashboardCard .dashServiceLine .btnRow{
+    display:block !important;
+    width:100% !important;
+    height:100% !important;
+    min-width:0 !important;
+  }
+  body.joined #dashboardCard .dashServiceLine .dashGo{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    height:100% !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    padding:0 !important;
+    border-radius:9px !important;
+    font-size:0 !important;
+  }
+  body.joined #dashboardCard #goPomo::before{
+    content:"⏰" !important;
+    font-size:15px !important;
+  }
+  body.joined #dashboardCard #goSuda::before{
+    content:"💣" !important;
+    font-size:15px !important;
+  }
+}
 </style>
 
 </body>
