@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4825,6 +4825,19 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 메인 작업방 관리자 인증 후 현재 브라우저의 수다 제어 ID를 자동으로 연결·복구해요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요. 제어 ID 복사는 자동 연결이 막힐 때만 사용하는 예비 기능이에요.</div>
 <div class="hr"></div>
+<div class="hint">⏱️ 타이머 관리</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<select id="adminTimerTarget" style="flex:1 1 220px; min-width:200px; background:#181820; color:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px;">
+<option value="">초기화할 작가 선택</option>
+</select>
+<button class="ghost" id="adminResetOneTimer" type="button">👤 선택 작가 0초 · 휴식중</button>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">선택한 작가님의 타이머만 0초로 초기화해요. 접속 중이면 휴식중으로 전환하고, 오프라인이면 오프라인 상태는 그대로 유지합니다.</div>
+<div class="row">
+<button class="ghost" id="adminResetAllTimers" type="button">⏱️ 전체 타이머 0초 · 휴식중</button>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">현재 작업방의 모든 누적 타이머를 0초로 초기화하고, 접속 중인 작가님은 휴식중으로 전환해요. 오프라인 작가님은 오프라인 상태를 유지한 채 시간만 초기화됩니다.</div>
+<div class="hr"></div>
 <div class="hint">🐾 펫 백업/복구 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
 <div class="row">
@@ -5848,6 +5861,9 @@ onlineBtn: $("onlineBtn"),
       sudaOpenRoom: $("sudaOpenRoom"),
       sudaCloseRoom: $("sudaCloseRoom"),
       sudaCopyOwnerUid: $("sudaCopyOwnerUid"),
+      adminTimerTarget: $("adminTimerTarget"),
+      adminResetOneTimer: $("adminResetOneTimer"),
+      adminResetAllTimers: $("adminResetAllTimers"),
 
       toast: $("toast"),
     };
@@ -9073,21 +9089,23 @@ async function ensureMeDoc(){
     }else{
       // day rollover
       if(String(data.dateKey||"") !== String(today)){
-        // ✅ 날짜가 바뀌어도 "현재 상태"는 유지하고, 누적 타이머만 초기화
-        const keepStatus = (data.status === "work" || data.status === "break" || data.status === "away") ? data.status : "break";
+        // ✅ V138: 날짜가 바뀌면 예전 동작처럼 전원 휴식중 + 오늘 타이머 0초로 시작
         const now = Date.now();
         focusSaveSeconds(0);
+        try{ setHelperMode("manual", true); }catch(_e){}
 
-        // 로컬 상태도 함께 맞춰서, 자정 지나도 타이머/상태가 끊기지 않게
-        state.myStatus = keepStatus;
-        state._workSessionStartedAtMs = (keepStatus === "work") ? now : null;
+        state.myStatus = "break";
+        state.myStatusSource = "midnightRollover:ensureMeDoc";
+        state._workSessionStartedAtMs = 0;
+        state.__lastFocusPersistAtMs = now;
+        state.__lastFocusPersistSec = 0;
 
         await rUpdate(pref, {
           dateKey: today,
           totalSecondsToday: 0,
-          sessionStartedAtMs: (keepStatus === "work") ? now : null,
-          status: keepStatus,
-          statusSource: "midnightRollover",
+          sessionStartedAtMs: null,
+          status: "break",
+          statusSource: "midnightRollover:ensureMeDoc",
           updatedAt: now,
           lastSeenAtMs: now,
         });
@@ -9190,23 +9208,13 @@ function startRtdbConnectionWatch(){
       if(!prev && connected){
         try{
           if(state && state.joined && state.roomId && state.uid){
-            const now = Date.now();
-            const st = (state.myStatus || "break");
-            const patch = {
-              status: st,
-              statusSource: "reconnectNet",
-              lastSeenAtMs: now,
-              updatedAt: now,
-              sessionStartedAtMs: (st === "work") ? (state._workSessionStartedAtMs || now) : null
-            };
-            try{
-              const col = (typeof getLocalPetCollectionInfo === "function") ? getLocalPetCollectionInfo() : {fullCount:0,totalCount:21};
-              patch["theme/petFullCount"] = Math.max(0, Math.floor(Number(col.fullCount || 0)));
-              patch["theme/petFullTotal"] = Math.max(1, Math.floor(Number(col.totalCount || 21)));
-              patch["theme/petFullVersion"] = "v127";
-            }catch(e){}
-            rUpdate(rMePresenceRef(state.roomId, state.uid), patch).catch(()=>{});
-            heartbeat();
+            // ✅ V138: 예전 상태를 먼저 올리는 별도 update를 제거한다.
+            // heartbeat가 날짜 보정을 끝낸 뒤 현재 상태/펫 현황을 한 번에 올리므로,
+            // 자정 직후 오래된 작업중 상태가 뒤늦게 휴식중을 덮는 경합을 막는다.
+            Promise.resolve(ensureFocusDayCurrent("reconnectNet"))
+              .catch(()=>false)
+              .then(()=>heartbeat())
+              .catch(()=>{});
           }
         }catch(e){}
       }
@@ -9218,25 +9226,127 @@ function startRtdbConnectionWatch(){
 }
 
 
+    // ✅ V139: 관리자 전체 타이머 초기화 신호를 각 브라우저의 로컬 상태에도 1회 반영
+    // 원격 presence만 0으로 바꾸면 다음 heartbeat에서 로컬의 옛 상태/시간이 되살아날 수 있으므로,
+    // 내 레코드의 timerResetAtMs를 감지해 localStorage와 런타임 상태도 함께 정리한다.
+    function timerResetAckKey_(){
+      const room = String((state && state.roomId) || FIXED_ROOM_ID || "room");
+      const uid = String((state && state.uid) || "me");
+      return `mk_timer_reset_ack_v1_${room}_${uid}`;
+    }
+    // ✅ V141: 탭별 메모리 ACK + 브라우저 공용 localStorage ACK
+    // 같은 브라우저의 여러 탭이 열려 있어도 각 탭 런타임은 초기화 명령을 한 번씩 처리한다.
+    // 새로 연 탭/새로고침은 localStorage ACK를 읽어 이미 처리한 오래된 명령을 반복하지 않는다.
+    function primeTimerResetAckForTab_(){
+      try{
+        const stored = Math.max(0, Number(localStorage.getItem(timerResetAckKey_()) || 0));
+        state.__timerResetAckInTab = stored;
+        state.__timerResetAckPrimed = true;
+        return stored;
+      }catch(_e){
+        state.__timerResetAckInTab = Math.max(0, Number(state.__timerResetAckInTab || 0));
+        state.__timerResetAckPrimed = true;
+        return state.__timerResetAckInTab;
+      }
+    }
+    function readTimerResetAck_(){
+      try{
+        // 입장 시 미리 고정한 탭별 기준값을 사용한다. 다른 탭이 localStorage ACK를 먼저 올려도
+        // 이미 열려 있던 이 탭은 자기 런타임 초기화를 빠뜨리지 않는다.
+        if(state.__timerResetAckPrimed === true){
+          return Math.max(0, Number(state.__timerResetAckInTab || 0));
+        }
+        return primeTimerResetAckForTab_();
+      }catch(_e){ return 0; }
+    }
+    function writeTimerResetAck_(ms){
+      const clean = Math.max(0, Number(ms)||0);
+      try{ state.__timerResetAckInTab = clean; }catch(_e){}
+      try{ localStorage.setItem(timerResetAckKey_(), String(clean)); }catch(_e){}
+    }
+    function isTimerResetCommandCurrent_(p){
+      try{
+        const resetAt = Math.max(0, Number(p?.timerResetAtMs || 0));
+        if(!resetAt) return false;
+        // 보지 못한 관리자 초기화 명령은 현재 status/updatedAt과 무관하게 반드시 1회 적용한다.
+        // 재연결 직전의 옛 heartbeat가 늦게 도착해도 초기화를 건너뛰지 않게 하는 핵심 방어다.
+        return resetAt > readTimerResetAck_();
+      }catch(_e){ return false; }
+    }
+    function repairTimerResetPresence_(resetAt, source="remote"){
+      try{
+        if(!state?.joined || !state?.roomId || !state?.uid) return;
+        const now = Date.now();
+        rUpdate(rMePresenceRef(state.roomId, state.uid), {
+          dateKey: seoulDateKey(),
+          totalSecondsToday: 0,
+          sessionStartedAtMs: null,
+          status: "break",
+          statusSource: `adminTimerResetAck:${source}`,
+          timerResetAtMs: Math.max(0, Number(resetAt)||0),
+          timerResetAppliedAtMs: now,
+          updatedAt: now,
+          lastSeenAtMs: now,
+        }).catch((e)=>{ try{ console.warn("[admin timer reset] remote repair failed", e); }catch(_e){} });
+      }catch(_e){}
+    }
+    function applyTimerResetCommandToLocal_(p, source="remote"){
+      try{
+        if(!isTimerResetCommandCurrent_(p)) return false;
+        const resetAt = Math.max(0, Number(p?.timerResetAtMs || Date.now()));
+        focusSaveSeconds(0);
+        writeTimerResetAck_(resetAt);
+        try{ setHelperMode("manual", true); }catch(_e){}
+
+        state.myStatus = "break";
+        state.myStatusSource = `adminTimerReset:${source}`;
+        state._workSessionStartedAtMs = 0;
+        state.__lastFocusPersistAtMs = Date.now();
+        state.__lastFocusPersistSec = 0;
+        state.lastActivityMs = Date.now();
+        state.didFocusMerge = true;
+
+        try{
+          const cur = state.currentParticipants?.get?.(state.uid);
+          if(cur){
+            state.currentParticipants.set(state.uid, Object.assign({}, cur, {
+              dateKey: seoulDateKey(),
+              totalSecondsToday: 0,
+              sessionStartedAtMs: null,
+              status: "break",
+              statusSource: `adminTimerReset:${source}`,
+              timerResetAtMs: resetAt,
+            }));
+          }
+        }catch(_e){}
+        try{ syncMyStatusUI(); }catch(_e){}
+
+        // 재연결 중 옛 heartbeat가 관리자 명령 뒤에 도착했더라도,
+        // 명령을 처리한 탭이 원격 값을 다시 0초·휴식중으로 확정한다.
+        repairTimerResetPresence_(resetAt, source);
+        return true;
+      }catch(e){
+        console.warn("[admin timer reset] local apply failed", e);
+        return false;
+      }
+    }
+
     function computeDisplayedTotal(p){
       const now = Date.now();
       const today = seoulDateKey();
       const recordDay = String(p?.dateKey || "");
       const dayStart = seoulDayStartMs(today);
 
-      // ✅ V134: 전날부터 열린 탭/절전 복귀 중에는 전날 base와 시작시각을 그대로 더하지 않는다.
-      if(recordDay !== String(today)){
-        if(p?.status === "work"){
-          const rawStart = Number(p?.sessionStartedAtMs || 0);
-          const safeStart = Math.max(dayStart, rawStart || dayStart);
-          return Math.max(0, (now - safeStart) / 1000);
-        }
-        return 0;
-      }
+      // ✅ V138: 전날 레코드는 상태와 무관하게 0초로 표시한다.
+      // 해당 사용자의 탭이 잠들어 아직 원격 상태를 갱신하지 못했어도 시간이 증가해 보이지 않는다.
+      if(recordDay !== String(today)) return 0;
 
       const base = Math.max(0, Number(p?.totalSecondsToday || 0));
       if(p?.status === "work" && p?.sessionStartedAtMs){
-        return base + Math.max(0, (now - Number(p.sessionStartedAtMs))/1000);
+        // dateKey만 오늘로 바뀌고 시작시각이 전날 값으로 남은 부분 갱신도 방어
+        const rawStart = Number(p.sessionStartedAtMs || 0);
+        if(!Number.isFinite(rawStart) || rawStart < dayStart) return base;
+        return base + Math.max(0, (now - rawStart)/1000);
       }
       return base;
     }
@@ -9269,19 +9379,21 @@ function startRtdbConnectionWatch(){
         if(__focusRolloverPromise) return __focusRolloverPromise;
         __focusRolloverPromise = (async()=>{
           const now = Date.now();
-          const dayStart = seoulDayStartMs(today);
           const current = state.currentParticipants?.get?.(state.uid) || me || {};
-          const rawStatus = String(current.status || state.myStatus || "break");
-          const status = ["work","break","idle","away"].includes(rawStatus) ? rawStatus : "break";
-          const sessionStart = status === "work" ? dayStart : null;
-          const todaySec = status === "work" ? Math.max(0, Math.floor((now - dayStart) / 1000)) : 0;
+          // ✅ V138: 자정에는 기존 상태를 이어가지 않고 모든 온라인 사용자를 휴식중으로 전환
+          const status = "break";
+          const sessionStart = null;
+          const todaySec = 0;
 
-          focusSaveSeconds(todaySec);
+          focusSaveSeconds(0);
+          try{ setHelperMode("manual", true); }catch(_e){}
           state._lastDayKey = today;
-          state.myStatus = status;
-          state._workSessionStartedAtMs = sessionStart || 0;
+          state.myStatus = "break";
+          state.myStatusSource = `midnightRollover:${reason}`;
+          state._workSessionStartedAtMs = 0;
+          state.lastActivityMs = now;
           state.__lastFocusPersistAtMs = now;
-          state.__lastFocusPersistSec = todaySec;
+          state.__lastFocusPersistSec = 0;
 
           if(current && typeof current === "object"){
             const fixed = Object.assign({}, current, {
@@ -9813,7 +9925,7 @@ function startHelperWatch(){
         }
       }, 15000);
 
-      // ✅ V134: 자정(KST) 롤오버 — 전날 누적을 다시 저장하지 않는 단일 처리기 사용
+      // ✅ V138: 자정(KST) 롤오버 — 전원 휴식중 + 0초, 전날 누적 재저장 방지
       if(state.dayWatchTimer) clearInterval(state.dayWatchTimer);
       state._lastDayKey = state._lastDayKey || seoulDateKey();
       state.dayWatchTimer = setInterval(()=>{
@@ -10235,6 +10347,7 @@ async function unlockAdmin(){
           }catch(_e){}
 }
       }catch(_e){}
+      try{ refreshAdminTimerTargetOptions(); }catch(_e){}
       return;
     }catch(e){
       console.warn(e);
@@ -10281,6 +10394,7 @@ async function unlockAdmin(){
 }
     }catch(_e){}
     els.adminArea.style.display = "block";
+    try{ refreshAdminTimerTargetOptions(); }catch(_e){}
     showToast("확인 완료!");
   }else{
     state.adminOk = false;
@@ -13081,6 +13195,7 @@ t.appendChild(bg);
               if(!state.didFocusMerge && state.uid){
                 const meNow = map.get(state.uid);
                 if(meNow){
+                  try{ applyTimerResetCommandToLocal_(meNow, "initialMerge"); }catch(_e){}
                   const today = seoulDateKey();
                   const localSec = Math.floor(Number(focusLoadSeconds()||0));
                   let remoteSec = 0;
@@ -13144,6 +13259,7 @@ t.appendChild(bg);
             const orderedArr = applyPinnedOrder(onlineArr);
             state._lastPresenceArr = orderedArr;
             try{ refreshChatMetaFromParticipants(false); }catch(e){}
+            try{ if(state.adminOk) refreshAdminTimerTargetOptions(); }catch(e){}
             schedulePresenceRender(orderedArr);
           }catch(e){}
         });
@@ -13155,6 +13271,9 @@ t.appendChild(bg);
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid || !data) return;
           attachPublicProfileForUid(uid);
+          if(String(uid) === String(state.uid || "")){
+            try{ applyTimerResetCommandToLocal_({ id: uid, ...data }, "childAdded"); }catch(_e){}
+          }
           const p = mergePublicProfileIntoParticipant({ id: uid, ...data });
           state.currentParticipants.set(uid, p);
           scheduleRecalc();
@@ -13170,6 +13289,9 @@ t.appendChild(bg);
             state.currentParticipants.delete(uid);
             detachPublicProfileForUid(uid);
           }else{
+            if(String(uid) === String(state.uid || "")){
+              try{ applyTimerResetCommandToLocal_({ id: uid, ...data }, "childChanged"); }catch(_e){}
+            }
             const p = { id: uid, ...data };
             state.currentParticipants.set(uid, p);
           }
@@ -13291,6 +13413,8 @@ async function joinRoom(){
           });
         });
       }
+      // ✅ V141: 이 탭이 입장할 때의 초기화 ACK를 미리 고정해 다중 탭 누락을 방지
+      try{ primeTimerResetAckForTab_(); }catch(_e){}
 
       
       // 강퇴 상태(시간 제한)면 입장 막기
@@ -14192,6 +14316,206 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
 
     els.btnBreak.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("break","manual"); });
     els.btnIdle.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("idle","manual"); });
+// ✅ V140 관리자: 작가 선택 목록 + 개별 타이머 초기화
+function adminTimerStatusLabel_(p){
+  try{
+    const s = String(p?.status || "").toLowerCase();
+    if(s === "work") return "작업중";
+    if(s === "break") return "휴식중";
+    if(s === "idle") return "자리비움";
+    if(s === "off" || s === "offline") return "오프라인";
+    return "상태 미확인";
+  }catch(_e){ return "상태 미확인"; }
+}
+
+function refreshAdminTimerTargetOptions(){
+  const sel = els.adminTimerTarget;
+  if(!sel) return;
+  try{
+    const prev = String(sel.value || "");
+    const rows = [];
+    if(state.currentParticipants instanceof Map){
+      state.currentParticipants.forEach((p, uid)=>{
+        const name = String(p?.name || "").trim();
+        if(!uid || !hasValidNick(name)) return;
+        rows.push({
+          uid: String(uid),
+          name,
+          status: adminTimerStatusLabel_(p),
+          offline: isOfflinePresence(p),
+          mine: String(uid) === String(state.uid || ""),
+        });
+      });
+    }
+
+    rows.sort((a,b)=>{
+      if(a.offline !== b.offline) return a.offline ? 1 : -1;
+      return a.name.localeCompare(b.name, "ko");
+    });
+
+    sel.replaceChildren();
+    const head = document.createElement("option");
+    head.value = "";
+    head.textContent = rows.length ? "초기화할 작가 선택" : "선택 가능한 작가 없음";
+    sel.appendChild(head);
+
+    for(const row of rows){
+      const opt = document.createElement("option");
+      opt.value = row.uid;
+      opt.textContent = `${row.name} · ${row.status}${row.mine ? " · 내 계정" : ""}`;
+      opt.style.background = "#ffffff";
+      opt.style.color = "#111111";
+      sel.appendChild(opt);
+    }
+
+    if(prev && rows.some(row=>row.uid === prev)) sel.value = prev;
+  }catch(e){
+    console.warn("[adminTimerTarget] list refresh failed", e);
+  }
+}
+
+async function adminResetOneTimer(){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  if(!state.roomId || !state.uid){ showToast("작업방 입장 후 사용할 수 있어"); return; }
+
+  const targetUid = String(els.adminTimerTarget?.value || "").trim();
+  if(!targetUid){ showToast("초기화할 작가님을 선택해줘"); return; }
+
+  let target = state.currentParticipants?.get?.(targetUid) || null;
+  try{
+    const snap = await rGet(rMePresenceRef(state.roomId, targetUid));
+    if(snap && snap.exists && snap.exists()) target = Object.assign({ id: targetUid }, snap.val() || {});
+  }catch(_e){}
+
+  if(!target){
+    showToast("선택한 작가님의 타이머 정보를 찾지 못했어");
+    refreshAdminTimerTargetOptions();
+    return;
+  }
+
+  const targetName = String(target.name || "선택한 작가").trim() || "선택한 작가";
+  const offline = isOfflinePresence(target);
+  const nextStatus = offline ? "off" : "break";
+
+  if(!confirm(`${targetName} 작가님의 타이머만 0초로 초기화할까?${offline ? "\n오프라인 상태는 그대로 유지돼." : "\n접속 중이라 휴식중으로 전환돼."}`)) return;
+
+  const btn = els.adminResetOneTimer;
+  const oldText = btn ? btn.textContent : "";
+  try{
+    if(btn){ btn.disabled = true; btn.textContent = "⏳ 개별 초기화 중…"; }
+
+    const now = Date.now();
+    const today = seoulDateKey();
+    const payload = {
+      dateKey: today,
+      totalSecondsToday: 0,
+      sessionStartedAtMs: null,
+      status: nextStatus,
+      statusSource: offline ? "adminTimerResetOne:offline" : "adminTimerResetOne",
+      timerResetAtMs: now,
+      updatedAt: now,
+    };
+
+    // lastSeenAtMs는 건드리지 않아 접속 여부·타일 순서를 바꾸지 않는다.
+    await rUpdate(rMePresenceRef(state.roomId, targetUid), payload);
+
+    // 관리자가 자기 자신을 선택한 경우 로컬 저장값과 실행 상태도 즉시 정리한다.
+    if(String(targetUid) === String(state.uid)){
+      try{ applyTimerResetCommandToLocal_(Object.assign({}, payload, { status:"break" }), "adminOneButton"); }catch(_e){}
+    }
+
+    // 원격 child_changed가 오기 전에도 현재 화면을 즉시 정리한다.
+    try{
+      if(state.currentParticipants instanceof Map){
+        const old = state.currentParticipants.get(targetUid) || target;
+        state.currentParticipants.set(targetUid, Object.assign({}, old, payload));
+      }
+      updateTimersLive();
+      if(String(targetUid) === String(state.uid)) syncMyStatusUI();
+      refreshAdminTimerTargetOptions();
+    }catch(_e){}
+
+    showToast(`⏱️ ${targetName} 작가님 타이머 초기화 완료${offline ? "" : " · 휴식중"}`, 4200);
+  }catch(e){
+    console.warn("[adminTimerResetOne] failed", e);
+    showToast("개별 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = oldText || "👤 선택 작가 0초 · 휴식중"; }
+  }
+}
+
+// ✅ V139 관리자: 작업방 전체 타이머 초기화
+async function adminResetAllTimers(){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  if(!state.roomId || !state.uid){ showToast("작업방 입장 후 사용할 수 있어"); return; }
+  if(!confirm("현재 작업방의 모든 누적 타이머를 0초로 초기화하고, 접속 중인 작가님을 휴식중으로 전환할까?")) return;
+
+  const btn = els.adminResetAllTimers;
+  const oldText = btn ? btn.textContent : "";
+  try{
+    if(btn){ btn.disabled = true; btn.textContent = "⏳ 전체 타이머 초기화 중…"; }
+
+    const snap = await rGet(rPresenceRootRef(state.roomId));
+    const all = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+    const uids = Object.keys(all || {}).filter(uid => all[uid] && typeof all[uid] === "object");
+    if(!uids.length){ showToast("초기화할 타이머가 없어"); return; }
+
+    const now = Date.now();
+    const today = seoulDateKey();
+    const updates = {};
+    let onlineCount = 0;
+
+    for(const uid of uids){
+      const p = all[uid] || {};
+      const offline = isOfflinePresence(p);
+      if(!offline) onlineCount += 1;
+      const base = `${rRoomBase(state.roomId)}/presence/${uid}`;
+      updates[`${base}/dateKey`] = today;
+      updates[`${base}/totalSecondsToday`] = 0;
+      updates[`${base}/sessionStartedAtMs`] = null;
+      updates[`${base}/status`] = offline ? "off" : "break";
+      updates[`${base}/statusSource`] = offline ? "adminTimerReset:offline" : "adminTimerReset";
+      updates[`${base}/timerResetAtMs`] = now;
+      updates[`${base}/updatedAt`] = now;
+      // lastSeenAtMs는 건드리지 않아 오프라인/타일 순서가 변하지 않게 한다.
+    }
+
+    await rUpdate(rRef(rtdb), updates);
+
+    // 관리자 자신의 로컬 상태도 즉시 0초/휴식중으로 맞춘다.
+    try{ applyTimerResetCommandToLocal_({ timerResetAtMs: now, totalSecondsToday: 0, sessionStartedAtMs: null, status: "break", updatedAt: now }, "adminButton"); }catch(_e){}
+
+    // 원격 child_changed가 오기 전에도 현재 화면은 즉시 정리한다.
+    try{
+      if(state.currentParticipants instanceof Map){
+        for(const uid of uids){
+          const old = state.currentParticipants.get(uid);
+          if(!old) continue;
+          const offline = isOfflinePresence(old);
+          state.currentParticipants.set(uid, Object.assign({}, old, {
+            dateKey: today,
+            totalSecondsToday: 0,
+            sessionStartedAtMs: null,
+            status: offline ? "off" : "break",
+            statusSource: offline ? "adminTimerReset:offline" : "adminTimerReset",
+            timerResetAtMs: now,
+            updatedAt: now,
+          }));
+        }
+      }
+      updateTimersLive();
+      syncMyStatusUI();
+    }catch(_e){}
+
+    showToast(`⏱️ 전체 ${uids.length}명 타이머 초기화 완료 · 접속 ${onlineCount}명 휴식중`, 4200);
+  }catch(e){
+    console.warn("[adminTimerResetAll] failed", e);
+    showToast("전체 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = oldText || "⏱️ 전체 타이머 0초 · 휴식중"; }
+  }
+}
+
 // ✅ 타이머 초기화 (오늘 작업시간/상태/세션 시작시간)
 async function resetTodayTimer(){
   try{
@@ -14801,6 +15125,8 @@ try{
     if(els.sudaOpenRoom) els.sudaOpenRoom.addEventListener("click", ()=>{ openSudaRoomForToday_().catch(()=>{}); });
     if(els.sudaCloseRoom) els.sudaCloseRoom.addEventListener("click", closeSudaRoomForToday_);
     if(els.sudaCopyOwnerUid) els.sudaCopyOwnerUid.addEventListener("click", copySudaOwnerUid_);
+    if(els.adminResetOneTimer) els.adminResetOneTimer.addEventListener("click", ()=>{ adminResetOneTimer().catch(()=>{}); });
+    if(els.adminResetAllTimers) els.adminResetAllTimers.addEventListener("click", ()=>{ adminResetAllTimers().catch(()=>{}); });
 
     els.sendBtn.addEventListener("click", sendChat);
 
