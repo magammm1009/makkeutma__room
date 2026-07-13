@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4889,6 +4889,7 @@ body.joined #preJoinCard{ display:none; }
 <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
 <button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
 <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
+<button id="ctxTimerReset" type="button">⏱️ 타이머 0초 · 휴식중</button>
 <button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
 <button class="danger" id="ctxForceOff" type="button">🫥 로그아웃 처리</button>
 <button class="danger" id="ctxHandcamOff" type="button">📹 손캠 끄기</button>
@@ -5703,6 +5704,7 @@ const auth = getAuth(app);
       ctxMenu: $("ctxMenu"),
       ctxTitle: $("ctxTitle"),
       ctxPinToggle: $("ctxPinToggle"),
+      ctxTimerReset: $("ctxTimerReset"),
       ctxKick: $("ctxKick"),
       ctxForceOff: $("ctxForceOff"),
       ctxHandcamOff: $("ctxHandcamOff"),
@@ -6210,6 +6212,7 @@ function toast(msg, ms=1600){
       const div = document.getElementById("ctxDivider");
       if(div) div.style.display = isStatus ? "" : "none";
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
+      if(els.ctxTimerReset) els.ctxTimerReset.style.display = isStatus ? "none" : "";
       if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
       if(els.ctxForceOff) els.ctxForceOff.style.display = isStatus ? "none" : "";
       if(els.ctxHandcamOff) els.ctxHandcamOff.style.display = isStatus ? "none" : "";
@@ -6257,6 +6260,11 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
         !!state.adminOk
       ));
       els.ctxKick.disabled = !canKick;
+      if(els.ctxTimerReset){
+        const canResetTimer = !!(state.joined && state.adminOk && p && p.id);
+        els.ctxTimerReset.disabled = !canResetTimer;
+        els.ctxTimerReset.title = canResetTimer ? `${p.name || p.id} 작가님의 오늘 타이머 초기화` : "관리자 인증 후 사용할 수 있어";
+      }
       if(els.ctxForceOff) els.ctxForceOff.disabled = !canKick;
       // 손캠 강제 종료는 현재 송출 중인 타일에서만 활성화합니다.
       if(els.ctxHandcamOff){
@@ -6879,19 +6887,21 @@ function seoulDateKey(){
         return Date.now();
       }
     }
-    const ONLINE_TTL_MS = 30 * 60 * 1000; // (레거시) TTL 기반 온라인 판정은 사용하지 않음. 오프라인은 onDisconnect/status="off" 또는 퇴장 버튼에서만 처리.
+    // ✅ V142: onDisconnect가 유실된 비정상 종료/절전 종료까지 정리하는 하이브리드 온라인 판정
+    // heartbeat는 2분 주기이므로 8분 동안 신호가 없으면 화면에서는 오프라인으로 취급한다.
+    // 정상 종료는 기존처럼 status=off/lastSeenAtMs=0으로 즉시 사라지고, 잠자기에서 복귀하면 다음 heartbeat에 자동 복귀한다.
+    const ONLINE_TTL_MS = 8 * 60 * 1000;
     // ✅ V99_COST_LIGHT_1: RTDB 다운로드 경량화 1단계
     // presence는 child_* 증분 구독을 이미 사용 중이므로, 가장 큰 비용 원인인 heartbeat 쓰기 빈도만 낮춘다.
-    // 온라인 판정은 status=off/onDisconnect 기반이라 30초 heartbeat가 필수는 아님.
-    const PRESENCE_HEARTBEAT_INTERVAL_MS = 120000; // 기존 30초 → 120초
-    const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장만 30초 → 60초
-// ✅ 온라인/오프라인 판정 규칙
-// - 입장하면 온라인 유지(heartbeat 사용 여부와 무관)
-// - '진짜 오프라인'만 타일에서 숨김: status가 'off'/'offline'일 때만
+    const PRESENCE_HEARTBEAT_INTERVAL_MS = 120000; // 2분
+    const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장 60초
 function isOfflinePresence(p){
   if(!p) return true;
   const s = String(p.status||"").toLowerCase();
-  return (s === "off" || s === "offline");
+  if(s === "off" || s === "offline") return true;
+  const last = Number(p.lastSeenAtMs || 0);
+  if(!Number.isFinite(last) || last <= 0) return true;
+  return (Date.now() - last) > ONLINE_TTL_MS;
 }
 function isOnlinePresence(p){
   return !isOfflinePresence(p);
@@ -9078,11 +9088,20 @@ async function ensureMeDoc(){
     lastSeenAtMs: Date.now(),
     updatedAt: Date.now(),
     petMotionSeedMs: Date.now(),
+    timerEpochMs: readTimerResetEpoch_(),
+    timerStateNonce: timerStateNonceForWrite_(readTimerResetEpoch_(), Date.now()),
   };
 
   try{
     const snap = await rGet(pref);
     const data = snap.exists() ? (snap.val() || {}) : null;
+
+    // ✅ V142: 구독/초기 상태 전환보다 먼저 관리자 초기화 명령을 로컬에 반영한다.
+    // 그래야 입장 직후 transitionTo("break")가 옛 localStorage 시간을 서버에 다시 올리지 않는다.
+    if(data){
+      try{ syncTimerResetEpochFromPresence_(data); }catch(_e){}
+      try{ applyTimerResetCommandToLocal_(data, "ensureMeDoc"); }catch(_e){}
+    }
 
     if(!data){
       await rSet(pref, seed);
@@ -9106,6 +9125,8 @@ async function ensureMeDoc(){
           sessionStartedAtMs: null,
           status: "break",
           statusSource: "midnightRollover:ensureMeDoc",
+          timerEpochMs: currentTimerEpoch_(data),
+          timerStateNonce: timerStateNonceForWrite_(currentTimerEpoch_(data), now),
           updatedAt: now,
           lastSeenAtMs: now,
         });
@@ -9166,8 +9187,18 @@ async function heartbeat(){
     // ✅ V134: 절전 복귀 직후 전날 시작시각을 다시 올리기 전에 날짜를 먼저 보정
     try{ await ensureFocusDayCurrent("heartbeat"); }catch(_e){}
     const now = Date.now();
+    try{
+      const meNow = state.currentParticipants?.get?.(state.uid) || null;
+      if(meNow) applyTimerResetCommandToLocal_(meNow, "heartbeatGuard");
+    }catch(_e){}
     const st = (state.myStatus || "break");
-    const patch = { lastSeenAtMs: now, updatedAt: now };
+    const meRecord = state.currentParticipants?.get?.(state.uid) || null;
+    const epoch = currentTimerEpoch_(meRecord);
+    const patch = {
+      lastSeenAtMs: now,
+      updatedAt: now,
+      timerEpochMs: epoch
+    };
 
     // ✅ 재접속/일시 끊김으로 status가 "off"에 고정되는 현상 방지:
     // - joined 상태에서는 heartbeat마다 내 status를 함께 올려줌
@@ -9175,6 +9206,14 @@ async function heartbeat(){
       patch.status = st;
       patch.statusSource = "hb";
       patch.sessionStartedAtMs = (st === "work") ? (state._workSessionStartedAtMs || now) : null;
+      patch.timerStateNonce = timerStateNonceForStateWrite_(
+        meRecord,
+        epoch,
+        now,
+        st,
+        Number(meRecord?.totalSecondsToday || 0),
+        patch.sessionStartedAtMs
+      );
       try{
         const playOn = (getLayoutMode && getLayoutMode() === "playground");
         patch["theme/petPlayActive"] = playOn;
@@ -9234,56 +9273,141 @@ function startRtdbConnectionWatch(){
       const uid = String((state && state.uid) || "me");
       return `mk_timer_reset_ack_v1_${room}_${uid}`;
     }
-    // ✅ V141: 탭별 메모리 ACK + 브라우저 공용 localStorage ACK
-    // 같은 브라우저의 여러 탭이 열려 있어도 각 탭 런타임은 초기화 명령을 한 번씩 처리한다.
-    // 새로 연 탭/새로고침은 localStorage ACK를 읽어 이미 처리한 오래된 명령을 반복하지 않는다.
+    function timerResetEpochKey_(){
+      const room = String((state && state.roomId) || FIXED_ROOM_ID || "room");
+      const uid = String((state && state.uid) || "me");
+      return `mk_timer_reset_epoch_v2_${room}_${uid}`;
+    }
+    // ✅ V142: resetAtMs를 단순 알림이 아니라 '타이머 세대(epoch)' 장벽으로 사용한다.
+    // 초기화 전 탭의 늦은 heartbeat/status 저장이 도착해도 세대가 다르면 다시 0초로 고친다.
     function primeTimerResetAckForTab_(){
       try{
-        const stored = Math.max(0, Number(localStorage.getItem(timerResetAckKey_()) || 0));
-        state.__timerResetAckInTab = stored;
+        const storedAck = Math.max(0, Number(localStorage.getItem(timerResetAckKey_()) || 0));
+        const storedEpoch = Math.max(0, Number(localStorage.getItem(timerResetEpochKey_()) || 0));
+        state.__timerResetAckInTab = storedAck;
+        state.__timerResetEpochMs = Math.max(storedAck, storedEpoch, Number(state.__timerResetEpochMs || 0));
         state.__timerResetAckPrimed = true;
-        return stored;
+        return storedAck;
       }catch(_e){
         state.__timerResetAckInTab = Math.max(0, Number(state.__timerResetAckInTab || 0));
+        state.__timerResetEpochMs = Math.max(state.__timerResetAckInTab, Number(state.__timerResetEpochMs || 0));
         state.__timerResetAckPrimed = true;
         return state.__timerResetAckInTab;
       }
     }
     function readTimerResetAck_(){
       try{
-        // 입장 시 미리 고정한 탭별 기준값을 사용한다. 다른 탭이 localStorage ACK를 먼저 올려도
-        // 이미 열려 있던 이 탭은 자기 런타임 초기화를 빠뜨리지 않는다.
         if(state.__timerResetAckPrimed === true){
           return Math.max(0, Number(state.__timerResetAckInTab || 0));
         }
         return primeTimerResetAckForTab_();
       }catch(_e){ return 0; }
     }
+    function readTimerResetEpoch_(){
+      try{
+        if(state.__timerResetAckPrimed !== true) primeTimerResetAckForTab_();
+        return Math.max(0, Number(state.__timerResetEpochMs || 0), readTimerResetAck_());
+      }catch(_e){ return 0; }
+    }
     function writeTimerResetAck_(ms){
       const clean = Math.max(0, Number(ms)||0);
-      try{ state.__timerResetAckInTab = clean; }catch(_e){}
-      try{ localStorage.setItem(timerResetAckKey_(), String(clean)); }catch(_e){}
+      try{
+        state.__timerResetAckInTab = clean;
+        state.__timerResetEpochMs = Math.max(clean, Number(state.__timerResetEpochMs || 0));
+      }catch(_e){}
+      try{
+        localStorage.setItem(timerResetAckKey_(), String(clean));
+        localStorage.setItem(timerResetEpochKey_(), String(Math.max(clean, Number(state.__timerResetEpochMs || 0))));
+      }catch(_e){}
+    }
+    function syncTimerResetEpochFromPresence_(p){
+      try{
+        const resetAt = Math.max(0, Number(p?.timerResetAtMs || 0));
+        const epoch = Math.max(0, Number(p?.timerEpochMs || 0));
+        const best = Math.max(readTimerResetEpoch_(), resetAt, epoch);
+        state.__timerResetEpochMs = best;
+        try{ localStorage.setItem(timerResetEpochKey_(), String(best)); }catch(_e){}
+        return best;
+      }catch(_e){ return readTimerResetEpoch_(); }
+    }
+    function timerResetCanonicalState_(p){
+      try{
+        const status = String(p?.status || "").toLowerCase();
+        const total = Math.max(0, Number(p?.totalSecondsToday || 0));
+        const start = Math.max(0, Number(p?.sessionStartedAtMs || 0));
+        return total === 0 && !start && (status === "break" || status === "off" || status === "offline");
+      }catch(_e){ return false; }
+    }
+    function timerResetRecordNeedsClamp_(p){
+      try{
+        const resetAt = Math.max(0, Number(p?.timerResetAtMs || 0));
+        if(!resetAt) return false;
+        const epoch = Math.max(0, Number(p?.timerEpochMs || 0));
+        const nonce = String(p?.timerStateNonce || "");
+        // epoch 필드가 있는 V142 쓰기는 resetAt보다 오래된 세대면 무조건 폐기한다.
+        // epoch가 아예 없는 레거시 V141 기록은 업그레이드 직후의 정상 작업시간을 지우지 않기 위해 여기서 바로 폐기하지 않는다.
+        if(epoch > 0 && epoch < resetAt) return true;
+        // V142의 상태 nonce에는 쓰기 당시 epoch가 포함된다. 초기화 전에 큐에 있던 S:0/... 쓰기가 늦게 도착하면 잡아낸다.
+        const sm = nonce.match(/^S:(\d+):/);
+        if(sm && Math.max(0, Number(sm[1] || 0)) < resetAt) return true;
+        // 관리자 초기화 직후 nonce(R)가 남아 있는데 시간/상태가 다시 움직였다면
+        // 구버전 탭 또는 초기화 전 큐의 늦은 쓰기로 판단한다.
+        if(nonce === `R:${resetAt}` && !timerResetCanonicalState_(p)) return true;
+        return false;
+      }catch(_e){ return false; }
+    }
+    function currentTimerEpoch_(p){
+      try{
+        return Math.max(
+          readTimerResetEpoch_(),
+          Number(p?.timerResetAtMs || 0),
+          Number(p?.timerEpochMs || 0)
+        );
+      }catch(_e){ return readTimerResetEpoch_(); }
+    }
+    function timerStateNonceForWrite_(epoch, now=Date.now()){
+      return `S:${Math.max(0, Number(epoch)||0)}:${Math.max(0, Number(now)||0)}`;
+    }
+    function timerStateNonceForStateWrite_(p, epoch, now, nextStatus, nextTotal, nextStart){
+      try{
+        const resetAt = Math.max(0, Number(p?.timerResetAtMs || 0));
+        const oldNonce = String(p?.timerStateNonce || "");
+        const status = String(nextStatus || "").toLowerCase();
+        const total = Math.max(0, Number(nextTotal || 0));
+        const start = Math.max(0, Number(nextStart || 0));
+        const canonicalNext = total === 0 && !start && (status === "break" || status === "off" || status === "offline");
+        // 초기화 직후의 안정 상태에서는 R nonce를 유지한다.
+        // 구버전 탭이 work/옛 누적값을 덮으면 R + 비정상 상태 조합으로 즉시 감지할 수 있다.
+        if(resetAt && oldNonce === `R:${resetAt}` && canonicalNext) return oldNonce;
+      }catch(_e){}
+      return timerStateNonceForWrite_(epoch, now);
     }
     function isTimerResetCommandCurrent_(p){
       try{
         const resetAt = Math.max(0, Number(p?.timerResetAtMs || 0));
         if(!resetAt) return false;
-        // 보지 못한 관리자 초기화 명령은 현재 status/updatedAt과 무관하게 반드시 1회 적용한다.
-        // 재연결 직전의 옛 heartbeat가 늦게 도착해도 초기화를 건너뛰지 않게 하는 핵심 방어다.
-        return resetAt > readTimerResetAck_();
+        const unseen = resetAt > readTimerResetAck_();
+        const staleRecord = timerResetRecordNeedsClamp_(p);
+        // v141에서 ACK만 먼저 남고 localStorage가 옛 시간으로 되살아난 경우:
+        // 서버가 여전히 명백한 0초 초기화 상태라면 로컬도 다시 0으로 맞춘다.
+        const localRevived = timerResetCanonicalState_(p) && Math.max(0, Number(focusLoadSeconds() || 0)) > 0;
+        return unseen || staleRecord || localRevived;
       }catch(_e){ return false; }
     }
     function repairTimerResetPresence_(resetAt, source="remote"){
       try{
         if(!state?.joined || !state?.roomId || !state?.uid) return;
         const now = Date.now();
+        const cleanReset = Math.max(0, Number(resetAt)||0);
         rUpdate(rMePresenceRef(state.roomId, state.uid), {
           dateKey: seoulDateKey(),
           totalSecondsToday: 0,
           sessionStartedAtMs: null,
           status: "break",
           statusSource: `adminTimerResetAck:${source}`,
-          timerResetAtMs: Math.max(0, Number(resetAt)||0),
+          timerResetAtMs: cleanReset,
+          timerEpochMs: cleanReset,
+          timerStateNonce: `R:${cleanReset}`,
           timerResetAppliedAtMs: now,
           updatedAt: now,
           lastSeenAtMs: now,
@@ -9292,7 +9416,10 @@ function startRtdbConnectionWatch(){
     }
     function applyTimerResetCommandToLocal_(p, source="remote"){
       try{
-        if(!isTimerResetCommandCurrent_(p)) return false;
+        if(!isTimerResetCommandCurrent_(p)){
+          syncTimerResetEpochFromPresence_(p);
+          return false;
+        }
         const resetAt = Math.max(0, Number(p?.timerResetAtMs || Date.now()));
         focusSaveSeconds(0);
         writeTimerResetAck_(resetAt);
@@ -9316,13 +9443,14 @@ function startRtdbConnectionWatch(){
               status: "break",
               statusSource: `adminTimerReset:${source}`,
               timerResetAtMs: resetAt,
+              timerEpochMs: resetAt,
+              timerStateNonce: `R:${resetAt}`,
+              timerResetAppliedAtMs: Date.now(),
             }));
           }
         }catch(_e){}
         try{ syncMyStatusUI(); }catch(_e){}
 
-        // 재연결 중 옛 heartbeat가 관리자 명령 뒤에 도착했더라도,
-        // 명령을 처리한 탭이 원격 값을 다시 0초·휴식중으로 확정한다.
         repairTimerResetPresence_(resetAt, source);
         return true;
       }catch(e){
@@ -9336,6 +9464,9 @@ function startRtdbConnectionWatch(){
       const today = seoulDateKey();
       const recordDay = String(p?.dateKey || "");
       const dayStart = seoulDayStartMs(today);
+
+      // ✅ V142: 관리자 초기화 세대보다 오래된 쓰기/구버전 탭의 되살림은 화면에서도 즉시 0초로 고정
+      if(timerResetRecordNeedsClamp_(p)) return 0;
 
       // ✅ V138: 전날 레코드는 상태와 무관하게 0초로 표시한다.
       // 해당 사용자의 탭이 잠들어 아직 원격 상태를 갱신하지 못했어도 시간이 증가해 보이지 않는다.
@@ -9384,6 +9515,7 @@ function startRtdbConnectionWatch(){
           const status = "break";
           const sessionStart = null;
           const todaySec = 0;
+          const timerEpoch = currentTimerEpoch_(current);
 
           focusSaveSeconds(0);
           try{ setHelperMode("manual", true); }catch(_e){}
@@ -9402,6 +9534,8 @@ function startRtdbConnectionWatch(){
               sessionStartedAtMs: sessionStart,
               status,
               statusSource: `midnightRollover:${reason}`,
+              timerEpochMs: timerEpoch,
+              timerStateNonce: timerStateNonceForWrite_(timerEpoch, now),
               updatedAt: now,
               lastSeenAtMs: now,
             });
@@ -9415,6 +9549,8 @@ function startRtdbConnectionWatch(){
             sessionStartedAtMs: sessionStart,
             status,
             statusSource: `midnightRollover:${reason}`,
+            timerEpochMs: timerEpoch,
+            timerStateNonce: timerStateNonceForWrite_(timerEpoch, now),
             updatedAt: now,
             lastSeenAtMs: now,
           });
@@ -9473,12 +9609,21 @@ function startRtdbConnectionWatch(){
       }
       window.addEventListener("pagehide", ()=>{ markOfflineBestEffort(); }, {capture:true});
       window.addEventListener("beforeunload", ()=>{ markOfflineBestEffort(); }, {capture:true});
+      // BFCache/앱 전환 뒤 돌아오면 다음 실제 종료도 다시 OFFLINE 처리할 수 있게 잠금을 해제한다.
+      window.addEventListener("pageshow", ()=>{ fired = false; }, {capture:true});
+      document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") fired = false; }, {passive:true});
     })();
 
     // ✅ V134: macOS 잠자기·모바일 백그라운드·BFCache 복귀에서 자정 누락 즉시 복구
-    window.addEventListener("pageshow", ()=>{ try{ ensureFocusDayCurrent("pageshow"); }catch(_e){}; });
-    window.addEventListener("focus", ()=>{ try{ ensureFocusDayCurrent("focus"); }catch(_e){}; });
-    window.addEventListener("online", ()=>{ try{ ensureFocusDayCurrent("online"); }catch(_e){}; });
+    window.addEventListener("pageshow", ()=>{
+      try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
+    });
+    window.addEventListener("focus", ()=>{
+      try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
+    });
+    window.addEventListener("online", ()=>{
+      try{ Promise.resolve(ensureFocusDayCurrent("online")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
+    });
 
 
     function stopActivityWatch(){
@@ -9936,17 +10081,30 @@ function startHelperWatch(){
 
     
 async function transitionTo(nextStatus, source="manual"){
-  // ✅ 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
-  // V134: 자정 전용 전환에서는 전날 값을 다시 저장하지 않는다.
-  if(source !== "manualMidnight" && source !== "midnightRollover") persistMyFocusToLocal();
   if(!state.roomId || !state.uid) return;
+
+  // ✅ V142: 상태를 쓰기 전에 아직 처리하지 않은 초기화/세대 불일치를 먼저 정리한다.
+  try{
+    const meBefore = state.currentParticipants?.get?.(state.uid) || null;
+    if(meBefore) applyTimerResetCommandToLocal_(meBefore, `beforeTransition:${source}`);
+  }catch(_e){}
+
+  // 상태 전환 직전 현재 집중시간을 로컬에 누적 저장
+  if(source !== "manualMidnight" && source !== "midnightRollover") persistMyFocusToLocal();
   const now = Date.now();
 
-  // ✅ 구독이 꺼져 있어도 UI는 즉시 반영
   state.myStatus = nextStatus;
   state.myStatusSource = source;
 
-  const patch = { status: nextStatus, statusSource: source, updatedAt: now, lastSeenAtMs: now };
+  const meNow = state.currentParticipants?.get?.(state.uid) || null;
+  const timerEpoch = currentTimerEpoch_(meNow);
+  const patch = {
+    status: nextStatus,
+    statusSource: source,
+    updatedAt: now,
+    lastSeenAtMs: now,
+    timerEpochMs: timerEpoch
+  };
   if(nextStatus === "work"){
     patch.sessionStartedAtMs = now;
     state._workSessionStartedAtMs = now;
@@ -9955,11 +10113,18 @@ async function transitionTo(nextStatus, source="manual"){
     state._workSessionStartedAtMs = 0;
   }
 
-  // totalSecondsToday는 로컬 기준 누적을 올려줌(읽기 없이)
   try{
     patch.totalSecondsToday = Math.floor(Number(focusLoadSeconds()||0));
     patch.dateKey = seoulDateKey();
   }catch(e){}
+  patch.timerStateNonce = timerStateNonceForStateWrite_(
+    meNow,
+    timerEpoch,
+    now,
+    nextStatus,
+    Number(patch.totalSecondsToday || 0),
+    patch.sessionStartedAtMs
+  );
 
   try{
     await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
@@ -9967,7 +10132,6 @@ async function transitionTo(nextStatus, source="manual"){
     console.warn("[status] update failed", e);
   }
 
-  // UI
   state.myStatus = nextStatus;
   syncMyStatusUI();
 }
@@ -13200,10 +13364,17 @@ t.appendChild(bg);
                   const localSec = Math.floor(Number(focusLoadSeconds()||0));
                   let remoteSec = 0;
                   try{ remoteSec = Math.floor(Number(computeDisplayedTotal(meNow)||0)); }catch(e){ remoteSec = Math.floor(Number(meNow.totalSecondsToday||0)); }
-                  const merged = Math.max(localSec, remoteSec);
+
+                  // ✅ V142: 서버가 관리자 초기화의 정식 0초 상태이면 localStorage의 옛 큰 값을 max()로 되살리지 않는다.
+                  const resetCanonical = timerResetCanonicalState_(meNow) && Math.max(0, Number(meNow.timerResetAtMs || 0)) > 0;
+                  const resetStale = timerResetRecordNeedsClamp_(meNow);
+                  const merged = (resetCanonical || resetStale) ? remoteSec : Math.max(localSec, remoteSec);
                   if(merged !== localSec) focusSaveSeconds(merged);
 
+                  const timerEpoch = currentTimerEpoch_(meNow);
+                  const nowPatch = Date.now();
                   const needsRemotePatch =
+                    resetStale ||
                     (Math.floor(Number(meNow.totalSecondsToday||0)) !== merged) ||
                     (meNow.sessionStartedAtMs != null) ||
                     ((meNow.status||"break") !== "break") ||
@@ -13213,10 +13384,13 @@ t.appendChild(bg);
                     rUpdate(rMePresenceRef(state.roomId, state.uid), {
                       dateKey: today,
                       status: "break",
+                      statusSource: resetStale ? "timerResetBarrier:initialMerge" : "initialMerge",
                       totalSecondsToday: merged,
                       sessionStartedAtMs: null,
-                      updatedAt: Date.now(),
-                      lastSeenAtMs: Date.now(),
+                      timerEpochMs: timerEpoch,
+                      timerStateNonce: resetCanonical ? `R:${Math.max(0, Number(meNow.timerResetAtMs || timerEpoch))}` : timerStateNonceForWrite_(timerEpoch, nowPatch),
+                      updatedAt: nowPatch,
+                      lastSeenAtMs: nowPatch,
                     }).catch(()=>{});
                   }
                   state.didFocusMerge = true;
@@ -13548,6 +13722,8 @@ try{
         status: "break",
         statusSource: "reconnectJoin",
         sessionStartedAtMs: null,
+        timerEpochMs: currentTimerEpoch_(me),
+        timerStateNonce: timerStateNonceForWrite_(currentTimerEpoch_(me), Date.now()),
         updatedAt: Date.now(),
         lastSeenAtMs: Date.now()
       });
@@ -14374,12 +14550,11 @@ function refreshAdminTimerTargetOptions(){
   }
 }
 
-async function adminResetOneTimer(){
-  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
-  if(!state.roomId || !state.uid){ showToast("작업방 입장 후 사용할 수 있어"); return; }
-
-  const targetUid = String(els.adminTimerTarget?.value || "").trim();
-  if(!targetUid){ showToast("초기화할 작가님을 선택해줘"); return; }
+async function adminResetTimerForUid_(targetUid, targetNameHint="", trigger="selector"){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return false; }
+  if(!state.roomId || !state.uid){ showToast("작업방 입장 후 사용할 수 있어"); return false; }
+  targetUid = String(targetUid || "").trim();
+  if(!targetUid){ showToast("초기화할 작가님을 선택해줘"); return false; }
 
   let target = state.currentParticipants?.get?.(targetUid) || null;
   try{
@@ -14390,19 +14565,18 @@ async function adminResetOneTimer(){
   if(!target){
     showToast("선택한 작가님의 타이머 정보를 찾지 못했어");
     refreshAdminTimerTargetOptions();
-    return;
+    return false;
   }
 
-  const targetName = String(target.name || "선택한 작가").trim() || "선택한 작가";
+  const targetName = String(targetNameHint || target.name || "선택한 작가").trim() || "선택한 작가";
   const offline = isOfflinePresence(target);
   const nextStatus = offline ? "off" : "break";
+  if(!confirm(`${targetName} 작가님의 타이머만 0초로 초기화할까?${offline ? "\n현재는 오프라인으로 판단되어 오프라인 상태를 유지해." : "\n접속 중이라 휴식중으로 전환돼."}`)) return false;
 
-  if(!confirm(`${targetName} 작가님의 타이머만 0초로 초기화할까?${offline ? "\n오프라인 상태는 그대로 유지돼." : "\n접속 중이라 휴식중으로 전환돼."}`)) return;
-
-  const btn = els.adminResetOneTimer;
+  const btn = (trigger === "selector") ? els.adminResetOneTimer : els.ctxTimerReset;
   const oldText = btn ? btn.textContent : "";
   try{
-    if(btn){ btn.disabled = true; btn.textContent = "⏳ 개별 초기화 중…"; }
+    if(btn){ btn.disabled = true; btn.textContent = "⏳ 초기화 중…"; }
 
     const now = Date.now();
     const today = seoulDateKey();
@@ -14413,18 +14587,19 @@ async function adminResetOneTimer(){
       status: nextStatus,
       statusSource: offline ? "adminTimerResetOne:offline" : "adminTimerResetOne",
       timerResetAtMs: now,
+      timerEpochMs: now,
+      timerStateNonce: `R:${now}`,
+      timerResetAppliedAtMs: now,
       updatedAt: now,
     };
 
-    // lastSeenAtMs는 건드리지 않아 접속 여부·타일 순서를 바꾸지 않는다.
+    // lastSeenAtMs는 건드리지 않는다. stale/로그아웃 레코드는 V142 TTL 판정으로 오프라인 유지.
     await rUpdate(rMePresenceRef(state.roomId, targetUid), payload);
 
-    // 관리자가 자기 자신을 선택한 경우 로컬 저장값과 실행 상태도 즉시 정리한다.
     if(String(targetUid) === String(state.uid)){
-      try{ applyTimerResetCommandToLocal_(Object.assign({}, payload, { status:"break" }), "adminOneButton"); }catch(_e){}
+      try{ applyTimerResetCommandToLocal_(Object.assign({}, payload, { status:"break" }), `adminOne:${trigger}`); }catch(_e){}
     }
 
-    // 원격 child_changed가 오기 전에도 현재 화면을 즉시 정리한다.
     try{
       if(state.currentParticipants instanceof Map){
         const old = state.currentParticipants.get(targetUid) || target;
@@ -14435,16 +14610,23 @@ async function adminResetOneTimer(){
       refreshAdminTimerTargetOptions();
     }catch(_e){}
 
-    showToast(`⏱️ ${targetName} 작가님 타이머 초기화 완료${offline ? "" : " · 휴식중"}`, 4200);
+    showToast(`⏱️ ${targetName} 작가님 타이머 초기화 완료${offline ? " · 오프라인 유지" : " · 휴식중"}`, 4200);
+    return true;
   }catch(e){
     console.warn("[adminTimerResetOne] failed", e);
     showToast("개별 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);
+    return false;
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = oldText || "👤 선택 작가 0초 · 휴식중"; }
+    if(btn){ btn.disabled = false; btn.textContent = oldText || (trigger === "selector" ? "👤 선택 작가 0초 · 휴식중" : "⏱️ 타이머 0초 · 휴식중"); }
   }
 }
 
-// ✅ V139 관리자: 작업방 전체 타이머 초기화
+async function adminResetOneTimer(){
+  const targetUid = String(els.adminTimerTarget?.value || "").trim();
+  return adminResetTimerForUid_(targetUid, "", "selector");
+}
+
+// ✅ V139/V142 관리자: 작업방 전체 타이머 초기화 + 세대 장벽
 async function adminResetAllTimers(){
   if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
   if(!state.roomId || !state.uid){ showToast("작업방 입장 후 사용할 수 있어"); return; }
@@ -14476,16 +14658,26 @@ async function adminResetAllTimers(){
       updates[`${base}/status`] = offline ? "off" : "break";
       updates[`${base}/statusSource`] = offline ? "adminTimerReset:offline" : "adminTimerReset";
       updates[`${base}/timerResetAtMs`] = now;
+      updates[`${base}/timerEpochMs`] = now;
+      updates[`${base}/timerStateNonce`] = `R:${now}`;
+      updates[`${base}/timerResetAppliedAtMs`] = now;
       updates[`${base}/updatedAt`] = now;
-      // lastSeenAtMs는 건드리지 않아 오프라인/타일 순서가 변하지 않게 한다.
     }
 
     await rUpdate(rRef(rtdb), updates);
 
-    // 관리자 자신의 로컬 상태도 즉시 0초/휴식중으로 맞춘다.
-    try{ applyTimerResetCommandToLocal_({ timerResetAtMs: now, totalSecondsToday: 0, sessionStartedAtMs: null, status: "break", updatedAt: now }, "adminButton"); }catch(_e){}
+    try{
+      applyTimerResetCommandToLocal_({
+        timerResetAtMs: now,
+        timerEpochMs: now,
+        timerStateNonce: `R:${now}`,
+        totalSecondsToday: 0,
+        sessionStartedAtMs: null,
+        status: "break",
+        updatedAt: now
+      }, "adminButton");
+    }catch(_e){}
 
-    // 원격 child_changed가 오기 전에도 현재 화면은 즉시 정리한다.
     try{
       if(state.currentParticipants instanceof Map){
         for(const uid of uids){
@@ -14499,6 +14691,9 @@ async function adminResetAllTimers(){
             status: offline ? "off" : "break",
             statusSource: offline ? "adminTimerReset:offline" : "adminTimerReset",
             timerResetAtMs: now,
+            timerEpochMs: now,
+            timerStateNonce: `R:${now}`,
+            timerResetAppliedAtMs: now,
             updatedAt: now,
           }));
         }
@@ -14516,24 +14711,26 @@ async function adminResetAllTimers(){
   }
 }
 
-// ✅ 타이머 초기화 (오늘 작업시간/상태/세션 시작시간)
+// ✅ 내 타이머 초기화도 관리자 초기화와 같은 세대 장벽을 사용
 async function resetTodayTimer(){
   try{
-    // 로컬 누적 0
+    const now = Date.now();
+    const payload = {
+      totalSecondsToday: 0,
+      sessionStartedAtMs: null,
+      status: "break",
+      statusSource: "resetTimer",
+      dateKey: seoulDateKey(),
+      timerResetAtMs: now,
+      timerEpochMs: now,
+      timerStateNonce: `R:${now}`,
+      timerResetAppliedAtMs: now,
+      updatedAt: now,
+      lastSeenAtMs: now,
+    };
     try{ focusSaveSeconds(0); }catch(e){}
-    // 진행중 세션도 끊고 상태는 휴식으로
-    if(state.roomId && state.uid){
-      await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-        totalSecondsToday: 0,
-        sessionStartedAtMs: null,
-        status: "break",
-        statusSource: "resetTimer",
-        dateKey: seoulDateKey(),
-        updatedAt: Date.now(),
-        lastSeenAtMs: Date.now(),
-      });
-    }
-    // UI 갱신
+    if(state.roomId && state.uid){ await rUpdate(rMePresenceRef(state.roomId, state.uid), payload); }
+    try{ applyTimerResetCommandToLocal_(payload, "selfButton"); }catch(_e){}
     try{ state.myStatus = "break"; syncMyStatusUI(); }catch(e){}
     showToast("⏱️ 오늘 작업 타이머를 초기화했어!");
   }catch(e){
@@ -15300,6 +15497,16 @@ try{
         const t = state.ctxTarget || {};
         hideCtxMenu();
         if(t.uid) await requestKick(t.uid, t.name);
+      });
+    }
+
+    // ✅ V142: 관리자 인증 후 프로필 타일 우클릭 → 해당 작가 타이머만 초기화
+    if(els.ctxTimerReset){
+      els.ctxTimerReset.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) await adminResetTimerForUid_(t.uid, t.name, "context");
       });
     }
 
