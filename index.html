@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -4317,6 +4317,639 @@ body.joined #preJoinCard{ display:none; }
   body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
 }
 </style>
+
+<style id="lowSpecModeV143Style">
+  /* ===== V143 저사양 모드 =====
+     프로필 타일 대신 텍스트 로스터를 사용하고, GPU 합성 비용이 큰 효과를 제거합니다. */
+  #lowSpecBtn.lowSpecOn{
+    border-color:rgba(174,231,255,.52) !important;
+    background:rgba(123,204,238,.18) !important;
+    color:#e8f9ff !important;
+    font-weight:1000;
+  }
+  body.mkLowSpecMode *,
+  body.mkLowSpecMode *::before,
+  body.mkLowSpecMode *::after{
+    animation:none !important;
+    transition:none !important;
+    scroll-behavior:auto !important;
+  }
+  body.mkLowSpecMode .topbar,
+  body.mkLowSpecMode .card,
+  body.mkLowSpecMode .modal,
+  body.mkLowSpecMode .viewMenu,
+  body.mkLowSpecMode .statusMenu,
+  body.mkLowSpecMode .gridRosterItem,
+  body.mkLowSpecMode .msg{
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    filter:none !important;
+    box-shadow:none !important;
+  }
+  body.mkLowSpecMode .topbar{ background:#101016 !important; }
+  body.mkLowSpecMode .joinTicker{ display:none !important; }
+  body.mkLowSpecMode .grid{
+    display:block !important;
+    padding:2px 0 10px !important;
+  }
+  body.mkLowSpecMode .gridRosterWrap{
+    width:100%;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:14px;
+    background:rgba(255,255,255,.035);
+    padding:10px;
+  }
+  body.mkLowSpecMode .gridRosterList{ gap:4px !important; }
+  body.mkLowSpecMode .gridRosterItem{
+    min-height:38px !important;
+    padding:7px 9px !important;
+    background:rgba(255,255,255,.035) !important;
+  }
+  body.mkLowSpecMode .gridRosterEmoji{
+    width:27px !important;
+    height:27px !important;
+    min-width:27px !important;
+    font-size:15px !important;
+    background:rgba(255,255,255,.06) !important;
+    border-color:rgba(255,255,255,.10) !important;
+  }
+  body.mkLowSpecMode .gridRosterName,
+  body.mkLowSpecMode .gridRosterStatus{ font-size:12px !important; }
+  body.mkLowSpecMode .tile,
+  body.mkLowSpecMode .tile .bg,
+  body.mkLowSpecMode .tile .shade,
+  body.mkLowSpecMode .tile .bottomStack,
+  body.mkLowSpecMode .handcamBox,
+  body.mkLowSpecMode video,
+  body.mkLowSpecMode .petPlayground,
+  body.mkLowSpecMode .petDashFx,
+  body.mkLowSpecMode .petDashHeart,
+  body.mkLowSpecMode .petHeroMiniList{
+    display:none !important;
+  }
+  body.mkLowSpecMode #handcamBtn,
+  body.mkLowSpecMode #handcamViewBtn,
+  body.mkLowSpecMode .hcBtn,
+  body.mkLowSpecMode .hcViewBtn{
+    display:none !important;
+  }
+  body.mkLowSpecMode .chatList{ background:#0c0c11 !important; }
+  body.mkLowSpecMode .msg{ background:rgba(255,255,255,.045) !important; }
+  body.mkLowSpecMode .msg.me{ background:rgba(255,182,214,.075) !important; }
+  body.mkLowSpecMode .petDashArt,
+  body.mkLowSpecMode .petHeroArt{
+    filter:none !important;
+    transform:none !important;
+  }
+  /* ✅ V150: 데스크톱 저사양 로스터는 입장 완료 뒤에만 표시합니다. */
+  @media (min-width:921px){
+    body.joined.mkLowSpecMode main{
+      display:flex !important;
+      min-width:0 !important;
+    }
+    body.joined.mkLowSpecMode .wrap{
+      grid-template-columns:minmax(0,1fr) 340px !important;
+    }
+    body.joined.mkLowSpecMode .sidebar{
+      grid-column:auto !important;
+      width:auto !important;
+      max-width:none !important;
+    }
+  }
+  /* 성능 모드가 저장되어 있어도 입장 전 정보 잠금 규칙이 항상 우선합니다. */
+  body:not(.joined).mkLowSpecMode main,
+  body:not(.joined).mkLowSpecMode aside.sidebar{
+    display:none !important;
+  }
+  @media (max-width:760px){
+    #lowSpecBtn{ padding:10px 9px !important; }
+  }
+</style>
+
+<style id="balancedLightModeV146Style">
+  /* ===== V146 균형형 경량 모드 =====
+     프로필 타일·펫·손캠·채팅 기능은 유지하고 GPU 합성/장식 효과와 UI 갱신 빈도만 줄입니다. */
+  #lightModeBtn.lightModeOn{
+    border-color:rgba(170,236,190,.56) !important;
+    background:rgba(101,194,132,.18) !important;
+    color:#ecfff1 !important;
+    font-weight:1000;
+  }
+  body.mkLightMode .topbar,
+  body.mkLightMode .card,
+  body.mkLightMode .tile,
+  body.mkLightMode .modal,
+  body.mkLightMode .viewMenu,
+  body.mkLightMode .statusMenu,
+  body.mkLightMode .msg{
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    box-shadow:none !important;
+  }
+  body.mkLightMode .tile,
+  body.mkLightMode .card,
+  body.mkLightMode .msg,
+  body.mkLightMode .petPlayFriend,
+  body.mkLightMode .petPlayPet img{
+    will-change:auto !important;
+  }
+  /* 장식성 애니메이션만 쉬고 실제 데이터/영상/버튼 기능은 유지 */
+  body.mkLightMode .brand .dot,
+  body.mkLightMode .tile *,
+  body.mkLightMode .card *,
+  body.mkLightMode .petPlayPet img,
+  body.mkLightMode .petPlayPet::after,
+  body.mkLightMode .petDashFx,
+  body.mkLightMode .petDashHeart{
+    animation-play-state:paused !important;
+    transition-duration:.001ms !important;
+  }
+  /* 입장 안내는 정보 전달 기능이므로 경량 모드에서도 흐르게 유지 */
+  body.mkLightMode .joinTickerTrack{
+    animation-play-state:running !important;
+  }
+  body.mkLightMode .petDashFx,
+  body.mkLightMode .petDashHeart{ display:none !important; }
+  body.mkLightMode .chatList{ background:rgba(0,0,0,.24) !important; }
+  body.mkLightMode .msg{ filter:none !important; }
+  body.mkLightMode .handcamBox video{
+    filter:none !important;
+  }
+  /* 경량/저사양 버튼이 추가돼도 좁은 데스크톱에서 과도하게 너비를 차지하지 않게 */
+  @media (min-width:761px) and (max-width:1100px){
+    body.joined .actions .perfModeBtn{
+      min-width:40px !important;
+      width:40px !important;
+      padding:0 !important;
+      font-size:0 !important;
+    }
+    body.joined #lightModeBtn::before{ content:"🍃"; font-size:15px; }
+    body.joined #lowSpecBtn::before{ content:"🪶"; font-size:15px; }
+  }
+  #lightModeSettingsBtn.lightModeOn{
+    border-color:rgba(170,236,190,.56) !important;
+    background:rgba(101,194,132,.18) !important;
+    color:#ecfff1 !important;
+    font-weight:1000;
+  }
+  #lowSpecSettingsBtn.lowSpecOn{
+    border-color:rgba(174,231,255,.52) !important;
+    background:rgba(77,160,204,.18) !important;
+    color:#effaff !important;
+    font-weight:1000;
+  }
+  @media (max-width:760px){
+    /* 기존 모바일 한 줄 헤더를 지키고, 성능 모드는 설정창에서 변경합니다. */
+    body.joined .actions .perfModeBtn{ display:none !important; }
+    #lightModeBtn, #lowSpecBtn{ padding:10px 9px !important; }
+  }
+</style>
+
+<style id="lowSpecRosterBlocksV149Style">
+  /* ===== V149 저사양 접속자 로스터: 내용 크기 필 블록 배치 ===== */
+  body.mkLowSpecMode .gridRosterWrap{
+    padding:12px !important;
+  }
+  body.mkLowSpecMode .gridRosterTitle{
+    margin:1px 0 11px !important;
+  }
+  body.mkLowSpecMode .gridRosterList{
+    display:flex !important;
+    flex-direction:row !important;
+    flex-wrap:wrap !important;
+    align-items:flex-start !important;
+    align-content:flex-start !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+  }
+  body.mkLowSpecMode .gridRosterItem{
+    display:inline-flex !important;
+    width:max-content !important;
+    max-width:100% !important;
+    flex:0 1 auto !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:7px !important;
+    min-height:39px !important;
+    padding:6px 9px 6px 7px !important;
+    border-radius:999px !important;
+    background:rgba(255,255,255,.045) !important;
+    border-color:rgba(255,255,255,.13) !important;
+    cursor:default;
+  }
+  body.mkLowSpecMode .gridRosterItem.isWork{
+    background:rgba(255,119,184,.075) !important;
+    border-color:rgba(255,119,184,.25) !important;
+  }
+  body.mkLowSpecMode .gridRosterItem.isBreak{
+    background:rgba(255,214,135,.055) !important;
+    border-color:rgba(255,214,135,.19) !important;
+  }
+  body.mkLowSpecMode .gridRosterItem.isIdle{
+    background:rgba(150,170,215,.055) !important;
+    border-color:rgba(150,170,215,.18) !important;
+  }
+  body.mkLowSpecMode .gridRosterLeft{
+    flex:0 1 auto !important;
+    gap:6px !important;
+    min-width:0 !important;
+  }
+  body.mkLowSpecMode .gridRosterEmoji{
+    width:27px !important;
+    height:27px !important;
+    min-width:27px !important;
+    border-radius:999px !important;
+  }
+  body.mkLowSpecMode .gridRosterName{
+    max-width:min(16em, 38vw) !important;
+    line-height:1.15 !important;
+  }
+  body.mkLowSpecMode .gridRosterStatus{
+    padding:4px 7px !important;
+    font-size:11px !important;
+    line-height:1 !important;
+    background:rgba(0,0,0,.18) !important;
+    border-color:rgba(255,255,255,.09) !important;
+  }
+  @media (max-width:640px){
+    body.mkLowSpecMode .gridRosterList{ gap:6px !important; }
+    body.mkLowSpecMode .gridRosterItem{ padding:5px 8px 5px 6px !important; gap:6px !important; }
+    body.mkLowSpecMode .gridRosterName{ max-width:10em !important; }
+    body.mkLowSpecMode .gridRosterStatus{ font-size:10px !important; padding:4px 6px !important; }
+  }
+</style>
+
+<style id="lowSpecSelfTileHybridV151Style">
+  /* ===== V151 저사양 혼합 보기: 내 꾸민 타일 + 가벼운 접속자 블록 ===== */
+  body.mkLowSpecMode .gridLowSpecHybrid{
+    width:100%;
+    display:grid !important;
+    grid-template-columns:minmax(188px, 230px) minmax(0, 1fr);
+    gap:12px;
+    align-items:start;
+  }
+  body.mkLowSpecMode .gridLowSpecSelfPane,
+  body.mkLowSpecMode .gridLowSpecRosterPane{
+    min-width:0;
+  }
+  body.mkLowSpecMode .gridLowSpecSelfPane{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+    padding:10px;
+    border:1px solid rgba(255,182,214,.19);
+    border-radius:16px;
+    background:rgba(255,182,214,.035);
+  }
+  body.mkLowSpecMode .gridLowSpecSelfLabel{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:28px;
+    font-size:12px;
+    font-weight:1000;
+    color:rgba(255,230,242,.92);
+  }
+  body.mkLowSpecMode .gridLowSpecRosterPane .gridRosterWrap{
+    min-height:100%;
+  }
+
+  /* 저사양 모드에서도 내 타일 한 장만 원래 꾸밈을 정적으로 표시 */
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile{
+    display:block !important;
+    position:relative !important;
+    width:100% !important;
+    max-width:230px !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:1 / 1 !important;
+    overflow:hidden !important;
+    align-self:center;
+    justify-self:center;
+    box-shadow:none !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bg,
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .shade{
+    display:block !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .content{
+    display:flex !important;
+    flex-direction:column !important;
+    grid-template-columns:none !important;
+    grid-template-rows:none !important;
+    align-items:stretch !important;
+    gap:var(--tileGap, 10px) !important;
+    height:100% !important;
+    min-height:0 !important;
+    padding:7px 7px 10px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusBar{
+    display:flex !important;
+    grid-column:auto !important;
+    justify-content:center !important;
+    align-items:center !important;
+    min-width:0 !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusLeft{
+    width:auto !important;
+    min-width:0 !important;
+    flex-wrap:nowrap !important;
+    justify-content:center !important;
+    gap:8px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge{
+    flex:0 0 auto !important;
+    width:auto !important;
+    min-height:40px !important;
+    height:auto !important;
+    padding:0 12px !important;
+    border-radius:12px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge span:not(:first-child){
+    display:inline !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .stIcon{
+    width:auto !important;
+    height:auto !important;
+    margin:0 !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .namePill{
+    flex:0 1 auto !important;
+    min-width:0 !important;
+    min-height:40px !important;
+    height:auto !important;
+    padding:0 12px !important;
+    font-size:13px !important;
+    border-radius:12px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
+    display:flex !important;
+    grid-column:auto !important;
+    justify-content:space-between !important;
+    align-items:baseline !important;
+    min-width:0 !important;
+    margin:0 !important;
+    font-size:clamp(20px, 4.8vw, 30px) !important;
+    letter-spacing:-1px !important;
+    line-height:1 !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bottomStack{
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .mediaRow{
+    display:flex !important;
+  }
+  /* 한 장의 정적 타일만 남기되 영상은 저사양 정책대로 계속 차단 */
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .handcamBox,
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile video{
+    display:none !important;
+  }
+
+  @media (max-width:760px){
+    body.mkLowSpecMode .gridLowSpecHybrid{
+      grid-template-columns:1fr;
+    }
+    body.mkLowSpecMode .gridLowSpecSelfPane{
+      width:100%;
+      max-width:260px;
+      justify-self:center;
+    }
+    body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile{
+      max-width:240px !important;
+    }
+  }
+</style>
+
+
+<style id="lowSpecSelfTileFitV152Style">
+  /* ===== V152 배포 전 보정: 저사양 내 타일의 세로 압축 방지 =====
+     230px 안팎의 한 장 타일에서도 상태줄·타이머·말풍선·미디어가 모두 보이도록
+     장식은 유지하고 내부 치수만 안전하게 줄입니다. */
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile{
+    --emoSize:68px !important;
+    --photoSize:68px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .content{
+    --tileGap:6px !important;
+    gap:6px !important;
+    padding:7px 7px 9px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusBar{
+    flex:0 0 32px !important;
+    min-height:32px !important;
+    height:32px !important;
+    overflow:hidden !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusLeft{
+    height:32px !important;
+    gap:4px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge,
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .namePill,
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .petFullTileBadge{
+    min-height:32px !important;
+    height:32px !important;
+    border-radius:10px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge{
+    min-width:72px !important;
+    max-width:84px !important;
+    padding:0 7px !important;
+    font-size:10.9px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .namePill{
+    min-width:34px !important;
+    max-width:72px !important;
+    padding:0 7px !important;
+    font-size:10.9px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .petFullTileBadge{
+    min-width:42px !important;
+    max-width:56px !important;
+    padding:0 5px !important;
+    font-size:10px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
+    flex:0 0 auto !important;
+    min-height:27px !important;
+    font-size:clamp(21px, 3vw, 27px) !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bottomStack{
+    flex:0 0 auto !important;
+    gap:6px !important;
+    min-height:0 !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bubble{
+    min-height:28px !important;
+    padding:5px 8px !important;
+    font-size:11.5px !important;
+    line-height:1.2 !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .mediaRow{
+    gap:6px !important;
+    min-height:68px !important;
+  }
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .avatar,
+  body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .idPhoto{
+    width:68px !important;
+    height:68px !important;
+    flex:0 0 68px !important;
+  }
+  /* 모바일은 기존 채팅 우선 레이아웃을 유지합니다.
+     좁은 화면에 전체 혼합 보기를 억지로 넣으면 main의 92px 높이에서 잘리므로,
+     내 타일을 가벼운 한 줄 미니 카드로 보여주고 전체 명단은 상단 접속자 버튼에서 확인합니다. */
+  @media (max-width:760px){
+    body.joined.mkLowSpecMode .gridLowSpecHybrid{
+      display:block !important;
+      width:100% !important;
+      height:100% !important;
+      min-height:0 !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecSelfPane{
+      display:block !important;
+      width:100% !important;
+      max-width:none !important;
+      height:100% !important;
+      min-height:0 !important;
+      padding:0 !important;
+      border:0 !important;
+      border-radius:0 !important;
+      background:transparent !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecSelfLabel,
+    body.joined.mkLowSpecMode .gridLowSpecRosterPane{
+      display:none !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile{
+      display:block !important;
+      width:100% !important;
+      max-width:none !important;
+      height:100% !important;
+      min-height:0 !important;
+      max-height:none !important;
+      aspect-ratio:auto !important;
+      border-radius:14px !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .content{
+      display:grid !important;
+      grid-template-columns:minmax(0,1fr) auto !important;
+      grid-template-rows:minmax(0,1fr) !important;
+      align-items:center !important;
+      gap:8px !important;
+      height:100% !important;
+      min-height:0 !important;
+      padding:6px 8px !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusBar{
+      grid-column:1 !important;
+      height:32px !important;
+      min-height:32px !important;
+      justify-content:flex-start !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .statusLeft{
+      width:100% !important;
+      justify-content:flex-start !important;
+      gap:6px !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge{
+      flex:0 0 32px !important;
+      width:32px !important;
+      min-width:32px !important;
+      max-width:32px !important;
+      height:32px !important;
+      padding:0 !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .badge span:not(:first-child){
+      display:none !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .namePill{
+      flex:1 1 auto !important;
+      min-width:0 !important;
+      max-width:none !important;
+      height:32px !important;
+      padding:0 9px !important;
+      font-size:11.5px !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .petFullTileBadge,
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .missionMedal{
+      display:none !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
+      grid-column:2 !important;
+      min-height:0 !important;
+      margin:0 !important;
+      justify-content:flex-end !important;
+      font-size:clamp(17px,5.6vw,24px) !important;
+    }
+    body.joined.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bottomStack{
+      display:none !important;
+    }
+  }
+</style>
+
+
+<style id="compactTimerEmphasisV154">
+/* ===== V154: 축소 화면 내 타이머 강조 =====
+   - 닉네임/상태는 유지하고 타이머만 전용 패널로 분리
+   - 작업중 사용자 지정 시간 색상은 JS inline color를 그대로 보존
+   - 애니메이션 없이 크기·대비만 강화해 추가 부하 최소화
+*/
+@media (max-width:760px){
+  body.joined .grid .tile.mineTile .content{
+    grid-template-columns:minmax(0, 1fr) minmax(118px, auto) !important;
+    gap:10px !important;
+  }
+  body.joined .grid .tile.mineTile .bigTimer{
+    min-width:118px !important;
+    min-height:44px !important;
+    padding:7px 11px !important;
+    border-radius:14px !important;
+    justify-content:center !important;
+    align-items:center !important;
+    background:rgba(5,5,9,.42) !important;
+    border:1px solid rgba(255,255,255,.20) !important;
+    box-shadow:inset 0 0 0 1px rgba(255,182,214,.08) !important;
+    font-size:clamp(25px, 7.2vw, 34px) !important;
+    font-weight:1200 !important;
+    letter-spacing:-1.25px !important;
+    line-height:1 !important;
+    font-variant-numeric:tabular-nums !important;
+  }
+  body.joined .grid .tile.mineTile .bigTimer .time{
+    display:block !important;
+    width:100% !important;
+    text-align:center !important;
+    opacity:1 !important;
+    filter:brightness(1.18) contrast(1.08) !important;
+    text-shadow:0 1px 8px rgba(255,255,255,.12), 0 2px 10px rgba(0,0,0,.55) !important;
+  }
+}
+@media (max-width:420px){
+  body.joined .grid .tile.mineTile .content{
+    grid-template-columns:minmax(0, 1fr) minmax(106px, auto) !important;
+    gap:7px !important;
+  }
+  body.joined .grid .tile.mineTile .bigTimer{
+    min-width:106px !important;
+    min-height:40px !important;
+    padding:6px 8px !important;
+    border-radius:12px !important;
+    font-size:clamp(22px, 7.5vw, 29px) !important;
+    letter-spacing:-1px !important;
+  }
+}
+@media (max-width:760px) and (max-height:480px){
+  body.joined .grid .tile.mineTile .bigTimer{
+    min-height:36px !important;
+    padding:4px 8px !important;
+    font-size:clamp(21px, 6.8vw, 28px) !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="topbar">
@@ -4370,6 +5003,8 @@ body.joined #preJoinCard{ display:none; }
 <button class="primary" disabled="" id="leaveBtn">퇴장</button>
 <span class="meMini" id="meHint">—</span>
 <button class="ghost" disabled="" id="dataSaverBtn" title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
+<button aria-pressed="false" class="ghost perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃 경량</button>
+<button aria-pressed="false" class="ghost perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶 저사양</button>
 <button class="ghost" disabled="" id="menuBtn" title="작업방 설정">⚙️</button>
 </div>
 </div>
@@ -4795,6 +5430,14 @@ body.joined #preJoinCard{ display:none; }
 <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
 </input></div>
 </div>
+<div class="hr"></div>
+<div class="hint">⚡ 화면 성능 모드</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button aria-pressed="false" class="ghost" id="lightModeSettingsBtn" type="button">🍃 경량</button>
+<button aria-pressed="false" class="ghost" id="lowSpecSettingsBtn" type="button">🪶 저사양</button>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.45;">경량은 프로필·펫·손캠 기능을 유지하면서 효과와 화면 갱신만 줄여요. 저사양은 프로필 타일을 접속자 목록으로 바꾸고 손캠·펫놀이터를 꺼둡니다.</div>
+<div class="hr"></div>
 <div class="row">
 <input id="adminPass" placeholder="관리자 비번" type="password"/>
 <button class="primary tight" id="adminUnlock">확인</button>
@@ -5425,6 +6068,11 @@ function setSortModeDirect(mode){
   syncViewMenuUI();
 }
 function setLayoutModeDirect(mode){
+  // ✅ V143: 저사양 모드에서는 펫 놀이터 진입을 막아 GPU/실시간 리스너 부하를 차단
+  if(typeof isLowSpecModeV143 === "function" && isLowSpecModeV143() && mode === "playground"){
+    try{ showToast("저사양 모드에서는 펫 놀이터를 쉬어가요 🪶"); }catch(e){}
+    mode = "default";
+  }
   // ✅ V90: 펫 놀이터는 새 창을 열지 않고 현재 작업방 내부에서 전환합니다.
   const safe = (mode==="compact5" || mode==="playground") ? mode : "default";
   const prev = getLayoutMode();
@@ -8046,6 +8694,11 @@ function setControlsEnabled(joined){
 
       // lamp
       document.body.classList.toggle("joined", joined);
+      // ✅ V150: 퇴장/입장 전환 즉시 로스터 DOM을 정리해 정보 잔상을 남기지 않습니다.
+      if(!joined){
+        try{ if(els.grid) els.grid.replaceChildren(); }catch(e){ try{ if(els.grid) els.grid.innerHTML = ""; }catch(_e){} }
+        try{ if(state.lastRendered && state.lastRendered.clear) state.lastRendered.clear(); }catch(e){}
+      }
       // ✅ 수다방 LIVE 접속 현황 업데이트(대시보드)
       try{ if(joined) startSudaPresenceWatch_(); else stopSudaPresenceWatch_(); }catch(e){}
       state.joined = joined;
@@ -12368,6 +13021,7 @@ t.appendChild(bg);
         const st = document.createElement("div");
         st.className = "gridRosterStatus";
         const s = (p.status || "idle");
+        item.classList.add(s==="work" ? "isWork" : s==="break" ? "isBreak" : s==="idle" ? "isIdle" : "isOther");
         st.textContent = (s==="work") ? "✍️ 작업중" : (s==="break") ? "☕ 휴식중" : (s==="idle") ? "🌙 자리비움" : "—";
 
         item.appendChild(left);
@@ -12386,6 +13040,115 @@ t.appendChild(bg);
       wrap.appendChild(title);
       wrap.appendChild(list);
       els.grid.appendChild(wrap);
+    }
+
+
+    // ✅ V151: 저사양 모드에서도 내 꾸민 타일 한 장은 유지하고,
+    // 다른 접속자는 가벼운 필 블록으로 표시합니다.
+    function renderLowSpecHybridRoster(onlineArr){
+      if(!els.grid) return;
+      const arr = Array.isArray(onlineArr) ? onlineArr : [];
+      const myUid = String(state.uid || "");
+      let me = myUid ? arr.find(p=>String(p?.id || "") === myUid) : null;
+      if(!me && myUid && state.currentParticipants && state.currentParticipants.get){
+        try{ me = state.currentParticipants.get(myUid) || null; }catch(e){}
+      }
+      const others = arr.filter(p=>!myUid || String(p?.id || "") !== myUid);
+
+      // 내 타일 캐시만 남겨 타이머 텍스트 갱신과 꾸밈 DOM을 재사용합니다.
+      try{
+        if(state.lastRendered && state.lastRendered.forEach){
+          Array.from(state.lastRendered.keys()).forEach(uid=>{
+            if(!me || String(uid) !== myUid) state.lastRendered.delete(uid);
+          });
+        }
+      }catch(e){}
+
+      const hybrid = document.createElement("div");
+      hybrid.className = "gridLowSpecHybrid";
+
+      if(me){
+        const selfPane = document.createElement("section");
+        selfPane.className = "gridLowSpecSelfPane";
+
+        const selfLabel = document.createElement("div");
+        selfLabel.className = "gridLowSpecSelfLabel";
+        selfLabel.textContent = "💗 내 작업 자리";
+
+        let selfTile = null;
+        try{ selfTile = renderTile(me); }catch(e){ console.warn("[low-spec] self tile render failed", e); }
+        if(selfTile){
+          selfTile.classList.add("lowSpecSelfTile");
+          selfPane.appendChild(selfLabel);
+          selfPane.appendChild(selfTile);
+          hybrid.appendChild(selfPane);
+        }
+      }
+
+      const rosterPane = document.createElement("section");
+      rosterPane.className = "gridLowSpecRosterPane";
+
+      const wrap = document.createElement("div");
+      wrap.className = "gridRosterWrap";
+
+      const title = document.createElement("div");
+      title.className = "gridRosterTitle";
+      title.textContent = `👥 함께 작업 중 (${arr.length}명)`;
+
+      const list = document.createElement("div");
+      list.className = "gridRosterList";
+
+      for(const p of others){
+        const item = document.createElement("div");
+        item.className = "gridRosterItem";
+
+        const left = document.createElement("div");
+        left.className = "gridRosterLeft";
+
+        const emoji = document.createElement("div");
+        emoji.className = "gridRosterEmoji";
+        emoji.textContent = (p.theme?.emoji || "✍️");
+        const emoBg = clampHexColor(p.theme?.emojiBg || "#2b2b2b");
+        emoji.style.background = hexToRgba(emoBg, 0.18);
+        emoji.style.borderColor = hexToRgba(emoBg, 0.40);
+
+        const nm = document.createElement("div");
+        nm.className = "gridRosterName";
+        nm.textContent = (p.name || "익명");
+
+        left.appendChild(emoji);
+        left.appendChild(nm);
+
+        const st = document.createElement("div");
+        st.className = "gridRosterStatus";
+        const s = (p.status || "idle");
+        item.classList.add(s==="work" ? "isWork" : s==="break" ? "isBreak" : s==="idle" ? "isIdle" : "isOther");
+        st.textContent = (s==="work") ? "✍️ 작업중" : (s==="break") ? "☕ 휴식중" : (s==="idle") ? "🌙 자리비움" : "—";
+
+        item.appendChild(left);
+        item.appendChild(st);
+        item.addEventListener("contextmenu", (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          openCtxMenu(ev.clientX, ev.clientY, p);
+        });
+        list.appendChild(item);
+      }
+
+      if(!others.length){
+        const empty = document.createElement("div");
+        empty.className = "tiny";
+        empty.style.opacity = ".68";
+        empty.style.padding = "4px 2px";
+        empty.textContent = "지금은 나만 작업방에 있어요.";
+        list.appendChild(empty);
+      }
+
+      wrap.appendChild(title);
+      wrap.appendChild(list);
+      rosterPane.appendChild(wrap);
+      hybrid.appendChild(rosterPane);
+      els.grid.replaceChildren(hybrid);
     }
 
 
@@ -13225,6 +13988,20 @@ t.appendChild(bg);
 
     function renderGridTilesOrRoster(onlineArr){
       if(!els.grid) return;
+      // ✅ V150: 입장 전에는 성능 모드/공개 접속 수 구독과 무관하게 명단 DOM을 만들지 않습니다.
+      // CSS 잠금과 JS 렌더 잠금을 함께 두어 닉네임·상태가 순간 노출되는 것도 방지합니다.
+      if(!state.joined || !document.body.classList.contains("joined")){
+        try{ els.grid.replaceChildren(); }catch(e){ try{ els.grid.innerHTML = ""; }catch(_e){} }
+        try{ if(state.lastRendered && state.lastRendered.clear) state.lastRendered.clear(); }catch(e){}
+        return;
+      }
+      // ✅ V151: 저사양 모드는 내 꾸민 타일 한 장 + 다른 접속자의 가벼운 블록을 함께 표시
+      if(typeof isLowSpecModeV143 === "function" && isLowSpecModeV143()){
+        // body.compact는 main 전체를 숨길 수 있으므로 저사양 혼합 보기에서는 사용하지 않습니다.
+        try{ applyCompactMode(false); }catch(e){}
+        renderLowSpecHybridRoster(Array.isArray(onlineArr) ? onlineArr : []);
+        return;
+      }
       // ✅ V71: 어느 모드에 있든 현재 표시 대상이 아닌 타일 캐시는 정리
       // 기본 보기에서만 정리하면 미니/놀이터 장시간 사용 시 떠난 사람의 DOM 참조가 남을 수 있음.
       try{
@@ -13251,7 +14028,10 @@ t.appendChild(bg);
       for(const p of onlineArr){
         try{
           const t = renderTile(p);
-          if(t) desiredNodes.push(t);
+          if(t){
+            t.classList.remove("lowSpecSelfTile");
+            desiredNodes.push(t);
+          }
         }catch(err){
           console.warn("[tile] renderTile failed, fallback tile used:", err);
           // ✅ 렌더 실패해도 전체가 비지 않도록 안전 타일
@@ -13757,9 +14537,9 @@ try{
       subscribeKicks();
 
       await heartbeat();
-      if(state.tickTimer) clearInterval(state.tickTimer);
-      state.tickTimer = setInterval(()=>{ updateTimersLive(); updateClocks(); }, 1000);
-      updateClocks();
+      // V147: 일반 1초 / 경량 2초 / 저사양 5초 주기를 한 함수에서만 결정합니다.
+      // 주소·저장값으로 경량 모드를 미리 켠 뒤 입장해도 1초로 되돌아가지 않습니다.
+      restartUiTickV143();
 
       if(state.hbTimer) clearInterval(state.hbTimer);
       state.hbTimer = setInterval(heartbeat, PRESENCE_HEARTBEAT_INTERVAL_MS);
@@ -16333,20 +17113,36 @@ joinRoom();
       return rRef(rtdb, `${rRoomBase(roomId || state.roomId)}/handcam/live/${String(slotId)}`);
     }
 
-    function hcCanDisplay(){
+    function hcReceiveLayoutAllowed(){
       try{
         const grid = els && els.grid;
         if(!state.joined || !grid || !grid.isConnected) return false;
-        if(document.visibilityState !== "visible") return false;
+        // 저사양 모드는 손캠을 완전히 끄는 정책을 그대로 유지합니다.
+        if(typeof window.__MK_IS_LOW_SPEC__ === "function" && window.__MK_IS_LOW_SPEC__()) return false;
+        // 사이드바 전용/모바일 폭에서는 프로필 영역 자체가 숨겨지므로 기존 절약 정책을 유지합니다.
+        if(document.body.classList.contains("compact")) return false;
+        if(window.matchMedia && window.matchMedia("(max-width: 920px)").matches) return false;
+        // 손캠을 표시하지 않는 전용 레이아웃에서는 실제 원격 구독도 정리합니다.
         if(grid.classList.contains("compact5") || grid.classList.contains("playgroundMode")) return false;
+        return true;
+      }catch(e){ return false; }
+    }
+
+    function hcCanDisplay(){
+      try{
+        const grid = els && els.grid;
+        if(!hcReceiveLayoutAllowed() || !grid) return false;
+        // 백그라운드에서는 영상 DOM 렌더링만 멈추고 WebRTC 수신 연결은 유지합니다.
+        if(document.visibilityState !== "visible") return false;
         const rect = grid.getBoundingClientRect();
         return rect.width > 8 && rect.height > 8;
       }catch(e){ return false; }
     }
 
     function hcCanReceive(){
-      // 핵심 절약 장치: 시청 OFF면 Cloudflare 원격 트랙을 아예 구독하지 않습니다.
-      return !!hc.viewerEnabled && hcCanDisplay();
+      // V145: 손캠 보기 ON 상태에서는 탭 포커스가 풀려도 원격 WebRTC 트랙을 유지합니다.
+      // 표시 가능 여부(hcCanDisplay)와 수신 연결 여부를 분리해 복귀 시 재로딩을 막습니다.
+      return !!hc.viewerEnabled && hcReceiveLayoutAllowed();
     }
 
     // ---------- 재정렬(기존 파이프라인 재사용) ----------
@@ -16871,7 +17667,8 @@ joinRoom();
       const me = String(state.uid || "");
       const want = new Map();
 
-      // 영상이 실제로 보일 수 있는 상태에서만 수신. 미니/모바일/백그라운드는 구독을 해제한다.
+      // V145: 손캠 보기 ON이면 백그라운드에서도 수신 연결을 유지합니다.
+      // 미니 보기·펫놀이터·저사양 모드 또는 보기 OFF일 때만 구독을 해제합니다.
       if(hcCanReceive()){
         for(const [uid, d] of HC_LIVE){
           if(uid !== me) want.set(uid, d);
@@ -16933,6 +17730,9 @@ joinRoom();
         const grid = els && els.grid;
         if(!grid) return;
         ensureHeaderBtn();
+        // V145: 백그라운드 수신 유지 중에는 기존 video/srcObject DOM도 보존합니다.
+        // 복귀 시 새 video 요소를 만들지 않아 첫 화면 재생까지의 지연을 더 줄입니다.
+        if(document.visibilityState !== "visible" && hcCanReceive()) return;
         const canDisplay = hcCanDisplay();
         const canReceive = hcCanReceive();
 
@@ -17127,6 +17927,8 @@ joinRoom();
     }catch(e){}
 
     document.addEventListener("visibilitychange", ()=>{
+      // V145: 숨김 상태에서도 손캠 보기 ON이면 기존 pull을 유지합니다.
+      // 화면 복귀 시에는 새 세션을 만들지 않고 보존된 MediaStream만 다시 마운트합니다.
       syncPulls();
       if(document.visibilityState === "visible"){
         refreshOwnLive("visible").catch(()=>{});
@@ -17152,6 +17954,305 @@ joinRoom();
       setViewer: async (on)=>{ hc.viewerEnabled = !!on; try{ localStorage.setItem("mkHandcamViewerEnabledV1", hc.viewerEnabled ? "1" : "0"); }catch(e){} if(!hc.viewerEnabled) await closeViewer(); syncPulls(); scheduleMount(); updateMyBtn(); }
     };
   })();
+
+
+
+  // ===== V143 저사양 모드 컨트롤러 =====
+  const LS_LOW_SPEC_V143 = "mk_low_spec_mode_v143";
+  const LS_LOW_SPEC_PREV_LAYOUT_V143 = "mk_low_spec_prev_layout_v143";
+
+  function syncLowSpecQueryV143(on){
+    try{
+      const u = new URL(location.href);
+      if(on){
+        u.searchParams.set("lite", "1");
+        u.searchParams.delete("light");
+      }else u.searchParams.delete("lite");
+      history.replaceState(history.state, "", u.toString());
+    }catch(e){}
+  }
+
+  function readLowSpecInitialV143(){
+    try{
+      const params = new URL(location.href).searchParams;
+      const lightQ = params.get("light");
+      if(lightQ === "1" || lightQ === "true"){
+        localStorage.setItem(LS_LOW_SPEC_V143, "0");
+        return false;
+      }
+      const q = params.get("lite");
+      if(q === "1" || q === "true"){
+        localStorage.setItem(LS_LOW_SPEC_V143, "1");
+        return true;
+      }
+      if(q === "0" || q === "false"){
+        localStorage.setItem(LS_LOW_SPEC_V143, "0");
+        return false;
+      }
+      return localStorage.getItem(LS_LOW_SPEC_V143) === "1";
+    }catch(e){ return false; }
+  }
+
+  function isLowSpecModeV143(){
+    try{ return document.body.classList.contains("mkLowSpecMode"); }
+    catch(e){ return false; }
+  }
+  window.__MK_IS_LOW_SPEC__ = isLowSpecModeV143;
+
+  function syncLowSpecBtnV143(on){
+    try{
+      const buttons = [
+        document.getElementById("lowSpecBtn"),
+        document.getElementById("lowSpecSettingsBtn")
+      ].filter(Boolean);
+      for(const b of buttons){
+        b.classList.toggle("lowSpecOn", !!on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        b.textContent = on ? "🪶 저사양 ON" : "🪶 저사양";
+        b.title = on
+          ? "저사양 모드 사용 중 · 클릭하면 일반 화면으로 복귀"
+          : "프로필 타일·카메라·애니메이션을 줄인 경량 화면";
+      }
+    }catch(e){}
+  }
+
+  function restartUiTickV143(){
+    try{
+      if(!state.joined) return;
+      if(state.tickTimer) clearInterval(state.tickTimer);
+      const ms = isLowSpecModeV143() ? 5000
+        : ((typeof window.__MK_IS_LIGHT_MODE__ === "function" && window.__MK_IS_LIGHT_MODE__()) ? 2000 : 1000);
+      state.tickTimer = setInterval(()=>{ updateTimersLive(); updateClocks(); }, ms);
+      updateTimersLive();
+      updateClocks();
+    }catch(e){}
+  }
+
+  async function shutDownHeavyViewsV143(){
+    try{
+      if(getLayoutMode && getLayoutMode() === "playground"){
+        setLayoutMode("default");
+        applyLayoutMode("default");
+      }
+    }catch(e){}
+    try{ if(typeof stopPetPlaygroundRealtimeV67 === "function") stopPetPlaygroundRealtimeV67(); }catch(e){}
+    try{
+      const hcApi = window.__MK_HANDCAM__;
+      if(hcApi && typeof hcApi.setViewer === "function") await hcApi.setViewer(false);
+      if(hcApi && typeof hcApi.stop === "function") await hcApi.stop();
+    }catch(e){}
+  }
+
+  async function applyLowSpecModeV143(on, options={}){
+    on = !!on;
+    if(on && typeof window.__MK_SET_LIGHT_MODE__ === "function"){
+      try{ await window.__MK_SET_LIGHT_MODE__(false, {silent:true, syncQuery:false, fromLowSpec:true}); }catch(e){}
+    }
+    try{ localStorage.setItem(LS_LOW_SPEC_V143, on ? "1" : "0"); }catch(e){}
+    if(on){ try{ localStorage.setItem("mk_light_mode_v146", "0"); }catch(e){} }
+
+    if(on){
+      try{
+        const cur = getLayoutMode ? getLayoutMode() : "default";
+        if(cur !== "playground") localStorage.setItem(LS_LOW_SPEC_PREV_LAYOUT_V143, cur || "default");
+      }catch(e){}
+      document.body.classList.add("lowPerfMode", "mkLowSpecMode");
+      // ✅ V144: 이전 렌더나 구버전에서 남은 compact 상태를 제거해
+      // 프로필 영역 자리에 접속자 로스터가 보이도록 유지합니다.
+      try{ applyCompactMode(false); }catch(e){}
+      await shutDownHeavyViewsV143();
+    }else{
+      document.body.classList.remove("lowPerfMode", "mkLowSpecMode");
+      try{ applyCompactMode(false); }catch(e){}
+      try{
+        const prev = localStorage.getItem(LS_LOW_SPEC_PREV_LAYOUT_V143) || "default";
+        const safe = (prev === "compact5") ? "compact5" : "default";
+        setLayoutMode(safe);
+        applyLayoutMode(safe);
+      }catch(e){}
+    }
+
+    syncLowSpecBtnV143(on);
+    if(options.syncQuery !== false) syncLowSpecQueryV143(on);
+
+    // V148: 저사양 → 경량 직접 전환 중에는 중간 일반 모드를 다시 그리지 않습니다.
+    // 최종 경량 적용 함수가 한 번만 타이머 주기와 타일을 갱신합니다.
+    if(!options.fromLight){
+      restartUiTickV143();
+      try{
+        const arr = [...(state.currentParticipants?.values?.() || [])].filter(p=>isDisplayablePresence(p));
+        sortPresenceArr(arr);
+        state._lastPresenceArr = arr;
+        renderGridTilesOrRoster(arr);
+      }catch(e){}
+    }
+
+    try{
+      const playBtn = document.getElementById("vmViewPlayground");
+      if(playBtn){
+        playBtn.disabled = on;
+        playBtn.setAttribute("aria-disabled", on ? "true" : "false");
+        playBtn.title = on ? "저사양 모드에서는 사용할 수 없어요" : "펫 놀이터";
+      }
+    }catch(e){}
+
+    if(!options.silent){
+      try{
+        showToast(on
+          ? "저사양 모드 ON · 타일/카메라/애니메이션을 줄였어요 🪶"
+          : "일반 화면으로 돌아왔어요");
+      }catch(e){}
+    }
+  }
+  window.__MK_SET_LOW_SPEC__ = (on, options={})=>applyLowSpecModeV143(!!on, options);
+
+  try{
+    const lowButtons = [
+      document.getElementById("lowSpecBtn"),
+      document.getElementById("lowSpecSettingsBtn")
+    ].filter(Boolean);
+    for(const lowBtn of lowButtons){
+      if(lowBtn.dataset.boundV143) continue;
+      lowBtn.dataset.boundV143 = "1";
+      lowBtn.addEventListener("click", ()=>applyLowSpecModeV143(!isLowSpecModeV143()));
+    }
+  }catch(e){}
+
+  // 저사양 모드에서 손캠 버튼이 동적으로 다시 생겨도 실행을 차단합니다.
+  document.addEventListener("click", (ev)=>{
+    try{
+      if(!isLowSpecModeV143()) return;
+      const b = ev.target?.closest?.("#handcamBtn,#handcamViewBtn,.hcBtn,.hcViewBtn");
+      if(!b) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      showToast("저사양 모드에서는 손캠을 꺼두어요 🪶");
+    }catch(e){}
+  }, true);
+
+  // 브라우저별 설정을 즉시 적용. ?lite=1 주소로 바로 진입할 수도 있습니다.
+  try{ await applyLowSpecModeV143(readLowSpecInitialV143(), {silent:true, syncQuery:false}); }catch(e){}
+
+  // ===== V146 균형형 경량 모드 컨트롤러 =====
+  const LS_LIGHT_MODE_V146 = "mk_light_mode_v146";
+
+  function isLightModeV146(){
+    try{ return document.body.classList.contains("mkLightMode"); }
+    catch(e){ return false; }
+  }
+  window.__MK_IS_LIGHT_MODE__ = isLightModeV146;
+
+  function syncLightModeBtnV146(on){
+    try{
+      const buttons = [
+        document.getElementById("lightModeBtn"),
+        document.getElementById("lightModeSettingsBtn")
+      ].filter(Boolean);
+      for(const b of buttons){
+        b.classList.toggle("lightModeOn", !!on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        b.textContent = on ? "🍃 경량 ON" : "🍃 경량";
+        b.title = on
+          ? "경량 모드 사용 중 · 기능은 유지하고 화면 효과와 갱신 부담을 줄였어요"
+          : "프로필·펫·손캠 기능은 유지하고 화면 효과만 가볍게 사용";
+      }
+    }catch(e){}
+  }
+
+  function syncLightModeQueryV146(on){
+    try{
+      const u = new URL(location.href);
+      if(on){
+        u.searchParams.set("light", "1");
+        u.searchParams.delete("lite");
+      }else u.searchParams.delete("light");
+      history.replaceState(history.state, "", u.toString());
+    }catch(e){}
+  }
+
+  function readLightModeInitialV146(){
+    try{
+      const q = new URL(location.href).searchParams;
+      if(q.get("lite") === "1" || q.get("lite") === "true") return false;
+      const v = q.get("light");
+      if(v === "1" || v === "true"){
+        localStorage.setItem(LS_LIGHT_MODE_V146, "1");
+        return true;
+      }
+      if(v === "0" || v === "false"){
+        localStorage.setItem(LS_LIGHT_MODE_V146, "0");
+        return false;
+      }
+      return localStorage.getItem(LS_LIGHT_MODE_V146) === "1";
+    }catch(e){ return false; }
+  }
+
+  async function applyLightModeV146(on, options={}){
+    on = !!on;
+
+    if(on && isLowSpecModeV143()){
+      try{ await applyLowSpecModeV143(false, {silent:true, syncQuery:false, fromLight:true}); }catch(e){}
+    }
+
+    try{ localStorage.setItem(LS_LIGHT_MODE_V146, on ? "1" : "0"); }catch(e){}
+
+    if(on){
+      document.body.classList.add("lowPerfMode", "mkLightMode");
+      document.body.classList.remove("mkLowSpecMode");
+      try{ localStorage.setItem(LS_LOW_SPEC_V143, "0"); }catch(e){}
+    }else{
+      document.body.classList.remove("mkLightMode");
+      if(!isLowSpecModeV143()) document.body.classList.remove("lowPerfMode");
+    }
+
+    syncLightModeBtnV146(on);
+    syncLowSpecBtnV143(isLowSpecModeV143());
+    if(options.syncQuery !== false) syncLightModeQueryV146(on);
+
+    // V148: 경량 → 저사양 직접 전환 중에는 일반 타일과 손캠을 중간에 재가동하지 않습니다.
+    if(!options.fromLowSpec){
+      restartUiTickV143();
+
+      // 현재 타일/손캠/펫/채팅은 제거하지 않고 같은 데이터로 가볍게 다시 그립니다.
+      try{
+        const arr = [...(state.currentParticipants?.values?.() || [])].filter(p=>isDisplayablePresence(p));
+        sortPresenceArr(arr);
+        state._lastPresenceArr = arr;
+        renderGridTilesOrRoster(arr);
+      }catch(e){}
+      try{
+        const hcApi = window.__MK_HANDCAM__;
+        if(hcApi && typeof hcApi.refresh === "function") hcApi.refresh();
+      }catch(e){}
+    }
+
+    if(!options.silent){
+      try{
+        showToast(on
+          ? "경량 모드 ON · 기능은 그대로, 화면 부담만 줄였어요 🍃"
+          : "일반 모드로 돌아왔어요");
+      }catch(e){}
+    }
+  }
+  window.__MK_SET_LIGHT_MODE__ = (on, options={})=>applyLightModeV146(!!on, options);
+
+  try{
+    const lightButtons = [
+      document.getElementById("lightModeBtn"),
+      document.getElementById("lightModeSettingsBtn")
+    ].filter(Boolean);
+    for(const lightBtn of lightButtons){
+      if(lightBtn.dataset.boundV146) continue;
+      lightBtn.dataset.boundV146 = "1";
+      lightBtn.addEventListener("click", ()=>applyLightModeV146(!isLightModeV146()));
+    }
+  }catch(e){}
+
+  // 저사양이 URL/저장값으로 이미 켜져 있으면 저사양을 우선하고, 아니면 경량 저장값을 적용합니다.
+  try{
+    const initialLight = !isLowSpecModeV143() && readLightModeInitialV146();
+    await applyLightModeV146(initialLight, {silent:true, syncQuery:false});
+  }catch(e){}
 
   // READY FLAG (bindings complete)
   window.__MK_READY__ = true;
