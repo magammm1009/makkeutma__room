@@ -16848,9 +16848,8 @@ joinRoom();
           );
         }catch(e){ console.warn('[pet cloud] legacy migration failed', e); }
       }
-      try{
-        showToast(forcedByAdmin ? '🐾 관리자 펫 보정값을 적용했어!' : (forceRestore ? '🐾 이전 펫 백업을 강제로 복원했어!' : '🐾 Firebase 백업에서 펫 정보를 복원했어!'));
-      }catch(e){}
+      // V158: 자동 복원/관리자 보정 적용은 내부 처리이므로 일반 사용자 토스트에 노출하지 않는다.
+      try{ console.info('[pet cloud] restore applied', { forcedByAdmin, forceRestore, nick }); }catch(e){}
       return true;
     }catch(e){ console.warn('[pet cloud] restore failed', e); return false; }
   }
@@ -16964,11 +16963,8 @@ joinRoom();
             petCloudLastRemoteCheckMs = Date.now();
           }
           petCloudLastHash = petCloudDigest(blockedRemoteState);
-          try{
-            showToast(blockedByAdminToken
-              ? '🐾 관리자 펫 보정값을 안전하게 적용했어!'
-              : '🐾 서버의 기존 펫 기록을 보호하고 복원했어!');
-          }catch(e){}
+          // V158: 백업 보호/관리자 보정은 내부 안전 처리이므로 일반 사용자 토스트에 노출하지 않는다.
+          try{ console.info('[pet cloud] protected remote state restored', { blockedByAdminToken, nick }); }catch(e){}
         }
         return;
       }
