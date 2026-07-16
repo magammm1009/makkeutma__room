@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V157_PET_MONOTONIC_ADMIN_TOKEN_GUARD --><!-- V155_PET_BACKUP_RECOVERY_GUARD --><!-- V156_PET_MONOTONIC_BACKUP_GUARD --><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -16687,6 +16687,41 @@ joinRoom();
   function rPetBackupRef(roomId, nick){
     return rRef(rtdb, `${rRoomBase(roomId)}/petBackups/${petCloudKeyForNick(nick)}`);
   }
+  // ✅ V155: 과거 버전에서 사용했을 수 있는 닉네임 키 형식까지 함께 조회한다.
+  // 현재 형식(정규화+encodeURIComponent), 원문 형식, 구형 단순 치환 형식을 모두 후보로 둔다.
+  function petCloudLegacyKeysForNick(nick){
+    const raw = String(nick || '').trim().slice(0,40);
+    let normalized = raw;
+    try{ normalized = normalizeNick(raw).trim().slice(0,20); }catch(e){}
+    const keys = [];
+    const add = (v)=>{ v=String(v||'').trim(); if(v && !keys.includes(v)) keys.push(v); };
+    add(petCloudKeyForNick(normalized));
+    add(petCloudKeyForNick(raw));
+    add(normalized.replace(/[.#$\[\]\/]/g, '_'));
+    add(raw.replace(/[.#$\[\]\/]/g, '_'));
+    try{ add(encodeURI(normalized).replace(/[.#$\[\]\/]/g, '_')); }catch(e){}
+    try{ add(encodeURI(raw).replace(/[.#$\[\]\/]/g, '_')); }catch(e){}
+    return keys;
+  }
+  async function petCloudFindBestRemote(roomId, nick){
+    const keys = petCloudLegacyKeysForNick(nick);
+    let best = null;
+    for(const key of keys){
+      try{
+        const ref = rRef(rtdb, `${rRoomBase(roomId)}/petBackups/${key}`);
+        const snap = await rGet(ref);
+        const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
+        const st = petCloudRemoteState(remote);
+        if(!remote || !st) continue;
+        const total = petCloudTotalSec(st);
+        const updated = Number(remote.updatedAtMs || 0);
+        if(!best || total > best.total || (total === best.total && updated > best.updated)){
+          best = { key, ref, remote, state:st, total, updated };
+        }
+      }catch(e){ console.warn('[pet cloud] candidate read failed', key, e); }
+    }
+    return best;
+  }
   function petCloudBaseState(){
     const pets = {};
     PET_CLOUD_IDS.forEach(id => pets[id] = { totalSec:0 });
@@ -16776,26 +16811,46 @@ joinRoom();
       localStorage.setItem(PET_CLOUD_APPLIED_KEY, JSON.stringify(obj));
     }catch(e){}
   }
-  async function petCloudMaybeRestoreFromRemote(nick){
+  async function petCloudMaybeRestoreFromRemote(nick, options={}){
     if(!state.roomId || !nick) return false;
     try{
-      const snap = await rGet(rPetBackupRef(state.roomId, nick));
-      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
-      const remoteState = petCloudRemoteState(remote);
-      if(!remoteState) return false;
+      const found = await petCloudFindBestRemote(state.roomId, nick);
+      if(!found) return false;
+      const remote = found.remote;
+      const remoteState = found.state;
       const local = petCloudReadLocal();
       const localTotal = petCloudTotalSec(local);
-      const remoteTotal = petCloudTotalSec(remoteState);
+      const remoteTotal = found.total;
       const token = remote.adminOverrideToken || '';
       try{ petCloudCachedRemoteToken = token || ''; petCloudLastRemoteCheckMs = Date.now(); }catch(e){}
       const applied = petCloudAppliedTokens()[petCloudKeyForNick(nick)] || '';
       const forcedByAdmin = !!token && token !== applied;
-      const shouldRestore = forcedByAdmin || (remoteTotal > localTotal + 30);
+      const forceRestore = !!options.force;
+      const localLooksEmpty = petCloudLocalNeedsRestoreCheck(local);
+      const shouldRestore = forceRestore || forcedByAdmin || localLooksEmpty || (remoteTotal > localTotal + 30);
       if(!shouldRestore) return false;
+
       petCloudSaveLocal(remoteState);
       if(token) petCloudMarkApplied(nick, token);
       petCloudLastHash = petCloudDigest(remoteState);
-      try{ showToast(forcedByAdmin ? '🐾 관리자 펫 보정값을 적용했어!' : '🐾 Firebase 백업에서 펫 정보를 복원했어!'); }catch(e){}
+
+      // 구형 키에서 찾은 백업은 현재 표준 키에도 복사해 다음 접속부터 바로 찾게 한다.
+      const canonicalKey = petCloudKeyForNick(petCloudNick() || nick);
+      if(found.key !== canonicalKey){
+        try{
+          await rUpdate(rRef(rtdb, `${rRoomBase(state.roomId)}/petBackups/${canonicalKey}`),
+            petCloudBackupPayload(petCloudNick() || nick, remoteState, {
+              migratedFromKey:found.key,
+              migratedAtMs:Date.now(),
+              updatedBy:remote.updatedBy || 'recovery',
+              adminOverrideToken:token || null
+            })
+          );
+        }catch(e){ console.warn('[pet cloud] legacy migration failed', e); }
+      }
+      try{
+        showToast(forcedByAdmin ? '🐾 관리자 펫 보정값을 적용했어!' : (forceRestore ? '🐾 이전 펫 백업을 강제로 복원했어!' : '🐾 Firebase 백업에서 펫 정보를 복원했어!'));
+      }catch(e){}
       return true;
     }catch(e){ console.warn('[pet cloud] restore failed', e); return false; }
   }
@@ -16846,8 +16901,78 @@ joinRoom();
         updatedBy:'client',
         backupReason:reasonStr
       });
-      // rSet 대신 rUpdate: 관리자 보정 토큰/메타데이터가 있을 때 클라이언트 백업이 지우지 않도록 보존한다.
-      await rUpdate(rPetBackupRef(state.roomId, nick), payload);
+
+      // ✅ V156 펫 기록 단조 증가(감소 금지) 안전장치
+      // 자동 클라이언트 저장은 Firebase에 이미 기록된 펫 시간을 절대로 낮추지 않는다.
+      // 주소/PWA/localStorage 예외로 로컬이 0 또는 과거값이 되어도 기존 정상 백업을 보존한다.
+      const backupRef = rPetBackupRef(state.roomId, nick);
+      let blockedRemoteState = null;
+      let blockedRemoteTotal = 0;
+      let blockedByAdminToken = false;
+      let blockedAdminToken = '';
+      const tx = await rRunTransaction(backupRef, (current)=>{
+        const remote = current && typeof current === 'object' ? current : null;
+        const remoteState = petCloudRemoteState(remote);
+        const currentAdminToken = String(remote?.adminOverrideToken || '');
+
+        // ✅ V157: 아직 적용하지 않은 관리자 보정값이 있으면 성장값의 대소와 무관하게
+        // 클라이언트 자동 백업을 중단한다. 관리자 감소 보정도 예전 로컬값으로 되돌아가지 않는다.
+        if(remoteState && currentAdminToken && currentAdminToken !== applied){
+          blockedRemoteState = remoteState;
+          blockedRemoteTotal = petCloudTotalSec(remoteState);
+          blockedByAdminToken = true;
+          blockedAdminToken = currentAdminToken;
+          return;
+        }
+
+        if(remoteState){
+          const remoteTotal = petCloudTotalSec(remoteState);
+          const localTotal = petCloudTotalSec(st);
+          const anyPetDecreased = PET_CLOUD_IDS.some(id =>
+            Number(st?.pets?.[id]?.totalSec || 0) < Number(remoteState?.pets?.[id]?.totalSec || 0)
+          );
+
+          // 전체 합계 감소 또는 개별 펫 감소가 하나라도 있으면 자동 저장 거부.
+          // 관리자 보정은 별도 관리자 함수가 직접 기록하므로 이 예외를 통과하지 않는다.
+          if(localTotal < remoteTotal || anyPetDecreased){
+            blockedRemoteState = remoteState;
+            blockedRemoteTotal = remoteTotal;
+            return; // transaction abort: 기존 Firebase 값 유지
+          }
+        }
+
+        // 기존 관리자 토큰/메타데이터는 보존하면서 현재 정상 성장값만 갱신한다.
+        return Object.assign({}, remote || {}, payload, {
+          adminOverrideToken: remote?.adminOverrideToken || payload.adminOverrideToken || null
+        });
+      }, { applyLocally:false });
+
+      if(!tx?.committed){
+        // 서버에 더 높은 정상 기록이 있으면 로컬도 즉시 그 값으로 복구한다.
+        if(!blockedRemoteState){
+          try{
+            const snapVal = tx?.snapshot?.val?.();
+            blockedRemoteState = petCloudRemoteState(snapVal);
+            blockedRemoteTotal = petCloudTotalSec(blockedRemoteState);
+          }catch(e){}
+        }
+        if(blockedRemoteState && (blockedByAdminToken || blockedRemoteTotal > petCloudTotalSec(st))){
+          petCloudSaveLocal(blockedRemoteState);
+          if(blockedByAdminToken && blockedAdminToken){
+            petCloudMarkApplied(nick, blockedAdminToken);
+            petCloudCachedRemoteToken = blockedAdminToken;
+            petCloudLastRemoteCheckMs = Date.now();
+          }
+          petCloudLastHash = petCloudDigest(blockedRemoteState);
+          try{
+            showToast(blockedByAdminToken
+              ? '🐾 관리자 펫 보정값을 안전하게 적용했어!'
+              : '🐾 서버의 기존 펫 기록을 보호하고 복원했어!');
+          }catch(e){}
+        }
+        return;
+      }
+
       petCloudLastHash = hash;
     }catch(e){ console.warn('[pet cloud] backup failed', e); }
     finally{ petCloudBusy = false; }
@@ -16872,10 +16997,10 @@ joinRoom();
     const nick = String(document.getElementById('petAdminNick')?.value || '').trim();
     if(!nick){ showToast('닉네임을 입력해줘'); return; }
     try{
-      const snap = await rGet(rPetBackupRef(state.roomId, nick));
-      const remote = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : (snap?.val?.() || null);
-      if(!remote){ petCloudSetAdminStatus(`${nick} 님의 펫 백업이 아직 없어요.`); return; }
-      const st = petCloudRemoteState(remote) || petCloudBaseState();
+      const found = await petCloudFindBestRemote(state.roomId, nick);
+      const remote = found?.remote || null;
+      if(!remote){ petCloudSetAdminStatus(`${nick} 님의 펫 백업을 현재/구형 닉네임 키 모두에서 찾지 못했어요.`); return; }
+      const st = found.state || petCloudBaseState();
       const active = st.activePetId || 'cat';
       const sec = Number(st.pets?.[active]?.totalSec || 0);
       const lv = Math.min(30, Math.floor(sec / PET_CLOUD_LEVEL_SEC));
@@ -16883,7 +17008,7 @@ joinRoom();
       try{ document.getElementById('petAdminLevel').value = String(lv); }catch(e){}
       try{ document.getElementById('petAdminHours').value = String(Math.round((sec/3600)*10)/10); }catch(e){}
       try{ document.getElementById('petAdminCustomName').value = String(st.customNames?.[active] || ''); }catch(e){}
-      petCloudSetAdminStatus(`${nick} 님 백업 확인: 대표 펫 ${PET_CLOUD_NAMES[active] || active}, Lv.${lv}, ${petCloudFmt(sec)} · 전체 누적 ${petCloudFmt(petCloudTotalSec(st))} · 마지막 저장 ${remote.updatedAtMs ? new Date(remote.updatedAtMs).toLocaleString('ko-KR') : '-'}`);
+      petCloudSetAdminStatus(`${nick} 님 백업 확인(${found.key === petCloudKeyForNick(nick) ? '현재 키' : '구형 키 발견'}): 대표 펫 ${PET_CLOUD_NAMES[active] || active}, Lv.${lv}, ${petCloudFmt(sec)} · 전체 누적 ${petCloudFmt(petCloudTotalSec(st))} · 마지막 저장 ${remote.updatedAtMs ? new Date(remote.updatedAtMs).toLocaleString('ko-KR') : '-'}`);
     }catch(e){ console.warn(e); showToast('펫 백업 조회 실패'); }
   }
   async function petCloudAdminSave(){
@@ -16945,7 +17070,7 @@ joinRoom();
       if(restoreMine && !restoreMine.dataset.petCloudBound){ restoreMine.dataset.petCloudBound='1'; restoreMine.addEventListener('click', async()=>{
         const nick = petCloudNick();
         if(!nick){ showToast('먼저 닉네임으로 입장해줘'); return; }
-        const ok = await petCloudMaybeRestoreFromRemote(nick);
+        const ok = await petCloudMaybeRestoreFromRemote(nick, {force:true});
         showToast(ok ? '🐾 내 펫을 백업에서 복원했어!' : '복원할 더 높은 백업/관리자 보정값이 없어');
       }); }
       petCloudRefreshAdminNickList();
@@ -16960,7 +17085,7 @@ joinRoom();
     setTimeout(()=>{ try{ if(state.joined) petCloudBackupNow('startup'); }catch(e){} }, 4500);
     document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'visible' && state.joined) petCloudBackupNow('visible'); }catch(e){} });
     window.addEventListener('pagehide', ()=>{ try{ if(state.joined) petCloudBackupNow('pagehide'); }catch(e){} });
-    window.__MK_PET_CLOUD_BACKUP__ = { backupNow:petCloudBackupNow, restoreMine:()=>petCloudMaybeRestoreFromRemote(petCloudNick()), readLocal:petCloudReadLocal };
+    window.__MK_PET_CLOUD_BACKUP__ = { backupNow:petCloudBackupNow, restoreMine:()=>petCloudMaybeRestoreFromRemote(petCloudNick(), {force:true}), readLocal:petCloudReadLocal };
   }
   petCloudStart();
 
