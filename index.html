@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V159_PREDEPLOY_RECONCILE_GUARD --><!-- V158_REACTION_MIDNIGHT_PRESENCE_GUARD --><!-- V157_PET_MONOTONIC_ADMIN_TOKEN_GUARD --><!-- V155_PET_BACKUP_RECOVERY_GUARD --><!-- V156_PET_MONOTONIC_BACKUP_GUARD --><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V160_FINAL_PREDEPLOY_RULES_GUARD --><!-- V160_PRESENCE_PROFILE_SESSION_GUARD --><!-- V159_PREDEPLOY_RECONCILE_GUARD --><!-- V158_REACTION_MIDNIGHT_PRESENCE_GUARD --><!-- V157_PET_MONOTONIC_ADMIN_TOKEN_GUARD --><!-- V155_PET_BACKUP_RECOVERY_GUARD --><!-- V156_PET_MONOTONIC_BACKUP_GUARD --><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -6275,6 +6275,46 @@ function loadLocalProfile(){
     // ✅ Offline cache (reduces repeated network reads; may be blocked in multi-tab)
     /* Firestore persistence disabled (not needed). */
 const auth = getAuth(app);
+    // ✅ V160: 메인 익명 인증의 로컬 복원이 끝난 뒤 UID를 확정한다.
+    // 복원 도중 새 익명 로그인을 시작하면 profiles/{uid}, presence/{uid}, chat.uid가
+    // 서로 다른 UID를 바라볼 수 있으므로 수다방과 같은 준비 장벽을 둔다.
+    let __mainAuthReadyPromise = null;
+    function ensureMainAuthReady_(){
+      if(__mainAuthReadyPromise) return __mainAuthReadyPromise;
+      __mainAuthReadyPromise = (async ()=>{
+        try{ await setPersistence(auth, browserLocalPersistence); }catch(_e){}
+        let restoredUser = null;
+        if(typeof auth.authStateReady === "function"){
+          // Firebase가 영속 세션 복원을 끝냈다는 공식 준비 신호를 우선 사용한다.
+          await auth.authStateReady();
+          restoredUser = auth.currentUser || null;
+        }else{
+          // 구형 SDK 호환 경로: 최초 auth 상태 통지를 기다린다.
+          restoredUser = await new Promise((resolve)=>{
+            let settled = false;
+            let unsub = null;
+            const finish = (user)=>{
+              if(settled) return;
+              settled = true;
+              try{ if(unsub) unsub(); }catch(_e){}
+              resolve(user || null);
+            };
+            try{
+              unsub = onAuthStateChanged(auth, (user)=>finish(user || null), ()=>finish(auth.currentUser || null));
+            }catch(_e){
+              finish(auth.currentUser || null);
+            }
+          });
+        }
+        if(restoredUser) return restoredUser;
+        const cred = await signInAnonymously(auth);
+        return cred && cred.user ? cred.user : auth.currentUser;
+      })().catch((err)=>{
+        __mainAuthReadyPromise = null;
+        throw err;
+      });
+      return __mainAuthReadyPromise;
+    }
     const storage = getStorage(app);
     const rtdb = getDatabase(app);
     // ✅ 수다방 DB(boomboom)도 함께 초기화 (티켓 발급/검증용)
@@ -6550,6 +6590,20 @@ onlineBtn: $("onlineBtn"),
       return "";
     }
 
+    function makePresenceSessionId_(){
+      try{
+        if(window.crypto && typeof window.crypto.randomUUID === "function"){
+          return window.crypto.randomUUID();
+        }
+        if(window.crypto && typeof window.crypto.getRandomValues === "function"){
+          const a = new Uint32Array(4);
+          window.crypto.getRandomValues(a);
+          return Array.from(a, v=>v.toString(16).padStart(8, "0")).join("");
+        }
+      }catch(e){}
+      return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
+    }
+
     const state = {
       myMission: null,
       uid: null,
@@ -6578,7 +6632,10 @@ chatUnseen: 0,
       // ✅ V159: 재구독/프로필 캐시 상태를 명시적으로 초기화해 초기 호출 순서와 무관하게 안전하게 유지
       publicProfiles: new Map(),
       profileUnsubs: new Map(),
+      chatProfileLoads: new Map(),
       presenceSubSeq: 0,
+      // ✅ V160: 새로고침/BFCache/다른 탭의 늦은 종료 쓰기를 현재 세션과 구분
+      presenceSessionId: makePresenceSessionId_(),
       chatDayRolloverTimer: null,
       // 🔋 reads saver
       nonChatEnabled: true,
@@ -6616,6 +6673,41 @@ chatUnseen: 0,
 
     };
     window.__mk_state = state;
+
+    // ✅ V160: 같은 origin의 다른 탭이 닫힐 때 살아 있는 탭이 즉시 presence 소유권을 넘겨받는다.
+    // BroadcastChannel을 지원하지 않는 브라우저는 세션 표식 + heartbeat/TTL 경로를 그대로 사용한다.
+    let __presencePeerChannel = null;
+    try{
+      if(typeof BroadcastChannel === "function"){
+        __presencePeerChannel = new BroadcastChannel(`mk_presence_v160_${String(FIXED_ROOM_ID || "room")}`);
+        __presencePeerChannel.addEventListener("message", (ev)=>{
+          try{
+            const d = ev && ev.data ? ev.data : {};
+            if(d.type !== "session-leaving") return;
+            if(!state.joined || state.__presenceLeaving || !state.uid) return;
+            if(String(d.uid || "") !== String(state.uid || "")) return;
+            if(String(d.sessionId || "") === String(state.presenceSessionId || "")) return;
+            const now = Date.now();
+            if(now - Number(state.__peerTakeoverHeartbeatAt || 0) < 1200) return;
+            state.__peerTakeoverHeartbeatAt = now;
+            Promise.resolve(heartbeat()).catch(()=>{});
+          }catch(e){}
+        });
+      }
+    }catch(e){ __presencePeerChannel = null; }
+
+    function announcePresenceSessionLeaving_(){
+      try{
+        if(!__presencePeerChannel || !state.uid) return;
+        __presencePeerChannel.postMessage({
+          type:"session-leaving",
+          roomId:String(state.roomId || FIXED_ROOM_ID || ""),
+          uid:String(state.uid || ""),
+          sessionId:String(state.presenceSessionId || ""),
+          tsMs:Date.now()
+        });
+      }catch(e){}
+    }
 
 
     // ===== V92 작업방 본체 경량화 패치 =====
@@ -7550,6 +7642,11 @@ function seoulDateKey(){
     const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장 60초
 function isOfflinePresence(p){
   if(!p) return true;
+  // ✅ V160: onDisconnect/pagehide는 세션 표식만 남긴다.
+  // 이전 페이지의 늦은 종료 표식은 현재 presenceSessionId와 다르므로 무시한다.
+  const liveSession = String(p.presenceSessionId || "");
+  const disconnectedSession = String(p.disconnectedSessionId || "");
+  if(liveSession && disconnectedSession && liveSession === disconnectedSession) return true;
   const s = String(p.status||"").toLowerCase();
   if(s === "off" || s === "offline") return true;
   const last = Number(p.lastSeenAtMs || 0);
@@ -9434,6 +9531,47 @@ function rPlaygroundChatRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}
 function rPlaygroundSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/settings`); }
 function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/whiteboard/${dayKey}`); }
 
+// ✅ V160 Rules 호환: 새 선택 필드를 엄격한 기존 Rules가 거부해도
+// heartbeat/상태/프로필의 기존 필드 쓰기는 한 번 더 보장한다.
+const V160_OPTIONAL_PRESENCE_FIELDS_ = new Set([
+  "presenceSessionId", "disconnectedSessionId", "disconnectedAtMs", "appearanceUpdatedAtMs"
+]);
+async function updatePresenceCompat_(ref, patch){
+  try{
+    await rUpdate(ref, patch);
+    return true;
+  }catch(firstErr){
+    const legacyPatch = {};
+    for(const [key, value] of Object.entries(patch || {})){
+      if(!V160_OPTIONAL_PRESENCE_FIELDS_.has(key)) legacyPatch[key] = value;
+    }
+    if(!Object.keys(legacyPatch).length) throw firstErr;
+    await rUpdate(ref, legacyPatch);
+    state.__v160OptionalFieldsRejected = true;
+    return false;
+  }
+}
+
+async function armPresenceOnDisconnect_(){
+  try{
+    if(!state.roomId || !state.uid) return false;
+    if(state._rtdbOnDisc){
+      try{ state._rtdbOnDisc.cancel?.(); }catch(e){}
+      state._rtdbOnDisc = null;
+    }
+    const disc = rOnDisconnect(rMePresenceRef(state.roomId, state.uid));
+    state._rtdbOnDisc = disc;
+    await disc.update({
+      disconnectedSessionId: String(state.presenceSessionId || ""),
+      disconnectedAtMs: rServerTimestamp()
+    });
+    return true;
+  }catch(e){
+    state._rtdbOnDisc = null;
+    return false;
+  }
+}
+
     async function ensureRoom(roomId){
       const r = roomRef(roomId);
       const snap = await getDoc(r);
@@ -9695,6 +9833,8 @@ function buildCurrentProfilePayload({uid, name, theme, bubbleText, autoBreakMin,
     theme: safeTheme,
     autoBreakMin: Math.min(180, Math.max(1, Number(autoBreakMin || 10))),
     autoIdleMin: Math.min(180, Math.max(1, Number(autoIdleMin || 15))),
+    // petFull 등 부분 갱신 시각과 사용자 외형 저장 시각을 분리한다.
+    appearanceUpdatedAtMs: now,
     updatedAtMs: now,
     source: source || 'profile_current_v103'
   };
@@ -9704,16 +9844,40 @@ async function ensureCurrentProfileMirror(existingPresence){
   // 입장 시 내 최신 프로필 칸이 없으면 presence/localProfile에서 1회만 보강합니다.
   // profileUpdates 전체를 읽지 않으므로, 운영 중 다운로드 폭탄을 만들지 않습니다.
   try{
-    if(!state.roomId || !state.uid) return;
+    if(!state.roomId || !state.uid) return null;
     const profRef = rProfileRef(state.roomId, state.uid);
     const snap = await rGet(profRef);
-    if(snap && snap.exists && snap.exists()) return;
-
     const lp = loadLocalProfile() || {};
     const src = existingPresence || {};
-    const theme = src.theme || lp.theme || defaultTheme();
+    const existing = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : null;
+    // presence가 petFull 같은 일부 theme leaf만 가진 상태여도 로컬/정식 프로필을 버리지 않는다.
+    const theme = Object.assign({}, defaultTheme(), lp.theme || {}, src.theme || {}, existing?.theme || {});
     const bubbleText = (src.bubbleText !== undefined && src.bubbleText !== null) ? src.bubbleText : (lp.bubbleText || '');
-    const name = src.name || state.nickname || lp.nickname || (els.name?.value || '').trim();
+    const name = existing?.name || src.name || state.nickname || lp.nickname || lp.name || (els.name?.value || '').trim();
+
+    if(existing){
+      const needsRepair = !hasValidNick(existing.name) || !existing.theme || !String(existing.theme?.emoji || "").trim();
+      if(!needsRepair) return existing;
+      const repaired = Object.assign({}, existing, {
+        uid: String(state.uid),
+        name: normalizeNick(name),
+        bubbleText: (existing.bubbleText !== undefined && existing.bubbleText !== null) ? existing.bubbleText : bubbleText,
+        theme,
+        appearanceUpdatedAtMs: Math.max(0, Number(existing.appearanceUpdatedAtMs || 0)) || Date.now(),
+        updatedAtMs: Date.now(),
+        source: "profile_repair_v160"
+      });
+      try{
+        await rUpdate(profRef, repaired);
+      }catch(firstErr){
+        const legacyRepaired = Object.assign({}, repaired);
+        delete legacyRepaired.appearanceUpdatedAtMs;
+        await rUpdate(profRef, legacyRepaired);
+        state.__v160OptionalFieldsRejected = true;
+      }
+      return repaired;
+    }
+
     const payload = buildCurrentProfilePayload({
       uid: state.uid,
       name,
@@ -9723,9 +9887,18 @@ async function ensureCurrentProfileMirror(existingPresence){
       autoIdleMin: src.autoIdleMin || lp.autoIdleMin || 15,
       source: 'presence_seed_v103'
     });
-    await rSet(profRef, payload);
+    try{
+      await rSet(profRef, payload);
+    }catch(firstErr){
+      const legacyPayload = Object.assign({}, payload);
+      delete legacyPayload.appearanceUpdatedAtMs;
+      await rSet(profRef, legacyPayload);
+      state.__v160OptionalFieldsRejected = true;
+    }
+    return payload;
   }catch(e){
     console.warn('[profiles] mirror seed skipped', e);
+    return null;
   }
 }
 
@@ -9745,6 +9918,9 @@ async function ensureMeDoc(){
     timerHidden: 0,
     lastSeenAtMs: Date.now(),
     updatedAt: Date.now(),
+    presenceSessionId: String(state.presenceSessionId || ""),
+    disconnectedSessionId: null,
+    disconnectedAtMs: null,
     petMotionSeedMs: Date.now(),
     timerEpochMs: readTimerResetEpoch_(),
     timerStateNonce: timerStateNonceForWrite_(readTimerResetEpoch_(), Date.now()),
@@ -9816,22 +9992,47 @@ async function ensureMeDoc(){
       }catch(e){}
     }
 
-    // ✅ V103: 최신 프로필 단일 저장소(profiles/{uid})를 안전하게 1회 보강
+    // ✅ V103/V160: 최신 프로필 단일 저장소를 보강하고 presence가 불완전하면 복구한다.
     try{
-      await ensureCurrentProfileMirror(data || seed);
+      const canonicalProfile = await ensureCurrentProfileMirror(data || seed);
+      const now = Date.now();
+      const identityPatch = {
+        name: normalizeNick(state.nickname || els.name?.value || data?.name || canonicalProfile?.name || ""),
+        presenceSessionId: String(state.presenceSessionId || ""),
+        disconnectedSessionId: null,
+        disconnectedAtMs: null,
+        lastSeenAtMs: now,
+        updatedAt: now
+      };
+      if(canonicalProfile && canonicalProfile.theme){
+        const liveTheme = (data && data.theme) || {};
+        const presenceAppearanceAt = Math.max(0, Number(data?.appearanceUpdatedAtMs || 0));
+        const profileAppearanceAt = Math.max(0, Number(canonicalProfile.appearanceUpdatedAtMs || 0));
+        const presenceIncomplete = !hasValidNick(data?.name) || !String(liveTheme.emoji || "").trim();
+        const profileIsCanonical = presenceIncomplete ||
+          (!!profileAppearanceAt && (!presenceAppearanceAt || profileAppearanceAt >= presenceAppearanceAt));
+        if(profileIsCanonical){
+          // 저장 프로필이 명시적으로 더 최신이거나 presence가 불완전할 때만 외형을 복원한다.
+          const mergedTheme = Object.assign({}, liveTheme, canonicalProfile.theme || {});
+          for(const key of ["petPlayX","petPlayY","petPlayActive","petPlayMode","petPlayVersion"]){
+            if(Object.prototype.hasOwnProperty.call(liveTheme, key)) mergedTheme[key] = liveTheme[key];
+          }
+          identityPatch.theme = mergedTheme;
+          identityPatch.appearanceUpdatedAtMs = profileAppearanceAt || now;
+        }
+      }else if(!data?.theme || !String(data?.theme?.emoji || "").trim()){
+        identityPatch.theme = Object.assign({}, defaultTheme(), data?.theme || {});
+        identityPatch.appearanceUpdatedAtMs = now;
+      }
+      if(canonicalProfile && canonicalProfile.bubbleText !== undefined){
+        identityPatch.bubbleText = String(canonicalProfile.bubbleText || "").slice(0, 15);
+      }
+      await updatePresenceCompat_(pref, identityPatch);
     }catch(e){}
 
-    // ✅ presence onDisconnect (브라우저/네트워크 끊기면 자동 제거)
-    try{
-      if(state._rtdbOnDisc){
-        try{ state._rtdbOnDisc.cancel?.(); }catch(e){}
-        state._rtdbOnDisc = null;
-      }
-      state._rtdbOnDisc = rOnDisconnect(pref);
-      // ✅ 탭 종료/네트워크 끊김에서도 즉시 OFFLINE 마킹(누적시간 멈춤)
-      // - lastSeenAtMs=0: 즉시 오프라인 처리(ONLINE_TTL_MS 대기 없이)
-      state._rtdbOnDisc.update({ status:"off", sessionStartedAtMs:null, lastSeenAtMs: 0 });
-    }catch(e){}
+    // ✅ V160 presence onDisconnect: 현재 세션의 종료 표식만 기록한다.
+    // status/off를 직접 쓰면 이전 연결의 늦은 onDisconnect가 새 세션의 타일까지 지울 수 있다.
+    try{ await armPresenceOnDisconnect_(); }catch(e){}
   }catch(e){
     console.warn("[presence] ensure failed", e);
     // 최소한은 기록
@@ -9855,7 +10056,11 @@ async function heartbeat(){
     const patch = {
       lastSeenAtMs: now,
       updatedAt: now,
-      timerEpochMs: epoch
+      timerEpochMs: epoch,
+      name: normalizeNick(state.nickname || els.name?.value || meRecord?.name || ""),
+      presenceSessionId: String(state.presenceSessionId || ""),
+      disconnectedSessionId: null,
+      disconnectedAtMs: null
     };
 
     // ✅ 재접속/일시 끊김으로 status가 "off"에 고정되는 현상 방지:
@@ -9888,7 +10093,7 @@ async function heartbeat(){
       }catch(e){}
     }
 
-    await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
+    await updatePresenceCompat_(rMePresenceRef(state.roomId, state.uid), patch);
   }catch(e){}
 }
 
@@ -9905,10 +10110,13 @@ function startRtdbConnectionWatch(){
       if(!prev && connected){
         try{
           if(state && state.joined && state.roomId && state.uid){
+            // onDisconnect 예약은 실제 단절 때 한 번 실행되고 소모되므로 재연결마다 먼저 다시 건다.
             // ✅ V138: 예전 상태를 먼저 올리는 별도 update를 제거한다.
             // heartbeat가 날짜 보정을 끝낸 뒤 현재 상태/펫 현황을 한 번에 올리므로,
             // 자정 직후 오래된 작업중 상태가 뒤늦게 휴식중을 덮는 경합을 막는다.
-            Promise.resolve(ensureFocusDayCurrent("reconnectNet"))
+            Promise.resolve(armPresenceOnDisconnect_())
+              .catch(()=>false)
+              .then(()=>ensureFocusDayCurrent("reconnectNet"))
               .catch(()=>false)
               .then(()=>heartbeat())
               .catch(()=>{});
@@ -10257,10 +10465,8 @@ function startRtdbConnectionWatch(){
         try{
           if(state && state.roomId && state.uid){
             await rUpdate(rMePresenceRef(state.roomId, state.uid), {
-              status:"off",
-              sessionStartedAtMs:null,
-              lastSeenAtMs: 0,
-              updatedAt: Date.now()
+              disconnectedSessionId: String(state.presenceSessionId || ""),
+              disconnectedAtMs: rServerTimestamp()
             });
           }
         }catch(e){}
@@ -10268,9 +10474,10 @@ function startRtdbConnectionWatch(){
       window.addEventListener("pagehide", (ev)=>{
         // ✅ V158: BFCache 이동은 실제 종료가 아니므로 off로 찍지 않는다. pageshow 복귀 시 타일 깜빡임 방지
         if(ev && ev.persisted) return;
+        try{ announcePresenceSessionLeaving_(); }catch(e){}
         markOfflineBestEffort();
       }, {capture:true});
-      window.addEventListener("beforeunload", ()=>{ markOfflineBestEffort(); }, {capture:true});
+      // beforeunload는 BFCache를 방해하거나 pagehide보다 먼저 종료 표식을 남길 수 있어 사용하지 않는다.
       // BFCache/앱 전환 뒤 돌아오면 다음 실제 종료도 다시 OFFLINE 처리할 수 있게 잠금을 해제한다.
       window.addEventListener("pageshow", ()=>{ fired = false; }, {capture:true});
       document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") fired = false; }, {passive:true});
@@ -10768,7 +10975,11 @@ async function transitionTo(nextStatus, source="manual"){
     statusSource: source,
     updatedAt: now,
     lastSeenAtMs: now,
-    timerEpochMs: timerEpoch
+    timerEpochMs: timerEpoch,
+    name: normalizeNick(state.nickname || els.name?.value || meNow?.name || ""),
+    presenceSessionId: String(state.presenceSessionId || ""),
+    disconnectedSessionId: null,
+    disconnectedAtMs: null
   };
   if(nextStatus === "work"){
     patch.sessionStartedAtMs = now;
@@ -10792,7 +11003,7 @@ async function transitionTo(nextStatus, source="manual"){
   );
 
   try{
-    await rUpdate(rMePresenceRef(state.roomId, state.uid), patch);
+    await updatePresenceCompat_(rMePresenceRef(state.roomId, state.uid), patch);
   }catch(e){
     console.warn("[status] update failed", e);
   }
@@ -10837,6 +11048,7 @@ async function transitionTo(nextStatus, source="manual"){
         photoSize: 82
       };
       const bubbleText = (els.bubbleText.value || "").trim().slice(0, 15);
+      const appearanceUpdatedAtMs = Date.now();
       const newNick = (els.profileNick?.value || "").trim().slice(0,20);
       if(newNick){
         state.nickname = newNick;
@@ -10879,7 +11091,7 @@ async function transitionTo(nextStatus, source="manual"){
       }
 
       const pref = rMePresenceRef(state.roomId, state.uid);
-      await rUpdate(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+      await updatePresenceCompat_(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), appearanceUpdatedAtMs, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
 
       // ✅ V103_SAFE_PROFILE_COST_PATCH
       // 최신 프로필은 profiles/{uid}에 덮어쓰기 저장합니다.
@@ -10894,7 +11106,16 @@ async function transitionTo(nextStatus, source="manual"){
           autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))),
           source: 'apply_profile_v103'
         });
-        await rSet(rProfileRef(state.roomId, state.uid), payload);
+        payload.appearanceUpdatedAtMs = appearanceUpdatedAtMs;
+        payload.updatedAtMs = appearanceUpdatedAtMs;
+        try{
+          await rSet(rProfileRef(state.roomId, state.uid), payload);
+        }catch(firstErr){
+          const legacyPayload = Object.assign({}, payload);
+          delete legacyPayload.appearanceUpdatedAtMs;
+          await rSet(rProfileRef(state.roomId, state.uid), legacyPayload);
+          state.__v160OptionalFieldsRejected = true;
+        }
       }catch(e){ console.warn('[profiles] set failed', e); }
 
       // 긴급 롤백용: localStorage.mk_keep_profile_updates_v1 = "1" 일 때만 레거시 로그를 남김
@@ -10917,6 +11138,7 @@ async function transitionTo(nextStatus, source="manual"){
         const meNow = state.currentParticipants?.get?.(state.uid);
         if(meNow){
           meNow.theme = Object.assign({}, (meNow.theme||{}), theme);
+          meNow.appearanceUpdatedAtMs = appearanceUpdatedAtMs;
           state.currentParticipants.set(state.uid, meNow);
           // 캐시 무효화 후 재렌더
           try{ state.lastRendered?.delete?.(state.uid); }catch(e){}
@@ -11394,6 +11616,47 @@ function __getMyReactOn(msgObj, emoji){
   showToast(msg, 4200);
 }
 
+    function resolveChatProfileByUid_(uid){
+      try{
+        uid = String(uid || "");
+        if(!uid) return null;
+        const participant = state.currentParticipants?.get?.(uid) || null;
+        if(participant){
+          try{ return mergePublicProfileIntoParticipant(participant); }catch(_e){ return participant; }
+        }
+        const prof = state.publicProfiles?.get?.(uid) || null;
+        if(prof) return { id:uid, name:prof.name || "", theme:prof.theme || {}, bubbleText:prof.bubbleText || "" };
+      }catch(e){}
+      return null;
+    }
+
+    function ensureChatProfileByUid_(uid){
+      try{
+        uid = String(uid || "");
+        const roomId = String(state.roomId || "");
+        if(!uid || !roomId || !state.uid) return;
+        if(state.publicProfiles?.has?.(uid)) return;
+        if(!(state.chatProfileLoads instanceof Map)) state.chatProfileLoads = new Map();
+        const key = `${roomId}:${uid}`;
+        if(state.chatProfileLoads.has(key)) return;
+        const load = rGet(rProfileRef(roomId, uid)).then((snap)=>{
+          if(String(state.roomId || "") !== roomId) return null;
+          const data = (snap && snap.exists && snap.exists()) ? (snap.val() || null) : null;
+          if(!data) return null;
+          state.publicProfiles.set(uid, data);
+          const oldP = state.currentParticipants?.get?.(uid) || null;
+          if(oldP) state.currentParticipants.set(uid, mergePublicProfileIntoParticipant(oldP));
+          v158RunSoon_(()=>{ try{ refreshChatMetaFromParticipants(true); }catch(e){} });
+          return data;
+        }).catch((e)=>{
+          // 일시적인 권한/네트워크 실패는 다음 메시지 렌더 때 한 번 더 시도할 수 있게 한다.
+          try{ state.chatProfileLoads.delete(key); }catch(_e){}
+          return null;
+        });
+        state.chatProfileLoads.set(key, load);
+      }catch(e){}
+    }
+
     function makeMsgNode(m){
       const div = document.createElement("div");
 
@@ -11411,7 +11674,8 @@ div.innerHTML = `<div class="text">${linkifyChatText(m.text || "")}</div>`;
             try{ div.setAttribute("data-msg-id", String(m.id||"")); }catch(e){}
             try{ div.setAttribute("data-ts-ms", String(Number(m.tsMs || m.serverTs || 0) || 0)); }catch(e){}
             try{ if(m.uid) div.setAttribute("data-uid", String(m.uid)); }catch(e){}
-const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m.uid) : null;
+      try{ if(m.uid) ensureChatProfileByUid_(m.uid); }catch(e){}
+const p = m.uid ? resolveChatProfileByUid_(m.uid) : null;
       const emoji = (p && p.theme && p.theme.emoji) ? String(p.theme.emoji) : ((m && m.emoji) ? String(m.emoji) : "💬");
       const nick = (m.name || (p && p.name) || "익명");
       div.innerHTML = `
@@ -11421,7 +11685,9 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
 
       // theme-based text colors (if provided)
       try{
-        const nc = p && p.theme && (p.theme.chatNameColor || p.theme.nameColor) ? clampHexColor(p.theme.chatNameColor || p.theme.nameColor) : null;
+        const nc = p && p.theme && (p.theme.chatNameColor || p.theme.nameColor)
+          ? clampHexColor(p.theme.chatNameColor || p.theme.nameColor)
+          : (m && m.chatNameColor ? clampHexColor(m.chatNameColor) : null);
         if(nc){
           const nEl = div.querySelector(".chatName");
           if(nEl) nEl.style.color = nc;
@@ -11511,23 +11777,13 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
         const now = Date.now();
         if(!force && (now - __chatMetaRefreshAt) < 1200) return;
 
-        // force가 아니면, 실제로 "💬" 기본 이모지가 남아 있을 때만 한 번 보정
-        if(!force){
-          let anyDefault = false;
-          const nodes = el.querySelectorAll(".chatEmoji");
-          for(const n of nodes){
-            if((n.textContent||"").trim() === "💬"){ anyDefault = true; break; }
-          }
-          if(!anyDefault) return;
-        }
-
         __chatMetaRefreshAt = now;
 
         const msgs = el.querySelectorAll('.msg:not(.system)[data-uid]');
         msgs.forEach(div=>{
           const uid = div.getAttribute("data-uid") || "";
           if(!uid) return;
-          const p = map.get(uid);
+          const p = resolveChatProfileByUid_(uid);
           if(!p) return;
 
           // emoji
@@ -12551,6 +12807,9 @@ function showJoinTicker(msg){
 
     
 async function sendChatCore(text, isFlush=false){
+  // ✅ V160: UID만 준비되고 프로필/presence 입장이 끝나지 않은 짧은 구간에는 전송하지 않는다.
+  // 이 창을 열어두면 타일 없이 기본 이모지로 먼저 채팅하는 상태가 재현될 수 있다.
+  if(!state.joined || !state.uid || state.__joinProfileReady !== true) return false;
   __chatSending = true;
   try{
     // 버튼은 잠깐만 잠그고, 입력은 IME 때문에 계속 열어둠
@@ -12570,7 +12829,7 @@ async function sendChatCore(text, isFlush=false){
       // serverTs는 정렬 안정화 보조(원하면 활용)
       serverTs: rServerTimestamp(),
       // ✅ 채팅 이모지(denormalize): presence가 늦게 도착해도 채팅 이모지가 "💬"로 통일되는 현상 방지
-      emoji: (()=>{
+      emoji: (()=>{ 
         try{
           const v = (els.emoji && els.emoji.value) ? String(els.emoji.value) : "";
           if(v){
@@ -12581,6 +12840,13 @@ async function sendChatCore(text, isFlush=false){
         }catch(e){}
         try{ return String((defaultTheme()||{}).emoji || "✍️"); }catch(e){}
         return "✍️";
+      })(),
+      // ✅ V160: presence/profile 구독이 늦어도 새 채팅의 닉네임 색은 메시지 자체로 복원
+      chatNameColor: (()=>{ 
+        try{
+          const c = els.chatNameColor?.value || els.nameColor?.value || (defaultTheme()||{}).chatNameColor || "#ffffff";
+          return clampHexColor(c);
+        }catch(e){ return "#ffffff"; }
       })()
     };
 
@@ -14159,18 +14425,46 @@ t.appendChild(bg);
         if(!p || !p.id || !(state.publicProfiles instanceof Map)) return p;
         const prof = state.publicProfiles.get(String(p.id));
         if(!prof) return p;
-        const hasPetFullPublic = !!(prof && (((prof.theme||{}).petFullCount !== undefined) || prof.petFullCount !== undefined));
-        if(!hasPetFullPublic) return p;
-        const inf = normalizePetFullPublicInfo(prof);
+        // ✅ V160: profiles/{uid}는 펫 개수뿐 아니라 사용자가 저장한 타일/채팅 프로필의 정식 보조 출처다.
+        // presence가 재연결 경계에서 부분 레코드가 되어도 이름·이모지·색상·사진을 복원한다.
+        const stableThemeKeys = [
+          "emoji","bgColor","pattern","bgPattern","patternColor","photoUrl","photoEnabled",
+          "petDisplaySlot","showPetInPhotoSlot","petSlotBgColor","petSlotBgTransparent",
+          "petSlotMotion","petSlotId","petSlotLv","petSlotName","petSlotVersion",
+          "emojiBg","emojiBgTransparent","bubbleColor","timeColor","nameColor",
+          "chatNameColor","statusTextColor","bubbleTextColor","emojiSize","photoSize"
+        ];
+        const profileTheme = (prof.theme && typeof prof.theme === "object") ? prof.theme : {};
         const theme = Object.assign({}, p.theme || {});
+        const presenceAppearanceAt = Math.max(0, Number(p.appearanceUpdatedAtMs || 0));
+        const profileAppearanceAt = Math.max(0, Number(prof.appearanceUpdatedAtMs || 0));
+        const profileWins = !String(theme.emoji || "").trim() ||
+          (!!profileAppearanceAt && (!presenceAppearanceAt || profileAppearanceAt >= presenceAppearanceAt));
+        for(const key of stableThemeKeys){
+          if(!Object.prototype.hasOwnProperty.call(profileTheme, key)) continue;
+          const currentMissing = theme[key] === undefined || theme[key] === null || theme[key] === "";
+          if(profileWins || currentMissing) theme[key] = profileTheme[key];
+        }
+        let merged = Object.assign({}, p, {
+          theme,
+          appearanceUpdatedAtMs: profileWins ? (profileAppearanceAt || presenceAppearanceAt) : presenceAppearanceAt
+        });
+        if(!hasValidNick(merged.name) && hasValidNick(prof.name)) merged.name = normalizeNick(prof.name);
+        if((merged.bubbleText === undefined || merged.bubbleText === null) && prof.bubbleText !== undefined){
+          merged.bubbleText = String(prof.bubbleText || "").slice(0, 15);
+        }
+        const hasPetFullPublic = !!(prof && (((prof.theme||{}).petFullCount !== undefined) || prof.petFullCount !== undefined));
+        if(!hasPetFullPublic) return merged;
+        const inf = normalizePetFullPublicInfo(prof);
         // presence 값이 없거나 0이어도 profiles 최신값(0/전체 포함)을 보조 출처로 사용한다.
         const cur = Math.max(0, Math.floor(Number(theme.petFullCount ?? p.petFullCount ?? 0)));
         if(cur <= 0 || inf.fullCount >= cur || theme.petFullCount === undefined){
           theme.petFullCount = inf.fullCount;
           theme.petFullTotal = inf.totalCount;
           theme.petFullVersion = inf.version || theme.petFullVersion || 'v128-profile';
-          return Object.assign({}, p, { theme });
+          merged = Object.assign({}, merged, { theme });
         }
+        return merged;
       }catch(e){}
       return p;
     }
@@ -14207,6 +14501,9 @@ t.appendChild(bg);
           theme,
           lastSeenAtMs: now,
           updatedAt: now,
+          presenceSessionId: String(state.presenceSessionId || ""),
+          disconnectedSessionId: null,
+          disconnectedAtMs: null,
           __localPresenceShadow: true,
         });
       }catch(e){ return null; }
@@ -14270,10 +14567,10 @@ t.appendChild(bg);
       // 구독 세대별 로컬 플래그 사용: 이전 세대의 RAF가 새 세대 렌더를 막는 경합 방지
       let presenceRecalcScheduled = false;
       // ✅ V159: 복귀 동안 유지한 과거 타일 중 새 구독에서 실제로 다시 확인되지 않은 항목을 정리
-      // 즉시 비우면 깜빡이고, 정리하지 않으면 퇴장한 사용자가 TTL(최대 8분) 동안 남을 수 있어 짧은 유예 후 대조한다.
+      // ✅ V160: 시간 추정이 아니라 첫 전체 value 스냅샷을 완료 장벽으로 사용한다.
       const preservedPresenceUids = new Set(Array.from(preservedParticipants.keys()).map(String));
       const seenPresenceUids = new Set();
-      let presenceReconcileTimer = null;
+      let initialPresenceValueOff = null;
       const scheduleRecalc = ()=>{
         if(!isCurrentPresenceSub()) return;
         if(presenceRecalcScheduled) return;
@@ -14472,16 +14769,22 @@ t.appendChild(bg);
       rOnChildRemoved(q, onRem);
       rOnChildMoved(q, onMov);
 
-      // ✅ V159: 재구독 직후에는 기존 타일을 유지하되, 6.5초 동안 새 구독에서 다시 보이지 않은 과거 사용자만 제거
-      // 내 타일은 로컬 그림자 레코드가 담당하므로 이 정리 대상에서 제외한다.
+      // ✅ V160: 첫 전체 스냅샷이 실제로 도착한 뒤에만 보존 캐시를 대조한다.
+      // 고정 6.5초 타이머는 느린 네트워크에서 정상 사용자를 먼저 지웠다가 되살리는 원인이었다.
       try{
-        presenceReconcileTimer = setTimeout(()=>{
-          presenceReconcileTimer = null;
+        const onInitialPresenceValue = (snap)=>{
           if(!isCurrentPresenceSub()) return;
+          try{ if(initialPresenceValueOff) initialPresenceValueOff(); }catch(_e){}
+          initialPresenceValueOff = null;
+          const authoritativeUids = new Set();
+          try{
+            const val = (snap && snap.val) ? (snap.val() || {}) : {};
+            Object.keys(val).forEach(uid=>authoritativeUids.add(String(uid)));
+          }catch(_e){}
           let changed = false;
           for(const oldUid of preservedPresenceUids){
             if(String(oldUid) === String(state.uid || "")) continue;
-            if(seenPresenceUids.has(String(oldUid))) continue;
+            if(authoritativeUids.has(String(oldUid)) || seenPresenceUids.has(String(oldUid))) continue;
             if(state.currentParticipants?.has?.(oldUid)){
               state.currentParticipants.delete(oldUid);
               try{ detachPublicProfileForUid(oldUid); }catch(_e){}
@@ -14489,12 +14792,14 @@ t.appendChild(bg);
             }
           }
           if(changed) scheduleRecalc();
-        }, 6500);
+        };
+        rOnValue(q, onInitialPresenceValue, { onlyOnce:true });
+        initialPresenceValueOff = ()=>{ try{ rOff(q, "value", onInitialPresenceValue); }catch(e){} };
       }catch(e){}
 
       state.unsubParticipants = ()=>{
         try{
-          try{ if(presenceReconcileTimer){ clearTimeout(presenceReconcileTimer); presenceReconcileTimer = null; } }catch(_e){}
+          try{ if(initialPresenceValueOff){ initialPresenceValueOff(); initialPresenceValueOff = null; } }catch(_e){}
           rOff(q, "child_added", onAdd);
           rOff(q, "child_changed", onChg);
           rOff(q, "child_removed", onRem);
@@ -14520,6 +14825,8 @@ t.appendChild(bg);
     
 async function joinRoom(){
       try{
+        state.__presenceLeaving = false;
+        state.__joinProfileReady = false;
         const name = normalizeNick(els.name.value); els.name.value = name;
         state.nickname = name;
         setMyNickUI(name);
@@ -14545,18 +14852,10 @@ async function joinRoom(){
           state.chatLimit = (last === dk) ? 10 : 70;
           localStorage.setItem(k, dk);
         }catch(e){ state.chatLimit = 70; }
-        await signInAnonymously(auth);
-      if(!state.uid){
-        await new Promise((resolve)=>{
-          const off = onAuthStateChanged(auth, (user)=>{
-            if(user){
-              state.uid = user.uid;
-              off();
-              resolve();
-            }
-          });
-        });
-      }
+        const mainUser = await ensureMainAuthReady_();
+        if(!mainUser || !mainUser.uid) throw new Error("main auth user unavailable");
+        // 항상 실제 auth.currentUser와 같은 UID를 사용한다.
+        state.uid = mainUser.uid;
       // ✅ V141: 이 탭이 입장할 때의 초기화 ACK를 미리 고정해 다중 탭 누락을 방지
       try{ primeTimerResetAckForTab_(); }catch(_e){}
 
@@ -14575,7 +14874,6 @@ async function joinRoom(){
         }
       }catch(e){}
 
-      setControlsEnabled(true);
       await ensureRoom(state.roomId);
       await ensureMeDoc();
       // ✅ V128: heartbeat 없이도 보이도록 입장 직후 만렙 펫 현황을 presence + profiles에 1회 공개 저장
@@ -14713,6 +15011,11 @@ try{
         saveLocalProfile(lp);
       }catch(e){}
 
+      // 프로필 복원과 presence 생성이 끝난 뒤에만 입장 상태로 전환한다.
+      // 채팅은 첫 heartbeat까지 한 단계 더 잠가 타일/프로필보다 먼저 전송되지 않게 한다.
+      setControlsEnabled(true);
+      try{ els.chatInput.disabled = true; els.sendBtn.disabled = true; }catch(e){}
+
       // ✅ 입장 시 시작 상태: 무조건 "휴식중" + 헬퍼 OFF
       try{ setHelperMode("manual", true); }catch(e){}
       try{ await transitionTo("break","manualInit"); }catch(e){}
@@ -14727,6 +15030,8 @@ try{
       subscribeKicks();
 
       await heartbeat();
+      state.__joinProfileReady = true;
+      try{ els.chatInput.disabled = false; els.sendBtn.disabled = false; }catch(e){}
       // V147: 일반 1초 / 경량 2초 / 저사양 5초 주기를 한 함수에서만 결정합니다.
       // 주소·저장값으로 경량 모드를 미리 켠 뒤 입장해도 1초로 되돌아가지 않습니다.
       restartUiTickV143();
@@ -14759,6 +15064,9 @@ try{
       try{ emitSys(`❣️ ${state.nickname} 입장 🥰`); }catch(e){}
       }catch(e){
         console.error(e);
+        if(state.__joinProfileReady !== true){
+          try{ setControlsEnabled(false); }catch(_e){}
+        }
         const code = e?.code || "";
         const msg = e?.message || "";
         showToast("입장 실패: " + (code || "오류"), 3500);
@@ -14773,6 +15081,9 @@ try{
     }
 
     async function leaveRoom(){
+      state.__presenceLeaving = true;
+      state.__joinProfileReady = false;
+      try{ announcePresenceSessionLeaving_(); }catch(e){}
       // ✅ 퇴장 직전 집중시간 로컬 저장
       persistMyFocusToLocal();
       // ✅ 자동 휴식/자리비움 감지 타이머 정리(퇴장 시)
@@ -14785,6 +15096,8 @@ try{
 
       try{ await transitionTo("idle","manual"); }catch(e){}
 
+      // ✅ V160: 이미 큐에 들어간 이전 presence/profile 콜백도 퇴장 뒤에는 무효화
+      state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
       if(state.unsubParticipants) state.unsubParticipants();
       if(state.unsubRoom) state.unsubRoom();
       if(state.unsubChat) state.unsubChat();
@@ -14797,13 +15110,38 @@ try{
       state.unsubKick = null;
       state.unsubMissionFeed = null;
 
-      try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { status:"off", sessionStartedAtMs:null, lastSeenAtMs: 0, updatedAt: Date.now(), "theme/petPlayActive": false, "theme/petPlayMode": "default", "theme/petPlayVersion": "v58" }); }catch(e){}
+      try{
+        const mine = String(state.presenceSessionId || "");
+        await rRunTransaction(rMePresenceRef(state.roomId, state.uid), (current)=>{
+          if(!current || typeof current !== "object") return current;
+          const owner = String(current.presenceSessionId || "");
+          // 다른 탭/새 페이지가 이미 presence 소유권을 넘겨받았으면 그 세션을 끄지 않는다.
+          if(owner && mine && owner !== mine) return current;
+          return Object.assign({}, current, {
+            status:"off",
+            sessionStartedAtMs:null,
+            lastSeenAtMs:0,
+            updatedAt:Date.now(),
+            disconnectedSessionId:mine,
+            disconnectedAtMs:Date.now(),
+            theme:Object.assign({}, current.theme || {}, {
+              petPlayActive:false,
+              petPlayMode:"default",
+              petPlayVersion:"v58"
+            })
+          });
+        }, { applyLocally:false });
+      }catch(e){
+        // transaction 실패 시에도 세션 표식만 남겨 오래된 탭이 새 세션을 지우지 않게 한다.
+        try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { disconnectedSessionId:String(state.presenceSessionId || ""), disconnectedAtMs:rServerTimestamp() }); }catch(_e){}
+      }
       try{ if(state._rtdbOnDisc){ state._rtdbOnDisc.cancel?.(); state._rtdbOnDisc=null; } }catch(e){}
 
       els.grid.innerHTML = "";
       els.chatList.innerHTML = "";
       state.currentParticipants = new Map();
       state.publicProfiles = new Map();
+      state.chatProfileLoads = new Map();
       state.lastRendered.clear();
 
       setControlsEnabled(false);
@@ -14867,6 +15205,8 @@ window.addEventListener("resize", ()=>{
 // =============================
 function pauseNonChatSubscriptions(reason){
   try{
+    // ✅ V160: unsubscribe 직전 세대를 올려 대기 중인 RAF/프로필 콜백까지 무효화
+    state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
     if(state.unsubParticipants){ state.unsubParticipants(); state.unsubParticipants = null; }
     if(state.unsubRoom){ state.unsubRoom(); state.unsubRoom = null; }
     // kick은 1문서라 가볍지만, 원하면 같이 끊기
@@ -16706,16 +17046,8 @@ joinRoom();
 
     setControlsEnabled(false);
     updateClocks();
-    const __goOfflineNow = ()=>{
-      try{ if(state && state.joined) persistMyFocusToLocal(); }catch(e){}
-      if(state.roomId && state.uid){
-        try{ rUpdate(rMePresenceRef(state.roomId, state.uid), { status:"off", sessionStartedAtMs:null, lastSeenAtMs: 0, updatedAt: Date.now(), "theme/petPlayActive": false, "theme/petPlayMode": "default", "theme/petPlayVersion": "v58" }); }catch(e){}
-      }
-    };
-
-    window.addEventListener("beforeunload", __goOfflineNow);
-    // ✅ 모바일/크롬에서 beforeunload가 안 타는 경우 대비
-    window.addEventListener("pagehide", __goOfflineNow);
+    // ✅ V160: 예전 무조건 pagehide/off 핸들러 제거.
+    // 위의 BFCache 예외 + 세션 표식 종료 처리와 onDisconnect 한 경로만 사용한다.
 
   
 
