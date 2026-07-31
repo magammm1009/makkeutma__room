@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="마끝마"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 
-<title>MagamMagam</title><!-- V157_PET_MONOTONIC_ADMIN_TOKEN_GUARD --><!-- V155_PET_BACKUP_RECOVERY_GUARD --><!-- V156_PET_MONOTONIC_BACKUP_GUARD --><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
+<title>MagamMagam</title><!-- V159_PREDEPLOY_RECONCILE_GUARD --><!-- V158_REACTION_MIDNIGHT_PRESENCE_GUARD --><!-- V157_PET_MONOTONIC_ADMIN_TOKEN_GUARD --><!-- V155_PET_BACKUP_RECOVERY_GUARD --><!-- V156_PET_MONOTONIC_BACKUP_GUARD --><!-- V154_COMPACT_TIMER_EMPHASIS --><!-- V153_FINAL_DEPLOY_HYBRID_GUARD --><!-- V152_LOW_SPEC_SELF_TILE_FIT_GUARD --><!-- V151_LOW_SPEC_SELF_TILE_HYBRID --><!-- V150_PREJOIN_ROSTER_PRIVACY_GUARD --><!-- V149_LOW_SPEC_ROSTER_BLOCKS --><!-- V148_FINAL_PREDEPLOY_MODE_GUARD --><!-- V145_HANDCAM_BACKGROUND_KEEPALIVE --><!-- V144_LOW_SPEC_ROSTER_VISIBLE --><!-- V143_LOW_SPEC_MODE --><!-- V142_TIMER_RESET_BARRIER_CONTEXTMENU_PRESENCE_TTL --><!-- V141_TIMER_RESET_RACE_GUARD --><!-- V140_ADMIN_INDIVIDUAL_TIMER_RESET --><!-- V139_ADMIN_ALL_TIMER_RESET --><!-- V138_MIDNIGHT_BREAK_RESET --><!-- V137_SUDA_ADMIN_PASSWORD_AUTOPAIR --><!-- V118_STABLE_DESKTOP_SIDEBAR_RAIL --><!-- SUDA_CROSS_ORIGIN_ADMIN_PAIRING_V15 --><!-- SUDA_HOST_GATE_V4_EXPLICIT_ONLY -->
 <!-- V103_SAFE_PROFILE_COST_PATCH: profiles/{uid} current overwrite + no profileUpdates log spam + lighter dashboard/suda polling -->
 <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E" rel="icon"/>
 <style>
@@ -6575,6 +6575,11 @@ chatUnseen: 0,
       tickTimer: null,
       hbTimer: null,
       currentParticipants: new Map(),
+      // ✅ V159: 재구독/프로필 캐시 상태를 명시적으로 초기화해 초기 호출 순서와 무관하게 안전하게 유지
+      publicProfiles: new Map(),
+      profileUnsubs: new Map(),
+      presenceSubSeq: 0,
+      chatDayRolloverTimer: null,
       // 🔋 reads saver
       nonChatEnabled: true,
       nonChatPausedByHidden: false,
@@ -10260,7 +10265,11 @@ function startRtdbConnectionWatch(){
           }
         }catch(e){}
       }
-      window.addEventListener("pagehide", ()=>{ markOfflineBestEffort(); }, {capture:true});
+      window.addEventListener("pagehide", (ev)=>{
+        // ✅ V158: BFCache 이동은 실제 종료가 아니므로 off로 찍지 않는다. pageshow 복귀 시 타일 깜빡임 방지
+        if(ev && ev.persisted) return;
+        markOfflineBestEffort();
+      }, {capture:true});
       window.addEventListener("beforeunload", ()=>{ markOfflineBestEffort(); }, {capture:true});
       // BFCache/앱 전환 뒤 돌아오면 다음 실제 종료도 다시 OFFLINE 처리할 수 있게 잠금을 해제한다.
       window.addEventListener("pageshow", ()=>{ fired = false; }, {capture:true});
@@ -10269,12 +10278,15 @@ function startRtdbConnectionWatch(){
 
     // ✅ V134: macOS 잠자기·모바일 백그라운드·BFCache 복귀에서 자정 누락 즉시 복구
     window.addEventListener("pageshow", ()=>{
+      try{ ensureChatDayCurrent_("pageshow"); }catch(_e){}
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("focus", ()=>{
+      try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
+      try{ ensureChatDayCurrent_("online"); }catch(_e){}
       try{ Promise.resolve(ensureFocusDayCurrent("online")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
 
@@ -11425,6 +11437,7 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
           const chips = document.createElement("div");
           chips.className = "reactRow";
           let hasAny = false;
+          let usedReactKinds = 0;
 
           for(const r of REACTS){
             const bucket = (react[r.k] && typeof react[r.k]==="object") ? react[r.k] : {};
@@ -11432,6 +11445,7 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
             if(!cnt) continue;
 
             hasAny = true;
+            usedReactKinds += 1;
             const on = !!bucket[state.uid];
             const b = document.createElement("button");
             b.type = "button";
@@ -11443,7 +11457,12 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
             b.innerHTML = `${escapeHtml(r.e)}<span class="reactCount">${cnt}</span>`;
             chips.appendChild(b);
           }
-          if(hasAny) div.appendChild(chips);
+          if(hasAny){
+            div.classList.add("hasReactions");
+            if(usedReactKinds >= 3) div.classList.add("hasManyReactions");
+            div.setAttribute("data-react-kinds", String(usedReactKinds));
+            div.appendChild(chips);
+          }
           try{ chips.scrollLeft = 0; }catch(e){}
 
           // 2) hover toggle (opens picker)
@@ -11742,14 +11761,79 @@ const p = (m.uid && state.currentParticipants) ? state.currentParticipants.get(m
       if(els.chatNewBar) els.chatNewBar.style.display = "none";
     }
 
-    
+
+    function v158RunSoon_(fn){
+      try{
+        if(typeof queueMicrotask === "function") queueMicrotask(fn);
+        else Promise.resolve().then(fn);
+      }catch(e){
+        try{ setTimeout(fn, 0); }catch(_e){}
+      }
+    }
+
+    // ✅ V158: 날짜별 채팅 버킷을 KST 자정에 즉시 전환
+    // - 기존 60초 폴링은 자정 직후 최대 1분 동안 새 채팅이 안 보일 수 있었음
+    // - 정확한 다음 자정 타이머 + 복귀/전송 시 즉시 보정으로 공백을 없앰
+    function msUntilNextSeoulMidnight_(){
+      try{
+        const now = Date.now();
+        const kst = new Date(now + 9 * 60 * 60 * 1000);
+        const next = Date.UTC(
+          kst.getUTCFullYear(),
+          kst.getUTCMonth(),
+          kst.getUTCDate() + 1,
+          0, 0, 0, 250
+        ) - 9 * 60 * 60 * 1000;
+        return Math.max(500, next - now);
+      }catch(e){
+        return 60 * 1000;
+      }
+    }
+
+    function ensureChatDayCurrent_(reason="watch"){
+      try{
+        if(!state || !state.joined || !state.roomId) return false;
+        const nextDay = __seoulDateKeyFromMs(Date.now());
+        if(!nextDay) return false;
+        if(nextDay === state.chatDayKey){
+          return false;
+        }
+        if(state.__chatDaySwitching) return false;
+        state.__chatDaySwitching = true;
+        try{ subscribeChat(); }
+        finally{
+          v158RunSoon_(()=>{ try{ state.__chatDaySwitching = false; }catch(e){} });
+        }
+        return true;
+      }catch(e){
+        try{ state.__chatDaySwitching = false; }catch(_e){}
+        console.warn("[chat day rollover] failed", reason, e);
+        return false;
+      }
+    }
+
+    function armChatDayRollover_(){
+      try{
+        if(state.chatDayRolloverTimer){
+          clearTimeout(state.chatDayRolloverTimer);
+          state.chatDayRolloverTimer = null;
+        }
+        if(!state.joined || !state.roomId) return;
+        state.chatDayRolloverTimer = setTimeout(()=>{
+          state.chatDayRolloverTimer = null;
+          const switched = ensureChatDayCurrent_("midnight");
+          if(!switched) armChatDayRollover_();
+        }, msUntilNextSeoulMidnight_());
+      }catch(e){}
+    }
+
 function subscribeChat(){
   // clean up existing listeners
   try{ if(state.unsubChat) state.unsubChat(); }catch(e){}
   try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
   try{ if(state.unsubChatChgPrev) state.unsubChatChgPrev(); }catch(e){}
   try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
-  try{ if(state.chatDayRolloverTimer){ clearInterval(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
+  try{ if(state.chatDayRolloverTimer){ clearTimeout(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
 
   // ✅ V94: 채팅 화면 중복 렌더 방지 토큰
   // subscribeChat()가 빠르게 2번 실행되거나, 이전 비동기 초기 로드가 늦게 돌아와
@@ -12186,25 +12270,15 @@ function subscribeChat(){
     }
   })();
 
-  // ✅ V101: 자정이 지나면 새 날짜 버킷으로 자동 재구독
-  try{
-    state.chatDayRolloverTimer = setInterval(()=>{
-      try{
-        if(!state.roomId) return;
-        const nextDay = __seoulDateKeyFromMs(Date.now());
-        if(nextDay && nextDay !== state.chatDayKey){
-          subscribeChat();
-        }
-      }catch(e){}
-    }, 60000);
-  }catch(e){}
+  // ✅ V158: 다음 KST 자정에 맞춰 정확히 새 날짜 버킷으로 재구독
+  armChatDayRollover_();
 
   // unified unsubscribe
   state.unsubChat = ()=>{
     try{ if(state.unsubChatLive) state.unsubChatLive(); }catch(e){}
     try{ if(state.unsubChatChg) state.unsubChatChg(); }catch(e){}
     try{ if(state.unsubChatChgPrev) state.unsubChatChgPrev(); }catch(e){}
-    try{ if(state.chatDayRolloverTimer){ clearInterval(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
+    try{ if(state.chatDayRolloverTimer){ clearTimeout(state.chatDayRolloverTimer); state.chatDayRolloverTimer = null; } }catch(e){}
     try{ state.unsubChatLive = null; state.unsubChatChg = null; state.unsubChatChgPrev = null; }catch(e){}
   };
 }
@@ -12529,6 +12603,12 @@ async function sendChatCore(text, isFlush=false){
       // fan-out 실패 시에도 기존 경로로는 최소 보장
       await rPush(rMessagesRootRef(state.roomId), payload);
     }
+    // ✅ V158: 절전/백그라운드 때문에 자정 타이머가 늦었어도 첫 전송 직후 즉시 새 버킷을 구독
+    try{
+      if(payload.dayKey && payload.dayKey !== state.chatDayKey){
+        v158RunSoon_(()=>ensureChatDayCurrent_("send"));
+      }
+    }catch(e){}
     return true;
   }catch(e){
     console.warn("[chat] send failed", e);
@@ -14095,8 +14175,77 @@ t.appendChild(bg);
       return p;
     }
 
+    // ✅ V158: 구독 재연결 순간에도 내 타일/프로필이 사라지지 않게 로컬 그림자 레코드 유지
+    function buildLocalSelfPresenceShadow_(base=null){
+      try{
+        if(!state || !state.joined || !state.uid) return null;
+        const lp = loadLocalProfile() || {};
+        const baseObj = (base && typeof base === "object") ? base : {};
+        const theme = Object.assign({}, defaultTheme(), lp.theme || {}, baseObj.theme || {});
+        const rawName = baseObj.name || state.nickname || els.name?.value || lp.nickname || lp.name || "";
+        const name = normalizeNick(rawName);
+        if(!hasValidNick(name)) return null;
+        const today = seoulDateKey();
+        const status = (state.myStatus && state.myStatus !== "off") ? state.myStatus :
+          ((baseObj.status && baseObj.status !== "off") ? baseObj.status : "break");
+        const localSec = Math.max(0, Math.floor(Number(focusLoadSeconds() || 0)));
+        const baseSec = String(baseObj.dateKey || "") === String(today)
+          ? Math.max(0, Math.floor(Number(baseObj.totalSecondsToday || 0)))
+          : 0;
+        const now = Date.now();
+        return Object.assign({}, baseObj, {
+          id: String(state.uid),
+          name,
+          dateKey: today,
+          status,
+          statusSource: "localShadow:v158",
+          totalSecondsToday: Math.max(localSec, baseSec),
+          sessionStartedAtMs: status === "work"
+            ? Math.max(0, Number(state._workSessionStartedAtMs || baseObj.sessionStartedAtMs || now))
+            : null,
+          bubbleText: baseObj.bubbleText ?? lp.bubbleText ?? "",
+          theme,
+          lastSeenAtMs: now,
+          updatedAt: now,
+          __localPresenceShadow: true,
+        });
+      }catch(e){ return null; }
+    }
+
+    function ensureLocalSelfPresenceShadow_(map){
+      try{
+        if(!state.joined || !state.uid || !(map instanceof Map)) return null;
+        const current = map.get(state.uid) || null;
+        if(current && isDisplayablePresence(current)) return current;
+        const shadow = buildLocalSelfPresenceShadow_(current);
+        if(!shadow) return current;
+        map.set(state.uid, shadow);
+
+        // 원격 레코드가 쿼리 밖/일시 off가 된 경우 즉시 복구하되, 렌더마다 쓰지 않도록 제한
+        const now = Date.now();
+        if(now - Number(state.__selfGhostRepairAt || 0) > 4000){
+          state.__selfGhostRepairAt = now;
+          v158RunSoon_(()=>{ try{ heartbeat(); }catch(e){} });
+        }
+        return shadow;
+      }catch(e){ return null; }
+    }
+
     // Join / Leave
     async function subscribeParticipants(){
+      // 숨김→복귀 재구독 때 기존 맵/DOM을 먼저 비우면 타일이 잠깐 사라지고 채팅 프로필도 기본값으로 보인다.
+      const preservedParticipants = (state.currentParticipants instanceof Map)
+        ? new Map(state.currentParticipants)
+        : new Map();
+      const preservedPublicProfiles = (state.publicProfiles instanceof Map)
+        ? new Map(state.publicProfiles)
+        : new Map();
+      const hadPresenceCache = preservedParticipants.size > 0;
+
+      // 먼저 세대를 올려 이전 child/profile 콜백을 즉시 무효화한 뒤 구독을 정리한다.
+      state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
+      const presenceSubSeq = state.presenceSubSeq;
+      const isCurrentPresenceSub = ()=> state.presenceSubSeq === presenceSubSeq;
       if(state.unsubParticipants) state.unsubParticipants();
       state.unsubParticipants = null;
       if(!state.nonChatEnabled){ return; }
@@ -14108,22 +14257,36 @@ t.appendChild(bg);
       );
 
       // ✅ 증분 수신용 맵(전체 스냅샷 onValue 대신 child_* 이벤트로 갱신)
-      state.currentParticipants = new Map();
-      state.publicProfiles = new Map();
+      // V158: 재구독 동안 기존 참가자/공개프로필을 유지해 고스트 타일과 프로필 기본값 깜빡임 방지
+      state.currentParticipants = preservedParticipants;
+      state.publicProfiles = preservedPublicProfiles;
       try{ if(state.profileUnsubs instanceof Map){ state.profileUnsubs.forEach(off=>{ try{ off(); }catch(_e){} }); state.profileUnsubs.clear(); } }catch(e){}
       state.profileUnsubs = new Map();
-      // ✅ V71: 재구독/방 전환 시 이전 방 타일 캐시 잔상 방지
-      try{ state.lastRendered?.clear?.(); }catch(e){}
+      // 첫 구독일 때만 과거 DOM 캐시를 비운다. 복귀 재구독은 기존 타일 노드를 유지한다.
+      if(!hadPresenceCache){
+        try{ state.lastRendered?.clear?.(); }catch(e){}
+      }
 
+      // 구독 세대별 로컬 플래그 사용: 이전 세대의 RAF가 새 세대 렌더를 막는 경합 방지
+      let presenceRecalcScheduled = false;
+      // ✅ V159: 복귀 동안 유지한 과거 타일 중 새 구독에서 실제로 다시 확인되지 않은 항목을 정리
+      // 즉시 비우면 깜빡이고, 정리하지 않으면 퇴장한 사용자가 TTL(최대 8분) 동안 남을 수 있어 짧은 유예 후 대조한다.
+      const preservedPresenceUids = new Set(Array.from(preservedParticipants.keys()).map(String));
+      const seenPresenceUids = new Set();
+      let presenceReconcileTimer = null;
       const scheduleRecalc = ()=>{
-        if(state._presenceRecalcScheduled) return;
-        state._presenceRecalcScheduled = true;
+        if(!isCurrentPresenceSub()) return;
+        if(presenceRecalcScheduled) return;
+        presenceRecalcScheduled = true;
 
         requestAnimationFrame(()=>{
-          state._presenceRecalcScheduled = false;
+          presenceRecalcScheduled = false;
+          if(!isCurrentPresenceSub()) return;
 
           try{
             const map = (state.currentParticipants instanceof Map) ? state.currentParticipants : new Map();
+            // 내 원격 레코드가 재구독/TTL/네트워크 경계에서 잠깐 빠져도 로컬 프로필 타일은 계속 유지
+            ensureLocalSelfPresenceShadow_(map);
             // ✅ V129: presence가 갱신되어도 profiles/{uid}의 만렙 펫 공개값을 매 렌더에 재병합
             const arr = Array.from(map.values()).filter(Boolean).map(p=>{
               try{ return mergePublicProfileIntoParticipant(p); }catch(_e){ return p; }
@@ -14138,7 +14301,7 @@ t.appendChild(bg);
             try{
               if(!state.didFocusMerge && state.uid){
                 const meNow = map.get(state.uid);
-                if(meNow){
+                if(meNow && !meNow.__localPresenceShadow){
                   try{ applyTimerResetCommandToLocal_(meNow, "initialMerge"); }catch(_e){}
                   const today = seoulDateKey();
                   const localSec = Math.floor(Number(focusLoadSeconds()||0));
@@ -14221,9 +14384,11 @@ t.appendChild(bg);
 
       const onAdd = (snap)=>{
         try{
+          if(!isCurrentPresenceSub()) return;
           const uid = snap && snap.key;
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid || !data) return;
+          seenPresenceUids.add(String(uid));
           attachPublicProfileForUid(uid);
           if(String(uid) === String(state.uid || "")){
             try{ applyTimerResetCommandToLocal_({ id: uid, ...data }, "childAdded"); }catch(_e){}
@@ -14236,9 +14401,11 @@ t.appendChild(bg);
 
       const onChg = (snap)=>{
         try{
+          if(!isCurrentPresenceSub()) return;
           const uid = snap && snap.key;
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid) return;
+          if(data) seenPresenceUids.add(String(uid));
           if(!data){
             state.currentParticipants.delete(uid);
             detachPublicProfileForUid(uid);
@@ -14255,6 +14422,7 @@ t.appendChild(bg);
 
       const onRem = (snap)=>{
         try{
+          if(!isCurrentPresenceSub()) return;
           const uid = snap && snap.key;
           if(uid){ state.currentParticipants.delete(uid); detachPublicProfileForUid(uid); }
           scheduleRecalc();
@@ -14274,6 +14442,7 @@ t.appendChild(bg);
           const pref = rProfileRef(state.roomId, uid);
           const onProf = (snap)=>{
             try{
+              if(!isCurrentPresenceSub()) return;
               const data = (snap && snap.val) ? snap.val() : null;
               if(!data) return;
               state.publicProfiles.set(uid, data);
@@ -14303,8 +14472,29 @@ t.appendChild(bg);
       rOnChildRemoved(q, onRem);
       rOnChildMoved(q, onMov);
 
+      // ✅ V159: 재구독 직후에는 기존 타일을 유지하되, 6.5초 동안 새 구독에서 다시 보이지 않은 과거 사용자만 제거
+      // 내 타일은 로컬 그림자 레코드가 담당하므로 이 정리 대상에서 제외한다.
+      try{
+        presenceReconcileTimer = setTimeout(()=>{
+          presenceReconcileTimer = null;
+          if(!isCurrentPresenceSub()) return;
+          let changed = false;
+          for(const oldUid of preservedPresenceUids){
+            if(String(oldUid) === String(state.uid || "")) continue;
+            if(seenPresenceUids.has(String(oldUid))) continue;
+            if(state.currentParticipants?.has?.(oldUid)){
+              state.currentParticipants.delete(oldUid);
+              try{ detachPublicProfileForUid(oldUid); }catch(_e){}
+              changed = true;
+            }
+          }
+          if(changed) scheduleRecalc();
+        }, 6500);
+      }catch(e){}
+
       state.unsubParticipants = ()=>{
         try{
+          try{ if(presenceReconcileTimer){ clearTimeout(presenceReconcileTimer); presenceReconcileTimer = null; } }catch(_e){}
           rOff(q, "child_added", onAdd);
           rOff(q, "child_changed", onChg);
           rOff(q, "child_removed", onRem);
@@ -14314,7 +14504,7 @@ t.appendChild(bg);
               state.profileUnsubs.forEach(off=>{ try{ off(); }catch(_e){} });
               state.profileUnsubs.clear();
             }
-            state.publicProfiles?.clear?.();
+            // V158: 숨김/복귀 구독 중에는 공개 프로필 캐시를 유지한다. 실제 퇴장 시 별도로 비운다.
           }catch(_e){}
         }catch(e){}
       };
@@ -14613,6 +14803,7 @@ try{
       els.grid.innerHTML = "";
       els.chatList.innerHTML = "";
       state.currentParticipants = new Map();
+      state.publicProfiles = new Map();
       state.lastRendered.clear();
 
       setControlsEnabled(false);
@@ -14690,6 +14881,14 @@ function resumeNonChatSubscriptions(){
     subscribeParticipants();
     subscribeKicks();
     state.nonChatPausedByHidden = false;
+
+    // ✅ V158: 숨김/최소화 복귀 직후 stale/off presence를 기다리지 않고 즉시 되살림
+    try{ ensureChatDayCurrent_("resume"); }catch(e){}
+    const now = Date.now();
+    if(state.joined && now - Number(state.__lastResumeHeartbeatAt || 0) > 3000){
+      state.__lastResumeHeartbeatAt = now;
+      v158RunSoon_(()=>{ try{ heartbeat(); }catch(e){} });
+    }
   }catch(e){}
 }
 function setNonChatEnabled(on){
@@ -20594,6 +20793,41 @@ if(!window.__MK_BOOT_OK__){
   }
   #petModal.petModalV2 .petStageArt.current img{
     will-change:auto !important;
+  }
+</style>
+
+
+<!-- V158_REACTION_OVERFLOW_GUARD: 좁은 채팅창에서 사용 중인 리액션 칩이 잘리지 않도록 폭/줄바꿈 보정 -->
+<style id="v158ReactionOverflowGuard">
+  .reactBtn{
+    flex:0 0 auto !important;
+  }
+  .msg.hasManyReactions{
+    width:min(100%, 310px) !important;
+    min-width:min(310px, 92%) !important;
+    max-width:92% !important;
+  }
+  .msg.hasManyReactions .reactRow{
+    width:calc(100% - 28px) !important;
+    max-width:calc(100% - 28px) !important;
+    min-width:0 !important;
+    flex-wrap:wrap !important;
+    overflow-x:visible !important;
+    overflow-y:visible !important;
+    white-space:normal !important;
+    row-gap:5px !important;
+    padding-bottom:1px;
+  }
+  @media (max-width:420px){
+    .msg.hasManyReactions{
+      min-width:94% !important;
+      max-width:94% !important;
+    }
+    .msg.hasManyReactions .reactRow{
+      margin-left:22px !important;
+      width:calc(100% - 22px) !important;
+      max-width:calc(100% - 22px) !important;
+    }
   }
 </style>
 
