@@ -4952,6 +4952,230 @@ body.joined #preJoinCard{ display:none; }
 }
 </style>
 
+<!-- DIRECT_MESSAGE_V1: 개인 쪽지 · 쪽지함 · 답장 -->
+<style id="directMessageStyleV1">
+  #directInboxBtn{
+    position:relative;
+    white-space:nowrap;
+  }
+  #directUnreadBadge{
+    display:none;
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:#ff4f9a;
+    color:#fff;
+    font-size:11px;
+    font-weight:1000;
+    line-height:18px;
+    box-shadow:0 0 0 2px #121218, 0 6px 16px rgba(255,79,154,.38);
+  }
+  #directUnreadBadge.show{display:inline-flex;}
+
+  .directComposeModal{width:min(520px, 94vw); overflow:hidden;}
+  .directRecipientCard{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 14px;
+    border:1px solid rgba(255,182,214,.25);
+    border-radius:15px;
+    background:linear-gradient(135deg, rgba(255,119,184,.12), rgba(255,255,255,.05));
+  }
+  .directRecipientSeal{
+    display:grid;
+    place-items:center;
+    width:42px;
+    height:42px;
+    flex:0 0 42px;
+    border-radius:50%;
+    background:linear-gradient(145deg,#ff8fc4,#ff4f9a);
+    color:#fff;
+    font-size:21px;
+    box-shadow:0 8px 20px rgba(255,79,154,.3);
+  }
+  .directRecipientMeta{min-width:0;}
+  .directRecipientName{font-weight:1000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .directComposeModal textarea{
+    width:100%;
+    min-height:180px;
+    resize:vertical;
+    line-height:1.65;
+    padding:16px;
+    color:#3b2732;
+    background:
+      linear-gradient(rgba(255,255,255,.84),rgba(255,255,255,.84)),
+      repeating-linear-gradient(0deg,transparent 0 29px,rgba(255,119,184,.16) 29px 30px),
+      #fff8fb;
+    border:1px solid rgba(255,182,214,.55);
+    border-radius:14px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .directComposeModal textarea::placeholder{color:rgba(70,40,55,.46);}
+  .directComposeFootnote{display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px;}
+
+  .directInboxModal{width:min(920px, 95vw); height:min(680px, 88vh); overflow:hidden;}
+  .directInboxModal .modalBody{padding:0; overflow:hidden;}
+  .directInboxToolbar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.025);
+  }
+  .directInboxTab[aria-selected="true"]{
+    color:#22131b;
+    background:linear-gradient(135deg,#ff8fc4,#ffd0e4);
+    border-color:transparent;
+    font-weight:1000;
+  }
+  .directInboxGrid{
+    display:grid;
+    grid-template-columns:minmax(250px, 34%) minmax(0,1fr);
+    min-height:0;
+    height:100%;
+  }
+  .directMessageList{
+    min-height:0;
+    overflow:auto;
+    border-right:1px solid var(--line);
+    background:rgba(0,0,0,.14);
+  }
+  .directMessageItem{
+    width:100%;
+    display:block;
+    padding:14px;
+    border:0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    border-radius:0;
+    text-align:left;
+    background:transparent;
+    color:var(--text);
+  }
+  .directMessageItem:hover{background:rgba(255,255,255,.06);}
+  .directMessageItem.active{background:rgba(255,119,184,.12); box-shadow:inset 3px 0 #ff77b8;}
+  .directMessageItem.unread{background:rgba(255,119,184,.08);}
+  .directMessageItemTop{display:flex; align-items:center; gap:7px; min-width:0;}
+  .directUnreadDot{width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:#ff77b8; box-shadow:0 0 12px rgba(255,119,184,.75);}
+  .directMessageName{min-width:0; flex:1; font-weight:1000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .directMessageTime{flex:0 0 auto; font-size:11px; color:var(--muted);}
+  .directMessagePreview{margin-top:6px; color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .directEmpty{padding:32px 20px; text-align:center; color:var(--muted); line-height:1.7;}
+  .directMessageDetail{
+    min-width:0;
+    min-height:0;
+    overflow:auto;
+    padding:22px;
+    background:radial-gradient(circle at 100% 0%,rgba(255,119,184,.08),transparent 34%);
+  }
+  .directDetailBlank{height:100%; min-height:260px; display:grid; place-items:center; text-align:center; color:var(--muted); line-height:1.7;}
+  .directDetailMeta{display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .directDetailName{font-size:18px; font-weight:1000;}
+  .directLetterPaper{
+    position:relative;
+    margin:20px 0;
+    padding:26px 25px 30px;
+    min-height:230px;
+    color:#3f2934;
+    border-radius:4px 4px 18px 4px;
+    border:1px solid rgba(146,80,111,.18);
+    background:
+      linear-gradient(rgba(255,250,247,.96),rgba(255,250,247,.96)),
+      repeating-linear-gradient(0deg,transparent 0 31px,rgba(219,133,174,.16) 31px 32px),
+      #fffaf7;
+    box-shadow:0 18px 46px rgba(0,0,0,.24), inset 0 0 38px rgba(255,192,216,.12);
+    white-space:pre-wrap;
+    word-break:break-word;
+    line-height:1.85;
+  }
+  .directLetterPaper::after{
+    content:"💗";
+    position:absolute;
+    right:18px;
+    bottom:14px;
+    opacity:.28;
+    font-size:22px;
+  }
+  .directDetailActions{display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;}
+
+  .directArrival{
+    position:fixed;
+    inset:0;
+    z-index:22000;
+    display:none;
+    place-items:center;
+    padding:20px;
+    pointer-events:none;
+    background:rgba(0,0,0,.18);
+    backdrop-filter:blur(2px);
+  }
+  .directArrival.show{display:grid;}
+  .directArrivalCard{
+    pointer-events:auto;
+    position:relative;
+    width:min(390px,90vw);
+    padding:28px 24px 24px;
+    border:1px solid rgba(255,255,255,.75);
+    border-radius:22px;
+    color:#442735;
+    text-align:center;
+    background:linear-gradient(145deg,#fffaf5,#ffe7f1);
+    box-shadow:0 30px 90px rgba(0,0,0,.48),0 0 0 8px rgba(255,182,214,.1);
+    animation:directLetterArrive .55s cubic-bezier(.2,.85,.28,1.18) both;
+    cursor:pointer;
+  }
+  .directArrivalCard:focus-visible{outline:3px solid #ff77b8; outline-offset:4px;}
+  .directEnvelopeIcon{
+    width:104px;
+    height:74px;
+    margin:0 auto 18px;
+    display:grid;
+    place-items:center;
+    border-radius:10px;
+    color:#fff;
+    font-size:42px;
+    background:linear-gradient(145deg,#ff9bc9,#ff5da5);
+    box-shadow:0 14px 28px rgba(255,93,165,.32);
+    transform:rotate(-2deg);
+  }
+  .directArrivalTitle{font-size:20px; font-weight:1100; letter-spacing:-.3px;}
+  .directArrivalFrom{margin-top:7px; color:#825369; font-weight:800;}
+  .directArrivalHint{margin-top:16px; font-size:12px; color:#956a7d;}
+  .directArrivalClose{
+    position:absolute;
+    right:9px;
+    top:9px;
+    width:34px;
+    height:34px;
+    padding:0;
+    border-radius:50%;
+    border:1px solid rgba(90,50,70,.12);
+    color:#74475b;
+    background:rgba(255,255,255,.55);
+  }
+  @keyframes directLetterArrive{
+    from{opacity:0; transform:translateY(-45px) scale(.78) rotate(-5deg);}
+    to{opacity:1; transform:translateY(0) scale(1) rotate(0);}
+  }
+  @media (max-width:720px){
+    .directInboxModal{height:min(760px,92svh);}
+    .directInboxGrid{grid-template-columns:1fr; grid-template-rows:minmax(150px,38%) minmax(0,1fr);}
+    .directMessageList{border-right:0; border-bottom:1px solid var(--line);}
+    .directMessageDetail{padding:15px;}
+    .directLetterPaper{margin:14px 0; min-height:170px; padding:20px;}
+  }
+  @media (max-width:520px){
+    #directInboxBtn .directInboxLabel{display:none;}
+    #directInboxBtn{padding-inline:10px;}
+    .directInboxToolbar{padding:8px;}
+    .directInboxToolbar .directInboxHint{display:none;}
+  }
+</style>
+
 </head>
 <body>
 <div class="topbar">
@@ -4994,6 +5218,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
 </div>
 <button class="ghost miniOnline" disabled="" id="onlineBtn" title="접속 인원">👥 <span id="countOnline">0</span>명</button>
+<button class="ghost" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button class="ghost" id="profileBtn">🪪 내 프로필</button>
 <button class="ghost" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
@@ -5533,12 +5758,70 @@ body.joined #preJoinCard{ display:none; }
 <button id="ctxStatusBreak" type="button">☕ 휴식중</button>
 <button id="ctxStatusIdle" type="button">🌙 자리비움</button>
 <button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
+<button id="ctxDirectMessage" type="button">💌 쪽지 보내기</button>
 <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 <button id="ctxTimerReset" type="button">⏱️ 타이머 0초 · 휴식중</button>
 <button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
 <button class="danger" id="ctxForceOff" type="button">🫥 로그아웃 처리</button>
 <button class="danger" id="ctxHandcamOff" type="button">📹 손캠 끄기</button>
 <button id="ctxClose" type="button">닫기</button>
+</div>
+
+<!-- 개인 쪽지 작성 -->
+<div aria-hidden="true" class="modalOverlay" id="directComposeModal">
+<div aria-labelledby="directComposeTitle" aria-modal="true" class="modal directComposeModal" role="dialog">
+<div class="modalHeader">
+<div class="t" id="directComposeTitle">💌 쪽지 보내기</div>
+<button class="ghost" id="directComposeClose" type="button">닫기</button>
+</div>
+<div class="modalBody">
+<div class="directRecipientCard">
+<div aria-hidden="true" class="directRecipientSeal">💗</div>
+<div class="directRecipientMeta">
+<div class="tiny">받는 사람</div>
+<div class="directRecipientName" id="directRecipientName">—</div>
+</div>
+</div>
+<textarea id="directComposeText" maxlength="1000" placeholder="따뜻한 쪽지를 적어보세요…"></textarea>
+<div class="directComposeFootnote"><span>Ctrl/⌘ + Enter로 보낼 수 있어요.</span><span id="directComposeCount">0 / 1000</span></div>
+</div>
+<div class="modalFooter">
+<button class="ghost" id="directComposeCancel" type="button">취소</button>
+<button class="primary" id="directComposeSend" type="button">💌 보내기</button>
+</div>
+</div>
+</div>
+
+<!-- 개인 쪽지함 -->
+<div aria-hidden="true" class="modalOverlay" id="directInboxModal">
+<div aria-labelledby="directInboxTitle" aria-modal="true" class="modal directInboxModal" role="dialog">
+<div class="modalHeader">
+<div class="t" id="directInboxTitle">💌 내 쪽지함 <span class="tiny" id="directInboxUnreadText"></span></div>
+<button class="ghost" id="directInboxClose" type="button">닫기</button>
+</div>
+<div class="directInboxToolbar">
+<button aria-selected="true" class="ghost directInboxTab" data-direct-tab="inbox" id="directInboxTabReceived" role="tab" type="button">받은 쪽지</button>
+<button aria-selected="false" class="ghost directInboxTab" data-direct-tab="outbox" id="directInboxTabSent" role="tab" type="button">보낸 쪽지</button>
+<span class="tiny directInboxHint" style="margin-left:auto;">쪽지를 선택하면 내용을 볼 수 있어요.</span>
+</div>
+<div class="modalBody">
+<div class="directInboxGrid">
+<div aria-live="polite" class="directMessageList" id="directMessageList"></div>
+<div class="directMessageDetail" id="directMessageDetail"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 새 쪽지 도착 편지 -->
+<div aria-hidden="true" class="directArrival" id="directArrival">
+<div aria-describedby="directArrivalHint" aria-labelledby="directArrivalTitle" class="directArrivalCard" id="directArrivalCard" role="button" tabindex="0">
+<button aria-label="도착 알림 닫기" class="directArrivalClose" id="directArrivalClose" type="button">×</button>
+<div aria-hidden="true" class="directEnvelopeIcon">✉</div>
+<div class="directArrivalTitle" id="directArrivalTitle">새 쪽지가 도착했어요</div>
+<div class="directArrivalFrom" id="directArrivalFrom">— 님이 보냄</div>
+<div class="directArrivalHint" id="directArrivalHint">편지를 누르면 쪽지함이 열려요</div>
+</div>
 </div>
 <div class="toast" id="toast">저장했어!</div>
 <!-- Mission Modal -->
@@ -6393,6 +6676,7 @@ const auth = getAuth(app);
 
       ctxMenu: $("ctxMenu"),
       ctxTitle: $("ctxTitle"),
+      ctxDirectMessage: $("ctxDirectMessage"),
       ctxPinToggle: $("ctxPinToggle"),
       ctxTimerReset: $("ctxTimerReset"),
       ctxKick: $("ctxKick"),
@@ -6443,6 +6727,27 @@ const auth = getAuth(app);
       onlineModal: $("onlineModal"),
       closeOnline: $("closeOnline"),
       onlineList: $("onlineList"),
+
+      directInboxBtn: $("directInboxBtn"),
+      directUnreadBadge: $("directUnreadBadge"),
+      directComposeModal: $("directComposeModal"),
+      directComposeClose: $("directComposeClose"),
+      directComposeCancel: $("directComposeCancel"),
+      directComposeSend: $("directComposeSend"),
+      directComposeText: $("directComposeText"),
+      directComposeCount: $("directComposeCount"),
+      directRecipientName: $("directRecipientName"),
+      directInboxModal: $("directInboxModal"),
+      directInboxClose: $("directInboxClose"),
+      directInboxUnreadText: $("directInboxUnreadText"),
+      directInboxTabReceived: $("directInboxTabReceived"),
+      directInboxTabSent: $("directInboxTabSent"),
+      directMessageList: $("directMessageList"),
+      directMessageDetail: $("directMessageDetail"),
+      directArrival: $("directArrival"),
+      directArrivalCard: $("directArrivalCard"),
+      directArrivalClose: $("directArrivalClose"),
+      directArrivalFrom: $("directArrivalFrom"),
 
       btnWork: $("btnWork"),
       btnBreak: $("btnBreak"),
@@ -6625,6 +6930,17 @@ chatUnseen: 0,
       chatUserNearBottom: true,
 
       unsubKick: null,
+      unsubDirectInbox: null,
+      unsubDirectOutbox: null,
+      directInbox: [],
+      directOutbox: [],
+      directInboxReady: false,
+      directKnownInboxIds: new Set(),
+      directArrivalQueue: [],
+      directArrivalCurrent: null,
+      directInboxTab: "inbox",
+      directSelectedId: null,
+      directComposeTarget: null,
       unsubMissions: null,
       missionDayKey: null,
       missionSuccessCount: 0,
@@ -6952,6 +7268,367 @@ function toast(msg, ms=1600){
       els.ctxMenu.setAttribute("aria-hidden","true");
       state.ctxTarget = {uid:null, name:null};
     }
+
+    // -----------------------------
+    // 💌 개인 쪽지
+    // -----------------------------
+    function normalizeDirectMessages_(snap){
+      try{
+        const value = snap && snap.val ? (snap.val() || {}) : {};
+        return Object.entries(value)
+          .map(([id, item])=>Object.assign({ id:String(id) }, item || {}))
+          .filter(item=>item.id && item.text)
+          .sort((a,b)=>(Number(b.tsMs || 0) - Number(a.tsMs || 0)) || String(b.id).localeCompare(String(a.id)));
+      }catch(e){ return []; }
+    }
+
+    function formatDirectTime_(tsMs){
+      try{
+        const ts = Number(tsMs || 0);
+        if(!ts) return "";
+        const date = new Date(ts);
+        const now = new Date();
+        const sameDay = new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(date)
+          === new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(now);
+        return new Intl.DateTimeFormat("ko-KR", sameDay
+          ? {timeZone:"Asia/Seoul",hour:"2-digit",minute:"2-digit",hour12:false}
+          : {timeZone:"Asia/Seoul",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}
+        ).format(date);
+      }catch(e){ return ""; }
+    }
+
+    function directUnreadCount_(){
+      try{ return (state.directInbox || []).filter(item=>!Number(item.readAtMs || 0)).length; }
+      catch(e){ return 0; }
+    }
+
+    function updateDirectUnreadUI_(){
+      const count = directUnreadCount_();
+      if(els.directUnreadBadge){
+        els.directUnreadBadge.textContent = count > 99 ? "99+" : String(count);
+        els.directUnreadBadge.classList.toggle("show", count > 0);
+      }
+      if(els.directInboxUnreadText){
+        els.directInboxUnreadText.textContent = count ? `· 안 읽음 ${count}` : "";
+      }
+      if(els.directInboxBtn){
+        els.directInboxBtn.title = count ? `개인 쪽지함 · 안 읽은 쪽지 ${count}개` : "개인 쪽지함";
+      }
+    }
+
+    function directCurrentItems_(){
+      return state.directInboxTab === "outbox" ? (state.directOutbox || []) : (state.directInbox || []);
+    }
+
+    function makeDirectEmpty_(title, desc){
+      const box = document.createElement("div");
+      box.className = "directEmpty";
+      const icon = document.createElement("div");
+      icon.style.fontSize = "32px";
+      icon.style.marginBottom = "8px";
+      icon.textContent = "💌";
+      const strong = document.createElement("div");
+      strong.style.fontWeight = "1000";
+      strong.textContent = title;
+      const small = document.createElement("div");
+      small.className = "tiny";
+      small.style.marginTop = "6px";
+      small.textContent = desc;
+      box.append(icon,strong,small);
+      return box;
+    }
+
+    function renderDirectMessageList_(){
+      if(!els.directMessageList) return;
+      const items = directCurrentItems_();
+      els.directMessageList.replaceChildren();
+      if(!items.length){
+        els.directMessageList.appendChild(makeDirectEmpty_(
+          state.directInboxTab === "outbox" ? "아직 보낸 쪽지가 없어요" : "아직 도착한 쪽지가 없어요",
+          state.directInboxTab === "outbox" ? "프로필 타일을 우클릭해 첫 쪽지를 보내보세요." : "새 쪽지가 오면 이곳에 차곡차곡 모여요."
+        ));
+        return;
+      }
+      for(const item of items){
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "directMessageItem";
+        button.dataset.messageId = String(item.id || "");
+        if(state.directSelectedId === item.id) button.classList.add("active");
+        if(state.directInboxTab === "inbox" && !Number(item.readAtMs || 0)) button.classList.add("unread");
+
+        const top = document.createElement("div");
+        top.className = "directMessageItemTop";
+        if(state.directInboxTab === "inbox" && !Number(item.readAtMs || 0)){
+          const dot = document.createElement("span");
+          dot.className = "directUnreadDot";
+          dot.setAttribute("aria-label","읽지 않음");
+          top.appendChild(dot);
+        }
+        const name = document.createElement("span");
+        name.className = "directMessageName";
+        name.textContent = state.directInboxTab === "outbox" ? `받는 사람 · ${item.toName || "알 수 없음"}` : (item.fromName || "알 수 없음");
+        const time = document.createElement("span");
+        time.className = "directMessageTime";
+        time.textContent = formatDirectTime_(item.tsMs);
+        top.append(name,time);
+
+        const preview = document.createElement("div");
+        preview.className = "directMessagePreview";
+        preview.textContent = String(item.text || "").replace(/\s+/g," ").trim();
+        button.append(top,preview);
+        button.addEventListener("click",()=>selectDirectMessage_(item.id));
+        els.directMessageList.appendChild(button);
+      }
+    }
+
+    function renderDirectMessageDetail_(){
+      if(!els.directMessageDetail) return;
+      const items = directCurrentItems_();
+      const item = items.find(x=>x.id === state.directSelectedId) || null;
+      els.directMessageDetail.replaceChildren();
+      if(!item){
+        const blank = document.createElement("div");
+        blank.className = "directDetailBlank";
+        blank.appendChild(makeDirectEmpty_("쪽지를 선택해 주세요","편지지에 전체 내용이 펼쳐져요."));
+        els.directMessageDetail.appendChild(blank);
+        return;
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "directDetailMeta";
+      const who = document.createElement("div");
+      const whoHint = document.createElement("div");
+      whoHint.className = "tiny";
+      whoHint.textContent = state.directInboxTab === "outbox" ? "받는 사람" : "보낸 사람";
+      const whoName = document.createElement("div");
+      whoName.className = "directDetailName";
+      whoName.textContent = state.directInboxTab === "outbox" ? (item.toName || "알 수 없음") : (item.fromName || "알 수 없음");
+      who.append(whoHint,whoName);
+      const when = document.createElement("div");
+      when.className = "tiny";
+      when.textContent = formatDirectTime_(item.tsMs);
+      meta.append(who,when);
+
+      const paper = document.createElement("div");
+      paper.className = "directLetterPaper";
+      paper.textContent = String(item.text || "");
+
+      const actions = document.createElement("div");
+      actions.className = "directDetailActions";
+      if(state.directInboxTab === "inbox" && item.fromUid && item.fromUid !== state.uid){
+        const reply = document.createElement("button");
+        reply.type = "button";
+        reply.className = "primary";
+        reply.textContent = "↩ 답장하기";
+        reply.addEventListener("click",()=>openDirectCompose_({
+          uid:String(item.fromUid),
+          name:String(item.fromName || "알 수 없음"),
+          replyToId:String(item.id || ""),
+          threadRootId:String(item.threadRootId || item.id || "")
+        }));
+        actions.appendChild(reply);
+      }
+      els.directMessageDetail.append(meta,paper,actions);
+    }
+
+    async function markDirectMessageRead_(messageId){
+      if(!messageId || !state.roomId || !state.uid) return;
+      const item = (state.directInbox || []).find(x=>x.id === messageId);
+      if(!item || Number(item.readAtMs || 0)) return;
+      const readAtMs = Date.now();
+      item.readAtMs = readAtMs;
+      updateDirectUnreadUI_();
+      renderDirectMessageList_();
+      try{
+        await rUpdate(rDirectInboxMessageRef(state.roomId,state.uid,messageId), { readAtMs });
+      }catch(e){
+        item.readAtMs = 0;
+        updateDirectUnreadUI_();
+        renderDirectMessageList_();
+        console.warn("[direct message] read update failed",e);
+      }
+    }
+
+    function selectDirectMessage_(messageId){
+      state.directSelectedId = String(messageId || "");
+      renderDirectMessageList_();
+      renderDirectMessageDetail_();
+      if(state.directInboxTab === "inbox") markDirectMessageRead_(state.directSelectedId);
+    }
+
+    function setDirectInboxTab_(tab){
+      state.directInboxTab = tab === "outbox" ? "outbox" : "inbox";
+      const items = directCurrentItems_();
+      if(!items.some(item=>item.id === state.directSelectedId)) state.directSelectedId = null;
+      if(els.directInboxTabReceived) els.directInboxTabReceived.setAttribute("aria-selected",state.directInboxTab === "inbox" ? "true" : "false");
+      if(els.directInboxTabSent) els.directInboxTabSent.setAttribute("aria-selected",state.directInboxTab === "outbox" ? "true" : "false");
+      renderDirectMessageList_();
+      renderDirectMessageDetail_();
+      if(state.directInboxTab === "inbox" && state.directSelectedId) markDirectMessageRead_(state.directSelectedId);
+    }
+
+    function openDirectInbox_(messageId=null){
+      if(!state.joined){ showToast("작업방에 입장한 뒤 쪽지함을 열 수 있어요"); return; }
+      if(messageId){
+        state.directInboxTab = "inbox";
+        state.directSelectedId = String(messageId);
+      }else{
+        const items = directCurrentItems_();
+        if(!items.some(item=>item.id === state.directSelectedId)) state.directSelectedId = null;
+      }
+      setDirectInboxTab_(state.directInboxTab);
+      showModal(els.directInboxModal);
+    }
+
+    function openDirectCompose_(target){
+      if(!state.joined || !state.uid){ showToast("작업방에 입장한 뒤 쪽지를 보낼 수 있어요"); return; }
+      const uid = String(target?.uid || "");
+      if(!uid || uid === String(state.uid || "")){ showToast("내게는 쪽지를 보낼 수 없어요"); return; }
+      state.directComposeTarget = {
+        uid,
+        name:String(target?.name || "알 수 없음").slice(0,40),
+        replyToId:String(target?.replyToId || ""),
+        threadRootId:String(target?.threadRootId || "")
+      };
+      if(els.directRecipientName) els.directRecipientName.textContent = state.directComposeTarget.name;
+      if(els.directComposeText){ els.directComposeText.value = ""; }
+      if(els.directComposeCount) els.directComposeCount.textContent = "0 / 1000";
+      showModal(els.directComposeModal);
+      setTimeout(()=>els.directComposeText?.focus(),40);
+    }
+
+    async function sendDirectMessage_(){
+      const target = state.directComposeTarget || {};
+      const text = String(els.directComposeText?.value || "").trim();
+      if(!state.joined || !state.roomId || !state.uid || !target.uid){ showToast("받는 사람 정보를 다시 선택해 주세요"); return; }
+      if(!text){ showToast("쪽지 내용을 적어 주세요"); els.directComposeText?.focus(); return; }
+      if(text.length > 1000){ showToast("쪽지는 1000자까지 보낼 수 있어요"); return; }
+      const button = els.directComposeSend;
+      const oldText = button?.textContent || "💌 보내기";
+      try{
+        if(button){ button.disabled = true; button.textContent = "보내는 중…"; }
+        const newRef = rPush(rDirectInboxRootRef(state.roomId,target.uid));
+        const messageId = String(newRef?.key || "");
+        if(!messageId) throw new Error("message id unavailable");
+        const now = Date.now();
+        const payload = {
+          fromUid:String(state.uid),
+          fromName:String(state.nickname || els.meHint?.textContent || "알 수 없음").slice(0,40),
+          toUid:String(target.uid),
+          toName:String(target.name || "알 수 없음").slice(0,40),
+          text,
+          tsMs:now,
+          readAtMs:0,
+          replyToId:String(target.replyToId || ""),
+          threadRootId:String(target.threadRootId || target.replyToId || messageId),
+          version:1
+        };
+        const base = rRoomBase(state.roomId);
+        const updates = {};
+        updates[`${base}/directMessages/inbox/${target.uid}/${messageId}`] = payload;
+        updates[`${base}/directMessages/outbox/${state.uid}/${messageId}`] = payload;
+        await rUpdate(rRef(rtdb),updates);
+        hideModal(els.directComposeModal);
+        state.directComposeTarget = null;
+        if(els.directComposeText) els.directComposeText.value = "";
+        showToast(`${target.name || "상대"}님에게 쪽지를 보냈어요 💌`);
+      }catch(e){
+        console.error("[direct message] send failed",e);
+        const denied = String(e?.code || e?.message || "").toLowerCase().includes("permission");
+        showToast(denied ? "쪽지 저장 권한이 없어요 · Firebase 규칙을 확인해 주세요" : "쪽지를 보내지 못했어요 · 잠시 후 다시 시도해 주세요",4400);
+      }finally{
+        if(button){ button.disabled = false; button.textContent = oldText; }
+      }
+    }
+
+    function renderDirectArrival_(){
+      const item = state.directArrivalCurrent;
+      if(!els.directArrival || !item) return;
+      if(els.directArrivalFrom) els.directArrivalFrom.textContent = `${item.fromName || "누군가"} 님이 보냄`;
+      els.directArrival.classList.add("show");
+      els.directArrival.setAttribute("aria-hidden","false");
+      setTimeout(()=>els.directArrivalCard?.focus(),30);
+    }
+
+    function showNextDirectArrival_(){
+      if(state.directArrivalCurrent || !state.directArrivalQueue?.length || !state.joined) return;
+      state.directArrivalCurrent = state.directArrivalQueue.shift();
+      renderDirectArrival_();
+    }
+
+    function dismissDirectArrival_(openInbox=false){
+      const current = state.directArrivalCurrent;
+      if(els.directArrival){
+        els.directArrival.classList.remove("show");
+        els.directArrival.setAttribute("aria-hidden","true");
+      }
+      state.directArrivalCurrent = null;
+      if(openInbox && current){
+        state.directArrivalQueue = [];
+        openDirectInbox_(current.id);
+      }else{
+        setTimeout(showNextDirectArrival_,220);
+      }
+    }
+
+    function queueDirectArrival_(item){
+      if(!item || !item.id) return;
+      if(state.directArrivalCurrent?.id === item.id) return;
+      if((state.directArrivalQueue || []).some(x=>x.id === item.id)) return;
+      state.directArrivalQueue.push(item);
+      showToast(`${item.fromName || "누군가"}님에게 새 쪽지가 도착했어요 💌`,3200);
+      showNextDirectArrival_();
+    }
+
+    function unsubscribeDirectMessages_(){
+      try{ if(state.unsubDirectInbox) state.unsubDirectInbox(); }catch(e){}
+      try{ if(state.unsubDirectOutbox) state.unsubDirectOutbox(); }catch(e){}
+      state.unsubDirectInbox = null;
+      state.unsubDirectOutbox = null;
+    }
+
+    function subscribeDirectMessages_(){
+      unsubscribeDirectMessages_();
+      if(!state.roomId || !state.uid) return;
+      state.directInboxReady = false;
+      state.directKnownInboxIds = new Set();
+
+      const inboxQuery = rQuery(rDirectInboxRootRef(state.roomId,state.uid),rOrderByChild("tsMs"),rLimitToLast(100));
+      const onInbox = (snap)=>{
+        const items = normalizeDirectMessages_(snap);
+        const ids = new Set(items.map(item=>item.id));
+        if(!state.directInboxReady){
+          state.directKnownInboxIds = ids;
+          state.directInboxReady = true;
+        }else{
+          const fresh = items
+            .filter(item=>!state.directKnownInboxIds.has(item.id))
+            .sort((a,b)=>Number(a.tsMs || 0)-Number(b.tsMs || 0));
+          for(const item of fresh) queueDirectArrival_(item);
+          state.directKnownInboxIds = ids;
+        }
+        state.directInbox = items;
+        updateDirectUnreadUI_();
+        if(els.directInboxModal?.classList.contains("show")){
+          renderDirectMessageList_();
+          renderDirectMessageDetail_();
+        }
+      };
+      rOnValue(inboxQuery,onInbox,(e)=>console.warn("[direct message] inbox subscribe failed",e));
+      state.unsubDirectInbox = ()=>{ try{ rOff(inboxQuery,"value",onInbox); }catch(e){} };
+
+      const outboxQuery = rQuery(rDirectOutboxRootRef(state.roomId,state.uid),rOrderByChild("tsMs"),rLimitToLast(100));
+      const onOutbox = (snap)=>{
+        state.directOutbox = normalizeDirectMessages_(snap);
+        if(els.directInboxModal?.classList.contains("show") && state.directInboxTab === "outbox"){
+          renderDirectMessageList_();
+          renderDirectMessageDetail_();
+        }
+      };
+      rOnValue(outboxQuery,onOutbox,(e)=>console.warn("[direct message] outbox subscribe failed",e));
+      state.unsubDirectOutbox = ()=>{ try{ rOff(outboxQuery,"value",onOutbox); }catch(e){} };
+    }
     
     function setCtxMenuMode(mode="kick"){
       const isStatus = (mode === "status");
@@ -6959,6 +7636,7 @@ function toast(msg, ms=1600){
       if(els.ctxStatusBreak) els.ctxStatusBreak.style.display = isStatus ? "" : "none";
       if(els.ctxStatusIdle) els.ctxStatusIdle.style.display = isStatus ? "" : "none";
       if(els.ctxTimerPrivacyToggle) els.ctxTimerPrivacyToggle.style.display = isStatus ? "" : "none";
+      if(els.ctxDirectMessage) els.ctxDirectMessage.style.display = isStatus ? "none" : "";
       const div = document.getElementById("ctxDivider");
       if(div) div.style.display = isStatus ? "" : "none";
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
@@ -7031,6 +7709,11 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
         const pins = getPinnedUids();
         const isPinned = !!(p && p.id && pins.includes(p.id));
         els.ctxPinToggle.textContent = isPinned ? "📍 고정 해제" : `📌 상단 고정 (${pins.length}/2)`;
+      }
+      if(els.ctxDirectMessage){
+        const canMessage = !!(state.joined && state.uid && p.id && p.id !== state.uid);
+        els.ctxDirectMessage.disabled = !canMessage;
+        els.ctxDirectMessage.title = canMessage ? `${p.name || p.id}님에게 개인 쪽지 보내기` : "다른 작가님에게만 보낼 수 있어요";
       }
 
       const m = els.ctxMenu;
@@ -8896,6 +9579,7 @@ function setControlsEnabled(joined){
       // ✅ 입장 전에는 아무 것도 열지 못하게 잠금
       els.profileBtn.disabled = !joined;
       if(els.onlineBtn) els.onlineBtn.disabled = !joined;
+      if(els.directInboxBtn) els.directInboxBtn.disabled = !joined;
 
       // ✅ 대시보드 외부 링크(공용뽀모/폭파수다): 입장 후에만
       if(els.goPomo) els.goPomo.disabled = !joined;
@@ -9632,6 +10316,9 @@ function rMessagesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/messa
 function rMessageRef(roomId, msgId){ return rRef(rtdb, `${rRoomBase(roomId)}/messages/${msgId}`); }
 function rMessagesByDateRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId)}/messagesByDate/${dayKey}`); }
 function rMessageByDateRef(roomId, dayKey, msgId){ return rRef(rtdb, `${rRoomBase(roomId)}/messagesByDate/${dayKey}/${msgId}`); }
+function rDirectInboxRootRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/directMessages/inbox/${uid}`); }
+function rDirectInboxMessageRef(roomId, uid, msgId){ return rRef(rtdb, `${rRoomBase(roomId)}/directMessages/inbox/${uid}/${msgId}`); }
+function rDirectOutboxRootRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/directMessages/outbox/${uid}`); }
 // ✅ alias: legacy reaction code expects rChatMsgRef / ChatMsgRef
 function rChatMsgRef(roomId, msgId){ return rMessageRef(roomId, msgId); }
 try{ window.ChatMsgRef = rChatMsgRef; }catch(e){}
@@ -15147,6 +15834,7 @@ try{
       // V91: 오늘의 미션/메달 현황 제거 — 미션 실시간 구독/자정 감시 시작 안 함
       subscribeChat();
       subscribeKicks();
+      subscribeDirectMessages_();
 
       await heartbeat();
       state.__joinProfileReady = true;
@@ -15221,12 +15909,15 @@ try{
       if(state.unsubRoom) state.unsubRoom();
       if(state.unsubChat) state.unsubChat();
       if(state.unsubKick) state.unsubKick();
+      unsubscribeDirectMessages_();
       if(state.unsubMissionFeed) state.unsubMissionFeed();
       try{ if(state.petPublicTimer) clearInterval(state.petPublicTimer); state.petPublicTimer = null; }catch(e){}
       state.unsubParticipants = null;
       state.unsubRoom = null;
       state.unsubChat = null;
       state.unsubKick = null;
+      state.unsubDirectInbox = null;
+      state.unsubDirectOutbox = null;
       state.unsubMissionFeed = null;
 
       try{
@@ -15262,6 +15953,17 @@ try{
       state.publicProfiles = new Map();
       state.chatProfileLoads = new Map();
       state.lastRendered.clear();
+      state.directInbox = [];
+      state.directOutbox = [];
+      state.directInboxReady = false;
+      state.directKnownInboxIds = new Set();
+      state.directArrivalQueue = [];
+      state.directArrivalCurrent = null;
+      state.directSelectedId = null;
+      state.directComposeTarget = null;
+      updateDirectUnreadUI_();
+      try{ hideModal(els.directComposeModal); hideModal(els.directInboxModal); }catch(e){}
+      try{ if(els.directArrival){ els.directArrival.classList.remove("show"); els.directArrival.setAttribute("aria-hidden","true"); } }catch(e){}
 
       setControlsEnabled(false);
     updateClocks();
@@ -16923,6 +17625,14 @@ try{
 
 
 // --- 컨텍스트 메뉴(프로필 우클릭) 닫기/동작 ---
+    if(els.ctxDirectMessage){
+      els.ctxDirectMessage.addEventListener("click",(e)=>{
+        e.preventDefault();
+        const target = Object.assign({},state.ctxTarget || {});
+        hideCtxMenu();
+        if(target.uid) openDirectCompose_(target);
+      });
+    }
     if(els.ctxClose){
       els.ctxClose.addEventListener("click", (e)=>{
         e.preventDefault();
@@ -16972,6 +17682,51 @@ try{
         const t = state.ctxTarget || {};
         hideCtxMenu();
         if(t.uid) togglePinnedUid(t.uid);
+      });
+    }
+
+    // 개인 쪽지함 / 작성 / 도착 편지
+    if(els.directInboxBtn) els.directInboxBtn.addEventListener("click",()=>openDirectInbox_());
+    if(els.directInboxClose) els.directInboxClose.addEventListener("click",()=>hideModal(els.directInboxModal));
+    if(els.directComposeClose) els.directComposeClose.addEventListener("click",()=>hideModal(els.directComposeModal));
+    if(els.directComposeCancel) els.directComposeCancel.addEventListener("click",()=>hideModal(els.directComposeModal));
+    if(els.directComposeSend) els.directComposeSend.addEventListener("click",sendDirectMessage_);
+    if(els.directInboxTabReceived) els.directInboxTabReceived.addEventListener("click",()=>setDirectInboxTab_("inbox"));
+    if(els.directInboxTabSent) els.directInboxTabSent.addEventListener("click",()=>setDirectInboxTab_("outbox"));
+    if(els.directComposeText){
+      els.directComposeText.addEventListener("input",()=>{
+        if(els.directComposeCount) els.directComposeCount.textContent = `${els.directComposeText.value.length} / 1000`;
+      });
+      els.directComposeText.addEventListener("keydown",(e)=>{
+        if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){
+          e.preventDefault();
+          sendDirectMessage_();
+        }
+      });
+    }
+    if(els.directComposeModal){
+      els.directComposeModal.addEventListener("click",(e)=>{ if(e.target === els.directComposeModal) hideModal(els.directComposeModal); });
+    }
+    if(els.directInboxModal){
+      els.directInboxModal.addEventListener("click",(e)=>{ if(e.target === els.directInboxModal) hideModal(els.directInboxModal); });
+    }
+    if(els.directArrivalCard){
+      els.directArrivalCard.addEventListener("click",(e)=>{
+        if(e.target === els.directArrivalClose) return;
+        dismissDirectArrival_(true);
+      });
+      els.directArrivalCard.addEventListener("keydown",(e)=>{
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          dismissDirectArrival_(true);
+        }
+      });
+    }
+    if(els.directArrivalClose){
+      els.directArrivalClose.addEventListener("click",(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        dismissDirectArrival_(false);
       });
     }
 
@@ -17035,7 +17790,12 @@ try{
       if(!els.ctxMenu.contains(e.target)) hideCtxMenu();
     }, true);
     document.addEventListener("keydown", (e)=>{
-      if(e.key==="Escape") hideCtxMenu();
+      if(e.key==="Escape"){
+        hideCtxMenu();
+        if(els.directComposeModal?.classList.contains("show")) hideModal(els.directComposeModal);
+        else if(els.directInboxModal?.classList.contains("show")) hideModal(els.directInboxModal);
+        else if(els.directArrival?.classList.contains("show")) dismissDirectArrival_(false);
+      }
     });
 
 
