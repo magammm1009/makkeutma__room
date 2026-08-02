@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V161_POMO_COUNT_STABILITY_GUARD: 공용 뽀모 인원 응답 순서·불완전 0명 전파 방지 -->
+<!-- V161_POMO_API_12S_TIMEOUT_GUARD: 지연 요청 종료·다음 주기 자동 재시도 -->
 
 <html lang="ko">
 <head>
@@ -6654,6 +6656,9 @@ chatUnseen: 0,
       localDashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
       dashPollTimer: null,
       dashPollUrl: "",
+      dashPollSeq: 0,
+      dashPollInFlight: false,
+      dashLastGoodPomoAt: 0,
       lastRendered: new Map(),
       lastActivityMs: Date.now(),
       helperWatchTimer: null,
@@ -7990,46 +7995,90 @@ async function openSudaWithTicket(baseUrl){
     // 대시보드 실시간 인원(앱스크립트) JSONP 폴링
     // - CORS 회피용: Apps Script doGet에서 callback 지원이 필요해요.
     // -----------------------------
-    function loadJsonp(url, cb){
+    function loadJsonp(url, cb, timeoutMs = 12_000){
       try{
         const cbName = "__mk_cb_" + Math.random().toString(36).slice(2);
+        let settled = false;
+        let sc = null;
+        let timer = null;
+        const finish = (err, data)=>{
+          if(settled) return;
+          settled = true;
+          try{ if(timer) clearTimeout(timer); }catch(e){}
+          try{ if(sc && sc.parentNode) sc.parentNode.removeChild(sc); }catch(e){}
+          try{ delete window[cbName]; }catch(e){}
+          cb(err, data);
+        };
         window[cbName] = (data)=>{
-          try{ cb(null, data); } finally {
-            delete window[cbName];
-          }
+          finish(null, data);
         };
         const hasQ = url.includes("?");
         const withCb = url + (hasQ ? "&" : "?") + "callback=" + cbName + "&_=" + Date.now();
-        const sc = document.createElement("script");
+        sc = document.createElement("script");
         sc.src = withCb;
         sc.async = true;
-        sc.onerror = ()=>{ try{ cb(new Error("jsonp error")); } finally { delete window[cbName]; } };
+        sc.onerror = ()=>finish(new Error("jsonp error"));
         document.head.appendChild(sc);
-        // cleanup later
-        setTimeout(()=>{ if(sc.parentNode) sc.parentNode.removeChild(sc); }, 15_000);
+        timer = setTimeout(
+          ()=>finish(new Error("jsonp timeout")),
+          Math.max(1000, Number(timeoutMs) || 12_000)
+        );
       }catch(err){ cb(err); }
     }
 
     
     async function loadJsonAny(url, cb){
+      const startedAt = Date.now();
+      const deadlineMs = 12_000;
+      let settled = false;
+      let fetchTimer = null;
+      let overallTimer = null;
+      let controller = null;
+      const finish = (err, data)=>{
+        if(settled) return;
+        settled = true;
+        try{ if(fetchTimer) clearTimeout(fetchTimer); }catch(e){}
+        try{ if(overallTimer) clearTimeout(overallTimer); }catch(e){}
+        cb(err, data);
+      };
+      const fallbackJsonp = ()=>{
+        if(settled) return;
+        const remainingMs = Math.max(1000, deadlineMs - (Date.now() - startedAt));
+        loadJsonp(url, finish, remainingMs);
+      };
+      overallTimer = setTimeout(()=>{
+        try{ if(controller) controller.abort(); }catch(e){}
+        finish(new Error("request timeout"));
+      }, deadlineMs);
+
       // 1) try CORS JSON fetch (works with script.googleusercontent.com/macros/echo... 형태도 가능)
       try{
         const u = new URL(url, location.href);
         u.searchParams.set("_", String(Date.now()));
-        const res = await fetch(u.toString(), { cache:"no-store", credentials:"omit", mode:"cors" });
+        controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        fetchTimer = setTimeout(()=>{
+          try{ if(controller) controller.abort(); }catch(e){}
+        }, 6000);
+        const fetchOptions = { cache:"no-store", credentials:"omit", mode:"cors" };
+        if(controller) fetchOptions.signal = controller.signal;
+        const res = await fetch(u.toString(), fetchOptions);
+        try{ if(fetchTimer) clearTimeout(fetchTimer); }catch(e){}
+        fetchTimer = null;
+        if(settled) return;
         if(res && res.ok){
           const ct = (res.headers.get("content-type") || "").toLowerCase();
           const txt = await res.text();
+          if(settled) return;
           // ✅ V130: GitHub Pages 같은 정적 앱 HTML은 JSONP로 다시 주입하지 않음
           // 공용 뽀모가 GitHub 독립 앱이 되면 pomoUrl 자체는 HTML이라 인원 API가 아니기 때문.
           if(ct.includes("text/html") || /^\s*</.test(String(txt||""))){
-            cb(new Error("not json api"));
+            finish(new Error("not json api"));
             return;
           }
           // JSON only
           try{
             const data = JSON.parse(txt);
-            cb(null, data);
+            finish(null, data);
             return;
           }catch(e){
             // not JSON → try to salvage (some endpoints return text/plain or key=value)
@@ -8038,7 +8087,7 @@ async function openSudaWithTicket(baseUrl){
               const m = txt.match(/\{[\s\S]*\}/);
               if(m){
                 const data2 = JSON.parse(m[0]);
-                cb(null, data2);
+                finish(null, data2);
                 return;
               }
             }catch(e2){}
@@ -8061,7 +8110,7 @@ async function openSudaWithTicket(baseUrl){
               const pomo = out.pomo ?? out.pomocount ?? out.pomodoro ?? out.work ?? out.p;
               const suda = out.suda ?? out.sudacount ?? out.chat ?? out.c;
               if(typeof pomo !== "undefined" || typeof suda !== "undefined"){
-                cb(null, { pomoCount: pomo, sudaCount: suda, raw: out });
+                finish(null, { pomoCount: pomo, sudaCount: suda, raw: out });
                 return;
               }
             }catch(e3){}
@@ -8072,7 +8121,7 @@ async function openSudaWithTicket(baseUrl){
         // fetch blocked → fallthrough to JSONP
       }
       // 2) fallback JSONP (requires callback 지원)
-      loadJsonp(url, cb);
+      fallbackJsonp();
     }
 function normalizeDashApiUrl(raw){
       const s = (raw||"").trim();
@@ -8234,7 +8283,13 @@ function ensureDashPolling(){
           loadJsonAny(url, (err, data)=>{
             if(err || !data || typeof data!=="object"){ resolve(null); return; }
             const v = (data.activeCount!=null) ? data.activeCount : (data.count!=null ? data.count : (data.total!=null ? data.total : null));
-            resolve(coerceCount(v));
+            const count = coerceCount(v);
+            resolve({
+              count,
+              authoritative: data.presenceAuthoritative === true ? true : (data.presenceAuthoritative === false ? false : null),
+              presenceUpdatedAtMs: Number(data.presenceUpdatedAtMs || data.updatedAtMs || 0),
+              source: String(data.presenceSource || '')
+            });
           });
         });
       }
@@ -8242,6 +8297,8 @@ function ensureDashPolling(){
       // polling stop helper
       function stop(){
         if(state.dashPollTimer){ clearInterval(state.dashPollTimer); state.dashPollTimer=null; }
+        state.dashPollSeq = Number(state.dashPollSeq || 0) + 1;
+        state.dashPollInFlight = false;
         state.dashPollUrl = "";
         state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
         try{ if(els.pomoOk) els.pomoOk.textContent = "API 필요"; }catch(e){}
@@ -8254,20 +8311,27 @@ let __dashWriteSig = "";
 const writeCountsToRTDB = (counts)=>{
   try{
     if(!state.roomId) return;
+    const patch = {
+      updatedAtMs: Number(counts.updatedAtMs || Date.now()),
+      writerUid: state.uid || "",
+      writerName: state.nickname || ""
+    };
+    if(counts.pomoCount != null && counts.pomoPublishable !== false){
+      patch.pomoCount = Number(counts.pomoCount);
+    }
+    if(counts.sudaCount != null){
+      patch.sudaCount = Number(counts.sudaCount);
+    }
+    if(!Object.prototype.hasOwnProperty.call(patch, 'pomoCount') &&
+       !Object.prototype.hasOwnProperty.call(patch, 'sudaCount')) return;
     const now = Date.now();
-    const sig = `${counts.pomoCount ?? ""}|${counts.sudaCount ?? ""}`;
+    const sig = `${patch.pomoCount ?? ""}|${patch.sudaCount ?? ""}`;
     // 값 변화 없고 너무 자주면 스킵
     if(sig === __dashWriteSig && (now - __dashWriteAt) < 15000) return;
     if((now - __dashWriteAt) < 5000) return;
     __dashWriteAt = now;
     __dashWriteSig = sig;
-    rUpdate(rDashboardCountsRef(state.roomId), {
-      pomoCount: (counts.pomoCount==null? null : Number(counts.pomoCount)),
-      sudaCount: (counts.sudaCount==null? null : Number(counts.sudaCount)),
-      updatedAtMs: Number(counts.updatedAtMs||now),
-      writerUid: state.uid || "",
-      writerName: state.nickname || ""
-    }).catch(()=>{});
+    rUpdate(rDashboardCountsRef(state.roomId), patch).catch(()=>{});
   }catch(e){}
 }
 
@@ -8392,40 +8456,93 @@ const writeCountsToRTDB = (counts)=>{
 
       function loadDashCounts(url){
         return new Promise((resolve)=>{
-          if(!url){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null}); return; }
+          if(!url){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null, pomoMeta:null}); return; }
           loadJsonAny(url, (err, data)=>{
-            if(err || !data || typeof data !== "object"){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null}); return; }
+            if(err || !data || typeof data !== "object"){ resolve({ok:false, pomo:null, suda:null, updatedAtMs:null, pomoMeta:null}); return; }
             const c = __extractDashCounts(data);
             const upd  = (data.updatedAtMs != null) ? Number(data.updatedAtMs) : Date.now();
-            resolve({ok:true, pomo:coerceCount(c.pomo), suda:coerceCount(c.suda), updatedAtMs:upd});
+            resolve({
+              ok:true,
+              pomo:coerceCount(c.pomo),
+              suda:coerceCount(c.suda),
+              updatedAtMs:upd,
+              pomoMeta:{
+                count:coerceCount(c.pomo),
+                authoritative:data.presenceAuthoritative === true ? true : (data.presenceAuthoritative === false ? false : null),
+                presenceUpdatedAtMs:Number(data.presenceUpdatedAtMs || upd || 0),
+                source:String(data.presenceSource || '')
+              }
+            });
           });
         });
       }
       async function tickDashboardCounts(){
-        const dash = await loadDashCounts(dashUrl);
-        const pomoApi = await resolvePomoActiveApiUrl();
-        const sudaApi = isLikelyCountApiUrl(sudaBase) ? normalizeActiveApiUrl(sudaBase) : "";
-
-        const [pcDirect, scDirect] = await Promise.all([
-          (dash.pomo == null && pomoApi) ? loadActiveCount(pomoApi) : Promise.resolve(null),
-          (dash.suda == null && sudaApi) ? loadActiveCount(sudaApi) : Promise.resolve(null)
-        ]);
-
-        const pomoCount = coerceCount(dash.pomo != null ? dash.pomo : pcDirect);
-        const sudaCount = coerceCount(dash.suda != null ? dash.suda : scDirect);
-        const updatedAtMs = Number(dash.updatedAtMs || Date.now());
-
+        if(state.dashPollInFlight) return;
+        state.dashPollInFlight = true;
+        const requestSeq = Number(state.dashPollSeq || 0) + 1;
+        state.dashPollSeq = requestSeq;
         try{
-          if(els.pomoOk){
-            if(pomoCount != null) els.pomoOk.textContent = "연결됨";
-            else if(pomoApi || dashUrl) els.pomoOk.textContent = "응답 없음";
-            else els.pomoOk.textContent = "API 필요";
-          }
-        }catch(e){}
+          const dash = await loadDashCounts(dashUrl);
+          const pomoApi = await resolvePomoActiveApiUrl();
+          const sudaApi = isLikelyCountApiUrl(sudaBase) ? normalizeActiveApiUrl(sudaBase) : "";
 
-        state.localDashCounts = {pomoCount, sudaCount, updatedAtMs};
-        renderDashboard();
-        writeCountsToRTDB(state.localDashCounts);
+          const [pcDirect, scDirect] = await Promise.all([
+            (dash.pomo == null && pomoApi) ? loadActiveCount(pomoApi) : Promise.resolve(null),
+            (dash.suda == null && sudaApi) ? loadActiveCount(sudaApi) : Promise.resolve(null)
+          ]);
+          if(requestSeq !== state.dashPollSeq) return;
+
+          const pomoCandidate = dash.pomo != null ? dash.pomoMeta : pcDirect;
+          const rawPomoCount = coerceCount(pomoCandidate && pomoCandidate.count);
+          const rawSudaCount = coerceCount(dash.suda != null ? dash.suda : (scDirect && scDirect.count));
+          const previous = state.localDashCounts || {};
+          const remotePrevious = (state.roomSettings && state.roomSettings.dashCounts) ? state.roomSettings.dashCounts : {};
+          const localPreviousPomo = coerceCount(previous.pomoCount);
+          const remotePreviousPomo = coerceCount(remotePrevious.pomoCount);
+          const previousPomo = localPreviousPomo != null ? localPreviousPomo : remotePreviousPomo;
+          const untrustedZero = rawPomoCount === 0 && pomoCandidate && pomoCandidate.authoritative === false;
+          const previousGoodAt = Number(state.dashLastGoodPomoAt || remotePrevious.updatedAtMs || 0);
+          const canHoldPrevious = previousPomo != null && (Date.now() - previousGoodAt) < 3 * 60 * 1000;
+
+          let pomoCount = rawPomoCount;
+          let pomoPublishable = true;
+          if((rawPomoCount == null || untrustedZero) && canHoldPrevious){
+            pomoCount = previousPomo;
+            pomoPublishable = false;
+          }else if(rawPomoCount == null || untrustedZero){
+            // 신뢰 표시가 없는 0명은 화면 참고값으로만 두고 공유 저장소에는 퍼뜨리지 않는다.
+            pomoPublishable = false;
+          }else if(rawPomoCount != null && !untrustedZero){
+            state.dashLastGoodPomoAt = Date.now();
+          }
+
+          const sudaCount = rawSudaCount != null ? rawSudaCount : coerceCount(previous.sudaCount);
+          const updatedAtMs = Number(
+            (pomoCandidate && pomoCandidate.presenceUpdatedAtMs) || dash.updatedAtMs || Date.now()
+          );
+
+          try{
+            if(els.pomoOk){
+              if(pomoCount != null) els.pomoOk.textContent = pomoPublishable ? "연결됨" : "이전 정상값 유지";
+              else if(pomoApi || dashUrl) els.pomoOk.textContent = "응답 없음";
+              else els.pomoOk.textContent = "API 필요";
+            }
+          }catch(e){}
+
+          state.localDashCounts = {
+            pomoCount,
+            sudaCount,
+            updatedAtMs,
+            pomoPublishable,
+            presenceSource:String(pomoCandidate && pomoCandidate.source || '')
+          };
+          renderDashboard();
+          writeCountsToRTDB(state.localDashCounts);
+        }catch(e){
+          try{ if(els.pomoOk) els.pomoOk.textContent = "응답 지연"; }catch(_e){}
+        }finally{
+          if(requestSeq === state.dashPollSeq) state.dashPollInFlight = false;
+        }
       }
 
       // ---- case A/B 통합: 통합 API + 뽀모 전용 API + config.js 자동탐색을 함께 처리 ----
@@ -8435,6 +8552,8 @@ const writeCountsToRTDB = (counts)=>{
 
       if(state.dashPollUrl === key && state.dashPollTimer) return;
       if(state.dashPollTimer) clearInterval(state.dashPollTimer);
+      state.dashPollSeq = Number(state.dashPollSeq || 0) + 1;
+      state.dashPollInFlight = false;
       state.dashPollUrl = key;
 
       tickDashboardCounts();
