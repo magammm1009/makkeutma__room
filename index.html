@@ -5035,6 +5035,94 @@ body.joined #preJoinCard{ display:none; }
     border-color:transparent;
     font-weight:1000;
   }
+  .directContactSearch{
+    width:min(210px,34vw);
+    min-width:130px;
+    margin-left:auto;
+    padding:9px 11px;
+    min-height:38px;
+    background:rgba(0,0,0,.22);
+  }
+  .directContactAvatar{
+    display:grid;
+    place-items:center;
+    width:42px;
+    height:42px;
+    flex:0 0 42px;
+    border-radius:14px;
+    font-size:22px;
+    border:1px solid rgba(255,255,255,.2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
+  }
+  .directContactRow{display:flex; align-items:center; gap:11px;}
+  .directContactText{min-width:0; flex:1;}
+  .directContactStatus{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:900;}
+  .directContactStatus::before{content:""; width:7px; height:7px; border-radius:50%; background:#777;}
+  .directContactStatus.online{color:#9ff2bf;}
+  .directContactStatus.online::before{background:#55dd8b; box-shadow:0 0 9px rgba(85,221,139,.65);}
+  .directContactStatus.offline{color:var(--muted);}
+  .directContactPet{margin-top:5px; color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .directContactDetailCard{
+    max-width:500px;
+    margin:0 auto;
+    padding:28px 24px;
+    border:1px solid rgba(255,182,214,.25);
+    border-radius:22px;
+    text-align:center;
+    background:linear-gradient(145deg,rgba(255,119,184,.11),rgba(255,255,255,.045));
+    box-shadow:0 22px 50px rgba(0,0,0,.18);
+  }
+  .directContactHero{
+    display:grid;
+    place-items:center;
+    width:92px;
+    height:92px;
+    margin:0 auto 15px;
+    border-radius:28px;
+    border:1px solid rgba(255,255,255,.26);
+    font-size:46px;
+    box-shadow:0 16px 35px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .directContactHeroName{font-size:22px; font-weight:1100;}
+  .directContactHeroMeta{margin-top:9px; color:var(--muted); font-size:12px; line-height:1.7;}
+  .directContactSend{margin-top:20px; min-width:180px;}
+  .directOfflineNote{
+    margin:18px auto 0;
+    max-width:420px;
+    padding:11px 13px;
+    border-radius:12px;
+    background:rgba(255,255,255,.05);
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.55;
+  }
+  .adminProfileManager{
+    padding:12px;
+    border:1px solid rgba(255,182,214,.2);
+    border-radius:16px;
+    background:rgba(255,119,184,.055);
+  }
+  .adminProfileManager select,
+  .adminProfileManager input{
+    background:#181820;
+    color:#fff;
+    border:1px solid var(--line);
+  }
+  .adminProfileCatalog{
+    width:100%;
+    min-height:170px;
+    margin-top:8px;
+    padding:6px;
+    border-radius:12px;
+  }
+  .adminProfileCatalog option{padding:7px 8px; border-radius:7px;}
+  .adminProfileCatalog option:checked{background:#8d3f69; color:#fff;}
+  .adminProfileDanger{
+    color:#ffd9e8;
+    background:rgba(255,70,125,.17);
+    border-color:rgba(255,90,140,.38);
+  }
+  .adminProfileDanger:hover{background:rgba(255,70,125,.26);}
   .directInboxGrid{
     display:grid;
     grid-template-columns:minmax(250px, 34%) minmax(0,1fr);
@@ -5173,8 +5261,9 @@ body.joined #preJoinCard{ display:none; }
   @media (max-width:520px){
     #directInboxBtn .directInboxLabel{display:none;}
     #directInboxBtn{padding-inline:10px;}
-    .directInboxToolbar{padding:8px;}
+    .directInboxToolbar{padding:8px; flex-wrap:wrap;}
     .directInboxToolbar .directInboxHint{display:none;}
+    .directContactSearch{order:2; width:100%; margin-left:0;}
   }
 </style>
 
@@ -5750,6 +5839,30 @@ body.joined #preJoinCard{ display:none; }
 <button class="ghost" id="petAdminRestoreMine" type="button">내 펫 백업에서 복원</button>
 </div>
 <div id="petAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">아직 조회한 펫 백업이 없어요.</div>
+
+<div class="hr"></div>
+<div class="adminProfileManager">
+<div class="hint">🗂️ 저장 프로필 정리·연결</div>
+<div class="tiny" style="opacity:.8; line-height:1.55; margin-bottom:9px;">서버에 남은 프로필을 검색해 삭제하거나, 예전 꾸미기 프로필을 현재 접속 중인 작가님에게 복사해 다시 연결할 수 있어요. 쪽지와 펫 백업은 삭제하지 않습니다.</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<input id="adminProfileSearch" maxlength="30" placeholder="닉네임 또는 UID 검색" style="flex:1 1 210px;"/>
+<button class="ghost" id="adminProfileRefresh" type="button">🔄 목록 새로고침</button>
+</div>
+<select aria-label="저장된 프로필 목록" class="adminProfileCatalog" id="adminProfileSavedSelect" size="7">
+<option value="">관리자 인증 후 목록을 불러와요</option>
+</select>
+<div class="tiny" id="adminProfileStatus" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">선택한 프로필의 정보가 여기에 표시돼요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+<select aria-label="프로필을 연결할 현재 접속 작가" id="adminProfileTargetSelect" style="flex:1 1 220px; min-width:200px; border-radius:12px; padding:10px 12px;">
+<option value="">연결할 접속 작가 선택</option>
+</select>
+<button class="primary" id="adminProfileConnect" type="button">🔗 선택 프로필 연결</button>
+</div>
+<div class="tiny" style="opacity:.74; line-height:1.5;">연결은 예전 프로필의 꾸미기·공개 펫 정보를 현재 UID에 복사합니다. 대상 작가님이 한 번 새로고침하면 브라우저에도 안정적으로 적용돼요.</div>
+<div class="row" style="display:flex; justify-content:flex-end; margin-top:10px;">
+<button class="adminProfileDanger" id="adminProfileDelete" type="button">🗑️ 선택 프로필 삭제</button>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -5804,7 +5917,9 @@ body.joined #preJoinCard{ display:none; }
 <div class="directInboxToolbar">
 <button aria-selected="true" class="ghost directInboxTab" data-direct-tab="inbox" id="directInboxTabReceived" role="tab" type="button">받은 쪽지</button>
 <button aria-selected="false" class="ghost directInboxTab" data-direct-tab="outbox" id="directInboxTabSent" role="tab" type="button">보낸 쪽지</button>
-<span class="tiny directInboxHint" style="margin-left:auto;">쪽지를 선택하면 내용을 볼 수 있어요.</span>
+<button aria-selected="false" class="ghost directInboxTab" data-direct-tab="contacts" id="directInboxTabContacts" role="tab" type="button">👩‍🎨 작가님 찾기</button>
+<input aria-label="쪽지를 보낼 작가 검색" class="directContactSearch" id="directContactSearch" maxlength="30" placeholder="작가 이름 검색…" style="display:none"/>
+<span class="tiny directInboxHint" id="directInboxHint" style="margin-left:auto;">쪽지를 선택하면 내용을 볼 수 있어요.</span>
 </div>
 <div class="modalBody">
 <div class="directInboxGrid">
@@ -6744,6 +6859,9 @@ const auth = getAuth(app);
       directInboxUnreadText: $("directInboxUnreadText"),
       directInboxTabReceived: $("directInboxTabReceived"),
       directInboxTabSent: $("directInboxTabSent"),
+      directInboxTabContacts: $("directInboxTabContacts"),
+      directContactSearch: $("directContactSearch"),
+      directInboxHint: $("directInboxHint"),
       directMessageList: $("directMessageList"),
       directMessageDetail: $("directMessageDetail"),
       directArrival: $("directArrival"),
@@ -6863,6 +6981,13 @@ onlineBtn: $("onlineBtn"),
       adminTimerTarget: $("adminTimerTarget"),
       adminResetOneTimer: $("adminResetOneTimer"),
       adminResetAllTimers: $("adminResetAllTimers"),
+      adminProfileSearch: $("adminProfileSearch"),
+      adminProfileRefresh: $("adminProfileRefresh"),
+      adminProfileSavedSelect: $("adminProfileSavedSelect"),
+      adminProfileTargetSelect: $("adminProfileTargetSelect"),
+      adminProfileConnect: $("adminProfileConnect"),
+      adminProfileDelete: $("adminProfileDelete"),
+      adminProfileStatus: $("adminProfileStatus"),
 
       toast: $("toast"),
     };
@@ -6942,6 +7067,11 @@ chatUnseen: 0,
       directArrivalCurrent: null,
       directInboxTab: "inbox",
       directSelectedId: null,
+      directSelectedContactUid: null,
+      directProfiles: [],
+      directProfilesLoadedAtMs: 0,
+      directProfilesLoading: false,
+      directContactSearch: "",
       directComposeTarget: null,
       unsubMissions: null,
       missionDayKey: null,
@@ -6965,6 +7095,8 @@ chatUnseen: 0,
       myPhotoUrl: "",
       adminOk: false,
       adminHash: null,
+      adminProfileCatalog: [],
+      adminProfileLoading: false,
       roomSettings: {
         dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
@@ -7284,6 +7416,90 @@ function toast(msg, ms=1600){
       }catch(e){ return []; }
     }
 
+    function normalizeDirectProfiles_(snap){
+      try{
+        const value = snap && snap.val ? (snap.val() || {}) : {};
+        return Object.entries(value)
+          .map(([uid, raw])=>{
+            const profile = raw || {};
+            const theme = profile.theme || {};
+            return {
+              uid:String(uid || profile.uid || ""),
+              name:String(profile.name || "").trim().slice(0,40),
+              emoji:String(theme.emoji || "✍️").trim().slice(0,4) || "✍️",
+              bgColor:String(theme.bgColor || "#ffd0e2"),
+              petSlotId:String(theme.petSlotId || ""),
+              petSlotLv:Math.max(0,Math.min(30,Number(theme.petSlotLv || 0))),
+              petSlotName:String(theme.petSlotName || "").trim().slice(0,30),
+              petFullCount:Math.max(0,Number(theme.petFullCount || 0)),
+              updatedAtMs:Number(profile.appearanceUpdatedAtMs || profile.updatedAtMs || 0)
+            };
+          })
+          .filter(profile=>profile.uid && profile.uid !== String(state.uid || "") && profile.name && profile.name !== "익명")
+          .sort((a,b)=>a.name.localeCompare(b.name,"ko") || a.uid.localeCompare(b.uid));
+      }catch(e){ return []; }
+    }
+
+    function isDirectProfileOnline_(profile){
+      try{
+        const presence = state.currentParticipants?.get?.(String(profile?.uid || ""));
+        if(!presence) return false;
+        return (typeof isDisplayablePresence === "function") ? !!isDisplayablePresence(presence) : presence.status !== "off";
+      }catch(e){ return false; }
+    }
+
+    function directProfileBg_(profile){
+      try{ return clampHexColor(profile?.bgColor || "#ffd0e2"); }
+      catch(e){ return "#ffd0e2"; }
+    }
+
+    function directProfilePetSummary_(profile){
+      const bits = [];
+      if(profile?.petSlotName) bits.push(`🐾 ${profile.petSlotName}`);
+      else if(Number(profile?.petSlotLv || 0) > 0) bits.push(`🐾 펫 Lv.${Number(profile.petSlotLv)}`);
+      if(Number(profile?.petFullCount || 0) > 0) bits.push(`만렙 ${Number(profile.petFullCount)}마리`);
+      return bits.join(" · ") || "서버에 프로필 등록됨";
+    }
+
+    function directProfilesForView_(){
+      const query = String(state.directContactSearch || "").trim().toLocaleLowerCase("ko");
+      return (state.directProfiles || [])
+        .filter(profile=>!query || profile.name.toLocaleLowerCase("ko").includes(query))
+        .sort((a,b)=>{
+          const onlineDiff = Number(isDirectProfileOnline_(b)) - Number(isDirectProfileOnline_(a));
+          return onlineDiff || a.name.localeCompare(b.name,"ko") || a.uid.localeCompare(b.uid);
+        });
+    }
+
+    async function loadDirectProfiles_(force=false){
+      if(!state.roomId || !state.uid || state.directProfilesLoading) return;
+      const fresh = state.directProfilesLoadedAtMs && (Date.now() - state.directProfilesLoadedAtMs < 60000);
+      if(!force && fresh){
+        if(state.directInboxTab === "contacts"){
+          renderDirectMessageList_();
+          renderDirectMessageDetail_();
+        }
+        return;
+      }
+      state.directProfilesLoading = true;
+      if(state.directInboxTab === "contacts") renderDirectMessageList_();
+      try{
+        const snap = await rGet(rProfilesRootRef(state.roomId));
+        state.directProfiles = normalizeDirectProfiles_(snap);
+        state.directProfilesLoadedAtMs = Date.now();
+        if(!state.directProfiles.some(profile=>profile.uid === state.directSelectedContactUid)) state.directSelectedContactUid = null;
+      }catch(e){
+        console.warn("[direct message] profile directory load failed",e);
+        showToast("작가 목록을 불러오지 못했어요 · 잠시 후 다시 시도해 주세요",3800);
+      }finally{
+        state.directProfilesLoading = false;
+        if(state.directInboxTab === "contacts"){
+          renderDirectMessageList_();
+          renderDirectMessageDetail_();
+        }
+      }
+    }
+
     function formatDirectTime_(tsMs){
       try{
         const ts = Number(tsMs || 0);
@@ -7342,6 +7558,10 @@ function toast(msg, ms=1600){
 
     function renderDirectMessageList_(){
       if(!els.directMessageList) return;
+      if(state.directInboxTab === "contacts"){
+        renderDirectContactList_();
+        return;
+      }
       const items = directCurrentItems_();
       els.directMessageList.replaceChildren();
       if(!items.length){
@@ -7384,8 +7604,63 @@ function toast(msg, ms=1600){
       }
     }
 
+    function renderDirectContactList_(){
+      if(!els.directMessageList) return;
+      els.directMessageList.replaceChildren();
+      if(state.directProfilesLoading && !(state.directProfiles || []).length){
+        els.directMessageList.appendChild(makeDirectEmpty_("작가 목록을 불러오는 중이에요","서버에 저장된 프로필을 확인하고 있어요."));
+        return;
+      }
+      const profiles = directProfilesForView_();
+      if(!profiles.length){
+        els.directMessageList.appendChild(makeDirectEmpty_(
+          state.directContactSearch ? "검색 결과가 없어요" : "등록된 작가 프로필이 없어요",
+          state.directContactSearch ? "다른 이름으로 검색해 보세요." : "작가님이 프로필을 저장하고 접속하면 목록에 나타나요."
+        ));
+        return;
+      }
+      for(const profile of profiles){
+        const online = isDirectProfileOnline_(profile);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "directMessageItem";
+        button.dataset.contactUid = profile.uid;
+        if(state.directSelectedContactUid === profile.uid) button.classList.add("active");
+
+        const row = document.createElement("div");
+        row.className = "directContactRow";
+        const avatar = document.createElement("div");
+        avatar.className = "directContactAvatar";
+        avatar.style.background = directProfileBg_(profile);
+        avatar.textContent = profile.emoji;
+        const text = document.createElement("div");
+        text.className = "directContactText";
+        const top = document.createElement("div");
+        top.className = "directMessageItemTop";
+        const name = document.createElement("span");
+        name.className = "directMessageName";
+        name.textContent = profile.name;
+        const status = document.createElement("span");
+        status.className = `directContactStatus ${online ? "online" : "offline"}`;
+        status.textContent = online ? "접속중" : "오프라인";
+        top.append(name,status);
+        const pet = document.createElement("div");
+        pet.className = "directContactPet";
+        pet.textContent = directProfilePetSummary_(profile);
+        text.append(top,pet);
+        row.append(avatar,text);
+        button.appendChild(row);
+        button.addEventListener("click",()=>selectDirectContact_(profile.uid));
+        els.directMessageList.appendChild(button);
+      }
+    }
+
     function renderDirectMessageDetail_(){
       if(!els.directMessageDetail) return;
+      if(state.directInboxTab === "contacts"){
+        renderDirectContactDetail_();
+        return;
+      }
       const items = directCurrentItems_();
       const item = items.find(x=>x.id === state.directSelectedId) || null;
       els.directMessageDetail.replaceChildren();
@@ -7434,6 +7709,49 @@ function toast(msg, ms=1600){
       els.directMessageDetail.append(meta,paper,actions);
     }
 
+    function renderDirectContactDetail_(){
+      if(!els.directMessageDetail) return;
+      const profile = (state.directProfiles || []).find(item=>item.uid === state.directSelectedContactUid) || null;
+      els.directMessageDetail.replaceChildren();
+      if(!profile){
+        const blank = document.createElement("div");
+        blank.className = "directDetailBlank";
+        blank.appendChild(makeDirectEmpty_("쪽지를 보낼 작가님을 선택해 주세요","오프라인인 작가님에게도 쪽지를 남길 수 있어요."));
+        els.directMessageDetail.appendChild(blank);
+        return;
+      }
+      const online = isDirectProfileOnline_(profile);
+      const card = document.createElement("div");
+      card.className = "directContactDetailCard";
+      const avatar = document.createElement("div");
+      avatar.className = "directContactHero";
+      avatar.style.background = directProfileBg_(profile);
+      avatar.textContent = profile.emoji;
+      const name = document.createElement("div");
+      name.className = "directContactHeroName";
+      name.textContent = profile.name;
+      const status = document.createElement("div");
+      status.className = `directContactStatus ${online ? "online" : "offline"}`;
+      status.style.marginTop = "8px";
+      status.textContent = online ? "현재 접속중" : "현재 오프라인";
+      const meta = document.createElement("div");
+      meta.className = "directContactHeroMeta";
+      const saved = profile.updatedAtMs ? ` · 최근 프로필 저장 ${formatDirectTime_(profile.updatedAtMs)}` : "";
+      meta.textContent = `${directProfilePetSummary_(profile)}${saved}`;
+      const send = document.createElement("button");
+      send.type = "button";
+      send.className = "primary directContactSend";
+      send.textContent = "💌 이 작가님에게 쪽지 쓰기";
+      send.addEventListener("click",()=>openDirectCompose_({uid:profile.uid,name:profile.name}));
+      const note = document.createElement("div");
+      note.className = "directOfflineNote";
+      note.textContent = online
+        ? "지금 보내면 상대의 화면에 새 편지가 바로 도착해요."
+        : "오프라인이어도 쪽지는 서버에 안전하게 쌓이고, 다음 접속 때 쪽지함에서 확인할 수 있어요.";
+      card.append(avatar,name,status,meta,send,note);
+      els.directMessageDetail.appendChild(card);
+    }
+
     async function markDirectMessageRead_(messageId){
       if(!messageId || !state.roomId || !state.uid) return;
       const item = (state.directInbox || []).find(x=>x.id === messageId);
@@ -7459,15 +7777,29 @@ function toast(msg, ms=1600){
       if(state.directInboxTab === "inbox") markDirectMessageRead_(state.directSelectedId);
     }
 
+    function selectDirectContact_(uid){
+      state.directSelectedContactUid = String(uid || "");
+      renderDirectMessageList_();
+      renderDirectMessageDetail_();
+    }
+
     function setDirectInboxTab_(tab){
-      state.directInboxTab = tab === "outbox" ? "outbox" : "inbox";
-      const items = directCurrentItems_();
-      if(!items.some(item=>item.id === state.directSelectedId)) state.directSelectedId = null;
+      state.directInboxTab = tab === "outbox" ? "outbox" : (tab === "contacts" ? "contacts" : "inbox");
+      if(state.directInboxTab === "contacts"){
+        if(!(state.directProfiles || []).some(profile=>profile.uid === state.directSelectedContactUid)) state.directSelectedContactUid = null;
+      }else{
+        const items = directCurrentItems_();
+        if(!items.some(item=>item.id === state.directSelectedId)) state.directSelectedId = null;
+      }
       if(els.directInboxTabReceived) els.directInboxTabReceived.setAttribute("aria-selected",state.directInboxTab === "inbox" ? "true" : "false");
       if(els.directInboxTabSent) els.directInboxTabSent.setAttribute("aria-selected",state.directInboxTab === "outbox" ? "true" : "false");
+      if(els.directInboxTabContacts) els.directInboxTabContacts.setAttribute("aria-selected",state.directInboxTab === "contacts" ? "true" : "false");
+      if(els.directContactSearch) els.directContactSearch.style.display = state.directInboxTab === "contacts" ? "" : "none";
+      if(els.directInboxHint) els.directInboxHint.textContent = state.directInboxTab === "contacts" ? "프로필이 저장된 작가님에게 오프라인 쪽지를 보낼 수 있어요." : "쪽지를 선택하면 내용을 볼 수 있어요.";
       renderDirectMessageList_();
       renderDirectMessageDetail_();
       if(state.directInboxTab === "inbox" && state.directSelectedId) markDirectMessageRead_(state.directSelectedId);
+      if(state.directInboxTab === "contacts") loadDirectProfiles_();
     }
 
     function openDirectInbox_(messageId=null){
@@ -7475,7 +7807,7 @@ function toast(msg, ms=1600){
       if(messageId){
         state.directInboxTab = "inbox";
         state.directSelectedId = String(messageId);
-      }else{
+      }else if(state.directInboxTab !== "contacts"){
         const items = directCurrentItems_();
         if(!items.some(item=>item.id === state.directSelectedId)) state.directSelectedId = null;
       }
@@ -7603,6 +7935,9 @@ function toast(msg, ms=1600){
         if(!state.directInboxReady){
           state.directKnownInboxIds = ids;
           state.directInboxReady = true;
+          // 오프라인 동안 쌓인 안 읽은 쪽지가 있으면 접속 직후 최신 편지 한 장을 보여준다.
+          const pendingUnread = items.find(item=>!Number(item.readAtMs || 0));
+          if(pendingUnread) setTimeout(()=>queueDirectArrival_(pendingUnread),0);
         }else{
           const fresh = items
             .filter(item=>!state.directKnownInboxIds.has(item.id))
@@ -12176,6 +12511,223 @@ function subscribeRoom(){
   }catch(e){}
 }
 
+// 관리자: 저장 프로필 정리/현재 UID 연결
+function adminProfileSetStatus_(text){
+  try{ if(els.adminProfileStatus) els.adminProfileStatus.textContent = String(text || ""); }catch(e){}
+}
+
+function isAdminProfileOnline_(uid){
+  try{
+    const presence = state.currentParticipants?.get?.(String(uid || ""));
+    return !!(presence && isDisplayablePresence(presence));
+  }catch(e){ return false; }
+}
+
+function selectedAdminProfile_(){
+  const uid = String(els.adminProfileSavedSelect?.value || "");
+  return (state.adminProfileCatalog || []).find(item=>item.uid === uid) || null;
+}
+
+function refreshAdminProfileTargetOptions_(){
+  if(!els.adminProfileTargetSelect) return;
+  const previous = String(els.adminProfileTargetSelect.value || "");
+  const targets = [...(state.currentParticipants?.values?.() || [])]
+    .filter(item=>item && item.id && isDisplayablePresence(item))
+    .sort((a,b)=>String(a.name || "").localeCompare(String(b.name || ""),"ko"));
+  els.adminProfileTargetSelect.replaceChildren();
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = "연결할 접속 작가 선택";
+  els.adminProfileTargetSelect.appendChild(first);
+  for(const target of targets){
+    const option = document.createElement("option");
+    option.value = String(target.id);
+    option.textContent = `${target.name || "이름 없음"} · 접속중 · ${String(target.id).slice(-6)}`;
+    els.adminProfileTargetSelect.appendChild(option);
+  }
+  if(targets.some(item=>String(item.id) === previous)) els.adminProfileTargetSelect.value = previous;
+}
+
+function normalizeAdminProfileCatalog_(snap){
+  try{
+    const value = snap && snap.val ? (snap.val() || {}) : {};
+    return Object.entries(value).map(([uid,raw])=>{
+      const profile = raw || {};
+      const theme = profile.theme || {};
+      return {
+        uid:String(uid),
+        name:String(profile.name || "이름 없음").trim().slice(0,40) || "이름 없음",
+        emoji:String(theme.emoji || "✍️").trim().slice(0,4) || "✍️",
+        petSlotLv:Math.max(0,Math.min(30,Number(theme.petSlotLv || 0))),
+        petSlotName:String(theme.petSlotName || "").trim().slice(0,30),
+        petFullCount:Math.max(0,Number(theme.petFullCount || 0)),
+        updatedAtMs:Number(profile.appearanceUpdatedAtMs || profile.updatedAtMs || 0),
+        raw:profile
+      };
+    }).sort((a,b)=>(Number(b.updatedAtMs || 0)-Number(a.updatedAtMs || 0)) || a.name.localeCompare(b.name,"ko"));
+  }catch(e){ return []; }
+}
+
+function renderAdminProfileCatalog_(){
+  if(!els.adminProfileSavedSelect) return;
+  const previous = String(els.adminProfileSavedSelect.value || "");
+  const query = String(els.adminProfileSearch?.value || "").trim().toLocaleLowerCase("ko");
+  const filtered = (state.adminProfileCatalog || []).filter(item=>{
+    return !query || item.name.toLocaleLowerCase("ko").includes(query) || item.uid.toLocaleLowerCase().includes(query);
+  });
+  els.adminProfileSavedSelect.replaceChildren();
+  if(!filtered.length){
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = state.adminProfileLoading ? "프로필 목록 불러오는 중…" : (query ? "검색 결과 없음" : "저장된 프로필 없음");
+    els.adminProfileSavedSelect.appendChild(empty);
+  }else{
+    for(const item of filtered){
+      const option = document.createElement("option");
+      option.value = item.uid;
+      const online = isAdminProfileOnline_(item.uid);
+      const saved = item.updatedAtMs ? formatDirectTime_(item.updatedAtMs) : "저장일 미상";
+      option.textContent = `${item.emoji} ${item.name} · ${online ? "접속중" : "오프라인"} · ${saved} · ${item.uid.slice(-6)}`;
+      els.adminProfileSavedSelect.appendChild(option);
+    }
+    if(filtered.some(item=>item.uid === previous)) els.adminProfileSavedSelect.value = previous;
+  }
+  renderAdminProfileSelection_();
+}
+
+function renderAdminProfileSelection_(){
+  const item = selectedAdminProfile_();
+  const targetUid = String(els.adminProfileTargetSelect?.value || "");
+  if(!item){
+    adminProfileSetStatus_("선택한 프로필의 정보가 여기에 표시돼요.");
+    if(els.adminProfileDelete) els.adminProfileDelete.disabled = true;
+    if(els.adminProfileConnect) els.adminProfileConnect.disabled = true;
+    return;
+  }
+  const online = isAdminProfileOnline_(item.uid);
+  const pet = item.petSlotName ? `펫 ${item.petSlotName} Lv.${item.petSlotLv}` : (item.petSlotLv ? `펫 Lv.${item.petSlotLv}` : "펫 공개 정보 없음");
+  const full = item.petFullCount ? ` · 만렙 ${item.petFullCount}마리` : "";
+  const saved = item.updatedAtMs ? formatDirectTime_(item.updatedAtMs) : "저장일 미상";
+  adminProfileSetStatus_(`${item.name} · ${online ? "현재 접속중" : "오프라인"} · ${pet}${full} · 최근 저장 ${saved} · UID ${item.uid}`);
+  if(els.adminProfileDelete){
+    els.adminProfileDelete.disabled = online;
+    els.adminProfileDelete.title = online ? "접속 중인 프로필은 바로 다시 생성될 수 있어 삭제할 수 없어요" : "선택한 서버 프로필만 삭제";
+  }
+  if(els.adminProfileConnect) els.adminProfileConnect.disabled = !targetUid || targetUid === item.uid;
+}
+
+async function loadAdminProfileCatalog_(){
+  if(!state.adminOk || !state.roomId || state.adminProfileLoading) return;
+  state.adminProfileLoading = true;
+  renderAdminProfileCatalog_();
+  adminProfileSetStatus_("서버 프로필 목록을 불러오는 중…");
+  try{
+    const snap = await rGet(rProfilesRootRef(state.roomId));
+    state.adminProfileCatalog = normalizeAdminProfileCatalog_(snap);
+    refreshAdminProfileTargetOptions_();
+    renderAdminProfileCatalog_();
+    adminProfileSetStatus_(`저장 프로필 ${state.adminProfileCatalog.length}개를 불러왔어요. 정리할 프로필을 선택해 주세요.`);
+  }catch(e){
+    console.warn("[admin profile] catalog load failed",e);
+    adminProfileSetStatus_("목록을 불러오지 못했어요. 관리자 권한과 Firebase 규칙을 확인해 주세요.");
+    showToast("프로필 목록 불러오기 실패",3600);
+  }finally{
+    state.adminProfileLoading = false;
+    renderAdminProfileCatalog_();
+  }
+}
+
+async function adminDeleteSelectedProfile_(){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  const item = selectedAdminProfile_();
+  if(!item){ showToast("삭제할 프로필을 선택해 주세요"); return; }
+  if(isAdminProfileOnline_(item.uid)){
+    showToast("접속 중인 프로필은 삭제할 수 없어요 · 먼저 연결 상태를 확인해 주세요",4200);
+    return;
+  }
+  const ok = confirm(`${item.name}님의 저장 프로필을 삭제할까요?\n\n삭제: 꾸미기 프로필 (UID ${item.uid})\n유지: 개인 쪽지, 펫 백업\n\n이 작업은 되돌릴 수 없어요.`);
+  if(!ok) return;
+  const button = els.adminProfileDelete;
+  const oldText = button?.textContent || "🗑️ 선택 프로필 삭제";
+  try{
+    if(button){ button.disabled = true; button.textContent = "삭제 중…"; }
+    await rRemove(rProfileRef(state.roomId,item.uid));
+    try{ state.publicProfiles?.delete?.(item.uid); }catch(e){}
+    state.directProfilesLoadedAtMs = 0;
+    showToast(`${item.name}님의 저장 프로필을 삭제했어요`,3600);
+    await loadAdminProfileCatalog_();
+  }catch(e){
+    console.warn("[admin profile] delete failed",e);
+    showToast("프로필 삭제 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);
+  }finally{
+    if(button){ button.disabled = false; button.textContent = oldText; }
+    renderAdminProfileSelection_();
+  }
+}
+
+async function adminConnectSelectedProfile_(){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  const source = selectedAdminProfile_();
+  const targetUid = String(els.adminProfileTargetSelect?.value || "");
+  const target = state.currentParticipants?.get?.(targetUid) || null;
+  if(!source){ showToast("연결할 예전 프로필을 선택해 주세요"); return; }
+  if(!targetUid || !target){ showToast("현재 접속 중인 대상 작가님을 선택해 주세요"); return; }
+  if(source.uid === targetUid){ showToast("이미 같은 UID의 프로필이에요"); return; }
+  if(!source.raw?.theme){ showToast("선택한 프로필에 복사할 꾸미기 정보가 없어요"); return; }
+  const targetName = String(target.name || "이름 없음").trim().slice(0,40) || "이름 없음";
+  const ok = confirm(`${source.name}님의 예전 프로필 꾸미기를 현재 접속 중인 ${targetName}님에게 연결할까요?\n\n예전 UID: ${source.uid}\n현재 UID: ${targetUid}\n\n예전 프로필은 확인 후 별도로 삭제할 수 있어요.`);
+  if(!ok) return;
+  const button = els.adminProfileConnect;
+  const oldText = button?.textContent || "🔗 선택 프로필 연결";
+  try{
+    if(button){ button.disabled = true; button.textContent = "연결 중…"; }
+    const now = Date.now();
+    const linked = JSON.parse(JSON.stringify(source.raw || {}));
+    linked.uid = targetUid;
+    linked.name = targetName;
+    linked.source = "admin_profile_link_v1";
+    linked.linkedFromUid = source.uid;
+    linked.adminLinkedAtMs = now;
+    linked.appearanceUpdatedAtMs = now;
+    linked.updatedAtMs = now;
+
+    const base = rRoomBase(state.roomId);
+    const updates = {};
+    updates[`${base}/profiles/${targetUid}`] = linked;
+    updates[`${base}/presence/${targetUid}/theme`] = linked.theme;
+    updates[`${base}/presence/${targetUid}/name`] = targetName;
+    updates[`${base}/presence/${targetUid}/bubbleText`] = String(linked.bubbleText || "").slice(0,15);
+    updates[`${base}/presence/${targetUid}/appearanceUpdatedAtMs`] = now;
+    updates[`${base}/presence/${targetUid}/updatedAt`] = now;
+    updates[`${base}/presence/${targetUid}/lastSeenAtMs`] = now;
+    if(Number.isFinite(Number(linked.autoBreakMin))) updates[`${base}/presence/${targetUid}/autoBreakMin`] = Number(linked.autoBreakMin);
+    if(Number.isFinite(Number(linked.autoIdleMin))) updates[`${base}/presence/${targetUid}/autoIdleMin`] = Number(linked.autoIdleMin);
+    await rUpdate(rRef(rtdb),updates);
+
+    try{
+      target.theme = JSON.parse(JSON.stringify(linked.theme));
+      target.bubbleText = String(linked.bubbleText || "").slice(0,15);
+      target.appearanceUpdatedAtMs = now;
+      state.currentParticipants.set(targetUid,target);
+      state.publicProfiles.set(targetUid,linked);
+      state.lastRendered?.delete?.(targetUid);
+      const onlineArr = [...state.currentParticipants.values()].filter(item=>isDisplayablePresence(item));
+      sortPresenceArr(onlineArr);
+      renderGridTilesOrRoster(onlineArr);
+    }catch(e){}
+    state.directProfilesLoadedAtMs = 0;
+    showToast(`${targetName}님에게 예전 프로필을 연결했어요 · 새로고침 안내해 주세요`,4800);
+    adminProfileSetStatus_(`연결 완료: ${source.name}의 꾸미기 → ${targetName}의 현재 UID. 대상 작가님이 한 번 새로고침하면 브라우저 저장값에도 안정적으로 반영돼요.`);
+    await loadAdminProfileCatalog_();
+  }catch(e){
+    console.warn("[admin profile] connect failed",e);
+    showToast("프로필 연결 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);
+  }finally{
+    if(button){ button.disabled = false; button.textContent = oldText; }
+    renderAdminProfileSelection_();
+  }
+}
+
 // Admin settings
 async function unlockAdmin(){
   const pass = (els.adminPass.value || "").trim();
@@ -12207,6 +12759,7 @@ async function unlockAdmin(){
 }
       }catch(_e){}
       try{ refreshAdminTimerTargetOptions(); }catch(_e){}
+      try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
       return;
     }catch(e){
       console.warn(e);
@@ -12254,6 +12807,7 @@ async function unlockAdmin(){
     }catch(_e){}
     els.adminArea.style.display = "block";
     try{ refreshAdminTimerTargetOptions(); }catch(_e){}
+    try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
     showToast("확인 완료!");
   }else{
     state.adminOk = false;
@@ -15962,6 +16516,12 @@ try{
       state.directArrivalQueue = [];
       state.directArrivalCurrent = null;
       state.directSelectedId = null;
+      state.directSelectedContactUid = null;
+      state.directProfiles = [];
+      state.directProfilesLoadedAtMs = 0;
+      state.directProfilesLoading = false;
+      state.directContactSearch = "";
+      try{ if(els.directContactSearch) els.directContactSearch.value = ""; }catch(e){}
       state.directComposeTarget = null;
       updateDirectUnreadUI_();
       try{ hideModal(els.directComposeModal); hideModal(els.directInboxModal); }catch(e){}
@@ -17466,6 +18026,15 @@ try{
     if(els.sudaCopyOwnerUid) els.sudaCopyOwnerUid.addEventListener("click", copySudaOwnerUid_);
     if(els.adminResetOneTimer) els.adminResetOneTimer.addEventListener("click", ()=>{ adminResetOneTimer().catch(()=>{}); });
     if(els.adminResetAllTimers) els.adminResetAllTimers.addEventListener("click", ()=>{ adminResetAllTimers().catch(()=>{}); });
+    if(els.adminProfileRefresh) els.adminProfileRefresh.addEventListener("click",()=>{ loadAdminProfileCatalog_().catch(()=>{}); });
+    if(els.adminProfileSearch) els.adminProfileSearch.addEventListener("input",renderAdminProfileCatalog_);
+    if(els.adminProfileSavedSelect) els.adminProfileSavedSelect.addEventListener("change",renderAdminProfileSelection_);
+    if(els.adminProfileTargetSelect){
+      els.adminProfileTargetSelect.addEventListener("focus",refreshAdminProfileTargetOptions_);
+      els.adminProfileTargetSelect.addEventListener("change",renderAdminProfileSelection_);
+    }
+    if(els.adminProfileConnect) els.adminProfileConnect.addEventListener("click",()=>{ adminConnectSelectedProfile_().catch(()=>{}); });
+    if(els.adminProfileDelete) els.adminProfileDelete.addEventListener("click",()=>{ adminDeleteSelectedProfile_().catch(()=>{}); });
 
     els.sendBtn.addEventListener("click", sendChat);
 
@@ -17695,6 +18264,16 @@ try{
     if(els.directComposeSend) els.directComposeSend.addEventListener("click",sendDirectMessage_);
     if(els.directInboxTabReceived) els.directInboxTabReceived.addEventListener("click",()=>setDirectInboxTab_("inbox"));
     if(els.directInboxTabSent) els.directInboxTabSent.addEventListener("click",()=>setDirectInboxTab_("outbox"));
+    if(els.directInboxTabContacts) els.directInboxTabContacts.addEventListener("click",()=>setDirectInboxTab_("contacts"));
+    if(els.directContactSearch){
+      els.directContactSearch.addEventListener("input",()=>{
+        state.directContactSearch = String(els.directContactSearch.value || "");
+        if(state.directInboxTab === "contacts"){
+          renderDirectMessageList_();
+          renderDirectMessageDetail_();
+        }
+      });
+    }
     if(els.directComposeText){
       els.directComposeText.addEventListener("input",()=>{
         if(els.directComposeCount) els.directComposeCount.textContent = `${els.directComposeText.value.length} / 1000`;
