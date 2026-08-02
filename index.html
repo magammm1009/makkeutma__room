@@ -5843,7 +5843,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="hr"></div>
 <div class="adminProfileManager">
 <div class="hint">🗂️ 저장 프로필 정리·연결</div>
-<div class="tiny" style="opacity:.8; line-height:1.55; margin-bottom:9px;">서버에 남은 프로필을 검색해 삭제하거나, 예전 꾸미기 프로필을 현재 접속 중인 작가님에게 복사해 다시 연결할 수 있어요. 쪽지와 펫 백업은 삭제하지 않습니다.</div>
+<div class="tiny" style="opacity:.8; line-height:1.55; margin-bottom:9px;">서버에 남은 프로필을 검색해 삭제하거나, 예전 꾸미기 프로필을 현재 접속 중인 작가님에게 복사해 다시 연결할 수 있어요. 목록은 현재 접속과 로그아웃으로 나뉘며, 로그아웃 작가는 최근 접속순으로 보여요. 쪽지와 펫 백업은 삭제하지 않습니다.</div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <input id="adminProfileSearch" maxlength="30" placeholder="닉네임 또는 UID 검색" style="flex:1 1 210px;"/>
 <button class="ghost" id="adminProfileRefresh" type="button">🔄 목록 새로고침</button>
@@ -7096,6 +7096,7 @@ chatUnseen: 0,
       adminOk: false,
       adminHash: null,
       adminProfileCatalog: [],
+      adminProfilePresence: new Map(),
       adminProfileLoading: false,
       roomSettings: {
         dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
@@ -12518,9 +12519,29 @@ function adminProfileSetStatus_(text){
 
 function isAdminProfileOnline_(uid){
   try{
-    const presence = state.currentParticipants?.get?.(String(uid || ""));
+    const key = String(uid || "");
+    const presence = state.currentParticipants?.get?.(key) || state.adminProfilePresence?.get?.(key);
     return !!(presence && isDisplayablePresence(presence));
   }catch(e){ return false; }
+}
+
+function adminProfileLastConnectionAt_(uid){
+  try{
+    const presence = state.adminProfilePresence?.get?.(String(uid || "")) || state.currentParticipants?.get?.(String(uid || "")) || {};
+    if(isAdminProfileOnline_(uid)) return Number(presence.lastSeenAtMs || presence.updatedAt || 0);
+    return Number(presence.disconnectedAtMs || presence.updatedAt || presence.lastSeenAtMs || 0);
+  }catch(e){ return 0; }
+}
+
+function formatAdminProfileConnection_(tsMs){
+  try{
+    const ts = Number(tsMs || 0);
+    if(!ts) return "접속 기록 없음";
+    return new Intl.DateTimeFormat("ko-KR",{
+      timeZone:"Asia/Seoul", year:"numeric", month:"numeric", day:"numeric",
+      hour:"2-digit", minute:"2-digit", hour12:true
+    }).format(new Date(ts));
+  }catch(e){ return "접속 기록 없음"; }
 }
 
 function selectedAdminProfile_(){
@@ -12548,9 +12569,15 @@ function refreshAdminProfileTargetOptions_(){
   if(targets.some(item=>String(item.id) === previous)) els.adminProfileTargetSelect.value = previous;
 }
 
-function normalizeAdminProfileCatalog_(snap){
+function normalizeAdminProfileCatalog_(profileSnap,presenceSnap){
   try{
-    const value = snap && snap.val ? (snap.val() || {}) : {};
+    const value = profileSnap && profileSnap.val ? (profileSnap.val() || {}) : {};
+    const presenceValue = presenceSnap && presenceSnap.val ? (presenceSnap.val() || {}) : {};
+    const presenceMap = new Map();
+    Object.entries(presenceValue).forEach(([uid,raw])=>{
+      if(raw && typeof raw === "object") presenceMap.set(String(uid),Object.assign({id:String(uid)},raw));
+    });
+    state.adminProfilePresence = presenceMap;
     return Object.entries(value).map(([uid,raw])=>{
       const profile = raw || {};
       const theme = profile.theme || {};
@@ -12564,7 +12591,7 @@ function normalizeAdminProfileCatalog_(snap){
         updatedAtMs:Number(profile.appearanceUpdatedAtMs || profile.updatedAtMs || 0),
         raw:profile
       };
-    }).sort((a,b)=>(Number(b.updatedAtMs || 0)-Number(a.updatedAtMs || 0)) || a.name.localeCompare(b.name,"ko"));
+    });
   }catch(e){ return []; }
 }
 
@@ -12582,14 +12609,43 @@ function renderAdminProfileCatalog_(){
     empty.textContent = state.adminProfileLoading ? "프로필 목록 불러오는 중…" : (query ? "검색 결과 없음" : "저장된 프로필 없음");
     els.adminProfileSavedSelect.appendChild(empty);
   }else{
-    for(const item of filtered){
-      const option = document.createElement("option");
-      option.value = item.uid;
-      const online = isAdminProfileOnline_(item.uid);
-      const saved = item.updatedAtMs ? formatDirectTime_(item.updatedAtMs) : "저장일 미상";
-      option.textContent = `${item.emoji} ${item.name} · ${online ? "접속중" : "오프라인"} · ${saved} · ${item.uid.slice(-6)}`;
-      els.adminProfileSavedSelect.appendChild(option);
-    }
+    const onlineItems = filtered
+      .filter(item=>isAdminProfileOnline_(item.uid))
+      .sort((a,b)=>a.name.localeCompare(b.name,"ko") || a.uid.localeCompare(b.uid));
+    const offlineItems = filtered
+      .filter(item=>!isAdminProfileOnline_(item.uid))
+      .sort((a,b)=>{
+        const recentDiff = adminProfileLastConnectionAt_(b.uid) - adminProfileLastConnectionAt_(a.uid);
+        return recentDiff || (Number(b.updatedAtMs || 0)-Number(a.updatedAtMs || 0)) || a.name.localeCompare(b.name,"ko");
+      });
+    const appendGroup = (label,items,emptyText)=>{
+      const group = document.createElement("optgroup");
+      group.label = `${label} (${items.length})`;
+      if(!items.length){
+        const none = document.createElement("option");
+        none.disabled = true;
+        none.textContent = emptyText;
+        group.appendChild(none);
+      }
+      for(const item of items){
+        const option = document.createElement("option");
+        option.value = item.uid;
+        if(isAdminProfileOnline_(item.uid)){
+          option.textContent = `${item.emoji} ${item.name} · 현재 접속 · ${item.uid.slice(-6)}`;
+        }else{
+          const lastConnection = formatAdminProfileConnection_(adminProfileLastConnectionAt_(item.uid));
+          option.textContent = `${item.emoji} ${item.name} · 최근 접속 ${lastConnection} · ${item.uid.slice(-6)}`;
+        }
+        group.appendChild(option);
+      }
+      els.adminProfileSavedSelect.appendChild(group);
+    };
+    appendGroup("🟢 현재 접속",onlineItems,"현재 접속 중인 저장 프로필 없음");
+    appendGroup("⚫ 로그아웃 · 최근 접속순",offlineItems,"로그아웃 상태의 저장 프로필 없음");
+    /*
+      optgroup을 사용해 접속/로그아웃을 시각적으로 구분하고,
+      로그아웃 그룹은 presence의 종료 시각 기준 최신순으로 유지한다.
+    */
     if(filtered.some(item=>item.uid === previous)) els.adminProfileSavedSelect.value = previous;
   }
   renderAdminProfileSelection_();
@@ -12608,7 +12664,8 @@ function renderAdminProfileSelection_(){
   const pet = item.petSlotName ? `펫 ${item.petSlotName} Lv.${item.petSlotLv}` : (item.petSlotLv ? `펫 Lv.${item.petSlotLv}` : "펫 공개 정보 없음");
   const full = item.petFullCount ? ` · 만렙 ${item.petFullCount}마리` : "";
   const saved = item.updatedAtMs ? formatDirectTime_(item.updatedAtMs) : "저장일 미상";
-  adminProfileSetStatus_(`${item.name} · ${online ? "현재 접속중" : "오프라인"} · ${pet}${full} · 최근 저장 ${saved} · UID ${item.uid}`);
+  const connection = online ? "현재 접속중" : `로그아웃 · 최근 접속 ${formatAdminProfileConnection_(adminProfileLastConnectionAt_(item.uid))}`;
+  adminProfileSetStatus_(`${item.name} · ${connection} · ${pet}${full} · 최근 프로필 저장 ${saved} · UID ${item.uid}`);
   if(els.adminProfileDelete){
     els.adminProfileDelete.disabled = online;
     els.adminProfileDelete.title = online ? "접속 중인 프로필은 바로 다시 생성될 수 있어 삭제할 수 없어요" : "선택한 서버 프로필만 삭제";
@@ -12622,8 +12679,11 @@ async function loadAdminProfileCatalog_(){
   renderAdminProfileCatalog_();
   adminProfileSetStatus_("서버 프로필 목록을 불러오는 중…");
   try{
-    const snap = await rGet(rProfilesRootRef(state.roomId));
-    state.adminProfileCatalog = normalizeAdminProfileCatalog_(snap);
+    const [profileSnap,presenceSnap] = await Promise.all([
+      rGet(rProfilesRootRef(state.roomId)),
+      rGet(rPresenceRootRef(state.roomId))
+    ]);
+    state.adminProfileCatalog = normalizeAdminProfileCatalog_(profileSnap,presenceSnap);
     refreshAdminProfileTargetOptions_();
     renderAdminProfileCatalog_();
     adminProfileSetStatus_(`저장 프로필 ${state.adminProfileCatalog.length}개를 불러왔어요. 정리할 프로필을 선택해 주세요.`);
