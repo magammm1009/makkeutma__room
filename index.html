@@ -6273,8 +6273,16 @@ body.joined #preJoinCard{ display:none; }
       }catch(e){}
     }
 
-    // (dedup) persistMyFocusToLocal 은 아래 V134 버전(자정 리셋 가드 포함) 하나만 남긴다.
-    // 예전 구버전이 여기 남아 있으면 선언 순서가 바뀔 때 자정 리셋 버그가 되살아난다.
+    // ⚠️ 아래 10356줄 근처에도 같은 이름의 함수가 있지만 그건 다른 스코프(중첩 함수 안)에 있다.
+    // 이 최상위 선언을 지우면 상태 전환/퇴장 같은 최상위 호출부가 ReferenceError로 죽는다. 지우지 말 것.
+    function persistMyFocusToLocal(){
+      try{
+        const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
+        if(!me) return;
+        const totalNow = computeDisplayedTotal(me);
+        focusSaveSeconds(totalNow);
+      }catch(e){}
+    }
 
 const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     const LS_PASS = "mk_room_pass";
