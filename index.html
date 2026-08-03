@@ -5990,7 +5990,11 @@ body.joined #preJoinCard{ display:none; }
     // - ⚠️ 정적 웹은 코드가 공개되므로 '완전 보안'은 불가. 진짜 차단은 Firebase Rules/인증이 필요합니다.
     const ROOM_PASS_HASH = "0a34102dc560b97344f99ed8369092fc9921804a4a6101118485ac946f0739e8"; // sha256("mkm1919")
 
-    // (dedup) sha256Hex 는 아래에서 한 번만 선언한다 — 같은 스코프 중복 선언 제거
+    async function sha256Hex(str){
+      const enc = new TextEncoder();
+      const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
     async function isRoomPassValid(pass){
       const p = (pass ?? "").toString().trim();
       if(!p) return false;
