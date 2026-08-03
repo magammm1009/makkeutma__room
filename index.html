@@ -13079,6 +13079,47 @@ function __getMyReactOn(msgObj, emoji){
       }catch(e){}
     }
 
+    // ✅ V159: 이모지만 보낸 채팅은 말풍선 없이 크게 표시
+    const CHAT_EMOJI_ONLY_MAX = 3;   // 이 개수까지만 크게, 넘으면 평소 말풍선
+    let __chatEmojiSeqRe = null;
+    let __chatEmojiSeqReReady = false;
+    function chatEmojiSeqRe_(){
+      if(__chatEmojiSeqReReady) return __chatEmojiSeqRe;
+      __chatEmojiSeqReReady = true;
+      const base = "\\p{Extended_Pictographic}(?:\\uFE0F|\\uFE0E)?(?:[\\u{1F3FB}-\\u{1F3FF}])?";
+      const seq = base + "(?:\\u200D" + base + ")*";
+      const keycap = "[0-9#*]\\uFE0F?\\u20E3";
+      try{
+        // 국기(지역표시자)까지 지원되는 브라우저
+        __chatEmojiSeqRe = new RegExp("(?:\\p{Regional_Indicator}\\p{Regional_Indicator}|" + keycap + "|" + seq + ")", "gu");
+      }catch(e){
+        try{
+          __chatEmojiSeqRe = new RegExp("(?:" + keycap + "|" + seq + ")", "gu");
+        }catch(e2){
+          __chatEmojiSeqRe = null;   // 유니코드 속성 미지원 브라우저 → 기능만 비활성, 채팅은 평소대로
+        }
+      }
+      return __chatEmojiSeqRe;
+    }
+    // 공백을 뺀 전체가 이모지로만 이루어져 있으면 이모지 개수를, 아니면 0을 돌려준다.
+    function chatEmojiOnlyCount_(raw){
+      try{
+        const s = String(raw == null ? "" : raw).replace(/\s+/g, "");
+        if(!s) return 0;
+        const re = chatEmojiSeqRe_();
+        if(!re) return 0;
+        re.lastIndex = 0;
+        let count = 0, consumed = 0, m;
+        while((m = re.exec(s))){
+          if(m.index !== consumed) return 0;   // 이모지 사이에 일반 글자가 끼어 있음
+          consumed = re.lastIndex;
+          count += 1;
+          if(count > CHAT_EMOJI_ONLY_MAX) return 0;
+        }
+        return (consumed === s.length) ? count : 0;
+      }catch(e){ return 0; }
+    }
+
     function makeMsgNode(m){
       const div = document.createElement("div");
 
@@ -13104,6 +13145,15 @@ const p = m.uid ? resolveChatProfileByUid_(m.uid) : null;
         <div class="meta"><span><span class="chatEmoji">${escapeHtml(emoji)}</span><span class="chatName">${escapeHtml(nick)}</span></span></div>
         <div class="text">${linkifyChatText(m.text || "")}</div>
       `;
+
+      // ✅ V159: 이모지만 있는 채팅 → 말풍선 제거 + 크게
+      try{
+        const emojiOnly = chatEmojiOnlyCount_(m.text || "");
+        if(emojiOnly > 0){
+          div.classList.add("emojiOnly");
+          div.setAttribute("data-emoji-count", String(emojiOnly));
+        }
+      }catch(e){}
 
       // theme-based text colors (if provided)
       try{
@@ -22905,6 +22955,43 @@ body.joined #dashboardCard .dashLinksBox{
     font-size:15px !important;
   }
 }
+</style>
+
+
+<!-- V159_CHAT_EMOJI_ONLY_BIG: 이모지만 보낸 채팅은 말풍선 없이 크게 표시 -->
+<style id="v159ChatEmojiOnlyBig">
+  /* 말풍선 배경/테두리만 지우고 padding·width는 그대로 둬서
+     리액션 칩/피커/토글 위치 계산이 기존과 동일하게 유지되도록 함 */
+  .msg.emojiOnly,
+  body .msg.emojiOnly.me,
+  body.mkLowSpecMode .msg.emojiOnly,
+  body.mkLowSpecMode .msg.emojiOnly.me,
+  body.mkLightMode .msg.emojiOnly,
+  body.mkLightMode .msg.emojiOnly.me{
+    background:transparent !important;
+    border-color:transparent !important;
+    box-shadow:none !important;
+  }
+  .msg.emojiOnly .text{
+    font-size:40px;
+    line-height:1.15;
+    letter-spacing:1px;
+  }
+  .msg.emojiOnly[data-emoji-count="1"] .text{ font-size:54px; }
+  .msg.emojiOnly[data-emoji-count="2"] .text{ font-size:46px; }
+  .msg.emojiOnly[data-emoji-count="3"] .text{ font-size:40px; }
+  .msg.emojiOnly.me .text{ text-align:right; }
+  .msg.emojiOnly.other .text{ text-align:left; }
+
+  /* 리액션 피커를 열면 폭이 넓어지므로 이모지는 원래 정렬을 유지 */
+  .msg.emojiOnly.reactOpen .text{ text-align:inherit; }
+  .msg.emojiOnly.me.reactOpen .text{ text-align:right; }
+
+  @media (max-width:520px){
+    .msg.emojiOnly[data-emoji-count="1"] .text{ font-size:44px; }
+    .msg.emojiOnly[data-emoji-count="2"] .text{ font-size:38px; }
+    .msg.emojiOnly[data-emoji-count="3"] .text{ font-size:33px; }
+  }
 </style>
 
 </body>
