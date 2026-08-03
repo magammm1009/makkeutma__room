@@ -5447,12 +5447,12 @@ body.joined #preJoinCard{ display:none; }
             </button>
 </div>
 <div class="chatInputRow">
-<input disabled="" id="chatInput" placeholder="메시지…">
+<input disabled="" id="chatInput" placeholder="메시지… ( /하트 처럼 쓰면 이모지 골라요 )">
 <button class="primary" disabled="" id="sendBtn">전송</button>
-</input></div>
 </div>
 </div>
-</div></aside>
+</div>
+</aside>
 </div>
 
 <!-- Profile Modal -->
@@ -5529,7 +5529,7 @@ body.joined #preJoinCard{ display:none; }
 <label style="display:flex;align-items:center;gap:6px;min-width:auto;max-width:none;flex:0 0 auto;">
 <input id="petSlotBgTransparent" style="transform:scale(1.05);" type="checkbox"/> 투명
             </label>
-</input></input></div>
+</div>
 <span class="tiny">펫 보이기를 켰을 때 사진칸 배경만 바꿔요. 사진 파일은 그대로 보관돼요.</span>
 </div>
 <div class="row" id="petSlotMotionRow">
@@ -5545,7 +5545,7 @@ body.joined #preJoinCard{ display:none; }
 <label>🎇사진 업로드</label>
 <input accept="image/*,.gif" id="photoFile" type="file">
 <button class="primary tight" id="uploadPhotoBtn">업로드</button>
-</input></div>
+</div>
 <div class="row" id="photoSizeRow">
 <label>사진 크기</label>
 <input id="photoSize" max="100" min="52" style="flex:1" type="range" value="68"/>
@@ -5556,7 +5556,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="colorControls">
 <input id="emojiBgPicker" type="color" value="#2b2b2b">
 <input id="emojiBgColor" style="width:110px" value="#2b2b2b">
-</input></input></div>
+</div>
 <span class="tiny"></span>
 </div>
 <div class="row">
@@ -5565,7 +5565,7 @@ body.joined #preJoinCard{ display:none; }
 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
 <input id="emojiBgTransparent" style="transform:scale(1.15);" type="checkbox">
 <span class="tiny"></span>
-</input></label>
+</label>
 </div>
 <span class="tiny"></span>
 </div>
@@ -5575,7 +5575,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="colorControls">
 <input id="bgPicker" type="color" value="#ffd0e2">
 <input id="bgColor" style="width:110px" value="#ffd0e2">
-</input></input></div>
+</div>
 </div>
 <div class="row">
 <label>🎇닉네임</label>
@@ -5607,7 +5607,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="colorControls">
 <input id="patternPicker" type="color" value="#ffffff">
 <input id="patternColor" style="width:110px" value="#ffffff">
-</input></input></div>
+</div>
 <span class="tiny">패턴(도트/하트/줄무늬 등) 색만 바꿔요.</span>
 </div>
 <div class="row">
@@ -5619,14 +5619,14 @@ body.joined #preJoinCard{ display:none; }
 <div class="colorControls">
 <input id="bubblePicker" type="color" value="#ffd0e2">
 <input id="bubbleColor" style="width:110px" value="#ffd0e2">
-</input></input></div>
+</div>
 </div>
 <div class="row">
 <label>🎇타이머 색</label>
 <div class="colorControls">
 <input id="timePicker" type="color" value="#ffffff">
 <input id="timeColor" style="width:110px" value="#ffffff"/>
-</input></div>
+</div>
 <span class="tiny">집중=선택색, 휴식/자리비움=회색 고정</span>
 </div>
 <div class="row">
@@ -5716,7 +5716,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="row" id="updateUnlockRow" style="display:flex; gap:8px; align-items:center;">
 <input id="updateAdminPass" placeholder="관리자 비번" style="flex:1;" type="password">
 <button class="primary tight" id="updateUnlock">확인</button>
-</input></div>
+</div>
 <div id="updateEditArea" style="display:none;">
 <div class="hint">✍️ 관리자용 편집</div>
 <textarea id="updateTextArea" placeholder="업데이트 내용을 적어주세요 (줄바꿈 가능)" style="width:100%; min-height:160px; resize:vertical; padding:12px; border-radius:14px;"></textarea>
@@ -5746,7 +5746,7 @@ body.joined #preJoinCard{ display:none; }
 <div style="display:flex; align-items:center; gap:10px; width:100%;">
 <input id="sfxToggle" type="checkbox">
 <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
-</input></div>
+</div>
 </div>
 <div class="hr"></div>
 <div class="hint">⚡ 화면 성능 모드</div>
@@ -5958,7 +5958,7 @@ body.joined #preJoinCard{ display:none; }
 <label style="display:flex;align-items:center;gap:10px; font-weight:900;">
 <input id="missionDone" type="checkbox">
             오늘 미션 완료했어요 👑
-          </input></label>
+          </label>
 </div>
 <div class="tiny" style="opacity:.8; line-height:1.4;">
           - 자정(KST)에 자동 초기화돼요.<br/>
@@ -5990,11 +5990,7 @@ body.joined #preJoinCard{ display:none; }
     // - ⚠️ 정적 웹은 코드가 공개되므로 '완전 보안'은 불가. 진짜 차단은 Firebase Rules/인증이 필요합니다.
     const ROOM_PASS_HASH = "0a34102dc560b97344f99ed8369092fc9921804a4a6101118485ac946f0739e8"; // sha256("mkm1919")
 
-    async function sha256Hex(str){
-      const enc = new TextEncoder();
-      const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-    }
+    // (dedup) sha256Hex 는 아래에서 한 번만 선언한다 — 같은 스코프 중복 선언 제거
     async function isRoomPassValid(pass){
       const p = (pass ?? "").toString().trim();
       if(!p) return false;
@@ -6277,14 +6273,8 @@ body.joined #preJoinCard{ display:none; }
       }catch(e){}
     }
 
-    function persistMyFocusToLocal(){
-      try{
-        const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
-        if(!me) return;
-        const totalNow = computeDisplayedTotal(me);
-        focusSaveSeconds(totalNow);
-      }catch(e){}
-    }
+    // (dedup) persistMyFocusToLocal 은 아래 V134 버전(자정 리셋 가드 포함) 하나만 남긴다.
+    // 예전 구버전이 여기 남아 있으면 선언 순서가 바뀔 때 자정 리셋 버그가 되살아난다.
 
 const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     const LS_PASS = "mk_room_pass";
@@ -9648,8 +9638,10 @@ const writeCountsToRTDB = (counts)=>{
       openUrl(url);
     }
     function closeEmbedModal(){
-      hideModal(els.embedModal);
-      els.embedModalFrame.src = "about:blank";
+      // 임베드 모달은 현재 마크업에서 빠져 있어 els 값이 null이다.
+      // 나중에 되살릴 때를 대비해 널가드를 둔다.
+      if(els.embedModal) hideModal(els.embedModal);
+      if(els.embedModalFrame) els.embedModalFrame.src = "about:blank";
     }
 
     
@@ -14200,9 +14192,201 @@ function showJoinTicker(msg){
       return `${state.roomId||""}|${state.uid||""}|${String(text||"")}`;
     }
 
+    // ✅ V160: "/하트" 처럼 입력하면 비슷한 이모지를 보기로 띄우고 골라 넣기
+    const CHAT_EMOJI_GROUPS = [
+      { key:"하트", words:["하트","사랑","좋아","러브","마음","heart","love"],
+        emojis:"❤️🩷🧡💛💚🩵💙💜🤎🖤🩶🤍💖💗💓💞💕💘💝💟❣️❤️‍🔥❤️‍🩹💔💋💌😍🥰😘😻" },
+      { key:"웃음", words:["웃음","웃","기쁨","행복","즐거움","스마일","ㅋㅋ","하하","smile","happy"],
+        emojis:"😀😃😄😁😆😅🤣😂🙂😉😊😇☺️😚😙😗🤩🥳😎🤗😌😺😸😹" },
+      { key:"슬픔", words:["슬픔","슬퍼","눈물","울음","우울","ㅠㅠ","sad","cry"],
+        emojis:"🥲🥹😢😭😞😔😟🙁☹️😥😓😩😫🥺😖😣😿😰😨😧😦😪" },
+      { key:"화남", words:["화남","화","분노","짜증","열받","angry"],
+        emojis:"😤😡😠🤬😬👿😈💢💥😾" },
+      { key:"놀람", words:["놀람","놀라","깜짝","헉","당황","surprise"],
+        emojis:"😮😯😲😱🫢😳🤯🙀😵😵‍💫🫨" },
+      { key:"피곤", words:["피곤","졸림","졸려","아픔","아파","감기","병","sick","tired"],
+        emojis:"😴😪🥱🤤🥴🤒🤕😷🤧🤮🤢🥶🥵😵💉🩹🩼" },
+      { key:"생각", words:["생각","고민","의심","조용","비밀","말풍선","think"],
+        emojis:"🤔🧐🤨😐😑😶🙄😏😒🫤😕🫣🤫🤭🤐🫠🙃🫡🫥💭🗯️💬🗨️👀👄" },
+      { key:"장난", words:["장난","메롱","윙크","까불","웃김","funny"],
+        emojis:"😝🤪😜😛😋🤠🥸🤓🤥🙈🙉🙊😼😽" },
+      { key:"동물", words:["동물","강아지","고양이","펫","새","animal"],
+        emojis:"🐶🐕🦮🐩🐺🦊🦝🐱🐈🦁🐯🐅🐆🐴🐎🦄🦓🦌🐮🐂🐃🐄🐷🐖🐗🐽🐏🐐🐪🐘🐭🐹🐰🐻🐻‍❄️🐼🐨🐵🐒🦍🦧🐔🐣🐤🐥🐧🦉🦩🦚🐸🦕🦖🐳🐋🦀🪼🦐🦑🦋" },
+      { key:"꽃", words:["꽃","식물","나뭇잎","단풍","flower"],
+        emojis:"🌸💮🪷🏵️🌹🥀🌺🌻🌼🌷🪻🍀🍁🍂🍄🪵" },
+      { key:"날씨", words:["날씨","하늘","별","달","해","비","눈","구름","weather"],
+        emojis:"☀️🌞🌝🌙🌛🌜⭐🌟🌠🌌🪐☁️⛅🌤️🌥️🌦️🌧️🌨️⛈️🌩️🌪️❄️⚡☔☂️🌂🌈🌀🌬️🌫️☃️⛄☄️🔥💧🌊💦⛱️" },
+      { key:"과일", words:["과일","fruit"],
+        emojis:"🍇🍈🍉🍊🍋🍌🍍🥭🍎🍏🍐🍑🍒🍓🫐🥝🍅🥥🫒" },
+      { key:"채소", words:["채소","야채","버섯"],
+        emojis:"🥦🥬🥒🫑🌶️🌽🥕🥔🍆🥑🧄🧅🥜🌰🫘🫛🫚🍄" },
+      { key:"음식", words:["음식","밥","식사","먹방","고기","면","food"],
+        emojis:"🍚🍙🍘🍱🍛🍜🍝🍲🫕🍳🥘🥣🥗🍔🍟🍕🌭🥪🌯🌮🥙🧆🥚🍞🥐🥖🥯🥨🫓🧇🥞🍗🍖🥩🥓🧀🍠🍢🍣🍤🍥🍡🥟🥠🥡🍿🧂🧈🥫" },
+      { key:"간식", words:["간식","디저트","케이크","빵","달다","dessert"],
+        emojis:"🍰🎂🧁🥧🍪🍩🍨🍧🍦🍭🍬🍫🍯🥮" },
+      { key:"음료", words:["음료","커피","술","차","주스","drink"],
+        emojis:"☕🫖🍵🥛🍼🧋🥤🍶🍾🥃🥂🍺🍹🍷🫗" },
+      { key:"물건", words:["물건","도구","선물","옷","패션","공부","시계","object"],
+        emojis:"🎀👑👒👓💄💍💎👔👙👠🎒🪮🥼🦺✏️✒️✂️⏰🔑🔨🪓⛏️⚒️🛠️🔪🗡️⚔️💣🪛💉🧺🧴🪒🧼🪣🚿🫧🪥🧽🧯🛒📢🎼🎤🎧📻🎹📺📷" },
+      { key:"표시", words:["표시","기호","금지","경고","최고","물음표","sign"],
+        emojis:"💯💢💥💤🔅📶⚠️🚸⛔🚫🔞📵🚷🚱🚯🚭🚳❓❔❕❗‼️⁉️〰️❌🔘🟠🔴🕳️💨🛗" },
+      { key:"무서움", words:["무서움","귀신","해골","외계인","좀비","horror"],
+        emojis:"💀💩👻👽👿😈🕳️" },
+    ];
+    const EMOJI_PICK_MAX_SECTIONS = 3;   // 한 번에 보여줄 묶음 수
+    const EMOJI_PICK_MAX_PER_SEC = 80;   // 묶음당 최대 이모지 수
+    const EMOJI_PICK_CMD_RE = /(?:^|\s)\/([^\s\/]*)$/;
+    let __emojiPickEl = null;
+
+    // V159의 이모지 정규식을 재사용해 문자열을 이모지 하나씩 쪼갠다.
+    function emojiPickSplit_(s){
+      try{
+        const re = chatEmojiSeqRe_();
+        if(re){
+          const arr = String(s || "").match(re);
+          if(arr && arr.length) return arr;
+        }
+      }catch(e){}
+      return Array.from(String(s || ""));
+    }
+
+    // 입력창 끝의 "/명령어"를 꺼낸다. "/"만 있으면 "", 명령어가 없으면 null.
+    function emojiPickCmd_(text){
+      try{
+        const m = String(text == null ? "" : text).match(EMOJI_PICK_CMD_RE);
+        return m ? m[1] : null;
+      }catch(e){ return null; }
+    }
+
+    function emojiPickMatchGroups_(q){
+      const s = String(q || "").trim().toLowerCase();
+      if(!s) return CHAT_EMOJI_GROUPS.slice();
+      const exact = [], partial = [];
+      for(const g of CHAT_EMOJI_GROUPS){
+        let hit = 0;
+        for(const w of [g.key].concat(g.words || [])){
+          const lw = String(w).toLowerCase();
+          if(!lw) continue;
+          if(lw.startsWith(s)){ hit = 2; break; }
+          if(lw.includes(s) || s.includes(lw)) hit = Math.max(hit, 1);
+        }
+        if(hit === 2) exact.push(g);
+        else if(hit === 1) partial.push(g);
+      }
+      return exact.concat(partial);
+    }
+
+    function closeEmojiPick_(){
+      try{ if(__emojiPickEl) __emojiPickEl.style.display = "none"; }catch(e){}
+    }
+
+    function ensureEmojiPickPanel_(){
+      try{
+        if(__emojiPickEl && __emojiPickEl.isConnected) return __emojiPickEl;
+        const row = els.chatInput ? els.chatInput.closest(".chatInputRow") : null;
+        if(!row || !row.parentNode) return null;
+        const el = document.createElement("div");
+        el.id = "emojiPickPanel";
+        el.className = "emojiPickPanel";
+        el.style.display = "none";
+        // 버튼을 눌러도 입력창 포커스가 풀리지 않게 (스크롤바 드래그는 막지 않음)
+        el.addEventListener("mousedown", (e)=>{
+          try{ if(e.target && e.target.closest && e.target.closest("button")) e.preventDefault(); }catch(_e){}
+        });
+        el.addEventListener("click", (e)=>{
+          const btn = e.target && e.target.closest ? e.target.closest("button") : null;
+          if(!btn || !el.contains(btn)) return;
+          e.preventDefault();
+          if(btn.hasAttribute("data-close")){ closeEmojiPick_(); return; }
+          if(btn.hasAttribute("data-emoji")){ emojiPickInsert_(btn.getAttribute("data-emoji")); return; }
+          if(btn.hasAttribute("data-group")){
+            const t = String(els.chatInput.value || "");
+            const m = t.match(EMOJI_PICK_CMD_RE);
+            const head = m ? t.slice(0, t.length - m[0].length) + (m[0].startsWith("/") ? "" : m[0].slice(0, 1)) : t;
+            els.chatInput.value = head + "/" + btn.getAttribute("data-group");
+            emojiPickSync_();
+            try{ els.chatInput.focus(); }catch(_e){}
+          }
+        });
+        row.parentNode.insertBefore(el, row);
+        __emojiPickEl = el;
+        return el;
+      }catch(e){ return null; }
+    }
+
+    function emojiPickInsert_(emo){
+      try{
+        const inp = els.chatInput;
+        if(!inp || !emo) return;
+        const t = String(inp.value || "");
+        const m = t.match(EMOJI_PICK_CMD_RE);
+        let next;
+        if(m){
+          const lead = m[0].startsWith("/") ? "" : m[0].slice(0, 1);
+          next = t.slice(0, t.length - m[0].length) + lead + emo;
+        }else{
+          next = t + emo;
+        }
+        inp.value = next;
+        closeEmojiPick_();
+        try{ inp.focus(); inp.setSelectionRange(next.length, next.length); }catch(e){}
+      }catch(e){}
+    }
+
+    function renderEmojiPick_(q){
+      try{
+        const el = ensureEmojiPickPanel_();
+        if(!el) return false;
+        const groups = emojiPickMatchGroups_(q);
+        const chips = CHAT_EMOJI_GROUPS
+          .map((g)=>`<button type="button" data-group="${escapeHtml(g.key)}">/${escapeHtml(g.key)}</button>`)
+          .join("");
+        const hint = groups.length
+          ? "이모지를 누르면 입력창에 들어가요"
+          : `“/${escapeHtml(String(q || ""))}”와 맞는 묶음이 없어요. 아래에서 골라보세요`;
+        const secs = groups.slice(0, EMOJI_PICK_MAX_SECTIONS).map((g)=>{
+          const list = emojiPickSplit_(g.emojis).slice(0, EMOJI_PICK_MAX_PER_SEC);
+          const cells = list
+            .map((e)=>`<button type="button" data-emoji="${escapeHtml(e)}" title="${escapeHtml(g.key)}">${escapeHtml(e)}</button>`)
+            .join("");
+          return `<div class="emojiPickSec"><div class="emojiPickTitle">/${escapeHtml(g.key)}</div><div class="emojiPickGrid">${cells}</div></div>`;
+        }).join("");
+        el.innerHTML =
+          `<div class="emojiPickHead"><span>${hint}</span><button type="button" class="emojiPickClose" data-close="1" aria-label="닫기">✕</button></div>` +
+          `<div class="emojiPickGroups">${chips}</div>` + secs;
+        el.style.display = "";
+        try{ el.scrollTop = 0; }catch(e){}
+        return true;
+      }catch(e){ return false; }
+    }
+
+    // 입력이 바뀔 때마다 패널을 열고 닫는다.
+    function emojiPickSync_(){
+      try{
+        if(!els.chatInput || els.chatInput.disabled){ closeEmojiPick_(); return; }
+        const q = emojiPickCmd_(els.chatInput.value);
+        if(q === null){ closeEmojiPick_(); return; }
+        renderEmojiPick_(q);
+      }catch(e){ closeEmojiPick_(); }
+    }
+
+    // "/하트"만 적고 엔터를 치면 전송 대신 보기를 띄운다. (IME/모바일 경로까지 한곳에서 처리)
+    function emojiPickHandleSend_(text){
+      try{
+        const t = String(text || "").trim();
+        if(!/^\/\S*$/.test(t)) return false;
+        const q = t.slice(1);
+        if(q && !emojiPickMatchGroups_(q).length) return false;  // 모르는 명령어는 평소대로 전송
+        return renderEmojiPick_(q);
+      }catch(e){ return false; }
+    }
+
     async function sendChat(){
       const text = (els.chatInput.value || "").trim();
       if(!text) return;
+
+      // ✅ V160: 이모지 고르기 명령어는 전송하지 않고 보기만 띄운다
+      if(emojiPickHandleSend_(text)) return;
 
       // ✅ 같은 내용이 아주 짧은 시간 안에 2번 트리거되면(Enter+click / IME / 모바일) 1번만 전송
       const __now = Date.now();
@@ -18518,7 +18702,7 @@ try{
     let __chatIsComposing = false;
     let __chatSendAfterCompose = false;
 
-    els.chatInput.addEventListener("input", ()=>{ try{ markTypingLock(); }catch(e){} }, {passive:true});
+    els.chatInput.addEventListener("input", ()=>{ try{ markTypingLock(); }catch(e){} try{ emojiPickSync_(); }catch(e){} }, {passive:true});
     els.chatInput.addEventListener("focus", ()=>{ try{ markTypingLock(); }catch(e){} }, {passive:true});
     els.chatInput.addEventListener("compositionstart", ()=>{
       try{ markTypingLock(); }catch(e){}
@@ -18527,6 +18711,7 @@ try{
     });
     els.chatInput.addEventListener("compositionend", ()=>{
       __chatIsComposing = false;
+      try{ emojiPickSync_(); }catch(e){}
       if(__chatSendAfterCompose){
         __chatSendAfterCompose = false;
         // 조합 확정 후 다음 틱에 전송 (한 번만)
@@ -18536,6 +18721,8 @@ try{
 
     els.chatInput.addEventListener("keydown", (e)=>{
       try{ markTypingLock(); }catch(err){}
+      // ✅ V160: Esc로 이모지 보기 닫기
+      if(e.key === "Escape"){ try{ closeEmojiPick_(); }catch(err){} return; }
       if(e.key !== "Enter") return;
 
 
@@ -20609,7 +20796,7 @@ if(!window.__MK_BOOT_OK__){
 <button id="sudaModalReload" type="button">새로고침</button>
 <button id="sudaModalClose" type="button">닫기</button>
 </div>
-<div id="sudaModalBody"><div class="hint">수다방은 <b>새 탭</b>에서 열려요.<br>버튼을 눌러 입장해 주세요 🥨</br></div></div>
+<div id="sudaModalBody"><div class="hint">수다방은 <b>새 탭</b>에서 열려요.<br>버튼을 눌러 입장해 주세요 🥨</div></div>
 </div>
 </div>
 <!-- PET_REWORK_V24_START: clean SVG pet system, 12 pets, 100h max growth -->
@@ -22991,6 +23178,58 @@ body.joined #dashboardCard .dashLinksBox{
     .msg.emojiOnly[data-emoji-count="1"] .text{ font-size:44px; }
     .msg.emojiOnly[data-emoji-count="2"] .text{ font-size:38px; }
     .msg.emojiOnly[data-emoji-count="3"] .text{ font-size:33px; }
+  }
+</style>
+
+
+<!-- V160_CHAT_EMOJI_PICKER: "/하트" 같은 명령어로 이모지 보기·고르기 -->
+<style id="v160ChatEmojiPicker">
+  /* 입력줄 바로 위에 끼어드는 패널. absolute가 아니라 흐름 안에 넣어서
+     좁은 사이드바/모바일 독에서도 잘리지 않게 함 */
+  .emojiPickPanel{
+    flex:0 0 auto !important;
+    margin:0 0 6px !important;
+    padding:8px;
+    border:1px solid rgba(255,182,214,.32);
+    border-radius:12px;
+    background:rgba(32,23,40,.97);
+    box-shadow:0 6px 18px rgba(0,0,0,.28);
+    max-height:190px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+  .emojiPickHead{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-size:11px; font-weight:900; color:rgba(255,255,255,.80);
+    margin-bottom:6px; line-height:1.3;
+  }
+  .emojiPickClose{
+    flex:0 0 auto; width:22px; height:22px; padding:0; line-height:1;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.26);
+    color:rgba(255,255,255,.9); border-radius:999px; cursor:pointer; font-weight:900;
+  }
+  .emojiPickGroups{ display:flex; flex-wrap:wrap; gap:4px; margin-bottom:2px; }
+  .emojiPickGroups button{
+    border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.88);
+    border-radius:999px; padding:3px 8px;
+    font-size:11px; font-weight:900; line-height:1.2; cursor:pointer;
+  }
+  .emojiPickGroups button:hover{ background:rgba(255,182,214,.20); }
+  .emojiPickSec{ margin-top:7px; }
+  .emojiPickTitle{ font-size:11px; font-weight:1000; color:#ffd2e7; margin-bottom:3px; }
+  .emojiPickGrid{ display:flex; flex-wrap:wrap; gap:2px; }
+  .emojiPickGrid button{
+    border:0; background:transparent; cursor:pointer;
+    font-size:22px; line-height:1.1; padding:3px; border-radius:8px;
+    min-width:32px; min-height:32px;
+  }
+  .emojiPickGrid button:hover{ background:rgba(255,182,214,.24); }
+  @media (max-width:520px){
+    .emojiPickPanel{ max-height:150px; padding:6px; }
+    .emojiPickGrid button{ font-size:20px; min-width:30px; min-height:30px; }
   }
 </style>
 
