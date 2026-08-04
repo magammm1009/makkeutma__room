@@ -5505,6 +5505,40 @@ body.joined #preJoinCard{ display:none; }
   .worldTreeAdminPreviewScene .worldTreeLevelOrb{top:12px;left:12px;min-width:92px;padding:8px 10px;}
   .worldTreeAdminPreviewScene .worldTreeLevelOrb b{font-size:18px;}
   .worldTreeAdminAtlas .worldTreeGrowthPreview{margin:10px 0 0;}
+  .worldTreeRank,.worldTreeRoster{margin-top:16px; padding:14px; border:1px solid rgba(255,255,255,.1); border-radius:15px; background:rgba(255,255,255,.035);}
+  .worldTreeRankHead,.worldTreeRosterHead{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:12px; font-size:11px; color:rgba(255,255,255,.6);}
+  .worldTreeRankHead b,.worldTreeRosterHead b{color:#fff; font-size:13px;}
+  .worldTreeRankHead span{font-variant-numeric:tabular-nums;}
+  .worldTreePodium{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:8px; align-items:end; list-style:none; margin:0; padding:0;}
+  .worldTreePodium li{min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; min-height:76px; padding:9px 7px; border:1px solid rgba(255,255,255,.1); border-radius:13px; background:rgba(255,255,255,.04); text-align:center; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease;}
+  .worldTreePodium li[data-place="1"]{order:2; min-height:92px; padding:12px 8px; border-color:rgba(255,214,120,.42); background:linear-gradient(180deg,rgba(255,214,120,.16),rgba(255,255,255,.04)); box-shadow:0 0 18px rgba(255,214,120,.16);}
+  .worldTreePodium li[data-place="2"]{order:1; border-color:rgba(226,232,240,.3); background:linear-gradient(180deg,rgba(226,232,240,.12),rgba(255,255,255,.035));}
+  .worldTreePodium li[data-place="3"]{order:3; border-color:rgba(212,150,101,.32); background:linear-gradient(180deg,rgba(212,150,101,.13),rgba(255,255,255,.035));}
+  .worldTreePodiumMedal{font-size:17px; line-height:1;}
+  .worldTreePodium li[data-place="1"] .worldTreePodiumMedal{font-size:21px;}
+  .worldTreePodiumRank{font-size:10px; font-weight:950; color:#e5d8ff; font-variant-numeric:tabular-nums;}
+  .worldTreePodiumName{max-width:100%; font-size:11px; font-weight:900; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .worldTreePodiumTime{font-size:10px; color:rgba(255,255,255,.6); font-variant-numeric:tabular-nums;}
+  .worldTreePodium li.isMe{box-shadow:0 0 0 2px var(--pink2);}
+  .worldTreeRankEmpty{padding:14px 0; text-align:center; font-size:10px; color:rgba(255,255,255,.5);}
+  .worldTreeMyRank{margin-top:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.04); font-size:11px; color:rgba(255,255,255,.7); line-height:1.5; font-variant-numeric:tabular-nums;}
+  .worldTreeRosterToggle{min-height:26px; padding:4px 12px; border-radius:999px; font-size:10px; font-weight:900; color:rgba(255,255,255,.66);}
+  .worldTreeRosterBody{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
+  .worldTreeRosterCol{min-width:0; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:13px;}
+  .worldTreeRosterCol[data-team="angel"]{background:linear-gradient(135deg,rgba(247,243,255,.07),rgba(153,121,219,.05)); border-color:rgba(222,208,255,.16);}
+  .worldTreeRosterCol[data-team="demon"]{background:linear-gradient(135deg,rgba(77,5,17,.24),rgba(255,55,82,.045)); border-color:rgba(255,76,101,.15);}
+  .worldTreeRosterColHead{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10px; color:rgba(255,255,255,.55);}
+  .worldTreeRosterColHead b{font-size:11px; color:#fff;}
+  .worldTreeRosterColHead span{font-variant-numeric:tabular-nums;}
+  .worldTreeRosterList{list-style:none; margin:6px 0 0; padding:0; display:grid; gap:5px; max-height:210px; overflow:auto;}
+  .worldTreeRosterList li{min-width:0; display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:10px; background:rgba(255,255,255,.04); font-size:10px; color:rgba(255,255,255,.72); transition:box-shadow .18s ease;}
+  .worldTreeRosterNo{flex:0 0 auto; min-width:13px; color:rgba(255,255,255,.4); font-variant-numeric:tabular-nums;}
+  .worldTreeRosterName{flex:1 1 auto; min-width:0; color:#fff; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .worldTreeRosterWave{flex:0 0 auto; padding:1px 6px; border-radius:999px; background:rgba(205,182,255,.14); color:#cdb6ff; font-size:9px; font-weight:900;}
+  .worldTreeRosterTime{flex:0 0 auto; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.6);}
+  .worldTreeRosterList li.isMe{box-shadow:0 0 0 2px var(--pink2);}
+  .worldTreeRosterEmpty{justify-content:center; color:rgba(255,255,255,.42); background:transparent;}
+  body.mkLowSpecMode .worldTreePodium li{box-shadow:none!important;}
   body.mkLowSpecMode .worldTreeScene::before,body.mkLowSpecMode .worldTreeAura,body.mkLowSpecMode .worldTreeEffects,body.mkLowSpecMode .worldTreeCompletionAura{display:none;}
   @media (max-width:780px){
     #worldTreeModal .worldTreeModalPanel{max-height:calc(100vh - 16px); width:calc(100vw - 16px);}
@@ -5518,8 +5552,10 @@ body.joined #preJoinCard{ display:none; }
     .worldTreePanel{padding:17px;}
     .worldTreePanel h2{font-size:21px;}
     .worldTreeAdminPair{grid-template-columns:1fr;}
+    .worldTreeRosterBody{grid-template-columns:1fr;}
+    .worldTreeRosterList{max-height:170px;}
   }
-  @media (prefers-reduced-motion:reduce){.worldTreeGauge > i{transition:none;}.worldTreeSparkles i,.worldTreeButterfly,.worldTreeButterfly::before,.worldTreeButterfly::after,.worldTreeCompletionAura{animation:none!important;}}
+  @media (prefers-reduced-motion:reduce){.worldTreeGauge > i{transition:none;}.worldTreePodium li,.worldTreeRosterList li{transition:none;}.worldTreeSparkles i,.worldTreeButterfly,.worldTreeButterfly::before,.worldTreeButterfly::after,.worldTreeCompletionAura{animation:none!important;}}
 </style>
 </head>
 <body>
@@ -5632,7 +5668,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="dashSuccess" title="오늘 미션 성공 인원">👑 <span id="missionSuccessCount">0</span></div>
 <button class="dashFoldBtn dashFoldBtnSmall" id="dashFoldBtn" title="현황/바로가기 접기/펼치기" type="button">
 <span id="dashFoldIcon">▴</span>
-<span class="dashFoldTxt">접기</span>
+<span class="dashFoldTxt" id="dashFoldTxt">접기</span>
 </button>
 </div>
 </div>
@@ -6019,6 +6055,28 @@ body.joined #preJoinCard{ display:none; }
 <div class="worldTreeGaugeLine"><strong id="worldTreeAngelGaugeName">🤍 천사</strong><div class="worldTreeGauge" role="progressbar" id="worldTreeAngelGauge" aria-label="천사팀 현재 레벨 진행률"><i id="worldTreeAngelBar"></i></div><output id="worldTreeAngelHours">0 / 100h</output></div>
 <div class="worldTreeGaugeLine"><strong id="worldTreeDemonGaugeName">🖤 악마</strong><div class="worldTreeGauge" role="progressbar" id="worldTreeDemonGauge" aria-label="악마팀 현재 레벨 진행률"><i id="worldTreeDemonBar"></i></div><output id="worldTreeDemonHours">0 / 100h</output></div>
 <div class="worldTreeClaims"><div class="worldTreeClaim"><span id="worldTreeAngelClaimLabel">천사팀 선점</span><b id="worldTreeAngelClaims">0</b></div><div class="worldTreeClaim"><span id="worldTreeDemonClaimLabel">악마팀 선점</span><b id="worldTreeDemonClaims">0</b></div></div>
+</div>
+<div class="worldTreeRank" id="worldTreeRank">
+<div class="worldTreeRankHead"><b>🏆 누적 기여 랭킹</b><span id="worldTreeRankTotal">참여 0명</span></div>
+<ol class="worldTreePodium" id="worldTreePodium"></ol>
+<div class="worldTreeRankEmpty" id="worldTreeRankEmpty">아직 기여 기록이 없어요 · 팀에 합류해 작업하면 순위가 생겨요</div>
+<div class="worldTreeMyRank" id="worldTreeMyRank">팀에 합류하면 내 순위가 표시돼요.</div>
+</div>
+<div class="worldTreeRoster" id="worldTreeRoster">
+<div class="worldTreeRosterHead">
+<b>🧑‍🤝‍🧑 팀 멤버</b>
+<button class="ghost worldTreeRosterToggle" id="worldTreeRosterToggle" type="button" aria-expanded="true" aria-controls="worldTreeRosterBody">접기</button>
+</div>
+<div class="worldTreeRosterBody" id="worldTreeRosterBody">
+<div class="worldTreeRosterCol" data-team="angel">
+<div class="worldTreeRosterColHead"><b id="worldTreeRosterAngelName">🤍 천사팀</b><span id="worldTreeRosterAngelCount">0/30</span></div>
+<ol class="worldTreeRosterList" id="worldTreeRosterAngelList"></ol>
+</div>
+<div class="worldTreeRosterCol" data-team="demon">
+<div class="worldTreeRosterColHead"><b id="worldTreeRosterDemonName">🖤 악마팀</b><span id="worldTreeRosterDemonCount">0/30</span></div>
+<ol class="worldTreeRosterList" id="worldTreeRosterDemonList"></ol>
+</div>
+</div>
 </div>
 <div class="worldTreeRules" id="worldTreeRules">각 레벨에서 목표 시간을 먼저 채운 팀이 그 레벨을 선점합니다. 선점과 동시에 양 팀의 다음 레벨 경쟁이 새로 시작되며, 마지막 레벨에서 더 많은 레벨을 선점한 팀의 계열로 세계수가 완성됩니다.</div>
 </section>
@@ -20910,14 +20968,19 @@ joinRoom();
       try{ applyCompactMode(false); }catch(e){}
       await shutDownHeavyViewsV143();
     }else{
+      // ✅ 이전 보기 복원은 "저사양을 실제로 벗어날 때"만 한다.
+      // 부팅 때도 이 분기를 타는데, 그때까지 복원을 돌리면 저장해 둔 미니 보기가 매번 기본 보기로 덮여 초기화된다.
+      const wasLowSpec = document.body.classList.contains("mkLowSpecMode");
       document.body.classList.remove("lowPerfMode", "mkLowSpecMode");
       try{ applyCompactMode(false); }catch(e){}
-      try{
-        const prev = localStorage.getItem(LS_LOW_SPEC_PREV_LAYOUT_V143) || "default";
-        const safe = (prev === "compact5") ? "compact5" : "default";
-        setLayoutMode(safe);
-        applyLayoutMode(safe);
-      }catch(e){}
+      if(wasLowSpec){
+        try{
+          const prev = localStorage.getItem(LS_LOW_SPEC_PREV_LAYOUT_V143) || "default";
+          const safe = (prev === "compact5") ? "compact5" : "default";
+          setLayoutMode(safe);
+          applyLayoutMode(safe);
+        }catch(e){}
+      }
     }
 
     syncLowSpecBtnV143(on);
@@ -21129,7 +21192,8 @@ joinRoom();
     previewAlignment:"angel",
     lastObservedDay:"",
     lastObservedSec:-1,
-    lastErrorAt:0
+    lastErrorAt:0,
+    rosterCollapsed:false
   };
 
   function rWorldTreeS2Ref(roomId){
@@ -21169,7 +21233,10 @@ joinRoom();
     const members={};
     Object.entries(rawMembers).forEach(([uid,member])=>{
       if(!member || (member.team!=="angel" && member.team!=="demon")) return;
-      members[String(uid)]=Object.assign({},member,{team:member.team});
+      members[String(uid)]=Object.assign({},member,{
+        team:member.team,
+        contribSec:Math.max(0,Math.floor(Number(member.contribSec)||0))
+      });
     });
     ["angel","demon"].forEach(team=>{
       Object.entries(members).filter(([,m])=>m.team===team).sort((a,b)=>(Number(a[1].joinedAtMs)||0)-(Number(b[1].joinedAtMs)||0)||a[0].localeCompare(b[0])).forEach(([,m],index)=>{
@@ -21425,6 +21492,109 @@ joinRoom();
     };
     Object.entries(adminValues).forEach(([id,value])=>{ const input=document.getElementById(id); if(input&&document.activeElement!==input) input.value=value; });
     setText("worldTreeAdminStatus",`${content.treeName} · 현재 Lv.${tree.level.toLocaleString("ko-KR")} / ${max.toLocaleString("ko-KR")} · 팀별 ${capacity.angel}/${capacity.demon}명 · 레벨당 ${tree.config.hoursPerLevel}시간`);
+    renderWorldTreeRanking_(tree);
+    renderWorldTreeRoster_(tree);
+  }
+
+  // ----- 팀 멤버 목록 / 개인 누적 기여 랭킹 -----
+  function worldTreeMemberRows_(tree){
+    const myUid=String(state.uid||"");
+    return Object.entries(tree?.members||{})
+      .filter(([,m])=>m && (m.team==="angel"||m.team==="demon"))
+      .map(([uid,m])=>({
+        uid:String(uid),
+        name:String(m.name||"익명"),
+        team:m.team,
+        wave:Math.max(1,Math.min(WORLD_TREE_TEAM_MAX_WAVES,Number(m.wave)||1)),
+        contribSec:Math.max(0,Math.floor(Number(m.contribSec)||0)),
+        joinedAtMs:Number(m.joinedAtMs)||0,
+        isMe:String(uid)===myUid
+      }));
+  }
+  function worldTreeRankSpan_(className,text){
+    const span=document.createElement("span");
+    if(className) span.className=className;
+    span.textContent=text;
+    return span;
+  }
+  function renderWorldTreeRoster_(tree){
+    const rows=worldTreeMemberRows_(tree);
+    const content=tree?.config?.content||{};
+    const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
+    setText("worldTreeRosterAngelName",`🤍 ${content.angelTeamName||"천사팀"}`);
+    setText("worldTreeRosterDemonName",`🖤 ${content.demonTeamName||"악마팀"}`);
+    [["angel","worldTreeRosterAngelList","worldTreeRosterAngelCount"],["demon","worldTreeRosterDemonList","worldTreeRosterDemonCount"]].forEach(([team,listId,countId])=>{
+      const list=document.getElementById(listId);
+      const mates=rows.filter(r=>r.team===team).sort((a,b)=>(a.joinedAtMs-b.joinedAtMs)||a.uid.localeCompare(b.uid));
+      setText(countId,`${mates.length}/${WORLD_TREE_TEAM_MAX_MEMBERS}`);
+      if(!list) return;
+      list.textContent="";
+      if(!mates.length){
+        const empty=document.createElement("li");
+        empty.className="worldTreeRosterEmpty";
+        empty.textContent="아직 합류한 작가가 없어요";
+        list.appendChild(empty);
+        return;
+      }
+      mates.forEach((row,index)=>{
+        const li=document.createElement("li");
+        if(row.isMe) li.classList.add("isMe");
+        li.appendChild(worldTreeRankSpan_("worldTreeRosterNo",String(index+1)));
+        li.appendChild(worldTreeRankSpan_("worldTreeRosterName",row.isMe?`${row.name} (나)`:row.name));
+        li.appendChild(worldTreeRankSpan_("worldTreeRosterWave",`${row.wave}차`));
+        li.appendChild(worldTreeRankSpan_("worldTreeRosterTime",`${worldTreeHoursText_(row.contribSec)}h`));
+        list.appendChild(li);
+      });
+    });
+    applyWorldTreeRosterCollapsed_();
+  }
+  function applyWorldTreeRosterCollapsed_(){
+    const body=document.getElementById("worldTreeRosterBody");
+    const button=document.getElementById("worldTreeRosterToggle");
+    const collapsed=!!worldTreeS2Runtime.rosterCollapsed;
+    if(body) body.style.display=collapsed?"none":"";
+    if(button){
+      button.textContent=collapsed?"펼치기":"접기";
+      button.setAttribute("aria-expanded",String(!collapsed));
+    }
+  }
+  function renderWorldTreeRanking_(tree){
+    const rows=worldTreeMemberRows_(tree);
+    const ranked=rows.filter(r=>r.contribSec>0).sort((a,b)=>(b.contribSec-a.contribSec)||(a.joinedAtMs-b.joinedAtMs)||a.uid.localeCompare(b.uid));
+    // 표준 경쟁 순위: 같은 기여 시간이면 같은 순위, 다음 순위는 건너뛴다(1,1,3).
+    let lastSec=null;
+    let lastRank=0;
+    ranked.forEach((row,index)=>{
+      if(lastSec!==null && row.contribSec===lastSec){ row.rank=lastRank; }
+      else { row.rank=index+1; lastRank=row.rank; lastSec=row.contribSec; }
+    });
+    const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
+    setText("worldTreeRankTotal",`기여 ${ranked.length}명 / 참여 ${rows.length}명`);
+    const podium=document.getElementById("worldTreePodium");
+    if(podium){
+      podium.textContent="";
+      ranked.slice(0,3).forEach((row,index)=>{
+        const li=document.createElement("li");
+        li.dataset.place=String(index+1);
+        if(row.isMe) li.classList.add("isMe");
+        // 공동 순위(1,1,3)에서는 자리 순서가 아니라 실제 순위에 맞는 메달을 준다.
+        li.appendChild(worldTreeRankSpan_("worldTreePodiumMedal",["🥇","🥈","🥉"][Math.max(0,Math.min(2,(Number(row.rank)||1)-1))]||"🏅"));
+        li.appendChild(worldTreeRankSpan_("worldTreePodiumRank",`${row.rank}위`));
+        li.appendChild(worldTreeRankSpan_("worldTreePodiumName",`${row.team==="angel"?"🤍":"🖤"} ${row.name}`));
+        li.appendChild(worldTreeRankSpan_("worldTreePodiumTime",`${worldTreeHoursText_(row.contribSec)}h`));
+        podium.appendChild(li);
+      });
+    }
+    const empty=document.getElementById("worldTreeRankEmpty");
+    if(empty) empty.style.display=ranked.length?"none":"";
+    const myRankEl=document.getElementById("worldTreeMyRank");
+    if(myRankEl){
+      const me=rows.find(r=>r.isMe)||null;
+      const mine=ranked.find(r=>r.isMe)||null;
+      if(!me) myRankEl.textContent="팀에 합류하면 내 순위가 표시돼요.";
+      else if(!mine) myRankEl.textContent="아직 기여 시간이 없어요 · 작업중 상태로 시간을 쌓으면 순위에 올라가요";
+      else myRankEl.textContent=`내 순위 ${mine.rank}위 / ${ranked.length}명 · 누적 ${worldTreeHoursText_(mine.contribSec)}h`;
+    }
   }
 
   function stopWorldTreeS2Realtime_(){
@@ -21503,6 +21673,7 @@ joinRoom();
           team,
           name:normalizeNick(state.nickname||els.name?.value||"익명"),
           joinedAtMs:Number(tree.members?.[uid]?.joinedAtMs)||Date.now(),
+          contribSec:Math.max(0,Math.floor(Number(tree.members?.[uid]?.contribSec)||0)),
           wave:capacity.wave,
           selectionId:requestId,
           updatedAtMs:Date.now()
@@ -21541,7 +21712,7 @@ joinRoom();
     if(tree0.level>=tree0.config.maxLevel){ showToast("세계수가 완성된 뒤에는 팀을 취소할 수 없어요",3000); return; }
     const labels=tree0.config.content;
     const teamName=team==="angel"?labels.angelTeamName:labels.demonTeamName;
-    if(!confirm(`${teamName} 선택을 취소할까요?\n\n지금까지 보탠 시간과 레벨 기록은 팀에 그대로 남아요.\n취소 후에는 작업 시간이 어느 팀에도 쌓이지 않고, 다시 아무 팀이나 고를 수 있어요.`)) return;
+    if(!confirm(`${teamName} 선택을 취소할까요?\n\n지금까지 보탠 시간과 레벨 기록은 팀에 그대로 남아요.\n다만 내 개인 누적 기여 랭킹 기록은 초기화돼요.\n취소 후에는 작업 시간이 어느 팀에도 쌓이지 않고, 다시 아무 팀이나 고를 수 있어요.`)) return;
 
     const button=document.getElementById("worldTreeTeamCancel");
     if(button) button.disabled=true;
@@ -21623,6 +21794,8 @@ joinRoom();
           team:memberTeam,
           name:normalizeNick(state.nickname||els.name?.value||member?.name||"익명"),
           joinedAtMs:Number(member?.joinedAtMs)||Date.now(),
+          // 개인 누적 기여는 만렙 이후에도 계속 쌓는다(개인 작업 기록이므로 applyWorldTreeContribution_의 조기 return과 무관).
+          contribSec:Math.max(0,Math.floor(Number(member?.contribSec)||0))+Math.max(0,Math.floor(Number(delta)||0)),
           wave:Math.max(1,Math.min(WORLD_TREE_TEAM_MAX_WAVES,Number(member?.wave)||1)),
           selectionId:String(member?.selectionId||"").slice(0,100),
           updatedAtMs:Date.now()
@@ -21714,6 +21887,10 @@ joinRoom();
     document.getElementById("worldTreeAngelTeam")?.addEventListener("click",()=>selectWorldTreeTeam_("angel"));
     document.getElementById("worldTreeDemonTeam")?.addEventListener("click",()=>selectWorldTreeTeam_("demon"));
     document.getElementById("worldTreeTeamCancel")?.addEventListener("click",()=>{ cancelWorldTreeTeam_().catch(()=>{}); });
+    document.getElementById("worldTreeRosterToggle")?.addEventListener("click",()=>{
+      worldTreeS2Runtime.rosterCollapsed=!worldTreeS2Runtime.rosterCollapsed;
+      applyWorldTreeRosterCollapsed_();
+    });
     document.getElementById("worldTreePreviewRange")?.addEventListener("input",(ev)=>{
       if(!state.adminOk) return;
       worldTreeS2Runtime.previewLevel=Math.max(0,Math.round(Number(ev.target?.value)||0));
