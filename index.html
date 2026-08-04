@@ -5509,16 +5509,27 @@ body.joined #preJoinCard{ display:none; }
   .worldTreeRankHead,.worldTreeRosterHead{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:12px; font-size:11px; color:rgba(255,255,255,.6);}
   .worldTreeRankHead b,.worldTreeRosterHead b{color:#fff; font-size:13px;}
   .worldTreeRankHead span{font-variant-numeric:tabular-nums;}
-  .worldTreePodium{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:8px; align-items:end; list-style:none; margin:0; padding:0;}
-  .worldTreePodium li{min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; min-height:76px; padding:9px 7px; border:1px solid rgba(255,255,255,.1); border-radius:13px; background:rgba(255,255,255,.04); text-align:center; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease;}
-  .worldTreePodium li[data-place="1"]{order:2; min-height:92px; padding:12px 8px; border-color:rgba(255,214,120,.42); background:linear-gradient(180deg,rgba(255,214,120,.16),rgba(255,255,255,.04)); box-shadow:0 0 18px rgba(255,214,120,.16);}
-  .worldTreePodium li[data-place="2"]{order:1; border-color:rgba(226,232,240,.3); background:linear-gradient(180deg,rgba(226,232,240,.12),rgba(255,255,255,.035));}
-  .worldTreePodium li[data-place="3"]{order:3; border-color:rgba(212,150,101,.32); background:linear-gradient(180deg,rgba(212,150,101,.13),rgba(255,255,255,.035));}
-  .worldTreePodiumMedal{font-size:17px; line-height:1;}
-  .worldTreePodium li[data-place="1"] .worldTreePodiumMedal{font-size:21px;}
-  .worldTreePodiumRank{font-size:10px; font-weight:950; color:#e5d8ff; font-variant-numeric:tabular-nums;}
-  .worldTreePodiumName{max-width:100%; font-size:11px; font-weight:900; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .worldTreePodiumTime{font-size:10px; color:rgba(255,255,255,.6); font-variant-numeric:tabular-nums;}
+  /* 내 팀 TOP3와 상대팀 TOP3를 한 줄에 나란히 둔다. 각 팀은 1위가 크고 2·3위가 작은 시상대 형태다. */
+  .worldTreePodiumWrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
+  .worldTreePodiumGroup{min-width:0;}
+  .worldTreePodiumGroupHead{display:flex; align-items:center; justify-content:space-between; gap:5px; margin-bottom:6px;}
+  .worldTreePodiumGroupHead b{min-width:0; font-size:10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .worldTreePodiumTag{flex:0 0 auto; padding:1px 6px; border-radius:999px; background:rgba(205,182,255,.14); color:#cdb6ff; font-size:8px; font-weight:950;}
+  .worldTreePodiumGroup[data-side="theirs"] .worldTreePodiumTag{background:rgba(255,255,255,.07); color:rgba(255,255,255,.5);}
+  .worldTreePodium{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,.9fr); gap:4px; align-items:end; list-style:none; margin:0; padding:0;}
+  .worldTreePodium li{min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:2px; min-height:64px; padding:7px 2px; border:1px solid rgba(255,255,255,.1); border-radius:11px; background:rgba(255,255,255,.04); text-align:center; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease;}
+  .worldTreePodium li[data-place="1"]{min-height:86px; padding:10px 5px; border-radius:13px; border-color:rgba(255,214,120,.42); background:linear-gradient(180deg,rgba(255,214,120,.16),rgba(255,255,255,.04)); box-shadow:0 0 18px rgba(255,214,120,.16);}
+  .worldTreePodiumGroup[data-side="theirs"] .worldTreePodium li[data-place="1"]{border-color:rgba(255,214,120,.22); background:linear-gradient(180deg,rgba(255,214,120,.08),rgba(255,255,255,.035)); box-shadow:none;}
+  .worldTreePodium li[data-place="2"]{border-color:rgba(226,232,240,.3); background:linear-gradient(180deg,rgba(226,232,240,.12),rgba(255,255,255,.035));}
+  .worldTreePodium li[data-place="3"]{border-color:rgba(212,150,101,.32); background:linear-gradient(180deg,rgba(212,150,101,.13),rgba(255,255,255,.035));}
+  .worldTreePodium li.isEmpty{grid-column:1/-1; min-height:52px; justify-content:center; border-style:dashed; background:transparent; color:rgba(255,255,255,.42); font-size:10px;}
+  .worldTreePodiumMedal{font-size:14px; line-height:1;}
+  .worldTreePodium li[data-place="1"] .worldTreePodiumMedal{font-size:19px;}
+  .worldTreePodiumRank{font-size:9px; font-weight:950; color:#e5d8ff; font-variant-numeric:tabular-nums;}
+  .worldTreePodiumName{max-width:100%; font-size:9px; font-weight:900; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .worldTreePodium li[data-place="1"] .worldTreePodiumName{font-size:11px;}
+  .worldTreePodiumTime{font-size:9px; color:rgba(255,255,255,.6); font-variant-numeric:tabular-nums;}
+  .worldTreePodium li[data-place="1"] .worldTreePodiumTime{font-size:10px;}
   .worldTreePodium li.isMe{box-shadow:0 0 0 2px var(--pink2);}
   .worldTreeRankEmpty{padding:14px 0; text-align:center; font-size:10px; color:rgba(255,255,255,.5);}
   .worldTreeMyRank{margin-top:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.04); font-size:11px; color:rgba(255,255,255,.7); line-height:1.5; font-variant-numeric:tabular-nums;}
@@ -5554,6 +5565,7 @@ body.joined #preJoinCard{ display:none; }
     .worldTreeAdminPair{grid-template-columns:1fr;}
     .worldTreeRosterBody{grid-template-columns:1fr;}
     .worldTreeRosterList{max-height:170px;}
+    .worldTreePodiumWrap{grid-template-columns:1fr;}
   }
   @media (prefers-reduced-motion:reduce){.worldTreeGauge > i{transition:none;}.worldTreePodium li,.worldTreeRosterList li{transition:none;}.worldTreeSparkles i,.worldTreeButterfly,.worldTreeButterfly::before,.worldTreeButterfly::after,.worldTreeCompletionAura{animation:none!important;}}
 </style>
@@ -6058,7 +6070,16 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="worldTreeRank" id="worldTreeRank">
 <div class="worldTreeRankHead"><b>🏆 누적 기여 랭킹</b><span id="worldTreeRankTotal">참여 0명</span></div>
-<ol class="worldTreePodium" id="worldTreePodium"></ol>
+<div class="worldTreePodiumWrap" id="worldTreePodiumWrap">
+<div class="worldTreePodiumGroup" data-side="mine">
+<div class="worldTreePodiumGroupHead"><b id="worldTreePodiumMineName">🤍 천사팀</b><span class="worldTreePodiumTag" id="worldTreePodiumMineTag">내 팀</span></div>
+<ol class="worldTreePodium" id="worldTreePodiumMineList"></ol>
+</div>
+<div class="worldTreePodiumGroup" data-side="theirs">
+<div class="worldTreePodiumGroupHead"><b id="worldTreePodiumTheirsName">🖤 악마팀</b><span class="worldTreePodiumTag" id="worldTreePodiumTheirsTag">상대팀</span></div>
+<ol class="worldTreePodium" id="worldTreePodiumTheirsList"></ol>
+</div>
+</div>
 <div class="worldTreeRankEmpty" id="worldTreeRankEmpty">아직 기여 기록이 없어요 · 팀에 합류해 작업하면 순위가 생겨요</div>
 <div class="worldTreeMyRank" id="worldTreeMyRank">팀에 합류하면 내 순위가 표시돼요.</div>
 </div>
@@ -21558,42 +21579,74 @@ joinRoom();
       button.setAttribute("aria-expanded",String(!collapsed));
     }
   }
-  function renderWorldTreeRanking_(tree){
-    const rows=worldTreeMemberRows_(tree);
-    const ranked=rows.filter(r=>r.contribSec>0).sort((a,b)=>(b.contribSec-a.contribSec)||(a.joinedAtMs-b.joinedAtMs)||a.uid.localeCompare(b.uid));
+  function worldTreeRankTeam_(rows,team){
+    const list=rows.filter(r=>r.team===team && r.contribSec>0)
+      .sort((a,b)=>(b.contribSec-a.contribSec)||(a.joinedAtMs-b.joinedAtMs)||a.uid.localeCompare(b.uid));
     // 표준 경쟁 순위: 같은 기여 시간이면 같은 순위, 다음 순위는 건너뛴다(1,1,3).
     let lastSec=null;
     let lastRank=0;
-    ranked.forEach((row,index)=>{
+    list.forEach((row,index)=>{
       if(lastSec!==null && row.contribSec===lastSec){ row.rank=lastRank; }
       else { row.rank=index+1; lastRank=row.rank; lastSec=row.contribSec; }
     });
-    const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
-    setText("worldTreeRankTotal",`기여 ${ranked.length}명 / 참여 ${rows.length}명`);
-    const podium=document.getElementById("worldTreePodium");
-    if(podium){
-      podium.textContent="";
-      ranked.slice(0,3).forEach((row,index)=>{
-        const li=document.createElement("li");
-        li.dataset.place=String(index+1);
-        if(row.isMe) li.classList.add("isMe");
-        // 공동 순위(1,1,3)에서는 자리 순서가 아니라 실제 순위에 맞는 메달을 준다.
-        li.appendChild(worldTreeRankSpan_("worldTreePodiumMedal",["🥇","🥈","🥉"][Math.max(0,Math.min(2,(Number(row.rank)||1)-1))]||"🏅"));
-        li.appendChild(worldTreeRankSpan_("worldTreePodiumRank",`${row.rank}위`));
-        li.appendChild(worldTreeRankSpan_("worldTreePodiumName",`${row.team==="angel"?"🤍":"🖤"} ${row.name}`));
-        li.appendChild(worldTreeRankSpan_("worldTreePodiumTime",`${worldTreeHoursText_(row.contribSec)}h`));
-        podium.appendChild(li);
-      });
+    return list;
+  }
+  function renderWorldTreePodiumGroup_(listId,entries){
+    const list=document.getElementById(listId);
+    if(!list) return;
+    list.textContent="";
+    if(!entries.length){
+      const li=document.createElement("li");
+      li.className="isEmpty";
+      li.textContent="아직 기여 기록이 없어요";
+      list.appendChild(li);
+      return;
     }
+    entries.slice(0,3).forEach((row,index)=>{
+      const li=document.createElement("li");
+      li.dataset.place=String(index+1);
+      if(row.isMe) li.classList.add("isMe");
+      // 공동 순위(1,1,3)에서는 자리 순서가 아니라 실제 순위에 맞는 메달을 준다.
+      li.appendChild(worldTreeRankSpan_("worldTreePodiumMedal",["🥇","🥈","🥉"][Math.max(0,Math.min(2,(Number(row.rank)||1)-1))]||"🏅"));
+      li.appendChild(worldTreeRankSpan_("worldTreePodiumRank",`${row.rank}위`));
+      li.appendChild(worldTreeRankSpan_("worldTreePodiumName",row.isMe?`${row.name} (나)`:row.name));
+      li.appendChild(worldTreeRankSpan_("worldTreePodiumTime",`${worldTreeHoursText_(row.contribSec)}h`));
+      list.appendChild(li);
+    });
+  }
+  function renderWorldTreeRanking_(tree){
+    const rows=worldTreeMemberRows_(tree);
+    const content=tree?.config?.content||{};
+    const myTeam=worldTreeSelectedTeam_();
+    // 팀을 아직 안 골랐으면 현재 우세 계열을 왼쪽에 둔다(대시보드 미니 카드와 같은 기준).
+    const overall=worldTreeAlignment_(tree);
+    const mineTeam=(myTeam==="angel"||myTeam==="demon")?myTeam:(overall==="demon"?"demon":"angel");
+    const theirsTeam=mineTeam==="angel"?"demon":"angel";
+    const label=(t)=>t==="angel"?`🤍 ${content.angelTeamName||"천사팀"}`:`🖤 ${content.demonTeamName||"악마팀"}`;
+    const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
+    setText("worldTreePodiumMineName",label(mineTeam));
+    setText("worldTreePodiumTheirsName",label(theirsTeam));
+    // 팀을 고르기 전에는 "내 팀 / 상대팀" 딱지가 사실과 다르므로 숨긴다.
+    const joined=myTeam==="angel"||myTeam==="demon";
+    ["worldTreePodiumMineTag","worldTreePodiumTheirsTag"].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=joined?"":"none"; });
+    const mineList=worldTreeRankTeam_(rows,mineTeam);
+    const theirsList=worldTreeRankTeam_(rows,theirsTeam);
+    const total=mineList.length+theirsList.length;
+    setText("worldTreeRankTotal",`기여 ${total}명 / 참여 ${rows.length}명`);
+    renderWorldTreePodiumGroup_("worldTreePodiumMineList",mineList);
+    renderWorldTreePodiumGroup_("worldTreePodiumTheirsList",theirsList);
+    const wrap=document.getElementById("worldTreePodiumWrap");
+    if(wrap) wrap.style.display=total?"":"none";
     const empty=document.getElementById("worldTreeRankEmpty");
-    if(empty) empty.style.display=ranked.length?"none":"";
+    if(empty) empty.style.display=total?"none":"";
     const myRankEl=document.getElementById("worldTreeMyRank");
     if(myRankEl){
       const me=rows.find(r=>r.isMe)||null;
-      const mine=ranked.find(r=>r.isMe)||null;
+      const myList=me&&me.team===theirsTeam?theirsList:mineList;
+      const mine=me?myList.find(r=>r.isMe)||null:null;
       if(!me) myRankEl.textContent="팀에 합류하면 내 순위가 표시돼요.";
       else if(!mine) myRankEl.textContent="아직 기여 시간이 없어요 · 작업중 상태로 시간을 쌓으면 순위에 올라가요";
-      else myRankEl.textContent=`내 순위 ${mine.rank}위 / ${ranked.length}명 · 누적 ${worldTreeHoursText_(mine.contribSec)}h`;
+      else myRankEl.textContent=`내 순위 ${label(me.team)} ${mine.rank}위 / ${myList.length}명 · 누적 ${worldTreeHoursText_(mine.contribSec)}h`;
     }
   }
 
