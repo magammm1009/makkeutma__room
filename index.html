@@ -6441,6 +6441,44 @@ body.joined #preJoinCard{ display:none; }
     // 고정 룸 아이디 (통일)
     // -----------------------------
     const FIXED_ROOM_ID = "magamm";
+
+    // ✅ V166 진단 기록기: "접속은 되어 있는데 채팅이 안 가고 유령처럼 보이는" 현상 추적용.
+    // 증상이 나는 순간 콘솔을 놓치거나 새로고침해도 원인이 남도록, 실패 사건만
+    // localStorage에 최근 80건까지 적어 둔다. 네트워크를 전혀 쓰지 않는다.
+    // 보는 법: F12 콘솔에서  __MK_DIAG__()   / 지우기:  __MK_DIAG_CLEAR__()
+    const MK_DIAG_KEY = "mk_diag_v1";
+    const MK_DIAG_MAX = 80;
+    function mkDiag(tag, detail){
+      try{
+        let arr = [];
+        try{ arr = JSON.parse(localStorage.getItem(MK_DIAG_KEY) || "[]"); }catch(_e){ arr = []; }
+        if(!Array.isArray(arr)) arr = [];
+        arr.push({
+          t: new Date().toLocaleString("ko-KR", { hour12:false }),
+          tag: String(tag || ""),
+          d: String(detail == null ? "" : detail).slice(0, 300)
+        });
+        if(arr.length > MK_DIAG_MAX) arr = arr.slice(-MK_DIAG_MAX);
+        localStorage.setItem(MK_DIAG_KEY, JSON.stringify(arr));
+      }catch(_e){}
+    }
+    function mkErrText(e){
+      try{
+        if(!e) return "";
+        return [e.code, e.message].filter(Boolean).join(" | ") || String(e);
+      }catch(_e){ return "unknown"; }
+    }
+    try{
+      window.__MK_DIAG__ = function(){
+        let arr = [];
+        try{ arr = JSON.parse(localStorage.getItem(MK_DIAG_KEY) || "[]"); }catch(_e){}
+        if(!Array.isArray(arr) || !arr.length){ console.log("진단 기록이 없습니다(=실패한 적 없음)."); return []; }
+        console.log(`=== 마끝마 진단 기록 ${arr.length}건 (오래된 것부터) ===`);
+        arr.forEach(r=>console.log(r.t, "|", r.tag, "|", r.d));
+        return arr;
+      };
+      window.__MK_DIAG_CLEAR__ = function(){ try{ localStorage.removeItem(MK_DIAG_KEY); }catch(_e){} return "지웠습니다"; };
+    }catch(_e){}
     // -----------------------------
     // ✅ 클라이언트 입장키(간이 게이트)
     // - 보안 "강화"용(완전 차단은 Firestore Rules/인증이 필요)
@@ -11758,7 +11796,24 @@ async function heartbeat(){
     }
 
     await updatePresenceCompat_(rMePresenceRef(state.roomId, state.uid), patch);
-  }catch(e){}
+    // 직전에 실패했다가 이제 성공했다면 회복 시점을 남긴다.
+    if(state.__hbFailing){
+      state.__hbFailing = false;
+      mkDiag("heartbeat-회복", "다시 정상적으로 기록됨");
+    }
+  }catch(e){
+    // ⚠️ 여기가 조용히 삼켜지면 "접속은 됐는데 유령"이 원인 없이 발생한다.
+    // 같은 오류로 로그가 넘치지 않게 상태가 바뀔 때만 남긴다.
+    try{
+      const txt = mkErrText(e);
+      if(!state.__hbFailing || state.__hbLastErr !== txt){
+        state.__hbFailing = true;
+        state.__hbLastErr = txt;
+        mkDiag("heartbeat-실패", txt);
+        console.warn("[heartbeat] presence 기록 실패:", e);
+      }
+    }catch(_e){}
+  }
 }
 
 function startRtdbConnectionWatch(){
@@ -21117,6 +21172,25 @@ joinRoom();
       scheduleMount();
     }
 
+    // ✅ V166: 새로고침·재부팅·강제종료로 onDisconnect가 돌지 못하면 내 손캠 자리가 남는다.
+    // 페이지가 새로 뜬 시점에는 WebRTC 세션이 이미 끊겨 있으므로, 송출 중이 아닌데 남아 있는
+    // 내 자리는 전부 유령이다. 그대로 두면 실제보다 손캠 인원이 많게 보인다.
+    async function releaseStaleOwnSlots_(roomId){
+      try{
+        if(!roomId || !state.uid) return;
+        if(hc.my || hc.starting) return; // 지금 송출 중이면 절대 건드리지 않는다
+        const snap = await rGet(hcLiveRef(roomId));
+        const all = (snap && typeof snap.val === "function") ? (snap.val() || {}) : {};
+        const mine = Object.keys(all).filter((k)=> all[k] && String(all[k].uid || "") === String(state.uid));
+        if(!mine.length) return;
+        for(const k of mine){
+          try{ await rRemove(hcSlotRef(roomId, k)); }catch(_e){}
+        }
+        try{ mkDiag("손캠-잔여자리반납", `슬롯 ${mine.join(",")}`); }catch(_e){}
+        console.info("[handcam] 예전 내 손캠 자리 반납:", mine.join(","));
+      }catch(e){ console.warn("[handcam] 잔여 자리 정리 실패", e); }
+    }
+
     async function lifecycleTick(){
       if(hc.lifecycleBusy) return;
       hc.lifecycleBusy = true;
@@ -21126,6 +21200,7 @@ joinRoom();
         if(joined && roomId && hc.roomId !== roomId){
           await teardownAll();
           hc.roomId = roomId;
+          await releaseStaleOwnSlots_(roomId);
           hc.unsub = rOnValue(hcLiveRef(roomId), onLiveSnap);
         }else if((!joined || !roomId) && hc.roomId){
           await teardownAll();
