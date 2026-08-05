@@ -20534,9 +20534,37 @@ joinRoom();
       // HC_MAX개의 고정 슬롯을 하나씩 확보합니다.
       // transaction이 live 전체가 아니라 live/{slotId}에서 실행되므로,
       // RTDB Rules가 다른 사람의 슬롯 수정을 허용할 필요가 없습니다.
+      //
+      // ✅ V166: 재부팅·강제종료로 onDisconnect가 돌지 못하면 예전 내 슬롯이 그대로 남는다.
+      // 예전에는 무작위 위치부터 "빈 슬롯"을 찾았기 때문에, 남아 있는 내 슬롯을 놔둔 채
+      // 새 슬롯을 하나 더 잡아 한 사람이 두 자리를 차지했다(손캠 인원이 실제보다 많게 표시).
+      // 그래서 내 uid로 남은 슬롯을 먼저 찾아 하나만 재사용하고, 나머지는 즉시 비운다.
+      // (Rules상 자기 슬롯 삭제는 허용되므로 추가 권한이 필요 없다.)
+      let preferred = null;
+      try{
+        const snap = await rGet(hcLiveRef(roomId));
+        const all = (snap && typeof snap.val === "function") ? (snap.val() || {}) : {};
+        const mine = Object.keys(all)
+          .filter((k)=> all[k] && String(all[k].uid || "") === String(uid))
+          .sort((a,b)=> Number(a) - Number(b));
+        if(mine.length){
+          preferred = String(mine[0]);
+          for(let i = 1; i < mine.length; i++){
+            try{ await rRemove(hcSlotRef(roomId, mine[i])); }catch(_e){}
+          }
+        }
+      }catch(_e){}
+
+      // 내 슬롯이 있으면 그것부터, 없으면 기존처럼 무작위 위치부터 훑는다.
+      const order = [];
+      if(preferred !== null) order.push(preferred);
       const start = Math.floor(Math.random() * HC_MAX);
       for(let offset = 0; offset < HC_MAX; offset++){
-        const slotId = String((start + offset) % HC_MAX);
+        const s = String((start + offset) % HC_MAX);
+        if(s !== preferred) order.push(s);
+      }
+
+      for(const slotId of order){
         const ref = hcSlotRef(roomId, slotId);
         try{
           const tx = await rRunTransaction(ref, (cur)=>{
