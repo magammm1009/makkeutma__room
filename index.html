@@ -5326,9 +5326,13 @@ body.joined #preJoinCard{ display:none; }
     --wt-light:#f7f2ff; --wt-deep:#a889e7; --wt-glow:rgba(217,199,255,.68); --wt-trunk:#f0e6ff;
     background:radial-gradient(circle at 50% 24%,rgba(245,239,255,.28),transparent 31%),linear-gradient(180deg,#17152b 0%,#111020 54%,#080812 100%);
   }
+  /* V166: 악마팀 세계수를 화이트/레드 계열로 바꿨다(나무 그림도 함께 밝게 다시 칠함).
+     예전에는 검정 줄기 + 어두운 적색이라 천사팀에 비해 칙칙했다.
+     배경까지 새까맣게 두면 밝아진 나무가 붕 떠 보이므로, 천사팀처럼 살짝 붉은 기가 도는
+     깊은 자주빛으로 올려 나무와 어울리게 한다. */
   .worldTreeScene[data-alignment="demon"]{
-    --wt-light:#ff4f66; --wt-deep:#470712; --wt-glow:rgba(255,48,75,.52); --wt-trunk:#24121b;
-    background:radial-gradient(circle at 50% 24%,rgba(255,42,66,.2),transparent 31%),linear-gradient(180deg,#16070d 0%,#0d080d 54%,#050507 100%);
+    --wt-light:#ffd7e2; --wt-deep:#c2506e; --wt-glow:rgba(255,138,168,.60); --wt-trunk:#ffeef3;
+    background:radial-gradient(circle at 50% 24%,rgba(255,190,208,.26),transparent 31%),linear-gradient(180deg,#2a1420 0%,#1d0f18 54%,#0b0509 100%);
   }
   .worldTreeScene[data-alignment="balance"]{
     --wt-light:#e6d8ff; --wt-deep:#8b284c; --wt-glow:rgba(216,173,255,.56); --wt-trunk:#bca3c7;
@@ -5467,7 +5471,7 @@ body.joined #preJoinCard{ display:none; }
   .worldTreeTeamBtn b{font-size:15px;}
   .worldTreeTeamBtn span{font-size:10px; opacity:.66; line-height:1.35;}
   .worldTreeTeamBtn[data-team="angel"]{background:linear-gradient(135deg,rgba(247,243,255,.16),rgba(153,121,219,.12)); border-color:rgba(222,208,255,.32);}
-  .worldTreeTeamBtn[data-team="demon"]{background:linear-gradient(135deg,rgba(77,5,17,.58),rgba(255,55,82,.1)); border-color:rgba(255,76,101,.3);}
+  .worldTreeTeamBtn[data-team="demon"]{background:linear-gradient(135deg,rgba(140,40,72,.52),rgba(255,150,175,.12)); border-color:rgba(255,150,175,.36);}
   .worldTreeTeamBtn.on{box-shadow:0 0 0 2px var(--pink2),0 12px 30px rgba(0,0,0,.28);}
   .worldTreeTeamBtn.on::after{content:"MY TEAM"; position:absolute; right:9px; top:8px; font-size:8px; font-weight:1100; letter-spacing:.7px; color:var(--pink2);}
   .worldTreeTeamBtn.noSeat:not(.on){opacity:.48; filter:saturate(.55); cursor:not-allowed;}
@@ -5537,7 +5541,7 @@ body.joined #preJoinCard{ display:none; }
   .worldTreeRosterBody{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
   .worldTreeRosterCol{min-width:0; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:13px;}
   .worldTreeRosterCol[data-team="angel"]{background:linear-gradient(135deg,rgba(247,243,255,.07),rgba(153,121,219,.05)); border-color:rgba(222,208,255,.16);}
-  .worldTreeRosterCol[data-team="demon"]{background:linear-gradient(135deg,rgba(77,5,17,.24),rgba(255,55,82,.045)); border-color:rgba(255,76,101,.15);}
+  .worldTreeRosterCol[data-team="demon"]{background:linear-gradient(135deg,rgba(140,40,72,.22),rgba(255,150,175,.05)); border-color:rgba(255,150,175,.18);}
   .worldTreeRosterColHead{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10px; color:rgba(255,255,255,.55);}
   .worldTreeRosterColHead b{font-size:11px; color:#fff;}
   .worldTreeRosterColHead span{font-variant-numeric:tabular-nums;}
@@ -6068,7 +6072,7 @@ body.joined #preJoinCard{ display:none; }
 <div aria-hidden="true" class="modalOverlay" id="worldTreeModal">
 <div aria-modal="true" class="modal worldTreeModalPanel" role="dialog" aria-labelledby="worldTreeTitle">
 <div class="worldTreeHeader">
-<div class="worldTreeHeaderTitle" id="worldTreeTitle">🌳 세계수 키우기 <span style="color:#cdb6ff;">SEASON 2</span><small>작가들의 작업 시간이 세계수의 운명을 결정합니다</small></div>
+<div class="worldTreeHeaderTitle" id="worldTreeTitle">🌳 세계수 키우기 <span style="color:#cdb6ff;">WORK PLAY2</span><small>타이머를 채워 세계수를 키워봅시다</small></div>
 <button class="ghost" id="worldTreeClose" type="button">닫기</button>
 </div>
 <div class="worldTreeBody">
