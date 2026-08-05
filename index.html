@@ -6031,6 +6031,36 @@ body.joined #preJoinCard{ display:none; }
 </div>
 </div>
 </div>
+<!-- ✅ 출근 공지 팝업: 입장 시 1회 자동 표시 (쪽지보다 먼저) -->
+<div aria-hidden="true" class="modalOverlay" id="attendModal">
+<div aria-modal="true" class="modal" role="dialog" aria-labelledby="attendModalTitle">
+<div class="modalHeader">
+<div class="t" id="attendModalTitle">🔥 오늘의 공지 &amp; 출석</div>
+<button class="ghost" id="closeAttend" type="button">닫기</button>
+</div>
+<div class="modalBody">
+<div class="tiny" id="attendMeta" style="opacity:.8; margin-bottom:10px;"></div>
+<div id="attendView" style="width:100%; min-height:96px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.06); line-height:1.55;"></div>
+<div class="row" style="display:flex; gap:10px; margin-top:14px;">
+<button class="primary" id="attendGoBtn" style="flex:1;" type="button">🔥 출석하러 가기</button>
+</div>
+<div class="tiny" id="attendGoHint" style="opacity:.75; margin-top:6px;"></div>
+<div class="hr" style="margin:14px 0;"></div>
+<div class="row" id="attendUnlockRow" style="display:flex; gap:8px; align-items:center;">
+<input id="attendAdminPass" placeholder="관리자 비번" style="flex:1;" type="password"/>
+<button class="primary tight" id="attendUnlock" type="button">확인</button>
+</div>
+<div id="attendEditArea" style="display:none;">
+<div class="hint">✍️ 관리자용 공지 편집</div>
+<textarea id="attendTextArea" placeholder="작업방 공지를 적어주세요 (줄바꿈 가능)" style="width:100%; min-height:140px; resize:vertical; padding:12px; border-radius:14px;"></textarea>
+<div class="row" style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+<button class="ghost" id="attendClear" type="button">비우기</button>
+<button class="primary" id="attendSave" type="button">저장</button>
+</div>
+</div>
+</div>
+</div>
+</div>
 <!-- 세계수 키우기 시즌 2 -->
 <div aria-hidden="true" class="modalOverlay" id="worldTreeModal">
 <div aria-modal="true" class="modal worldTreeModalPanel" role="dialog" aria-labelledby="worldTreeTitle">
@@ -6144,9 +6174,15 @@ body.joined #preJoinCard{ display:none; }
 <input id="sudaUrl" placeholder="💣 폭파 수다 링크"/>
 </div>
 <div class="row">
-<input id="choolUrl" type="hidden"/>
+<input id="choolUrl" placeholder="🔥 출근부 링크"/>
 <input id="sheetUrl" placeholder="🔗 뽀모 시트 링크"/>
+</div>
+<div class="row">
 <input id="homeworkUrl" placeholder="📚 숙제장 링크"/>
+</div>
+<div class="row">
+<input id="macHelperUrl" placeholder="🍎 Mac 헬퍼 다운로드 링크 (비우면 기본값)"/>
+<input id="winHelperUrl" placeholder="🪟 Win 헬퍼 다운로드 링크 (비우면 기본값)"/>
 </div>
 <div class="row">
 <input id="pomoApiUrl" placeholder="⏰ 뽀모 인원 API (선택: Apps Script .../exec?api=active)"/>
@@ -7098,6 +7134,22 @@ function loadLocalProfile(){
     measurementId: "G-JNBR17YE6B"
   };
 
+  // -----------------------------
+  // 출근부(chat-chat) Firebase 설정 (분리)
+  // -----------------------------
+  // 2026-08-05: 작업방 RTDB가 일일 다운로드 한도(360MB)를 넘겨서, 출근부 데이터를
+  // 별도 프로젝트로 옮겼습니다. 작업방이 막혀도 출석은 계속 되도록 하기 위함입니다.
+  // 여기서는 "오늘 출석했는지" 두 값만 잠깐 읽고 바로 연결을 끊습니다.
+  const attendFirebaseConfig = {
+    apiKey: "AIzaSyAw459r_dQ8LZ1bfv-iVUEVUcyw4_CEgWM",
+    authDomain: "chat-chat-d7739.firebaseapp.com",
+    databaseURL: "https://chat-chat-d7739-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "chat-chat-d7739",
+    storageBucket: "chat-chat-d7739.firebasestorage.app",
+    messagingSenderId: "606709725857",
+    appId: "1:606709725857:web:367c342da205391d1f0ee0"
+  };
+
 
     // Firebase imports (CDN)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -7112,7 +7164,7 @@ function loadLocalProfile(){
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, onChildRemoved as rOnChildRemoved, onChildMoved as rOnChildMoved, off as rOff, onDisconnect as rOnDisconnect,
       query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
-      serverTimestamp as rServerTimestamp
+      serverTimestamp as rServerTimestamp, goOffline as rGoOffline, goOnline as rGoOnline
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 ; (async ()=>{
@@ -7210,6 +7262,60 @@ const auth = getAuth(app);
         throw err;
       });
       return __sudaAuthReadyPromise;
+    }
+
+    // ✅ 출근부 DB(chat-chat): 출석 여부를 확인할 때만 지연 초기화한다.
+    // 작업방 로딩 시점에는 아무것도 만들지 않아서 평소 부담이 0이다.
+    let __attendRtdb = null;
+    let __attendApp = null;
+    let __attendReadyPromise = null;
+    // initializeApp은 같은 이름으로 두 번 부르면 duplicate-app 에러가 난다.
+    // 아래 Promise는 실패 시 재시도를 허용하므로, 앱 생성만 따로 붙잡아 둔다.
+    function attendApp_(){
+      if(!__attendApp) __attendApp = initializeApp(attendFirebaseConfig, "attendApp");
+      return __attendApp;
+    }
+    function ensureAttendReady_(){
+      if(__attendReadyPromise) return __attendReadyPromise;
+      __attendReadyPromise = (async ()=>{
+        const aApp = attendApp_();
+        const aAuth = getAuth(aApp);
+        try{ await setPersistence(aAuth, browserLocalPersistence); }catch(_e){}
+        const restored = await new Promise((resolve)=>{
+          let settled = false, unsub = null;
+          const finish = (u)=>{
+            if(settled) return;
+            settled = true;
+            try{ if(unsub) unsub(); }catch(_e){}
+            resolve(u || null);
+          };
+          const timer = setTimeout(()=>finish(aAuth.currentUser || null), 3000);
+          try{
+            unsub = onAuthStateChanged(aAuth, (u)=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(u || null);
+            }, ()=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(aAuth.currentUser || null);
+            });
+          }catch(_e){
+            try{ clearTimeout(timer); }catch(_e2){}
+            finish(aAuth.currentUser || null);
+          }
+        });
+        if(!restored){ await signInAnonymously(aAuth); }
+        __attendRtdb = getDatabase(aApp, attendFirebaseConfig.databaseURL);
+        return __attendRtdb;
+      })().catch((err)=>{
+        __attendReadyPromise = null;
+        throw err;
+      });
+      return __attendReadyPromise;
+    }
+
+    // 확인이 끝나면 연결을 놓아준다(동시 접속 수를 붙잡고 있지 않도록).
+    function releaseAttendConn_(){
+      try{ if(__attendRtdb) rGoOffline(__attendRtdb); }catch(_e){}
     }
 
     // DOM
@@ -7407,6 +7513,20 @@ onlineBtn: $("onlineBtn"),
       updateSave: $("updateSave"),
       updateClear: $("updateClear"),
 
+      attendModal: $("attendModal"),
+      closeAttend: $("closeAttend"),
+      attendView: $("attendView"),
+      attendMeta: $("attendMeta"),
+      attendGoBtn: $("attendGoBtn"),
+      attendGoHint: $("attendGoHint"),
+      attendAdminPass: $("attendAdminPass"),
+      attendUnlock: $("attendUnlock"),
+      attendUnlockRow: $("attendUnlockRow"),
+      attendEditArea: $("attendEditArea"),
+      attendTextArea: $("attendTextArea"),
+      attendSave: $("attendSave"),
+      attendClear: $("attendClear"),
+
       settingsModal: $("settingsModal"),
       closeSettings: $("closeSettings"),
       sfxToggle: $("sfxToggle"),
@@ -7419,6 +7539,8 @@ onlineBtn: $("onlineBtn"),
       choolUrl: $("choolUrl"),
       sheetUrl: $("sheetUrl"),
       homeworkUrl: $("homeworkUrl"),
+      macHelperUrl: $("macHelperUrl"),
+      winHelperUrl: $("winHelperUrl"),
       dashApiUrl: $("dashApiUrl"),
       saveDash: $("saveDash"),
       sudaOpenRoom: $("sudaOpenRoom"),
@@ -7545,11 +7667,13 @@ chatUnseen: 0,
       adminProfilePresence: new Map(),
       adminProfileLoading: false,
       roomSettings: {
-        dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+        dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
         adminHash: null,
         ownerUid: null
       },
+      attendModalShown: false,
+      attendGateOpen: false,
       localDashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
       dashPollTimer: null,
       dashPollUrl: "",
@@ -8334,6 +8458,8 @@ function toast(msg, ms=1600){
 
     function showNextDirectArrival_(){
       if(state.directArrivalCurrent || !state.directArrivalQueue?.length || !state.joined) return;
+      // ✅ 출근 공지 팝업이 떠 있는 동안에는 쪽지 편지를 미뤄둔다(공지가 항상 먼저).
+      if(state.attendGateOpen) return;
       state.directArrivalCurrent = state.directArrivalQueue.shift();
       renderDirectArrival_();
     }
@@ -9107,10 +9233,14 @@ function seoulDateKey(){
     // ✅ V142: onDisconnect가 유실된 비정상 종료/절전 종료까지 정리하는 하이브리드 온라인 판정
     // heartbeat는 2분 주기이므로 8분 동안 신호가 없으면 화면에서는 오프라인으로 취급한다.
     // 정상 종료는 기존처럼 status=off/lastSeenAtMs=0으로 즉시 사라지고, 잠자기에서 복귀하면 다음 heartbeat에 자동 복귀한다.
-    const ONLINE_TTL_MS = 8 * 60 * 1000;
+    // V165: heartbeat를 2분 → 4분으로 늘리면서 TTL도 함께 넓혔다.
+    // TTL이 heartbeat의 2.5배는 돼야 한 번 놓쳐도 접속자가 사라지지 않는다.
+    const ONLINE_TTL_MS = 10 * 60 * 1000;
     // ✅ V99_COST_LIGHT_1: RTDB 다운로드 경량화 1단계
     // presence는 child_* 증분 구독을 이미 사용 중이므로, 가장 큰 비용 원인인 heartbeat 쓰기 빈도만 낮춘다.
-    const PRESENCE_HEARTBEAT_INTERVAL_MS = 120000; // 2분
+    // V165: RTDB 다운로드 경량화 2단계. heartbeat 1회는 그 사람 presence 항목 전체를
+    // 접속자 전원에게 다시 밀어내므로, 주기를 2배로 늘리면 상시 전송량이 절반이 된다.
+    const PRESENCE_HEARTBEAT_INTERVAL_MS = 240000; // 4분
     const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장 60초
 function isOfflinePresence(p){
   if(!p) return true;
@@ -10389,6 +10519,8 @@ function setControlsEnabled(joined){
       if(!joined){
         try{ if(els.grid) els.grid.replaceChildren(); }catch(e){ try{ if(els.grid) els.grid.innerHTML = ""; }catch(_e){} }
         try{ if(state.lastRendered && state.lastRendered.clear) state.lastRendered.clear(); }catch(e){}
+        // ✅ 퇴장 시 출근 공지 팝업 플래그 초기화(같은 탭에서 재입장하면 다시 판단)
+        try{ state.attendModalShown = false; state.attendGateOpen = false; }catch(e){}
       }
       // ✅ 수다방 LIVE 접속 현황 업데이트(대시보드)
       try{ if(joined) startSudaPresenceWatch_(); else stopSudaPresenceWatch_(); }catch(e){}
@@ -11174,7 +11306,7 @@ async function armPresenceOnDisconnect_(){
           createdAt: serverTimestamp(),
           title: roomId,
           adminHash: null,
-          dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
+          dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
           dashCounts: { pomoCount:null, sudaCount:null, updatedAtMs: null }
         });
       }
@@ -12881,14 +13013,16 @@ async function transitionTo(nextStatus, source="manual"){
       els.goSudaMini.disabled = !d.sudaUrl;
       els.goSudaMini.onclick = d.sudaUrl ? ()=>openSudaWithTicket(d.sudaUrl) : null;
     }
-    if(els.goChool) els.goChool.onclick = ()=>openUrlJoined(d.choolUrl);
+    // ✅ 출근부 버튼: 공지 팝업을 열어 공지 확인 + 출석하러 가기
+    if(els.goChool) els.goChool.onclick = ()=>{ try{ openAttendModal(true); }catch(e){} };
     if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
     if(els.goHomework){
       els.goHomework.disabled = !d.homeworkUrl;
       els.goHomework.onclick = d.homeworkUrl ? ()=>openUrlJoined(d.homeworkUrl) : null;
     }
-    if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(MAC_HELPER_URL);
-    if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(WIN_HELPER_URL);
+    // ✅ 헬퍼 다운로드 링크: 관리자가 비워두면 기본 상수를 사용
+    if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(d.macHelperUrl || MAC_HELPER_URL);
+    if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(d.winHelperUrl || WIN_HELPER_URL);
 
     if(els.pomoUrl) els.pomoUrl.value = d.pomoUrl || "";
     if(els.pomoApiUrl) els.pomoApiUrl.value = d.pomoApiUrl || "";
@@ -12896,6 +13030,8 @@ async function transitionTo(nextStatus, source="manual"){
     if(els.choolUrl) els.choolUrl.value = d.choolUrl || "";
     if(els.sheetUrl) els.sheetUrl.value = d.sheetUrl || "";
     if(els.homeworkUrl) els.homeworkUrl.value = d.homeworkUrl || "";
+    if(els.macHelperUrl) els.macHelperUrl.value = d.macHelperUrl || "";
+    if(els.winHelperUrl) els.winHelperUrl.value = d.winHelperUrl || "";
     if(els.dashApiUrl) els.dashApiUrl.value = d.dashApiUrl || "";
   }catch(e){}
 }
@@ -12914,7 +13050,7 @@ function subscribeRoom(){
   const onSettings = (snap)=>{
     const r = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
     const dash = Object.assign(
-      {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+      {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
       (r.dashboard || {})
     );
     state.roomSettings.dashboard = dash;
@@ -12926,6 +13062,10 @@ function subscribeRoom(){
     // ✅ update notice (room shared)
     state.roomSettings.updateNotice = (r && r.updateNotice) ? r.updateNotice : (state.roomSettings.updateNotice || {text:"", updatedAt:0});
     try{ renderUpdateNotice && renderUpdateNotice(); }catch(e){}
+    // ✅ 출근 공지(룸 공용) — settings 1회 조회에 함께 실려 온다
+    state.roomSettings.attendNotice = (r && r.attendNotice) ? r.attendNotice : (state.roomSettings.attendNotice || {text:"", updatedAt:0});
+    try{ renderAttendNotice && renderAttendNotice(); }catch(e){}
+    try{ maybeAutoOpenAttendModal && maybeAutoOpenAttendModal(); }catch(e){}
 
     // counts는 별도 구독이지만, settings에 들어있으면 fallback
     if(r.dashCounts && !state.roomSettings.dashCounts) state.roomSettings.dashCounts = r.dashCounts;
@@ -13367,6 +13507,8 @@ async function saveDashboard(){
     choolUrl: (els.choolUrl.value || "").trim(),
     sheetUrl: (els.sheetUrl.value || "").trim(),
     homeworkUrl: (els.homeworkUrl && els.homeworkUrl.value ? els.homeworkUrl.value : "").trim(),
+    macHelperUrl: (els.macHelperUrl && els.macHelperUrl.value ? els.macHelperUrl.value : "").trim(),
+    winHelperUrl: (els.winHelperUrl && els.winHelperUrl.value ? els.winHelperUrl.value : "").trim(),
     dashApiUrl: (dashApiInput && dashApiInput.value ? dashApiInput.value : "").trim(),
   };
   try{
@@ -16701,6 +16843,42 @@ t.appendChild(bg);
     }
 
     // Join / Leave
+    // ✅ 30일 이상 접속이 없는 presence를 스스로 정리한다(브라우저마다 하루 1회).
+    // 이미 구독으로 받아 둔 state.currentParticipants만 훑으므로 추가 다운로드가 0이고,
+    // 같은 항목을 여러 명이 동시에 지워도 결과가 같아서 별도 잠금이 필요 없다.
+    // 규칙에서도 "30일 지난 항목의 삭제"만 허용하므로 살아있는 사람은 지워질 수 없다.
+    const PRESENCE_PRUNE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+    const PRESENCE_PRUNE_MAX_PER_RUN = 300;
+    async function prunePresenceOnce_(){
+      try{
+        if(!state.roomId || !state.uid || !state.joined) return;
+        if(!(state.currentParticipants instanceof Map)) return;
+        const key = `mk_presence_pruned_${state.roomId}`;
+        const today = seoulDateKey();
+        let last = "";
+        try{ last = localStorage.getItem(key) || ""; }catch(e){}
+        if(last === today) return;
+        try{ localStorage.setItem(key, today); }catch(e){}
+
+        const now = Date.now();
+        const updates = {};
+        let n = 0;
+        state.currentParticipants.forEach((p, uid)=>{
+          if(n >= PRESENCE_PRUNE_MAX_PER_RUN) return;
+          if(!p || String(uid) === String(state.uid)) return;
+          const ls = Number(p.lastSeenAtMs || 0);
+          // lastSeenAtMs가 없으면 판단할 수 없으므로 건드리지 않는다.
+          if(!Number.isFinite(ls) || ls <= 0) return;
+          if((now - ls) <= PRESENCE_PRUNE_AFTER_MS) return;
+          updates[`${rRoomBase(state.roomId)}/presence/${uid}`] = null;
+          n++;
+        });
+        if(!n) return;
+        await rUpdate(rRef(rtdb), updates);
+        console.info(`[presence] 30일 이상 미접속 ${n}건 정리`);
+      }catch(e){ console.warn("[presence] 정리 실패", e); }
+    }
+
     async function subscribeParticipants(){
       // 숨김→복귀 재구독 때 기존 맵/DOM을 먼저 비우면 타일이 잠깐 사라지고 채팅 프로필도 기본값으로 보인다.
       const preservedParticipants = (state.currentParticipants instanceof Map)
@@ -17203,6 +17381,8 @@ try{
       subscribeDirectMessages_();
 
       await heartbeat();
+      // 입장 직후 렌더와 겹치지 않도록 잠시 뒤에 오래된 presence를 정리한다.
+      try{ setTimeout(()=>{ prunePresenceOnce_(); }, 20000); }catch(_e){}
       state.__joinProfileReady = true;
       try{ els.chatInput.disabled = false; els.sendBtn.disabled = false; }catch(e){}
       // V147: 일반 1초 / 경량 2초 / 저사양 5초 주기를 한 함수에서만 결정합니다.
@@ -18453,6 +18633,178 @@ function closeUpdateModal(){
   hideModal(els.updateModal);
 }
 
+// ✅ 출근 공지 팝업 (입장 시 1회 자동 · 쪽지보다 먼저)
+// 공지 데이터는 settings 1회 조회에 얹혀 오므로 추가 네트워크 비용이 없다.
+function attendNoticeSeenKey_(){
+  try{ return `mk_attend_notice_seen_${state.roomId || "room"}`; }catch(e){ return "mk_attend_notice_seen"; }
+}
+
+function renderAttendNotice(){
+  try{
+    if(!els.attendView) return;
+    const n = (state.roomSettings && state.roomSettings.attendNotice) ? state.roomSettings.attendNotice : null;
+    const txt = (n && typeof n.text === "string") ? n.text : "";
+    const t = (n && n.updatedAt) ? Number(n.updatedAt) : 0;
+
+    els.attendView.innerHTML = txt
+      ? escapeHtml(txt).replace(/\n/g, "<br>")
+      : '<span style="opacity:.7;">오늘도 반가워요! 잊지 말고 출석 체크해 주세요 🌸</span>';
+
+    if(els.attendMeta){
+      const s = t ? ("마지막 공지 수정: " + __fmtKST(t)) : "";
+      els.attendMeta.textContent = s;
+      els.attendMeta.style.display = s ? "" : "none";
+    }
+
+    // 출석 링크는 대시보드 설정(choolUrl)을 그대로 사용
+    const url = (state.roomSettings && state.roomSettings.dashboard && state.roomSettings.dashboard.choolUrl) ? String(state.roomSettings.dashboard.choolUrl).trim() : "";
+    if(els.attendGoBtn) els.attendGoBtn.disabled = !url;
+    if(els.attendGoHint){
+      els.attendGoHint.textContent = url ? "" : "출근부 링크가 아직 등록되지 않았어요 (☰ 관리자 설정에서 저장)";
+      els.attendGoHint.style.display = url ? "none" : "";
+    }
+
+    if(els.attendTextArea) els.attendTextArea.value = txt || "";
+  }catch(e){}
+}
+
+function setAttendAdminUI(ok){
+  try{
+    if(els.attendEditArea) els.attendEditArea.style.display = ok ? "" : "none";
+    if(els.attendUnlockRow) els.attendUnlockRow.style.display = ok ? "none" : "";
+    if(!ok && els.attendAdminPass) els.attendAdminPass.value = "";
+  }catch(e){}
+}
+
+async function saveAttendNotice(){
+  if(!state.joined){ showToast("입장하고 써줘! 💗"); return; }
+  if(!state.adminOk){ showToast("관리자 비번 확인부터!"); return; }
+
+  const txt = (els.attendTextArea ? String(els.attendTextArea.value || "") : "").replace(/\r\n/g,"\n");
+  const payload = { text: txt, updatedAt: Date.now() };
+  try{
+    await rUpdate(rSettingsRef(state.roomId), { attendNotice: payload });
+    // settings는 1회 조회 구조라 저장 직후 로컬 상태에 직접 반영
+    try{
+      if(state.roomSettings) state.roomSettings.attendNotice = payload;
+      renderAttendNotice();
+    }catch(e){}
+    showToast("공지 저장!");
+  }catch(e){
+    console.warn(e);
+    showToast("저장 실패(권한/rules 확인)");
+  }
+}
+
+// ✅ 절약모드에서는 subscribeRoom()이 바로 return 해서 settings가 비어 있다.
+// 그 상태로 팝업을 열면 공지도 출근부 링크도 없는 것처럼 보이므로,
+// 버튼으로 직접 열었을 때만 1회 조회로 채워 넣는다(자동 표시는 그대로 건너뛴다).
+async function ensureAttendSettingsLoaded_(){
+  try{
+    if(!state.roomId) return;
+    if(state.roomSettings && state.roomSettings.attendNotice) return;
+    const snap = await rGet(rSettingsRef(state.roomId));
+    const s = (snap && typeof snap.val === "function" ? snap.val() : null) || {};
+    state.roomSettings = state.roomSettings || {};
+    if(s.dashboard) state.roomSettings.dashboard = Object.assign({}, state.roomSettings.dashboard || {}, s.dashboard);
+    state.roomSettings.attendNotice = s.attendNotice || {text:"", updatedAt:0};
+    renderAttendNotice();
+  }catch(e){ console.warn("[attend] settings 조회 실패", e); }
+}
+
+function openAttendModal(manual){
+  if(!state.joined){ showToast("입장하고 확인해줘! 💗"); return; }
+  renderAttendNotice();
+  setAttendAdminUI(!!state.adminOk);
+  state.attendGateOpen = true;
+  showModal(els.attendModal);
+  // 먼저 즉시 띄우고, 비어 있으면 뒤늦게 채운다(체감 지연 0).
+  if(manual){ try{ ensureAttendSettingsLoaded_(); }catch(e){} }
+}
+
+function closeAttendModal(){
+  hideModal(els.attendModal);
+  state.attendGateOpen = false;
+  // 팝업이 닫힌 뒤에야 쪽지 도착 편지를 흘려보낸다.
+  try{ setTimeout(showNextDirectArrival_, 200); }catch(e){}
+}
+
+// ✅ 출근부와 같은 RTDB(magamm00-5baee)라서 기존 연결로 그대로 읽는다.
+// 닉네임 → 출근부 키 변환은 attend-core.js의 toMemberId와 같은 규칙이어야 한다.
+function attendMemberId_(nick){
+  return String(nick || "").trim().replace(/\s+/g, " ")
+    .replace(/[.$#\[\]\/\x00-\x1F\x7F]/g, (c)=>"_" + c.charCodeAt(0).toString(16).padStart(2,"0"));
+}
+
+// 오늘 출석했는지 확인한다. 잎 노드 2개만 읽어서 비용이 거의 없다.
+// known=출근부 명단에 있는 닉네임인지, checkedIn=오늘 출석 기록이 있는지
+async function fetchAttendTodayState_(){
+  const out = { ok:false, known:false, checkedIn:false };
+  try{
+    const nick = String(state.nickname || "").trim();
+    if(!nick || !state.roomId) return out;
+    const mid = attendMemberId_(nick);
+    if(!mid) return out;
+    const dayKey = seoulDateKey();
+    const ym = dayKey.slice(0,7), dd = dayKey.slice(8,10);
+    const base = `${rRoomBase(state.roomId)}/attend`;
+    // 출근부는 별도 프로젝트(chat-chat)에 있다. 필요할 때만 붙었다가 바로 끊는다.
+    // 앞선 확인에서 끊어둔 상태일 수 있으므로 읽기 전에 다시 연결한다.
+    const adb = await ensureAttendReady_();
+    try{ rGoOnline(adb); }catch(_e){}
+    const [memSnap, daySnap] = await Promise.all([
+      rGet(rRef(adb, `${base}/members/${mid}/nick`)),
+      rGet(rRef(adb, `${base}/months/${ym}/days/${mid}/${dd}`))
+    ]);
+    out.ok = true;
+    out.known = !!(memSnap && memSnap.exists && memSnap.exists());
+    const v = (daySnap && typeof daySnap.val === "function") ? daySnap.val() : null;
+    out.checkedIn = !!v; // "14:05" 또는 레거시 "o"
+  }catch(e){ console.warn("[attend] 오늘 출석 조회 실패", e); }
+  finally{ releaseAttendConn_(); }
+  return out;
+}
+
+// 입장 직후 settings가 도착하면 호출된다.
+// 아직 출석하지 않았으면 접속할 때마다 띄우고, 이미 출석했으면 띄우지 않는다.
+async function maybeAutoOpenAttendModal(){
+  try{
+    if(!state.joined) return;
+    if(state.attendModalShown) return;
+    if(!els.attendModal) return;
+    state.attendModalShown = true;
+
+    const t = await fetchAttendTodayState_();
+    if(!state.joined) return;              // 조회 중 퇴장했으면 중단
+    if(t.ok && t.checkedIn) return;        // 오늘 이미 출석 → 조용히 넘어간다
+    if(t.ok && t.known){ openAttendModal(false); return; }
+
+    // 출근부 명단에 없는 닉네임이거나 조회 실패 → 매번 조르지 않고 하루 1회만
+    const n = (state.roomSettings && state.roomSettings.attendNotice) ? state.roomSettings.attendNotice : null;
+    const stamp = `${seoulDateKey()}|${(n && n.updatedAt) ? Number(n.updatedAt) : 0}`;
+    let seen = "";
+    try{ seen = localStorage.getItem(attendNoticeSeenKey_()) || ""; }catch(e){}
+    if(seen === stamp) return;
+    try{ localStorage.setItem(attendNoticeSeenKey_(), stamp); }catch(e){}
+    openAttendModal(false);
+  }catch(e){}
+}
+
+// 출근부에서 출석하고 탭으로 돌아오면 팝업을 자동으로 닫아준다.
+try{
+  document.addEventListener("visibilitychange", async ()=>{
+    try{
+      if(document.hidden) return;
+      if(!state.attendGateOpen) return;
+      const t = await fetchAttendTodayState_();
+      if(t.ok && t.checkedIn && state.attendGateOpen){
+        closeAttendModal();
+        showToast("오늘 출석 완료! 🌸");
+      }
+    }catch(e){}
+  });
+}catch(e){}
+
 // Button wiring
 try{
   if(els.updateBtn){
@@ -18486,6 +18838,44 @@ try{
   if(els.updateModal){
     els.updateModal.addEventListener("click", (e)=>{
       if(e && e.target === els.updateModal) closeUpdateModal();
+    });
+  }
+
+  if(els.closeAttend){
+    els.closeAttend.addEventListener("click", closeAttendModal);
+  }
+  if(els.attendGoBtn){
+    els.attendGoBtn.addEventListener("click", ()=>{
+      try{
+        const url = (state.roomSettings && state.roomSettings.dashboard && state.roomSettings.dashboard.choolUrl) ? String(state.roomSettings.dashboard.choolUrl).trim() : "";
+        if(!url){ showToast("출근부 링크가 아직 등록되지 않았어요"); return; }
+        openUrlJoined(url);
+      }catch(e){}
+    });
+  }
+  if(els.attendUnlock){
+    els.attendUnlock.addEventListener("click", async ()=>{
+      const ok = await verifyAdminPass(els.attendAdminPass ? els.attendAdminPass.value : "");
+      if(ok){
+        setAttendAdminUI(true);
+        showToast("관리자 확인 완료!");
+      }else{
+        showToast("비번이 달라…");
+        setAttendAdminUI(false);
+      }
+    });
+  }
+  if(els.attendSave){
+    els.attendSave.addEventListener("click", saveAttendNotice);
+  }
+  if(els.attendClear){
+    els.attendClear.addEventListener("click", ()=>{
+      if(els.attendTextArea) els.attendTextArea.value = "";
+    });
+  }
+  if(els.attendModal){
+    els.attendModal.addEventListener("click", (e)=>{
+      if(e && e.target === els.attendModal) closeAttendModal();
     });
   }
 }catch(e){}
