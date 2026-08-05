@@ -6036,7 +6036,7 @@ body.joined #preJoinCard{ display:none; }
 <div aria-modal="true" class="modal" role="dialog" aria-labelledby="attendModalTitle">
 <div class="modalHeader">
 <div class="t" id="attendModalTitle">🔥 오늘의 공지 &amp; 출석</div>
-<button class="ghost" id="closeAttend" type="button">닫기</button>
+<button class="ghost" id="closeAttend" type="button" style="border:1px solid rgba(255,255,255,.30); background:rgba(255,255,255,.12); font-weight:900; min-width:74px;">✕ 닫기</button>
 </div>
 <div class="modalBody">
 <div class="tiny" id="attendMeta" style="opacity:.8; margin-bottom:10px;"></div>
@@ -6046,9 +6046,12 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="tiny" id="attendGoHint" style="opacity:.75; margin-top:6px;"></div>
 <div class="hr" style="margin:14px 0;"></div>
-<div class="row" id="attendUnlockRow" style="display:flex; gap:8px; align-items:center;">
+<div id="attendUnlockRow">
+<div class="tiny" style="opacity:.6; margin-bottom:7px;">🔐 관리자 전용 · 작가님들은 누르지 않으셔도 돼요</div>
+<div class="row" style="display:flex; gap:8px; align-items:center;">
 <input id="attendAdminPass" placeholder="관리자 비번" style="flex:1;" type="password"/>
-<button class="primary tight" id="attendUnlock" type="button">확인</button>
+<button class="ghost tight" id="attendUnlock" type="button" style="opacity:.75;">확인</button>
+</div>
 </div>
 <div id="attendEditArea" style="display:none;">
 <div class="hint">✍️ 관리자용 공지 편집</div>
@@ -21599,6 +21602,11 @@ joinRoom();
   const WORLD_TREE_TEAM_MAX_WAVES = 6;
   const WORLD_TREE_TEAM_MAX_MEMBERS = WORLD_TREE_TEAM_BATCH_SIZE*WORLD_TREE_TEAM_MAX_WAVES;
   const WORLD_TREE_S2_LOCAL_TEAM = "mk_world_tree_s2_team_v1";
+  // 배경에서 반복되는 동기화(timer/visible)의 최소 간격. 이 안에 다시 불리면 그냥 넘긴다.
+  const WORLD_TREE_SYNC_MIN_GAP_MS = 10 * 60 * 1000;  // 10분
+  // 강제 종료로 pagehide조차 못 부른 경우를 대비한 안전망 주기.
+  const WORLD_TREE_SAFETY_SYNC_MS = 15 * 60 * 1000;   // 15분
+
   const worldTreeS2Runtime = {
     snapshot:null,
     unsub:null,
@@ -21608,6 +21616,7 @@ joinRoom();
     lastObservedDay:"",
     lastObservedSec:-1,
     lastErrorAt:0,
+    lastSyncAtMs:0,
     rosterCollapsed:false
   };
 
@@ -22219,6 +22228,15 @@ joinRoom();
     const day=seoulDateKey();
     const total=worldTreeCurrentFocusSeconds_();
     if(worldTreeS2Runtime.lastObservedDay===day && worldTreeS2Runtime.lastObservedSec===total && reason!=="force") return;
+    // ✅ V166: 이 동기화는 runTransaction이라 한 번에 세계수 노드(약 10KB)를 통째로 내려받는다.
+    // 기여 시간은 "지금까지의 총 작업초 − 마지막으로 기록한 초"의 차이로 계산하므로,
+    // 자주 부르든 가끔 부르든 최종 누적값은 완전히 같다(늦게 반영될 뿐 1초도 사라지지 않는다).
+    // 그래서 꼭 필요한 순간에만 부르고, 배경에서 반복되는 호출은 최소 간격으로 눌러 둔다.
+    const NEEDED_NOW = { open:1, join:1, leave:1, pagehide:1, status:1, force:1 };
+    if(!NEEDED_NOW[reason]){
+      const since = Date.now() - Number(worldTreeS2Runtime.lastSyncAtMs || 0);
+      if(since < WORLD_TREE_SYNC_MIN_GAP_MS) return;
+    }
     worldTreeS2Runtime.syncLock=true;
     try{
       const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
@@ -22257,6 +22275,7 @@ joinRoom();
       worldTreeS2Runtime.snapshot=tree;
       worldTreeS2Runtime.lastObservedDay=day;
       worldTreeS2Runtime.lastObservedSec=total;
+      worldTreeS2Runtime.lastSyncAtMs=Date.now();
       const remoteTeam=tree.members?.[uid]?.team;
       if(remoteTeam==="angel" || remoteTeam==="demon") rememberWorldTreeTeam_(remoteTeam);
       if(document.getElementById("worldTreeModal")?.classList.contains("show")) renderWorldTreeS2_(tree);
@@ -22373,7 +22392,11 @@ joinRoom();
       }
     });
     window.addEventListener("pagehide",()=>{ syncWorldTreeContribution_("pagehide").catch(()=>{}); stopWorldTreeS2Realtime_(); });
-    setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}),45000);
+    // V166: 45초 주기 동기화가 RTDB 다운로드의 38%를 쓰고 있었다(실측).
+    // 이제는 "세계수 화면을 열 때 / 상태를 바꿀 때 / 입장·퇴장할 때"만 즉시 기록하고,
+    // 아래 타이머는 브라우저가 강제 종료돼 pagehide조차 못 부른 경우를 대비한 안전망이다.
+    // (날짜가 바뀌기 전에 한 번은 기록돼야 그날 시간이 확정되므로 완전히 없애지는 않는다.)
+    setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SAFETY_SYNC_MS);
     renderWorldTreeS2_({});
     window.__MK_WORLD_TREE_S2__={
       open:openWorldTreeS2_,close:closeWorldTreeS2_,sync:()=>syncWorldTreeContribution_("force"),
