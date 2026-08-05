@@ -9233,14 +9233,18 @@ function seoulDateKey(){
     // ✅ V142: onDisconnect가 유실된 비정상 종료/절전 종료까지 정리하는 하이브리드 온라인 판정
     // heartbeat는 2분 주기이므로 8분 동안 신호가 없으면 화면에서는 오프라인으로 취급한다.
     // 정상 종료는 기존처럼 status=off/lastSeenAtMs=0으로 즉시 사라지고, 잠자기에서 복귀하면 다음 heartbeat에 자동 복귀한다.
-    // V165: heartbeat를 2분 → 4분으로 늘리면서 TTL도 함께 넓혔다.
-    // TTL이 heartbeat의 2.5배는 돼야 한 번 놓쳐도 접속자가 사라지지 않는다.
-    const ONLINE_TTL_MS = 10 * 60 * 1000;
+    // V166: 헬퍼를 쓰는 작가님은 작업방 탭을 뒤로 두기 때문에 브라우저가 타이머를 늦춘다.
+    // 실제로 4분 주기가 8분(494초)까지 밀려서 접속 중인데도 유령처럼 사라지는 일이 있었다.
+    // 그래서 TTL을 heartbeat의 6배 이상으로 넉넉히 잡는다(기존 4배보다도 여유롭게).
+    // 정상 종료는 onDisconnect가 즉시 처리하므로, TTL이 길어도 유령이 오래 남지 않는다.
+    const ONLINE_TTL_MS = 20 * 60 * 1000;
     // ✅ V99_COST_LIGHT_1: RTDB 다운로드 경량화 1단계
     // presence는 child_* 증분 구독을 이미 사용 중이므로, 가장 큰 비용 원인인 heartbeat 쓰기 빈도만 낮춘다.
-    // V165: RTDB 다운로드 경량화 2단계. heartbeat 1회는 그 사람 presence 항목 전체를
-    // 접속자 전원에게 다시 밀어내므로, 주기를 2배로 늘리면 상시 전송량이 절반이 된다.
-    const PRESENCE_HEARTBEAT_INTERVAL_MS = 240000; // 4분
+    // V166: RTDB 다운로드 경량화. heartbeat 1회는 그 사람 presence 항목 전체를
+    // 접속자 전원에게 다시 밀어내므로, 주기를 늘리면 상시 전송량이 그만큼 줄어든다.
+    // 다만 4분은 백그라운드 탭에서 TTL을 넘겨 유령 현상을 만들었다(V165 회귀).
+    // 3분으로 되돌려 여유를 확보하고, 절감은 TTL이 아니라 항목 크기 줄이기로 가져간다.
+    const PRESENCE_HEARTBEAT_INTERVAL_MS = 180000; // 3분
     const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장 60초
 function isOfflinePresence(p){
   if(!p) return true;
