@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.1_DEW_RHYTHM: 물방울 리듬 개편 — dew10 3~6시간 간격·하루 5개 / dew50 매시 50분 판정(30%)·정각~10분 스폰·하루 2~4회 / 매시 59분 예고 문구 / 배지 이펙트 10h(은은)·50h(번쩍) 구분 -->
 <!-- V168_WORLD_TREE_COST_DEW_GUARD: 세계수 다운로드 절감(core/ledger/summary 분리, 대시보드 300B 폴링, 로스터 1시간 캐시) + 닉네임 중복 병합/관리자 제거 + 신비로운 물방울(랜덤 dew10 10h / 클릭 레이스 dew50 50h, 가방, 대시보드 배지) -->
 <!-- V164_DASH_PET_TREE_RESPONSIVE_SIZE_GUARD: 펫/세계수 단일 표시 강제 + 전환 시 카드 높이 고정 -->
 <!-- V163_WORLD_TREE_SEASON2: 펫 놀이터 은퇴 + 천사/악마 팀 세계수 공동 성장 -->
@@ -21832,9 +21833,18 @@ joinRoom();
   const WORLD_TREE_SAFETY_SYNC_MS = 15 * 60 * 1000;   // 15분
   // ✅ V168: 로스터(루트 전체 약 10KB)는 1시간 캐시로만 읽는다. 레벨/진행바는 summary(약 300B)가 담당.
   const WORLD_TREE_ROSTER_CACHE_MS = 60 * 60 * 1000;  // 1시간
-  // ✅ V168: 신비로운 물방울 — 6~12시간 랜덤 간격 스폰, 종류 50:50.
-  const WORLD_TREE_DEW_SPAWN_MIN_MS = 6 * 60 * 60 * 1000;
-  const WORLD_TREE_DEW_SPAWN_MAX_MS = 12 * 60 * 60 * 1000;
+  // ✅ V168.1: 신비로운 물방울 스폰 재설계.
+  //  - dew10(가방 지급): 3~6시간 랜덤 간격, 하루(KST) 최대 5개.
+  //  - dew50(클릭 이벤트): 매시 50분에 "다음 시간에 스폰할지"를 방 전체가 공유하는 값으로 판정(30%).
+  //    당첨이면 다음 시간 정각~10분 사이 랜덤 시각에 시작. 하루 최대 4회, 자정까지 남은 시간이
+  //    부족하면 강제 스폰으로 최소 2회를 보장한다. 매시 59분에는 판정 결과를 예고 문구로 보여준다.
+  const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
+  const WORLD_TREE_DEW_SPAWN_MAX_MS = 6 * 60 * 60 * 1000;
+  const WORLD_TREE_DEW10_DAILY_MAX = 5;
+  const WORLD_TREE_DEW50_DAILY_MIN = 2;
+  const WORLD_TREE_DEW50_DAILY_MAX = 4;
+  const WORLD_TREE_DEW50_HOURLY_CHANCE = 0.3;
+  const WORLD_TREE_DEW50_WINDOW_MS = 10 * 60 * 1000;
   const WORLD_TREE_DEW_CLICK_MIN = 5000;              // 클릭 이벤트 목표 최소 (사용자 확정: 5000~6000)
   const WORLD_TREE_DEW_CLICK_MAX = 6000;              // 클릭 이벤트 목표 최대
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
@@ -21862,7 +21872,8 @@ joinRoom();
     bagTap:{id:"",at:0},     // 가방 더블탭 감지
     dewClickAt:0,            // 클릭 이벤트 스로틀
     dewClaimingId:"",        // 당첨 지급 재진입 방지
-    dewUseLock:false         // 물방울 사용 중복 방지
+    dewUseLock:false,        // 물방울 사용 중복 방지
+    dewCueHour:""            // ✅ V168.1: 59분 예고 문구를 시간당 1회만 띄우기 위한 마커
   };
 
   function rWorldTreeS2Ref(roomId){
@@ -22065,12 +22076,16 @@ joinRoom();
       const alignment=(myTeam==="angel"||myTeam==="demon")?myTeam:(overall==="demon"?"demon":"angel");
       const content=tree.config.content;
       const teamName=alignment==="angel"?content.angelTeamName:content.demonTeamName;
+      // ✅ V168.1: 배지 이펙트 구분용 — 클릭 이벤트 진행 중이거나 마지막 드랍이 dew50이면 "번쩍", 아니면 "은은".
+      const item=s?.item;
+      const dewKind=(item && typeof item==="object")?((item.mode==="click")?"dew50":String(item.kind||"dew10")):"";
       return {
         ready:!!(s || worldTreeS2Runtime.snapshot),
         level,maxLevel:max,stageIndex:stage.index,stageName:stage.name,
         alignment,myTeam,finished,teamName,
         treeName:content.treeName,
-        dewBadge:worldTreeDewBadgeOn_()
+        dewBadge:worldTreeDewBadgeOn_(),
+        dewKind
       };
     }catch(e){ return null; }
   }
@@ -22739,12 +22754,15 @@ joinRoom();
     try{ await writeWorldTreeSummary_(t); }catch(e){}
     return t;
   }
-  // ✅ V168: 물방울 스폰 스케줄(sched)이 없으면 6~12시간 뒤 첫 스폰으로 초기화한다.
+  // ✅ V168.1: 물방울 스폰 스케줄(sched)이 없거나 nextSpawnAtMs가 죽어 있으면(0/누락) 초기화한다.
+  // (과거 버전은 dew50 이벤트 동안 nextSpawnAtMs를 0으로 껐다 — 새 설계에서는 dew10 예약이 항상 살아 있어야 한다.)
   async function ensureWorldTreeSched_(){
     if(!state.roomId || !state.joined) return;
     const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
-      if(raw && typeof raw==="object") return; // 이미 있음 → 중단
-      return {nextSpawnAtMs:Date.now()+worldTreeDewSpawnDelay_(),seq:0};
+      if(raw && typeof raw==="object" && Number(raw.nextSpawnAtMs)>0) return; // 정상 → 중단
+      const cur=(raw && typeof raw==="object")?Object.assign({},raw):{seq:0};
+      cur.nextSpawnAtMs=Date.now()+worldTreeDewSpawnDelay_();
+      return cur;
     });
     try{
       const next=Number(res?.snapshot?.val()?.nextSpawnAtMs)||0;
@@ -22793,6 +22811,8 @@ joinRoom();
       const summary=snap.val();
       if(summary && typeof summary==="object"){
         worldTreeS2Runtime.summary=summary;
+        // ✅ V168.1: 과거 버전이 남긴 nextSpawnAtMs=0(이벤트 중 스폰 정지) 상태를 복구한다.
+        if(!(Number(summary.nextSpawnAtMs)>0) && summary.item?.mode!=="click") ensureWorldTreeSched_().catch(()=>{});
       }else{
         // 아직 summary가 없는 방(마이그레이션 전) → 한 번만 루트 전체를 읽어 core/summary를 만든다.
         await loadWorldTreeS2Once_(false);
@@ -22891,6 +22911,9 @@ joinRoom();
   function worldTreeDewSpawnDelay_(){
     return WORLD_TREE_DEW_SPAWN_MIN_MS+Math.floor(Math.random()*(WORLD_TREE_DEW_SPAWN_MAX_MS-WORLD_TREE_DEW_SPAWN_MIN_MS+1));
   }
+  // ✅ V168.1: KST 기준 시간 키("2026-08-07T15")/다음 자정 계산 — 클라이언트 타임존과 무관하게 방 전체가 같은 키를 쓴다.
+  function worldTreeDewHourKey_(ms){ return new Date(ms+9*3600000).toISOString().slice(0,13); }
+  function worldTreeKstNextMidnightMs_(ms){ const KST=9*3600000; return (Math.floor((ms+KST)/86400000)+1)*86400000-KST; }
   // feed는 기록용 10개만 유지 — 새로 쓸 때 초과분을 같은 update에 실어 지운다.
   async function worldTreeFeedTrimInto_(updates){
     try{
@@ -22900,35 +22923,130 @@ joinRoom();
       for(let i=0;i<keys.length-9;i++) updates[`worldTreeItemsV1/feed/${keys[i]}`]=null;
     }catch(e){}
   }
+  // ✅ V168.1: 매시 50분~59분 사이, "다음 시간에 dew50을 스폰할지"를 미리 판정한다(방 전체 공유).
+  //  - 30% 확률. 하루 4회를 채웠으면 스킵, 자정까지 남은 시간이 최소 2회를 못 채우면 강제 스폰.
+  //  - 결과는 sched.roll + summary.dewRoll(약 40B)로 미러돼, 59분 예고 문구와 스폰 실행이 같은 답을 본다.
+  //  - 캐시에 이번 판정이 이미 있으면 아무 것도 안 읽는다 → 시간당 클라이언트별 최대 1회 트랜잭션.
+  async function maybeRollWorldTreeDew50_(){
+    if(!state.joined || !state.uid || !state.roomId) return;
+    const summary=worldTreeS2Runtime.summary;
+    if(!summary) return;
+    if(summary.item && summary.item.mode==="click") return; // 이벤트 진행 중엔 다음 판정을 쉰다
+    const now=Date.now();
+    if(new Date(now).getMinutes()<50) return;
+    const nextHourStartMs=now-(now%3600000)+3600000;
+    const hourKey=worldTreeDewHourKey_(nextHourStartMs);
+    const cached=summary.dewRoll;
+    if(cached && cached.hour===hourKey) return; // 이미 판정됨
+    try{
+      const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
+        const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
+        if(cur.roll && cur.roll.hour===hourKey) return; // 다른 클라이언트가 먼저 판정 → 중단
+        // 일일 카운터(day/d10/d50) 리셋은 스폰 트랜잭션이 담당한다. 여기서는 읽기만.
+        const dayKey=hourKey.slice(0,10);
+        const d50=(cur.day===dayKey)?(Number(cur.d50)||0):0;
+        const hourNum=Number(hourKey.slice(11,13))||0;
+        let will=false;
+        if(d50<WORLD_TREE_DEW50_DAILY_MAX){
+          const need=WORLD_TREE_DEW50_DAILY_MIN-d50;
+          if(need>0 && (24-hourNum)<=need) will=true; // 자정 전 최소 횟수 보장
+          else will=Math.random()<WORLD_TREE_DEW50_HOURLY_CHANCE;
+        }
+        cur.roll={hour:hourKey,will:will?1:0,atMs:will?(nextHourStartMs+Math.floor(Math.random()*WORLD_TREE_DEW50_WINDOW_MS)):0};
+        return cur;
+      });
+      const sched=res.snapshot.val()||{};
+      const roll=(sched.roll && sched.roll.hour===hourKey)?sched.roll:null;
+      if(!roll) return;
+      worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{dewRoll:roll});
+      if(res.committed){ try{ await rUpdate(rWorldTreeSummaryRef(state.roomId),{dewRoll:roll}); }catch(_e){} }
+    }catch(e){}
+  }
+  // ✅ V168.1: 매시 59분, 다음 시간 판정 결과를 예고 문구로 보여준다(네트워크 없음, 로컬 시계+캐시 기반).
+  function worldTreeDewCueTick_(){
+    if(!state.joined || !worldTreeS2Runtime.summary) return;
+    const now=Date.now();
+    if(new Date(now).getMinutes()!==59) return;
+    const hourKey=worldTreeDewHourKey_(now-(now%3600000)+3600000);
+    if(worldTreeS2Runtime.dewCueHour===hourKey) return;
+    const roll=worldTreeS2Runtime.summary.dewRoll;
+    if(!roll || roll.hour!==hourKey) return;
+    worldTreeS2Runtime.dewCueHour=hourKey;
+    const bright=!!roll.will;
+    showToast(bright?"어디선가 신비로운 물방울 소리가 들려와요… 💧✨":"물방울 소리가 저 멀리 멀어져요… 💧",bright?4200:3400);
+    try{
+      const el=document.getElementById("toast");
+      if(el){
+        el.classList.remove("dewCueSoft","dewCueBright");
+        void el.offsetWidth; // 애니메이션 재시작
+        el.classList.add(bright?"dewCueBright":"dewCueSoft");
+        setTimeout(()=>{ try{ el.classList.remove("dewCueSoft","dewCueBright"); }catch(e){} },bright?4200:3400);
+      }
+    }catch(e){}
+  }
   // 스폰 체크: 대시보드 120초 폴(loadWorldTreeSummaryOnce_)과 기여 동기화 3단계 뒤에 호출된다.
+  // ✅ V168.1: dew50(시간 판정제)과 dew10(3~6시간 예약제)을 한 선점 트랜잭션에서 판별한다.
   async function maybeSpawnWorldTreeDew_(){
     if(!state.joined || !state.uid || !state.roomId) return;
     const summary=worldTreeS2Runtime.summary;
     if(!summary) return;
+    maybeRollWorldTreeDew50_().catch(()=>{});
     if(summary.item && summary.item.mode==="click") return; // 클릭 이벤트 진행 중
+    const now=Date.now();
+    const roll=(summary.dewRoll && typeof summary.dewRoll==="object")?summary.dewRoll:null;
+    const due50=!!(roll && roll.will && !roll.done && Number(roll.atMs)>0 && now>=Number(roll.atMs) && now-Number(roll.atMs)<50*60*1000);
     const nextAt=Number(summary.nextSpawnAtMs)||0;
-    if(!nextAt || Date.now()<nextAt) return;
+    const due10=!!(nextAt && now>=nextAt);
+    if(!due50 && !due10) return;
     const uid=String(state.uid);
     const spawnId=`dew-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    let sched=null;
+    let kind="";
     try{
-      // 스폰 선점: 한 클라이언트만 지급을 실행한다.
+      // 스폰 선점: 한 클라이언트만 지급을 실행한다. 종류/일일 한도 판정도 이 트랜잭션 안에서 확정한다.
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
         const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
-        const curNext=Number(cur.nextSpawnAtMs)||0;
-        if(!curNext || curNext>Date.now()) return; // 이미 처리됐거나 아직 시간이 안 됨 → 중단
         if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<120000) return; // 2분 내 다른 지급 작업 → 중단
-        cur.spawning={id:spawnId,by:uid,atMs:Date.now()};
+        const nowT=Date.now();
+        const dayKey=worldTreeDewHourKey_(nowT).slice(0,10);
+        if(cur.day!==dayKey){ cur.day=dayKey; cur.d10=0; cur.d50=0; }
+        const curRoll=(cur.roll && typeof cur.roll==="object")?Object.assign({},cur.roll):null;
+        const fifty=!!(curRoll && curRoll.will && !curRoll.done && Number(curRoll.atMs)>0 && nowT>=Number(curRoll.atMs) && nowT-Number(curRoll.atMs)<50*60*1000);
+        let k="";
+        if(fifty){
+          curRoll.done=1; cur.roll=curRoll;
+          cur.d50=(Number(cur.d50)||0)+1;
+          k="dew50";
+        }else{
+          const curNext=Number(cur.nextSpawnAtMs)||0;
+          if(!curNext || curNext>nowT) return; // 이미 처리됐거나 아직 시간이 안 됨 → 중단
+          if((Number(cur.d10)||0)>=WORLD_TREE_DEW10_DAILY_MAX){
+            // 오늘 dew10 몫 소진 → 스폰 없이 다음 날(KST)로 미루기만 한다.
+            cur.nextSpawnAtMs=worldTreeKstNextMidnightMs_(nowT)+worldTreeDewSpawnDelay_();
+            return cur;
+          }
+          cur.d10=(Number(cur.d10)||0)+1;
+          k="dew10";
+        }
+        cur.spawning={id:spawnId,by:uid,atMs:Date.now(),kind:k};
         cur.seq=(Number(cur.seq)||0)+1;
         return cur;
       });
       if(!res.committed) return;
-      sched=res.snapshot.val()||{};
-      if(!sched.spawning || sched.spawning.id!==spawnId) return; // 선점 실패
+      const sched=res.snapshot.val()||{};
+      if(!sched.spawning || sched.spawning.id!==spawnId){
+        // 커밋은 됐지만 스폰 없이 미루기만 한 경우 → summary 미러만 맞춘다.
+        const mirrored=Number(sched.nextSpawnAtMs)||0;
+        if(mirrored>0 && Number(worldTreeS2Runtime.summary?.nextSpawnAtMs)!==mirrored){
+          worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{nextSpawnAtMs:mirrored});
+          try{ await rUpdate(rWorldTreeSummaryRef(state.roomId),{nextSpawnAtMs:mirrored}); }catch(_e){}
+        }
+        return;
+      }
+      kind=String(sched.spawning.kind||"");
     }catch(e){ return; }
     try{
-      if(Math.random()<.5) await spawnWorldTreeDew10_();
-      else await spawnWorldTreeDew50_();
+      if(kind==="dew50") await spawnWorldTreeDew50_();
+      else await spawnWorldTreeDew10_();
     }catch(e){
       console.warn("[world tree s2] dew spawn failed",e);
       // 지급 실패 시 선점 마커만 지워 다음 클라이언트가 다시 시도하게 한다.
@@ -22990,12 +23108,16 @@ joinRoom();
     };
     const updates={};
     updates["worldTreeItemsV1/active"]=active;
-    updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=0; // 이벤트 종료(지급) 때 다시 예약된다.
     updates["worldTreeItemsV1/sched/spawning"]=null;
     updates["worldTreeSummaryV1/item"]=item;
-    updates["worldTreeSummaryV1/nextSpawnAtMs"]=0;
+    // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 더 이상 건드리지 않는다(이벤트 중엔 어차피 스폰이 멈춘다).
+    // 판정 소진(done)을 summary에도 미러해 다른 클라이언트가 헛 트랜잭션을 안 돌게 한다.
+    updates["worldTreeSummaryV1/dewRoll/done"]=1;
     await rUpdate(rWorldTreePlaygroundRef_(),updates);
-    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item,nextSpawnAtMs:0});
+    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item});
+    if(worldTreeS2Runtime.summary.dewRoll && typeof worldTreeS2Runtime.summary.dewRoll==="object"){
+      worldTreeS2Runtime.summary.dewRoll=Object.assign({},worldTreeS2Runtime.summary.dewRoll,{done:1});
+    }
   }
   // 클릭 이벤트: 150ms 스로틀 + active 트랜잭션으로 함께 카운트를 올린다.
   async function clickWorldTreeDew_(){
@@ -23037,7 +23159,6 @@ joinRoom();
     const itemId=`itm-${now}-${Math.random().toString(36).slice(2,8)}`;
     const bagItem={kind:"dew50",hours:50,obtainedAtMs:now,source:"click",eventId:String(active.id||"")};
     const feedKey=rPush(rWorldTreeItemsRef(state.roomId,"feed")).key;
-    const nextSpawnAtMs=now+worldTreeDewSpawnDelay_();
     const item={
       mode:"idle",id:String(active.id||""),kind:"dew50",
       count:Number(active.count)||0,target:Number(active.target)||0,
@@ -23047,13 +23168,12 @@ joinRoom();
     updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=bagItem;
     updates["worldTreeItemsV1/active/claimed"]=true;
     updates[`worldTreeItemsV1/feed/${feedKey}`]={kind:"dew50",name:myName,hours:50,atMs:now};
-    updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=nextSpawnAtMs;
+    // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 별도 흐름이라 여기서 재설정하지 않는다.
     updates["worldTreeItemsV1/sched/spawning"]=null;
     updates["worldTreeSummaryV1/item"]=item;
-    updates["worldTreeSummaryV1/nextSpawnAtMs"]=nextSpawnAtMs;
     await worldTreeFeedTrimInto_(updates);
     await rUpdate(rWorldTreePlaygroundRef_(),updates);
-    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item,nextSpawnAtMs});
+    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item});
     worldTreeS2Runtime.bag=Object.assign({},worldTreeS2Runtime.bag||{},{[itemId]:bagItem});
     if(worldTreeS2Runtime.active && String(worldTreeS2Runtime.active.id||"")===String(active.id||"")) worldTreeS2Runtime.active.claimed=true;
     renderWorldTreeBag_();
@@ -23393,6 +23513,8 @@ joinRoom();
     // 아래 타이머는 브라우저가 강제 종료돼 pagehide조차 못 부른 경우를 대비한 안전망이다.
     // (날짜가 바뀌기 전에 한 번은 기록돼야 그날 시간이 확정되므로 완전히 없애지는 않는다.)
     setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SAFETY_SYNC_MS);
+    // ✅ V168.1: 매시 59분 물방울 예고 문구 — 로컬 시계+summary 캐시만 보므로 네트워크 비용이 없다.
+    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} },20000);
     renderWorldTreeS2_({});
     window.__MK_WORLD_TREE_S2__={
       open:openWorldTreeS2_,close:closeWorldTreeS2_,sync:()=>syncWorldTreeContribution_("force"),
@@ -23592,6 +23714,26 @@ if(!window.__MK_BOOT_OK__){
     animation:worldTreeDewBadgePulse 1.6s ease-in-out infinite;
   }
   @keyframes worldTreeDewBadgePulse{0%,100%{transform:scale(1);opacity:.72;}50%{transform:scale(1.28);opacity:1;}}
+  /* ✅ V168.1: 10h(은은한 반짝임) vs 50h(번쩍이는 광채) 이펙트 구분 */
+  #worldTreeDewBadge[data-kind="dew10"]{
+    filter:drop-shadow(0 0 4px rgba(120,190,255,.5));
+    animation:worldTreeDewBadgePulse 2.4s ease-in-out infinite;
+  }
+  #worldTreeDewBadge[data-kind="dew50"]{
+    animation:worldTreeDewBadgeFlash 1.05s ease-in-out infinite;
+  }
+  @keyframes worldTreeDewBadgeFlash{
+    0%,100%{transform:scale(1); opacity:.88; filter:drop-shadow(0 0 5px rgba(150,205,255,.85));}
+    50%{transform:scale(1.5); opacity:1; filter:drop-shadow(0 0 13px rgba(200,235,255,1)) drop-shadow(0 0 26px rgba(120,190,255,.85));}
+  }
+  /* ✅ V168.1: 매시 59분 물방울 예고 토스트 글로우 (밝음=스폰 예정, 은은=멀어짐) */
+  #toast.dewCueSoft{box-shadow:0 0 14px rgba(140,200,255,.45), 0 18px 40px rgba(0,0,0,.35);}
+  #toast.dewCueBright{animation:worldTreeDewToastFlash .9s ease-in-out 4;}
+  @keyframes worldTreeDewToastFlash{
+    0%,100%{box-shadow:0 0 10px rgba(140,200,255,.4), 0 18px 40px rgba(0,0,0,.35);}
+    50%{box-shadow:0 0 26px rgba(190,230,255,.95), 0 0 48px rgba(120,190,255,.6), 0 18px 40px rgba(0,0,0,.35);}
+  }
+  body.mkLowSpecMode #toast.dewCueBright{animation:none;}
   @media (max-width:1100px){
     body.joined #dashboardCard #worldTreeDewBadge{left:5px !important; top:5px !important; font-size:12px !important;}
   }
@@ -24397,6 +24539,9 @@ if(!window.__MK_BOOT_OK__){
       badge.setAttribute('aria-hidden', 'true');
       box.appendChild(badge);
     }
+    // ✅ V168.1: 10h는 은은한 반짝임, 50h는 번쩍이는 광채. 값이 바뀔 때만 써서 애니메이션이 리셋되지 않게 한다.
+    const kind = (info.dewKind === 'dew50') ? 'dew50' : 'dew10';
+    if(badge.dataset.kind !== kind) badge.dataset.kind = kind;
     if(badge.style.display) badge.style.display = '';
   }
   function paintWorldTreeDash(info){
