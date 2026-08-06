@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V168.3_DEW_TXN_NULL_FIX: 스폰/게릴라 선점 트랜잭션이 첫 실행(캐시 없음, raw=null)에서 undefined 반환으로 즉시 중단되어 스폰이 한 번도 실행되지 않던 버그 수정(실측 sched.seq=0). null 반환으로 서버 왕복을 강제해 실제 값으로 재실행되게 함 -->
+<!-- V168.2_DEW_GUERRILLA: 게릴라 물방울 레이스 — 관리자가 시작 시각·목표 클릭을 예약하면 1분 전 예고 토스트 후 +20h(dew20 💦) 클릭 레이스 시작. dew50 클릭 인프라 재사용 -->
 <!-- V168.1_DEW_RHYTHM: 물방울 리듬 개편 — dew10 3~6시간 간격·하루 5개 / dew50 매시 50분 판정(30%)·정각~10분 스폰·하루 2~4회 / 매시 59분 예고 문구 / 배지 이펙트 10h(은은)·50h(번쩍) 구분 -->
 <!-- V168_WORLD_TREE_COST_DEW_GUARD: 세계수 다운로드 절감(core/ledger/summary 분리, 대시보드 300B 폴링, 로스터 1시간 캐시) + 닉네임 중복 병합/관리자 제거 + 신비로운 물방울(랜덤 dew10 10h / 클릭 레이스 dew50 50h, 가방, 대시보드 배지) -->
 <!-- V164_DASH_PET_TREE_RESPONSIVE_SIZE_GUARD: 펫/세계수 단일 표시 강제 + 전환 시 카드 높이 고정 -->
@@ -6362,6 +6364,21 @@ body.joined #preJoinCard{ display:none; }
 <button class="primary" id="worldTreeAdminSave" type="button">세계수 설정 저장</button>
 </div>
 <div id="worldTreeAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">세계수 화면을 열면 현재 설정을 확인할 수 있어요.</div>
+<!-- ✅ V168.2: 게릴라 물방울 레이스 (관리자 즉석 이벤트, 보상 +20h) -->
+<div class="hr"></div>
+<div class="hint">💦 게릴라 물방울 레이스 (보상 +20h)</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">시작 시각과 목표 클릭 수를 정하면 시작 1분 전에 방 전체에 예고 토스트가 떠요. 예약이 접속자 화면에 퍼지는 데 최대 2분이 걸리니 최소 3분 뒤 시각으로 정해 주세요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="worldTreeGuerrillaTime" style="min-width:110px;">시작 시각</label>
+<input id="worldTreeGuerrillaTime" type="time" style="flex:1 1 120px;"/>
+<label for="worldTreeGuerrillaTarget" style="min-width:110px;">목표 클릭 수</label>
+<input id="worldTreeGuerrillaTarget" type="number" min="100" max="100000" step="100" value="2000" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="worldTreeGuerrillaSet" type="button">레이스 예약</button>
+<button class="ghost" id="worldTreeGuerrillaCancel" type="button">예약 취소</button>
+</div>
+<div id="worldTreeGuerrillaStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 레이스가 없어요.</div>
 
 <div class="hr"></div>
 <div class="adminProfileManager">
@@ -21873,7 +21890,9 @@ joinRoom();
     dewClickAt:0,            // 클릭 이벤트 스로틀
     dewClaimingId:"",        // 당첨 지급 재진입 방지
     dewUseLock:false,        // 물방울 사용 중복 방지
-    dewCueHour:""            // ✅ V168.1: 59분 예고 문구를 시간당 1회만 띄우기 위한 마커
+    dewCueHour:"",           // ✅ V168.1: 59분 예고 문구를 시간당 1회만 띄우기 위한 마커
+    guerrillaCueId:"",       // ✅ V168.2: 게릴라 1분 전 예고를 예약당 1회만 띄우기 위한 마커
+    guerrillaStartId:""      // ✅ V168.2: 게릴라 시작 안내를 예약당 1회만 띄우기 위한 마커
   };
 
   function rWorldTreeS2Ref(roomId){
@@ -22076,9 +22095,9 @@ joinRoom();
       const alignment=(myTeam==="angel"||myTeam==="demon")?myTeam:(overall==="demon"?"demon":"angel");
       const content=tree.config.content;
       const teamName=alignment==="angel"?content.angelTeamName:content.demonTeamName;
-      // ✅ V168.1: 배지 이펙트 구분용 — 클릭 이벤트 진행 중이거나 마지막 드랍이 dew50이면 "번쩍", 아니면 "은은".
+      // ✅ V168.1: 배지 이펙트 구분용 — 클릭 이벤트 진행 중이거나 마지막 드랍이 dew50/dew20이면 "번쩍", 아니면 "은은".
       const item=s?.item;
-      const dewKind=(item && typeof item==="object")?((item.mode==="click")?"dew50":String(item.kind||"dew10")):"";
+      const dewKind=(item && typeof item==="object")?((item.mode==="click")?String(item.kind||"dew50"):String(item.kind||"dew10")):"";
       return {
         ready:!!(s || worldTreeS2Runtime.snapshot),
         level,maxLevel:max,stageIndex:stage.index,stageName:stage.name,
@@ -22272,6 +22291,7 @@ joinRoom();
     };
     Object.entries(adminValues).forEach(([id,value])=>{ const input=document.getElementById(id); if(input&&document.activeElement!==input) input.value=value; });
     setText("worldTreeAdminStatus",`${content.treeName} · 현재 Lv.${tree.level.toLocaleString("ko-KR")} / ${max.toLocaleString("ko-KR")} · 팀별 ${capacity.angel}/${capacity.demon}명 · 레벨당 ${tree.config.hoursPerLevel}시간`);
+    renderWorldTreeGuerrillaStatus_(); // ✅ V168.2: 게릴라 예약 현황도 함께 갱신
     renderWorldTreeRanking_(tree);
     renderWorldTreeRoster_(tree);
     // ✅ V168: 물방울 이벤트/가방/캐시 안내도 함께 갱신
@@ -22962,6 +22982,18 @@ joinRoom();
       if(res.committed){ try{ await rUpdate(rWorldTreeSummaryRef(state.roomId),{dewRoll:roll}); }catch(_e){} }
     }catch(e){}
   }
+  // ✅ V168.1: 물방울 계열 안내 토스트 — 밝음(번쩍 글로우)/은은(잔잔한 글로우) 두 단계.
+  function showDewGlowToast_(msg,ms,bright){
+    showToast(msg,ms);
+    try{
+      const el=document.getElementById("toast");
+      if(!el) return;
+      el.classList.remove("dewCueSoft","dewCueBright");
+      void el.offsetWidth; // 애니메이션 재시작
+      el.classList.add(bright?"dewCueBright":"dewCueSoft");
+      setTimeout(()=>{ try{ el.classList.remove("dewCueSoft","dewCueBright"); }catch(e){} },ms);
+    }catch(e){}
+  }
   // ✅ V168.1: 매시 59분, 다음 시간 판정 결과를 예고 문구로 보여준다(네트워크 없음, 로컬 시계+캐시 기반).
   function worldTreeDewCueTick_(){
     if(!state.joined || !worldTreeS2Runtime.summary) return;
@@ -22972,17 +23004,125 @@ joinRoom();
     const roll=worldTreeS2Runtime.summary.dewRoll;
     if(!roll || roll.hour!==hourKey) return;
     worldTreeS2Runtime.dewCueHour=hourKey;
-    const bright=!!roll.will;
-    showToast(bright?"어디선가 신비로운 물방울 소리가 들려와요… 💧✨":"물방울 소리가 저 멀리 멀어져요… 💧",bright?4200:3400);
-    try{
-      const el=document.getElementById("toast");
-      if(el){
-        el.classList.remove("dewCueSoft","dewCueBright");
-        void el.offsetWidth; // 애니메이션 재시작
-        el.classList.add(bright?"dewCueBright":"dewCueSoft");
-        setTimeout(()=>{ try{ el.classList.remove("dewCueSoft","dewCueBright"); }catch(e){} },bright?4200:3400);
+    if(roll.will) showDewGlowToast_("어디선가 신비로운 물방울 소리가 들려와요… 💧✨",4200,true);
+    else showDewGlowToast_("물방울 소리가 저 멀리 멀어져요… 💧",3400,false);
+  }
+  // ===== ✅ V168.2: 게릴라 물방울 레이스 (관리자 즉석 이벤트, 보상 +20h) =====
+  // 예약은 sched.guerrilla(원본) + summary.guerrilla(미러)로 퍼진다. 접속자들은 기존 120초
+  // summary 폴링으로 예약을 받고, 20초 로컬 틱이 1분 전 예고 → 정각 시작을 처리한다.
+  function worldTreeGuerrillaTick_(){
+    if(!state.joined) return;
+    const g=worldTreeS2Runtime.summary?.guerrilla;
+    if(!g || typeof g!=="object") return;
+    const atMs=Number(g.atMs)||0;
+    if(!atMs) return;
+    const id=String(g.id||"");
+    const now=Date.now();
+    if(now<atMs){
+      if(atMs-now<=70000 && worldTreeS2Runtime.guerrillaCueId!==id){
+        worldTreeS2Runtime.guerrillaCueId=id;
+        showDewGlowToast_("1분 뒤, 게릴라 물방울 레이스가 시작돼요! 💦 세계수로 모여 주세요 (+20h)",5000,true);
       }
-    }catch(e){}
+      return;
+    }
+    if(now-atMs<60000 && worldTreeS2Runtime.guerrillaStartId!==id){
+      worldTreeS2Runtime.guerrillaStartId=id;
+      showDewGlowToast_("게릴라 물방울 레이스 시작! 💦 세계수에서 물방울을 클릭해 주세요!",5000,true);
+    }
+    maybeStartWorldTreeGuerrilla_(g).catch(()=>{});
+  }
+  // 시작 시각이 지나면 선점 트랜잭션으로 한 클라이언트만 레이스를 연다.
+  async function maybeStartWorldTreeGuerrilla_(g){
+    if(!state.joined || !state.uid || !state.roomId) return;
+    const summary=worldTreeS2Runtime.summary;
+    if(!summary) return;
+    const id=String(g?.id||"");
+    const atMs=Number(g?.atMs)||0;
+    if(!id || !atMs || Date.now()<atMs) return;
+    if(Date.now()-atMs>30*60*1000){
+      // 30분 넘게 시작 못 했으면(그 사이 방이 비어 있었음) 예약을 정리한다.
+      try{ await rUpdate(rWorldTreePlaygroundRef_(),{"worldTreeItemsV1/sched/guerrilla":null,"worldTreeSummaryV1/guerrilla":null}); }catch(e){}
+      if(worldTreeS2Runtime.summary) delete worldTreeS2Runtime.summary.guerrilla;
+      return;
+    }
+    if(summary.item && summary.item.mode==="click") return; // 진행 중 이벤트가 끝나면 20초 틱이 다시 시도한다
+    const uid=String(state.uid);
+    const spawnId=`dew-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    let target=0;
+    try{
+      const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
+        if(raw===null) return null; // ✅ V168.3: 캐시 없는 첫 실행 → 서버 왕복 강제(위 스폰 트랜잭션과 동일한 이유)
+        const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
+        const cg=cur.guerrilla;
+        if(!cg || String(cg.id||"")!==id) return; // 이미 시작됐거나 취소됨 → 중단
+        if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<120000) return;
+        cur.guerrilla=null;
+        cur.spawning={id:spawnId,by:uid,atMs:Date.now(),kind:"dew20"};
+        cur.seq=(Number(cur.seq)||0)+1;
+        return cur;
+      });
+      const sched=res.snapshot.val()||{};
+      // 예약이 이미 소진/취소됐으면 로컬 캐시도 지워 다음 폴링 전까지의 헛 재시도를 막는다.
+      if(!sched.guerrilla || String(sched.guerrilla.id||"")!==id){
+        if(!res.committed && worldTreeS2Runtime.summary?.guerrilla && String(worldTreeS2Runtime.summary.guerrilla.id||"")===id){
+          delete worldTreeS2Runtime.summary.guerrilla;
+        }
+      }
+      if(!res.committed) return;
+      if(!sched.spawning || sched.spawning.id!==spawnId) return;
+      target=Math.max(100,Math.min(100000,Math.round(Number(g.target)||0)))||2000;
+    }catch(e){ return; }
+    try{
+      await spawnWorldTreeDewClickEvent_("dew20",20,target);
+    }catch(e){
+      console.warn("[world tree s2] guerrilla spawn failed",e);
+      try{ await rUpdate(rWorldTreeItemsRef(state.roomId,"sched"),{spawning:null}); }catch(_e){}
+    }
+  }
+  // 관리자: 예약 등록/취소/상태 표시
+  async function setWorldTreeGuerrilla_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.joined || !state.roomId){ showToast("작업방 입장 후 예약할 수 있어요"); return; }
+    const timeVal=String(document.getElementById("worldTreeGuerrillaTime")?.value||"");
+    const target=Math.round(Number(document.getElementById("worldTreeGuerrillaTarget")?.value)||0);
+    const m=timeVal.match(/^(\d{2}):(\d{2})$/);
+    if(!m){ showToast("시작 시각을 선택해 주세요 (예: 21:30)"); return; }
+    if(target<100 || target>100000){ showToast("목표 클릭 수는 100~100,000 사이로 정해 주세요"); return; }
+    const d=new Date(); d.setHours(Number(m[1]),Number(m[2]),0,0);
+    const atMs=d.getTime();
+    if(atMs-Date.now()<3*60*1000){ showToast("예고가 모두에게 퍼지도록 최소 3분 뒤 시각으로 정해 주세요",3400); return; }
+    const g={id:`grl-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,atMs,target,hours:20,by:String(state.uid||""),createdAtMs:Date.now()};
+    const btn=document.getElementById("worldTreeGuerrillaSet");
+    if(btn) btn.disabled=true;
+    try{
+      await rUpdate(rWorldTreePlaygroundRef_(),{
+        "worldTreeItemsV1/sched/guerrilla":g,
+        "worldTreeSummaryV1/guerrilla":{id:g.id,atMs,target,hours:20}
+      });
+      worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{guerrilla:{id:g.id,atMs,target,hours:20}});
+      renderWorldTreeGuerrillaStatus_();
+      showToast(`레이스 예약 완료! ${m[1]}:${m[2]} 시작 · 1분 전에 예고가 나가요 💦`,3400);
+    }catch(e){ showToast("예약에 실패했어요 · 연결을 확인해 주세요",3000); }
+    finally{ if(btn) btn.disabled=false; }
+  }
+  async function cancelWorldTreeGuerrilla_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.joined || !state.roomId){ showToast("작업방 입장 후 취소할 수 있어요"); return; }
+    try{
+      await rUpdate(rWorldTreePlaygroundRef_(),{"worldTreeItemsV1/sched/guerrilla":null,"worldTreeSummaryV1/guerrilla":null});
+      if(worldTreeS2Runtime.summary) delete worldTreeS2Runtime.summary.guerrilla;
+      renderWorldTreeGuerrillaStatus_();
+      showToast("게릴라 레이스 예약을 취소했어요",2600);
+    }catch(e){ showToast("취소에 실패했어요 · 연결을 확인해 주세요",3000); }
+  }
+  function renderWorldTreeGuerrillaStatus_(){
+    const el=document.getElementById("worldTreeGuerrillaStatus");
+    if(!el) return;
+    const g=worldTreeS2Runtime.summary?.guerrilla;
+    if(!g || !Number(g.atMs)){ el.textContent="예약된 레이스가 없어요. 시작 시각과 목표 클릭 수를 정해 예약해 보세요."; return; }
+    const d=new Date(Number(g.atMs));
+    const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+    el.textContent=`${hh}:${mm} 시작 예약됨 · 목표 ${Number(g.target||0).toLocaleString("ko-KR")}클릭 · 보상 +20h · 시작 1분 전 예고 발송`;
   }
   // 스폰 체크: 대시보드 120초 폴(loadWorldTreeSummaryOnce_)과 기여 동기화 3단계 뒤에 호출된다.
   // ✅ V168.1: dew50(시간 판정제)과 dew10(3~6시간 예약제)을 한 선점 트랜잭션에서 판별한다.
@@ -23004,6 +23144,10 @@ joinRoom();
     try{
       // 스폰 선점: 한 클라이언트만 지급을 실행한다. 종류/일일 한도 판정도 이 트랜잭션 안에서 확정한다.
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
+        // ✅ V168.3: 첫 실행은 로컬 캐시가 없어 raw=null로 들어온다. 여기서 undefined로 중단하면
+        // 서버에 묻지도 않고 트랜잭션이 끝나 스폰이 영원히 안 열린다(실측: sched.seq가 0에서 멈춰 있었음).
+        // null을 그대로 되돌려 서버 왕복을 강제하면 실제 값으로 재실행된다(sched가 진짜 비어 있으면 무해한 no-op).
+        if(raw===null) return null;
         const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
         if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<120000) return; // 2분 내 다른 지급 작업 → 중단
         const nowT=Date.now();
@@ -23093,15 +23237,15 @@ joinRoom();
       showToast("신비로운 물방울(10h)이 내 가방에 떨어졌어요 💧",3200);
     }
   }
-  // dew50: 방 전체가 함께 클릭 목표를 채우는 이벤트 시작 (마지막 클릭자가 50시간 물방울 획득)
-  async function spawnWorldTreeDew50_(){
+  // ✅ V168.2: 방 전체가 함께 클릭 목표를 채우는 이벤트 시작 (마지막 클릭자가 물방울 획득).
+  // dew50(정기)과 dew20(게릴라)이 같은 인프라를 쓴다 — kind/hours/target만 다르다.
+  async function spawnWorldTreeDewClickEvent_(kind,hours,target){
     const now=Date.now();
-    const target=WORLD_TREE_DEW_CLICK_MIN+Math.floor(Math.random()*(WORLD_TREE_DEW_CLICK_MAX-WORLD_TREE_DEW_CLICK_MIN+1));
     const eventId=`evt-${now}-${Math.random().toString(36).slice(2,8)}`;
     const prevItem=(worldTreeS2Runtime.summary?.item && typeof worldTreeS2Runtime.summary.item==="object")?worldTreeS2Runtime.summary.item:{};
-    const active={id:eventId,target,count:0,startedAtMs:now,claimed:false};
+    const active={id:eventId,target,count:0,startedAtMs:now,claimed:false,kind,hours};
     const item={
-      mode:"click",id:eventId,kind:"dew50",count:0,target,
+      mode:"click",id:eventId,kind,count:0,target,
       lastDropAtMs:Number(prevItem.lastDropAtMs)||0,
       lastDropName:String(prevItem.lastDropName||""),
       lastDropHours:Number(prevItem.lastDropHours)||0
@@ -23112,12 +23256,18 @@ joinRoom();
     updates["worldTreeSummaryV1/item"]=item;
     // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 더 이상 건드리지 않는다(이벤트 중엔 어차피 스폰이 멈춘다).
     // 판정 소진(done)을 summary에도 미러해 다른 클라이언트가 헛 트랜잭션을 안 돌게 한다.
-    updates["worldTreeSummaryV1/dewRoll/done"]=1;
+    if(kind==="dew50") updates["worldTreeSummaryV1/dewRoll/done"]=1;
+    if(kind==="dew20") updates["worldTreeSummaryV1/guerrilla"]=null; // 예약 소진
     await rUpdate(rWorldTreePlaygroundRef_(),updates);
     worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item});
-    if(worldTreeS2Runtime.summary.dewRoll && typeof worldTreeS2Runtime.summary.dewRoll==="object"){
+    if(kind==="dew50" && worldTreeS2Runtime.summary.dewRoll && typeof worldTreeS2Runtime.summary.dewRoll==="object"){
       worldTreeS2Runtime.summary.dewRoll=Object.assign({},worldTreeS2Runtime.summary.dewRoll,{done:1});
     }
+    if(kind==="dew20" && worldTreeS2Runtime.summary.guerrilla) delete worldTreeS2Runtime.summary.guerrilla;
+  }
+  async function spawnWorldTreeDew50_(){
+    const target=WORLD_TREE_DEW_CLICK_MIN+Math.floor(Math.random()*(WORLD_TREE_DEW_CLICK_MAX-WORLD_TREE_DEW_CLICK_MIN+1));
+    await spawnWorldTreeDewClickEvent_("dew50",50,target);
   }
   // 클릭 이벤트: 150ms 스로틀 + active 트랜잭션으로 함께 카운트를 올린다.
   async function clickWorldTreeDew_(){
@@ -23150,24 +23300,27 @@ joinRoom();
       }
     }catch(e){}
   }
-  // 당첨 지급: 내 가방에 dew50 + 다음 스폰 예약 + summary 정리 (한 번의 멀티패스 update)
+  // 당첨 지급: 내 가방에 물방울 + summary 정리 (한 번의 멀티패스 update)
+  // ✅ V168.2: kind/hours를 active에서 읽어 dew50(정기)/dew20(게릴라)을 모두 처리한다.
   async function claimWorldTreeDewWin_(active){
     const uid=String(state.uid||"");
     if(!state.roomId || !uid || !active || active.winnerUid!==uid || active.claimed) return;
     const now=Date.now();
+    const kind=(active.kind==="dew20")?"dew20":"dew50";
+    const hours=Number(active.hours)||(kind==="dew20"?20:50);
     const myName=normalizeNick(state.nickname||els.name?.value||String(active.winnerName||"익명"));
     const itemId=`itm-${now}-${Math.random().toString(36).slice(2,8)}`;
-    const bagItem={kind:"dew50",hours:50,obtainedAtMs:now,source:"click",eventId:String(active.id||"")};
+    const bagItem={kind,hours,obtainedAtMs:now,source:"click",eventId:String(active.id||"")};
     const feedKey=rPush(rWorldTreeItemsRef(state.roomId,"feed")).key;
     const item={
-      mode:"idle",id:String(active.id||""),kind:"dew50",
+      mode:"idle",id:String(active.id||""),kind,
       count:Number(active.count)||0,target:Number(active.target)||0,
-      lastDropAtMs:now,lastDropName:myName,lastDropHours:50
+      lastDropAtMs:now,lastDropName:myName,lastDropHours:hours
     };
     const updates={};
     updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=bagItem;
     updates["worldTreeItemsV1/active/claimed"]=true;
-    updates[`worldTreeItemsV1/feed/${feedKey}`]={kind:"dew50",name:myName,hours:50,atMs:now};
+    updates[`worldTreeItemsV1/feed/${feedKey}`]={kind,name:myName,hours,atMs:now};
     // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 별도 흐름이라 여기서 재설정하지 않는다.
     updates["worldTreeItemsV1/sched/spawning"]=null;
     updates["worldTreeSummaryV1/item"]=item;
@@ -23178,7 +23331,7 @@ joinRoom();
     if(worldTreeS2Runtime.active && String(worldTreeS2Runtime.active.id||"")===String(active.id||"")) worldTreeS2Runtime.active.claimed=true;
     renderWorldTreeBag_();
     renderWorldTreeDewEvent_();
-    showToast("마지막 클릭 성공! 신비로운 물방울(50h)을 획득했어요 🌊",3400);
+    showToast(`마지막 클릭 성공! 신비로운 물방울(${hours}h)을 획득했어요 ${kind==="dew20"?"💦":"🌊"}`,3400);
   }
   // 씬 위 물방울 오브/카운터 렌더 (active 구독 기준 실시간)
   function renderWorldTreeDewEvent_(){
@@ -23192,7 +23345,9 @@ joinRoom();
     if(!hasEvent){ label.style.display="none"; return; }
     if(running){
       label.style.display="";
-      label.textContent=`💧 함께 모은 클릭 ${(Number(active.count)||0).toLocaleString("ko-KR")} / ${(Number(active.target)||0).toLocaleString("ko-KR")}`;
+      const icon=active.kind==="dew20"?"💦":"💧";
+      const reward=Number(active.hours)?` · +${Number(active.hours)}h`:"";
+      label.textContent=`${icon} 함께 모은 클릭 ${(Number(active.count)||0).toLocaleString("ko-KR")} / ${(Number(active.target)||0).toLocaleString("ko-KR")}${reward}`;
       return;
     }
     // 당첨자 발표는 종료 후 10분까지만 보여준다.
@@ -23215,7 +23370,7 @@ joinRoom();
     if(!list) return;
     const bag=worldTreeS2Runtime.bag||{};
     const items=Object.entries(bag)
-      .filter(([,it])=>it && (it.kind==="dew10" || it.kind==="dew50"))
+      .filter(([,it])=>it && (it.kind==="dew10" || it.kind==="dew20" || it.kind==="dew50"))
       .sort((a,b)=>(Number(a[1].obtainedAtMs)||0)-(Number(b[1].obtainedAtMs)||0));
     if(countEl) countEl.textContent=`${items.length}개`;
     list.textContent="";
@@ -23227,7 +23382,7 @@ joinRoom();
       return;
     }
     items.forEach(([id,it])=>{
-      const hours=Number(it.hours)||(it.kind==="dew50"?50:10);
+      const hours=Number(it.hours)||(it.kind==="dew50"?50:it.kind==="dew20"?20:10);
       const card=document.createElement("button");
       card.type="button";
       card.className="worldTreeBagItem";
@@ -23235,7 +23390,7 @@ joinRoom();
       card.title=`빠르게 두 번 누르면 +${hours}h 사용`;
       const icon=document.createElement("span");
       icon.className="worldTreeBagIcon";
-      icon.textContent=it.kind==="dew50"?"🌊":"💧";
+      icon.textContent=it.kind==="dew50"?"🌊":it.kind==="dew20"?"💦":"💧";
       const label=document.createElement("b");
       label.textContent=`+${hours}h`;
       const date=document.createElement("span");
@@ -23274,7 +23429,7 @@ joinRoom();
     if(!item) return;
     const myTeam=worldTreeS2Runtime.snapshot?.members?.[uid]?.team||"";
     if(myTeam!=="angel" && myTeam!=="demon"){ showToast("팀을 먼저 선택하면 물방울을 사용할 수 있어요 💧",3000); return; }
-    const hours=Number(item.hours)||(item.kind==="dew50"?50:10);
+    const hours=Number(item.hours)||(item.kind==="dew50"?50:item.kind==="dew20"?20:10);
     const sec=Math.max(1,Math.round(hours*3600));
     const name=normalizeNick(state.nickname||els.name?.value||"익명");
     worldTreeS2Runtime.dewUseLock=true;
@@ -23490,6 +23645,9 @@ joinRoom();
       renderWorldTreeS2_(worldTreeS2Runtime.snapshot||{});
     });
     document.getElementById("worldTreeAdminSave")?.addEventListener("click",()=>saveWorldTreeAdminConfig_());
+    // ✅ V168.2: 게릴라 물방울 레이스 예약/취소
+    document.getElementById("worldTreeGuerrillaSet")?.addEventListener("click",()=>setWorldTreeGuerrilla_());
+    document.getElementById("worldTreeGuerrillaCancel")?.addEventListener("click",()=>cancelWorldTreeGuerrilla_());
     // ✅ V168: 물방울 클릭 이벤트 오브 + 가방 더블탭 사용
     document.getElementById("worldTreeDewOrb")?.addEventListener("click",()=>{ clickWorldTreeDew_().catch(()=>{}); });
     document.getElementById("worldTreeBagList")?.addEventListener("click",onWorldTreeBagClick_);
@@ -23513,8 +23671,8 @@ joinRoom();
     // 아래 타이머는 브라우저가 강제 종료돼 pagehide조차 못 부른 경우를 대비한 안전망이다.
     // (날짜가 바뀌기 전에 한 번은 기록돼야 그날 시간이 확정되므로 완전히 없애지는 않는다.)
     setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SAFETY_SYNC_MS);
-    // ✅ V168.1: 매시 59분 물방울 예고 문구 — 로컬 시계+summary 캐시만 보므로 네트워크 비용이 없다.
-    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} },20000);
+    // ✅ V168.1: 매시 59분 물방울 예고 + ✅ V168.2: 게릴라 레이스 예고/시작 — 로컬 시계+summary 캐시 기반.
+    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} try{ worldTreeGuerrillaTick_(); }catch(e){} },20000);
     renderWorldTreeS2_({});
     window.__MK_WORLD_TREE_S2__={
       open:openWorldTreeS2_,close:closeWorldTreeS2_,sync:()=>syncWorldTreeContribution_("force"),
@@ -24539,8 +24697,8 @@ if(!window.__MK_BOOT_OK__){
       badge.setAttribute('aria-hidden', 'true');
       box.appendChild(badge);
     }
-    // ✅ V168.1: 10h는 은은한 반짝임, 50h는 번쩍이는 광채. 값이 바뀔 때만 써서 애니메이션이 리셋되지 않게 한다.
-    const kind = (info.dewKind === 'dew50') ? 'dew50' : 'dew10';
+    // ✅ V168.1: 10h는 은은한 반짝임, 50h(게릴라 20h 포함)는 번쩍이는 광채. 값이 바뀔 때만 써서 애니메이션이 리셋되지 않게 한다.
+    const kind = (info.dewKind === 'dew50' || info.dewKind === 'dew20') ? 'dew50' : 'dew10';
     if(badge.dataset.kind !== kind) badge.dataset.kind = kind;
     if(badge.style.display) badge.style.display = '';
   }
