@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168_WORLD_TREE_COST_DEW_GUARD: 세계수 다운로드 절감(core/ledger/summary 분리, 대시보드 300B 폴링, 로스터 1시간 캐시) + 닉네임 중복 병합/관리자 제거 + 신비로운 물방울(랜덤 dew10 10h / 클릭 레이스 dew50 50h, 가방, 대시보드 배지) -->
 <!-- V164_DASH_PET_TREE_RESPONSIVE_SIZE_GUARD: 펫/세계수 단일 표시 강제 + 전환 시 카드 높이 고정 -->
 <!-- V163_WORLD_TREE_SEASON2: 펫 놀이터 은퇴 + 천사/악마 팀 세계수 공동 성장 -->
 <!-- V161_POMO_COUNT_STABILITY_GUARD: 공용 뽀모 인원 응답 순서·불완전 0명 전파 방지 -->
@@ -5556,6 +5557,47 @@ body.joined #preJoinCard{ display:none; }
   .worldTreeRosterEmpty{justify-content:center; color:rgba(255,255,255,.42); background:transparent;}
   body.mkLowSpecMode .worldTreePodium li{box-shadow:none!important;}
   body.mkLowSpecMode .worldTreeScene::before,body.mkLowSpecMode .worldTreeAura,body.mkLowSpecMode .worldTreeEffects,body.mkLowSpecMode .worldTreeCompletionAura{display:none;}
+  /* ✅ V168: 누적 시간 1시간 캐시 안내 문구 */
+  .worldTreeCacheNote{margin-top:8px; font-size:9px; color:rgba(255,255,255,.42); text-align:right;}
+  /* ✅ V168: 신비로운 물방울 클릭 이벤트(씬 위 오브 + 카운터) */
+  .worldTreeDewOrb{
+    position:absolute; right:22px; top:86px; z-index:6; width:58px; height:58px; border-radius:50%;
+    border:1px solid rgba(150,210,255,.55); font-size:26px; line-height:1; cursor:pointer; padding:0;
+    background:radial-gradient(circle at 38% 32%, rgba(255,255,255,.85), rgba(120,190,255,.5) 46%, rgba(40,90,160,.42) 82%);
+    box-shadow:0 0 18px rgba(120,190,255,.55),0 0 40px rgba(120,190,255,.28);
+    animation:worldTreeDewFloat 2.6s ease-in-out infinite;
+    -webkit-tap-highlight-color:transparent; user-select:none; touch-action:manipulation;
+  }
+  .worldTreeDewOrb:active{transform:scale(.9);}
+  @keyframes worldTreeDewFloat{0%,100%{translate:0 0;}50%{translate:0 -8px;}}
+  .worldTreeDewCount{
+    position:absolute; right:14px; top:152px; z-index:6; max-width:240px; padding:6px 10px; border-radius:999px;
+    background:rgba(7,10,20,.72); border:1px solid rgba(150,210,255,.4);
+    color:#dcefff; font-size:10px; font-weight:900; text-align:center; font-variant-numeric:tabular-nums;
+  }
+  /* ✅ V168: 내 물방울 가방 */
+  .worldTreeBag{margin-top:16px; padding:14px; border:1px solid rgba(150,210,255,.18); border-radius:15px; background:rgba(120,190,255,.05);}
+  .worldTreeBagHead{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,.6);}
+  .worldTreeBagHead b{color:#fff; font-size:13px;}
+  .worldTreeBagList{display:flex; flex-wrap:wrap; gap:8px;}
+  .worldTreeBagItem{
+    display:flex; flex-direction:column; align-items:center; gap:2px; min-width:64px; padding:8px 10px;
+    border:1px solid rgba(150,210,255,.3); border-radius:12px; background:rgba(10,16,28,.6); color:#dcefff;
+    cursor:pointer; transition:box-shadow .15s ease,transform .15s ease; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  }
+  .worldTreeBagItem .worldTreeBagIcon{font-size:20px; line-height:1;}
+  .worldTreeBagItem b{font-size:12px;}
+  .worldTreeBagItem span{font-size:9px; color:rgba(220,239,255,.6);}
+  .worldTreeBagItem.isArmed{box-shadow:0 0 0 2px rgba(150,210,255,.8); transform:scale(1.04);}
+  .worldTreeBagEmpty{width:100%; padding:10px 0; text-align:center; font-size:10px; color:rgba(255,255,255,.45);}
+  .worldTreeBagHint{margin-top:8px; font-size:9px; color:rgba(255,255,255,.45); line-height:1.5;}
+  /* ✅ V168: 관리자용 팀원 제거 버튼 */
+  .worldTreeRosterKick{
+    flex:0 0 auto; min-width:0; min-height:0; width:16px; height:16px; padding:0; border:none; border-radius:50%;
+    background:rgba(255,90,120,.18); color:#ff9cae; font-size:10px; line-height:1; cursor:pointer;
+  }
+  .worldTreeRosterKick:hover{background:rgba(255,90,120,.4); color:#fff;}
+  body.mkLowSpecMode .worldTreeDewOrb{animation:none;}
   @media (max-width:780px){
     #worldTreeModal .worldTreeModalPanel{max-height:calc(100vh - 16px); width:calc(100vw - 16px);}
     .worldTreeBody{grid-template-columns:1fr; overflow:auto; max-height:calc(100vh - 72px);}
@@ -6088,6 +6130,9 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="worldTreeLevelOrb"><b id="worldTreeLevel">Lv.0</b><span id="worldTreeLevelMax">MAX 777</span></div>
 <div class="worldTreeFinalRibbon" id="worldTreeFinalRibbon">세계수가 완성되었습니다</div>
+<!-- ✅ V168: 신비로운 물방울 클릭 이벤트 -->
+<button class="worldTreeDewOrb" id="worldTreeDewOrb" type="button" style="display:none" aria-label="신비로운 물방울 클릭">💧</button>
+<div class="worldTreeDewCount" id="worldTreeDewCount" style="display:none" aria-live="polite">함께 모은 클릭 0 / 5000</div>
 </section>
 <section class="worldTreePanel">
 <div class="worldTreeKicker">THE CELESTIAL AUTHOR'S TREE</div>
@@ -6120,6 +6165,8 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="worldTreeRankEmpty" id="worldTreeRankEmpty">아직 기여 기록이 없어요 · 팀에 합류해 작업하면 순위가 생겨요</div>
 <div class="worldTreeMyRank" id="worldTreeMyRank">팀에 합류하면 내 순위가 표시돼요.</div>
+<!-- ✅ V168: 누적 시간 현황 1시간 캐시 안내 -->
+<div class="worldTreeCacheNote" id="worldTreeRankCacheNote">누적 시간 현황은 1시간마다 갱신돼요</div>
 </div>
 <div class="worldTreeRoster" id="worldTreeRoster">
 <div class="worldTreeRosterHead">
@@ -6136,6 +6183,14 @@ body.joined #preJoinCard{ display:none; }
 <ol class="worldTreeRosterList" id="worldTreeRosterDemonList"></ol>
 </div>
 </div>
+<!-- ✅ V168: 누적 시간 현황 1시간 캐시 안내 -->
+<div class="worldTreeCacheNote" id="worldTreeRosterCacheNote">누적 시간 현황은 1시간마다 갱신돼요</div>
+</div>
+<!-- ✅ V168: 신비로운 물방울 가방 -->
+<div class="worldTreeBag" id="worldTreeBag">
+<div class="worldTreeBagHead"><b>💧 내 물방울 가방</b><span id="worldTreeBagCount">0개</span></div>
+<div class="worldTreeBagList" id="worldTreeBagList"></div>
+<div class="worldTreeBagHint">물방울 카드를 빠르게 두 번 누르면 사용돼요 · 사용하면 내 누적 시간과 팀 진행에 더해져요</div>
 </div>
 <div class="worldTreeRules" id="worldTreeRules">각 레벨에서 목표 시간을 먼저 채운 팀이 그 레벨을 선점합니다. 선점과 동시에 양 팀의 다음 레벨 경쟁이 새로 시작되며, 마지막 레벨에서 더 많은 레벨을 선점한 팀의 계열로 세계수가 완성됩니다.</div>
 </section>
@@ -7208,7 +7263,7 @@ function loadLocalProfile(){
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, onChildRemoved as rOnChildRemoved, onChildMoved as rOnChildMoved, off as rOff, onDisconnect as rOnDisconnect,
       query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
-      serverTimestamp as rServerTimestamp
+      serverTimestamp as rServerTimestamp, increment as rIncrement
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 ; (async ()=>{
@@ -21775,6 +21830,15 @@ joinRoom();
   const WORLD_TREE_SYNC_MIN_GAP_MS = 10 * 60 * 1000;  // 10분
   // 강제 종료로 pagehide조차 못 부른 경우를 대비한 안전망 주기.
   const WORLD_TREE_SAFETY_SYNC_MS = 15 * 60 * 1000;   // 15분
+  // ✅ V168: 로스터(루트 전체 약 10KB)는 1시간 캐시로만 읽는다. 레벨/진행바는 summary(약 300B)가 담당.
+  const WORLD_TREE_ROSTER_CACHE_MS = 60 * 60 * 1000;  // 1시간
+  // ✅ V168: 신비로운 물방울 — 6~12시간 랜덤 간격 스폰, 종류 50:50.
+  const WORLD_TREE_DEW_SPAWN_MIN_MS = 6 * 60 * 60 * 1000;
+  const WORLD_TREE_DEW_SPAWN_MAX_MS = 12 * 60 * 60 * 1000;
+  const WORLD_TREE_DEW_CLICK_MIN = 5000;              // 클릭 이벤트 목표 최소 (사용자 확정: 5000~6000)
+  const WORLD_TREE_DEW_CLICK_MAX = 6000;              // 클릭 이벤트 목표 최대
+  const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
+  const WORLD_TREE_DEW_SEEN_KEY = "mk_wt_dew_seen_v1";
 
   const worldTreeS2Runtime = {
     snapshot:null,
@@ -21786,12 +21850,40 @@ joinRoom();
     lastObservedSec:-1,
     lastErrorAt:0,
     lastSyncAtMs:0,
-    rosterCollapsed:false
+    rosterCollapsed:false,
+    // ✅ V168: 절감 리팩터/물방울용 런타임 캐시
+    anchor:null,             // 내 anchors/{uid} 캐시 {day,sec,team}
+    summary:null,            // worldTreeSummaryV1 캐시(약 300B)
+    activeUnsub:null,        // 클릭 이벤트(I/active) 구독 해제 함수
+    active:null,             // 클릭 이벤트 캐시
+    rosterFetchedAtMs:0,     // 루트 전체(로스터)를 마지막으로 읽은 시각
+    modalRefetchTimer:null,  // 모달이 1시간 넘게 열려있을 때 로스터 재fetch 타이머
+    bag:null,                // 내 물방울 가방 캐시
+    bagTap:{id:"",at:0},     // 가방 더블탭 감지
+    dewClickAt:0,            // 클릭 이벤트 스로틀
+    dewClaimingId:"",        // 당첨 지급 재진입 방지
+    dewUseLock:false         // 물방울 사용 중복 방지
   };
 
   function rWorldTreeS2Ref(roomId){
     // 이미 배포된 인증 규칙과 호환되도록, 은퇴한 놀이터 저장 영역 아래에 시즌 2 전용 노드를 둔다.
     return rRef(rtdb, `${rRoomBase(roomId)}/playground/worldTreeSeason2`);
+  }
+  // ✅ V168: 세계수 노드의 하위 경로 참조 (state.roomId 기준)
+  function rWorldTreeChildRef_(sub){
+    return rRef(rtdb, `${rRoomBase(state.roomId)}/playground/worldTreeSeason2/${sub}`);
+  }
+  // ✅ V168: 대시보드/모달이 매번 읽는 초경량 요약(약 300B)
+  function rWorldTreeSummaryRef(roomId){
+    return rRef(rtdb, `${rRoomBase(roomId)}/playground/worldTreeSummaryV1`);
+  }
+  // ✅ V168: 신비로운 물방울 저장소 (active/bags/feed/sched)
+  function rWorldTreeItemsRef(roomId, sub){
+    return rRef(rtdb, `${rRoomBase(roomId)}/playground/worldTreeItemsV1${sub?`/${sub}`:""}`);
+  }
+  // ✅ V168: 여러 세계수 경로를 한 번의 원자적 멀티패스 update로 묶을 때 쓰는 기준 참조
+  function rWorldTreePlaygroundRef_(){
+    return rRef(rtdb, `${rRoomBase(state.roomId)}/playground`);
   }
   function worldTreeClampNumber_(v,min,max,fallback){
     const n=Number(v);
@@ -21882,26 +21974,103 @@ joinRoom();
   function forgetWorldTreeTeam_(){
     try{ localStorage.removeItem(WORLD_TREE_S2_LOCAL_TEAM); }catch(e){}
   }
+  // ✅ V168: core(원자성 존) 노드 정규화. core는 레벨/팀 진행/선점을 담당하고 ledger로 기여 델타를 흡수한다.
+  function normalizeWorldTreeCore_(raw){
+    const src=(raw && typeof raw==="object") ? raw : {};
+    return {
+      level:Math.max(0,Math.round(Number(src.level)||0)),
+      angelSec:Math.max(0,Math.floor(Number(src.angelSec)||0)),
+      demonSec:Math.max(0,Math.floor(Number(src.demonSec)||0)),
+      claimsAngel:Math.max(0,Math.round(Number(src.claimsAngel)||0)),
+      claimsDemon:Math.max(0,Math.round(Number(src.claimsDemon)||0)),
+      finishedTeam:["angel","demon","balance"].includes(src.finishedTeam)?src.finishedTeam:"",
+      finishedAtMs:Math.max(0,Number(src.finishedAtMs)||0),
+      lastClaim:(src.lastClaim && typeof src.lastClaim==="object")?Object.assign({},src.lastClaim):null,
+      ledger:(src.ledger && typeof src.ledger==="object")?Object.assign({},src.ledger):null,
+      updatedAtMs:Math.max(0,Number(src.updatedAtMs)||0)
+    };
+  }
+  // ✅ V168: core가 만들어졌는지 판정. core/ledger만 먼저 쓰인 상태(updatedAtMs 없음)는 미생성으로 본다.
+  function worldTreeCoreReady_(tree){
+    return !!(tree?.core && typeof tree.core==="object" && Number(tree.core.updatedAtMs)>0);
+  }
+  // ✅ V168: core가 있으면 core, 없으면 레거시 level/progress/claims를 같은 모양으로 돌려준다.
+  function worldTreeCoreView_(tree){
+    const t=normalizeWorldTreeS2_(tree||{});
+    if(worldTreeCoreReady_(t)) return normalizeWorldTreeCore_(t.core);
+    return {
+      level:t.level,
+      angelSec:t.progress.angelSec, demonSec:t.progress.demonSec,
+      claimsAngel:t.claims.angel, claimsDemon:t.claims.demon,
+      finishedTeam:["angel","demon","balance"].includes(t.finishedTeam)?t.finishedTeam:"",
+      finishedAtMs:Math.max(0,Number(t.finishedAtMs)||0),
+      lastClaim:(t.lastClaim && typeof t.lastClaim==="object")?Object.assign({},t.lastClaim):null,
+      ledger:null,
+      updatedAtMs:Math.max(0,Number(t.updatedAtMs)||0)
+    };
+  }
+  // ✅ V168: 화면용 합성 트리 — 로스터/설정은 캐시 트리, 레벨/진행/선점은 summary(없으면 core) 우선.
+  function worldTreeMergedForRender_(){
+    const tree=normalizeWorldTreeS2_(worldTreeS2Runtime.snapshot||{});
+    const s=worldTreeS2Runtime.summary;
+    const cv=worldTreeCoreView_(tree);
+    const level=s?Math.max(0,Math.round(Number(s.level)||0)):cv.level;
+    const angelSec=s?Math.max(0,Math.floor(Number(s.angelSec)||0)):cv.angelSec;
+    const demonSec=s?Math.max(0,Math.floor(Number(s.demonSec)||0)):cv.demonSec;
+    const claims=s?{angel:Math.max(0,Math.round(Number(s.claimsAngel)||0)),demon:Math.max(0,Math.round(Number(s.claimsDemon)||0))}:{angel:cv.claimsAngel,demon:cv.claimsDemon};
+    const finishedTeam=s?(["angel","demon","balance"].includes(s.finishedTeam)?s.finishedTeam:""):cv.finishedTeam;
+    const cfg=Object.assign({},tree.config);
+    if(s){
+      cfg.maxLevel=Math.round(worldTreeClampNumber_(s.maxLevel,1,7777,cfg.maxLevel));
+      cfg.hoursPerLevel=Math.round(worldTreeClampNumber_(s.hoursPerLevel,1,10000,cfg.hoursPerLevel)*10)/10;
+      cfg.content=Object.assign({},cfg.content,{
+        treeName:worldTreeCleanText_(s.treeName,cfg.content.treeName,40),
+        angelTeamName:worldTreeCleanText_(s.angelTeamName,cfg.content.angelTeamName,24),
+        demonTeamName:worldTreeCleanText_(s.demonTeamName,cfg.content.demonTeamName,24)
+      });
+    }
+    return Object.assign({},tree,{
+      level,
+      claims,
+      progress:{angelSec,demonSec},
+      finishedTeam,
+      config:cfg
+    });
+  }
+  // ✅ V168: 대시보드 물방울 배지 조건 — 클릭 이벤트 진행 중이거나, 마지막 드랍을 아직 안 봤을 때.
+  function worldTreeDewBadgeOn_(){
+    try{
+      const item=worldTreeS2Runtime.summary?.item;
+      if(!item || typeof item!=="object") return false;
+      if(item.mode==="click") return true;
+      const last=Number(item.lastDropAtMs)||0;
+      const seen=Number(localStorage.getItem(WORLD_TREE_DEW_SEEN_KEY)||0);
+      return last>seen;
+    }catch(e){ return false; }
+  }
   // 대시보드 미니 카드가 쓰는 요약 정보. 세계수 코드는 모듈 블록, 펫 대시보드는 다른 블록이라
   // window.__MK_WORLD_TREE_S2__.getDashInfo()로만 오간다.
+  // ✅ V168: 루트 전체 대신 summary 캐시 기반으로 재작성.
   function worldTreeDashInfo_(){
     try{
-      const tree=normalizeWorldTreeS2_(worldTreeS2Runtime.snapshot||{});
+      const s=worldTreeS2Runtime.summary;
+      const tree=worldTreeMergedForRender_();
       const max=Math.max(1,Number(tree.config.maxLevel)||1);
       const level=Math.max(0,Math.min(max,Number(tree.level)||0));
       const stage=worldTreeGrowthStage_(level,max);
       const myTeam=worldTreeSelectedTeam_();
       const finished=level>=max;
-      const overall=worldTreeAlignment_(tree);
+      const overall=(s && ["angel","demon","balance"].includes(s.alignment))?s.alignment:worldTreeAlignment_(tree);
       // 내가 고른 팀의 세계수를 보여준다. 아직 안 골랐으면 방 전체의 현재 우세 계열을 보여준다.
       const alignment=(myTeam==="angel"||myTeam==="demon")?myTeam:(overall==="demon"?"demon":"angel");
       const content=tree.config.content;
       const teamName=alignment==="angel"?content.angelTeamName:content.demonTeamName;
       return {
-        ready:!!worldTreeS2Runtime.snapshot,
+        ready:!!(s || worldTreeS2Runtime.snapshot),
         level,maxLevel:max,stageIndex:stage.index,stageName:stage.name,
         alignment,myTeam,finished,teamName,
-        treeName:content.treeName
+        treeName:content.treeName,
+        dewBadge:worldTreeDewBadgeOn_()
       };
     }catch(e){ return null; }
   }
@@ -21983,8 +22152,11 @@ joinRoom();
     document.getElementById("worldTreePreviewDemon")?.classList.toggle("on",alignment==="demon");
   }
   function renderWorldTreeS2_(raw){
-    const tree=normalizeWorldTreeS2_(raw||worldTreeS2Runtime.snapshot||{});
-    worldTreeS2Runtime.snapshot=tree;
+    // ✅ V168: raw(루트 전체)가 오면 로스터 캐시를 갱신하고,
+    // 레벨/진행바/선점은 summary(약 300B) 우선으로 그린다(없으면 캐시 트리의 core/레거시 기준).
+    if(raw && typeof raw==="object") worldTreeS2Runtime.snapshot=normalizeWorldTreeS2_(raw);
+    else if(!worldTreeS2Runtime.snapshot) worldTreeS2Runtime.snapshot=normalizeWorldTreeS2_({});
+    const tree=worldTreeMergedForRender_();
     const max=tree.config.maxLevel;
     const finished=tree.level>=max;
     const alignment=worldTreeAlignment_(tree);
@@ -22087,6 +22259,10 @@ joinRoom();
     setText("worldTreeAdminStatus",`${content.treeName} · 현재 Lv.${tree.level.toLocaleString("ko-KR")} / ${max.toLocaleString("ko-KR")} · 팀별 ${capacity.angel}/${capacity.demon}명 · 레벨당 ${tree.config.hoursPerLevel}시간`);
     renderWorldTreeRanking_(tree);
     renderWorldTreeRoster_(tree);
+    // ✅ V168: 물방울 이벤트/가방/캐시 안내도 함께 갱신
+    renderWorldTreeDewEvent_();
+    renderWorldTreeBag_();
+    updateWorldTreeCacheNote_();
   }
 
   // ----- 팀 멤버 목록 / 개인 누적 기여 랭킹 -----
@@ -22136,6 +22312,17 @@ joinRoom();
         li.appendChild(worldTreeRankSpan_("worldTreeRosterName",row.isMe?`${row.name} (나)`:row.name));
         li.appendChild(worldTreeRankSpan_("worldTreeRosterWave",`${row.wave}차`));
         li.appendChild(worldTreeRankSpan_("worldTreeRosterTime",`${worldTreeHoursText_(row.contribSec)}h`));
+        // ✅ V168: 관리자 전용 프로필 제거 버튼
+        if(state.adminOk){
+          const kick=document.createElement("button");
+          kick.type="button";
+          kick.className="worldTreeRosterKick";
+          kick.textContent="✕";
+          kick.title=`${row.name} 프로필 제거`;
+          kick.setAttribute("aria-label",`${row.name} 프로필 제거`);
+          kick.addEventListener("click",(ev)=>{ ev.stopPropagation(); adminRemoveWorldTreeMember_(row.uid,row.name).catch(()=>{}); });
+          li.appendChild(kick);
+        }
         list.appendChild(li);
       });
     });
@@ -22225,30 +22412,58 @@ joinRoom();
   function stopWorldTreeS2Realtime_(){
     try{ if(worldTreeS2Runtime.unsub) worldTreeS2Runtime.unsub(); }catch(e){}
     worldTreeS2Runtime.unsub=null;
+    // ✅ V168: 클릭 이벤트 구독도 함께 해제
+    try{ if(worldTreeS2Runtime.activeUnsub) worldTreeS2Runtime.activeUnsub(); }catch(e){}
+    worldTreeS2Runtime.activeUnsub=null;
   }
   function subscribeWorldTreeS2_(){
     if(!state.roomId) return;
     stopWorldTreeS2Realtime_();
-    worldTreeS2Runtime.unsub=rOnValue(rWorldTreeS2Ref(state.roomId),(snap)=>{
-      const tree=normalizeWorldTreeS2_(snap.val()||{});
-      worldTreeS2Runtime.snapshot=tree;
-      const remoteTeam=tree.members?.[String(state.uid||"")]?.team;
-      if(remoteTeam==="angel" || remoteTeam==="demon") rememberWorldTreeTeam_(remoteTeam);
-      renderWorldTreeS2_(tree);
+    // ✅ V168: 루트 전체(약 10KB) onValue 대신 summary(약 300B)와 클릭 이벤트만 실시간 구독한다.
+    // 로스터/랭킹은 1시간 캐시(loadWorldTreeS2Once_)가 담당한다.
+    worldTreeS2Runtime.unsub=rOnValue(rWorldTreeSummaryRef(state.roomId),(snap)=>{
+      const summary=snap.val();
+      if(summary && typeof summary==="object") worldTreeS2Runtime.summary=summary;
+      renderWorldTreeS2_();
     },(err)=>{
       console.warn("[world tree s2] subscribe failed",err);
       showToast("세계수 데이터를 불러오지 못했어요 · 잠시 후 다시 시도해 주세요",3200);
     });
+    worldTreeS2Runtime.activeUnsub=rOnValue(rWorldTreeItemsRef(state.roomId,"active"),(snap)=>{
+      const active=snap.val()||null;
+      worldTreeS2Runtime.active=active;
+      renderWorldTreeDewEvent_();
+      // 복구: 내가 당첨자인데 지급이 안 끝났으면 다시 지급을 시도한다.
+      try{
+        const uid=String(state.uid||"");
+        if(active && active.winnerUid===uid && !active.claimed && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
+          worldTreeS2Runtime.dewClaimingId=String(active.id||"");
+          claimWorldTreeDewWin_(active).catch(()=>{ worldTreeS2Runtime.dewClaimingId=""; });
+        }
+      }catch(e){}
+    },()=>{});
   }
-  async function loadWorldTreeS2Once_(shouldRender=true){
+  async function loadWorldTreeS2Once_(shouldRender=true,options={}){
     if(!state.roomId || !state.joined) return null;
+    // ✅ V168: 루트 전체(약 10KB)는 1시간 캐시. force일 때만 즉시 다시 읽는다.
+    const force=!!options.force;
+    if(!force && worldTreeS2Runtime.snapshot && (Date.now()-Number(worldTreeS2Runtime.rosterFetchedAtMs||0))<WORLD_TREE_ROSTER_CACHE_MS){
+      if(shouldRender) renderWorldTreeS2_();
+      return worldTreeS2Runtime.snapshot;
+    }
     try{
       const snap=await rGet(rWorldTreeS2Ref(state.roomId));
-      const tree=normalizeWorldTreeS2_(snap.val()||{});
+      let tree=normalizeWorldTreeS2_(snap.val()||{});
       worldTreeS2Runtime.snapshot=tree;
-      const remoteTeam=tree.members?.[String(state.uid||"")]?.team;
+      worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
+      const uid=String(state.uid||"");
+      const remoteTeam=tree.members?.[uid]?.team;
       if(remoteTeam==="angel" || remoteTeam==="demon") rememberWorldTreeTeam_(remoteTeam);
-      if(shouldRender) renderWorldTreeS2_(tree);
+      // 내 앵커도 함께 캐시해 다음 동기화의 소형 rGet을 아낀다(이미 캐시가 있으면 더 최신이므로 유지).
+      if(!worldTreeS2Runtime.anchor && tree.anchors?.[uid]) worldTreeS2Runtime.anchor=Object.assign({},tree.anchors[uid]);
+      // ✅ V168: 레거시(level/progress/claims)를 core로 흡수하고 summary를 재작성한다.
+      tree=await ensureWorldTreeCore_(tree);
+      if(shouldRender) renderWorldTreeS2_();
       return tree;
     }catch(e){ console.warn("[world tree s2] load failed",e); return null; }
   }
@@ -22258,14 +22473,26 @@ joinRoom();
     if(!modal) return;
     try{ closeViewMenu(); }catch(e){}
     showModal(modal);
-    renderWorldTreeS2_(worldTreeS2Runtime.snapshot||{});
+    renderWorldTreeS2_();
     subscribeWorldTreeS2_();
+    // ✅ V168: 로스터는 1시간 캐시 경유로만 읽고, 내 물방울 가방을 불러온다.
+    loadWorldTreeS2Once_(true);
+    loadWorldTreeBag_().catch(()=>{});
     syncWorldTreeContribution_("open").catch(()=>{});
+    // 물방울 소식 확인 처리 → 대시보드 배지 소멸
+    try{ localStorage.setItem(WORLD_TREE_DEW_SEEN_KEY,String(Date.now())); }catch(e){}
+    // 모달이 1시간 넘게 열려있으면 로스터를 한 번씩 다시 읽는다.
+    try{ if(worldTreeS2Runtime.modalRefetchTimer) clearInterval(worldTreeS2Runtime.modalRefetchTimer); }catch(e){}
+    worldTreeS2Runtime.modalRefetchTimer=setInterval(()=>{
+      if(document.getElementById("worldTreeModal")?.classList.contains("show")) loadWorldTreeS2Once_(true,{force:true});
+    },WORLD_TREE_ROSTER_CACHE_MS);
   }
   function closeWorldTreeS2_(){
     const modal=document.getElementById("worldTreeModal");
     if(modal) hideModal(modal);
     stopWorldTreeS2Realtime_();
+    try{ if(worldTreeS2Runtime.modalRefetchTimer) clearInterval(worldTreeS2Runtime.modalRefetchTimer); }catch(e){}
+    worldTreeS2Runtime.modalRefetchTimer=null;
   }
   async function selectWorldTreeTeam_(team){
     if(team!=="angel" && team!=="demon") return;
@@ -22289,16 +22516,48 @@ joinRoom();
     const total=worldTreeCurrentFocusSeconds_();
     const day=seoulDateKey();
     const requestId=`${uid}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    // ✅ V168: 같은 닉네임(대소문자 무시)의 다른 uid 프로필은 내 uid 하나로 병합한다.
+    const myNameForMerge=normalizeNick(state.nickname||els.name?.value||"익명");
+    const mergeInfo={count:0};
     try{
       const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
         const tree=normalizeWorldTreeS2_(raw);
-        const capacity=worldTreeTeamCapacity_(tree,uid);
+        mergeInfo.count=0;
+        // 같은 닉의 다른 uid 프로필 목록(병합 후보). 자리 계산에서도 빼고 본다.
+        const myKey=String(myNameForMerge||"").toLowerCase();
+        const sameNick=[];
+        if(myKey){
+          Object.entries(tree.members||{}).forEach(([otherUid,m])=>{
+            if(otherUid===uid || !m) return;
+            const otherKey=normalizeNick(String(m.name||"")).toLowerCase();
+            if(otherKey && otherKey===myKey) sameNick.push([otherUid,m]);
+          });
+        }
+        let capacityTree=tree;
+        if(sameNick.length){
+          capacityTree=Object.assign({},tree,{members:Object.assign({},tree.members)});
+          sameNick.forEach(([otherUid])=>{ delete capacityTree.members[otherUid]; });
+        }
+        const capacity=worldTreeTeamCapacity_(capacityTree,uid);
         if(!capacity[`${team}Open`]) return tree;
+        // 합류가 확정될 때만 병합(삭제)까지 함께 커밋한다.
+        let mergedContrib=0;
+        let mergedJoined=0;
+        sameNick.forEach(([otherUid,m])=>{
+          mergedContrib+=Math.max(0,Math.floor(Number(m.contribSec)||0));
+          const j=Number(m.joinedAtMs)||0;
+          if(j && (!mergedJoined || j<mergedJoined)) mergedJoined=j;
+          delete tree.members[otherUid];
+          if(tree.anchors) delete tree.anchors[otherUid];
+          mergeInfo.count+=1;
+        });
+        let joinedAtMs=Number(tree.members?.[uid]?.joinedAtMs)||Date.now();
+        if(mergedJoined && mergedJoined<joinedAtMs) joinedAtMs=mergedJoined;
         tree.members[uid]={
           team,
-          name:normalizeNick(state.nickname||els.name?.value||"익명"),
-          joinedAtMs:Number(tree.members?.[uid]?.joinedAtMs)||Date.now(),
-          contribSec:Math.max(0,Math.floor(Number(tree.members?.[uid]?.contribSec)||0)),
+          name:myNameForMerge,
+          joinedAtMs,
+          contribSec:Math.max(0,Math.floor(Number(tree.members?.[uid]?.contribSec)||0))+mergedContrib,
           wave:capacity.wave,
           selectionId:requestId,
           updatedAtMs:Date.now()
@@ -22310,6 +22569,7 @@ joinRoom();
       });
       const tree=normalizeWorldTreeS2_(result.snapshot.val()||{});
       worldTreeS2Runtime.snapshot=tree;
+      worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
       if(tree.members?.[uid]?.team!==team || tree.members?.[uid]?.selectionId!==requestId){
         renderWorldTreeS2_(tree);
         const capacity=worldTreeTeamCapacity_(tree,uid);
@@ -22318,10 +22578,16 @@ joinRoom();
       }
       worldTreeS2Runtime.lastObservedDay=day;
       worldTreeS2Runtime.lastObservedSec=total;
+      // ✅ V168: 앵커 캐시 + summary(팀 인원 수) 갱신
+      worldTreeS2Runtime.anchor={day,sec:total,team,updatedAtMs:Date.now()};
+      writeWorldTreeSummary_(tree).catch(()=>{});
       rememberWorldTreeTeam_(team);
       renderWorldTreeS2_(tree);
       const wave=Math.max(1,Number(tree.members?.[uid]?.wave)||1);
       showToast(`${requestedTeamName} ${wave}차로 합류했어요 ${team==="angel"?"🤍":"🖤"}`,2800);
+      if(mergeInfo.count>0){
+        setTimeout(()=>showToast("다른 기기에서 등록한 프로필 기록을 하나로 합쳤어요",2800),1500);
+      }
     }catch(e){
       console.warn("[world tree s2] team select failed",e);
       showToast("팀 선택을 저장하지 못했어요 · 연결을 확인해 주세요",3000);
@@ -22356,6 +22622,10 @@ joinRoom();
       worldTreeS2Runtime.snapshot=tree;
       worldTreeS2Runtime.lastObservedDay="";
       worldTreeS2Runtime.lastObservedSec=-1;
+      // ✅ V168: 앵커 캐시/로스터 캐시 시각/summary(팀 인원 수)도 함께 갱신
+      worldTreeS2Runtime.anchor=null;
+      worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
+      writeWorldTreeSummary_(tree).catch(()=>{});
       forgetWorldTreeTeam_();
       renderWorldTreeS2_(tree);
       showToast("팀 선택을 취소했어요 · 언제든 다시 고를 수 있어요",2800);
@@ -22389,6 +22659,528 @@ joinRoom();
     }
     return tree;
   }
+  // ✅ V168: applyWorldTreeContribution_(레거시 전체 트리)과 완전히 같은 의미론을 core 필드로 수행한다.
+  // 만렙이면 팀 진행은 무시한다(개인 누적은 members/contribSec에서 별도로 계속 쌓인다).
+  function applyWorldTreeCoreDelta_(core,cfg,team,deltaSec,name){
+    const max=cfg.maxLevel;
+    const needSec=Math.max(3600,Math.round(cfg.hoursPerLevel*3600));
+    let remaining=Math.max(0,Math.floor(Number(deltaSec)||0));
+    if(core.level>=max || !remaining) return core;
+    const ownKey=team==="angel"?"angelSec":"demonSec";
+    const otherKey=team==="angel"?"demonSec":"angelSec";
+    const claimKey=team==="angel"?"claimsAngel":"claimsDemon";
+    core[ownKey]+=remaining;
+    while(core.level<max && core[ownKey]>=needSec){
+      core[ownKey]-=needSec;
+      core[otherKey]=0;
+      core[claimKey]+=1;
+      core.level+=1;
+      core.lastClaim={team,level:core.level,atMs:Date.now(),name:String(name||"익명")};
+    }
+    if(core.level>=max){
+      core.level=max;
+      core.angelSec=0;
+      core.demonSec=0;
+      core.finishedTeam=core.claimsAngel>core.claimsDemon?"angel":core.claimsDemon>core.claimsAngel?"demon":"balance";
+      core.finishedAtMs=core.finishedAtMs||Date.now();
+    }
+    return core;
+  }
+  // ✅ V168: 루트 전체를 읽은 직후마다 호출 — core가 없으면 레거시에서 생성하고,
+  // 구버전(V167) 탭이 레거시 progress에 쌓아둔 시간이 있으면 core로 흡수한 뒤 summary를 재작성한다.
+  async function ensureWorldTreeCore_(tree){
+    let t=normalizeWorldTreeS2_(tree||worldTreeS2Runtime.snapshot||{});
+    if(!state.roomId || !state.joined) return t;
+    const legacyAngel=t.progress.angelSec;
+    const legacyDemon=t.progress.demonSec;
+    if(!worldTreeCoreReady_(t) || legacyAngel>0 || legacyDemon>0){
+      const claimName=normalizeNick(state.nickname||els.name?.value||"익명");
+      try{
+        const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
+          const x=normalizeWorldTreeS2_(raw);
+          const ready=worldTreeCoreReady_(x);
+          const aSec=x.progress.angelSec;
+          const dSec=x.progress.demonSec;
+          if(ready && aSec<=0 && dSec<=0) return x; // 이미 다른 클라이언트가 처리함(중복 방지)
+          // core/ledger만 먼저 쓰인 경우(core 미생성 상태의 소액 기여)를 잃지 않도록 ledger는 보존한다.
+          const keepLedger=(x.core && typeof x.core==="object" && x.core.ledger && typeof x.core.ledger==="object")?x.core.ledger:null;
+          let core;
+          if(!ready){
+            core={
+              level:x.level,
+              angelSec:aSec, demonSec:dSec,
+              claimsAngel:x.claims.angel, claimsDemon:x.claims.demon,
+              finishedTeam:["angel","demon","balance"].includes(x.finishedTeam)?x.finishedTeam:"",
+              finishedAtMs:Number(x.finishedAtMs)||0,
+              lastClaim:(x.lastClaim && typeof x.lastClaim==="object")?x.lastClaim:null,
+              ledger:keepLedger,
+              updatedAtMs:Date.now()
+            };
+          }else{
+            core=normalizeWorldTreeCore_(x.core);
+            if(aSec>0) applyWorldTreeCoreDelta_(core,x.config,"angel",aSec,claimName);
+            if(dSec>0) applyWorldTreeCoreDelta_(core,x.config,"demon",dSec,claimName);
+            core.ledger=keepLedger;
+            core.updatedAtMs=Date.now();
+          }
+          x.core=core;
+          x.progress={angelSec:0,demonSec:0};
+          x.level=core.level; // V167 탭 호환 레거시 미러(레벨만)
+          x.updatedAtMs=Date.now();
+          return x;
+        });
+        t=normalizeWorldTreeS2_(result.snapshot.val()||{});
+        worldTreeS2Runtime.snapshot=t;
+        worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
+      }catch(e){ console.warn("[world tree s2] core ensure failed",e); }
+    }
+    // 물방울 스폰 스케줄 최초 초기화 + summary 재작성(둘 다 베스트에포트)
+    try{ await ensureWorldTreeSched_(); }catch(e){}
+    try{ await writeWorldTreeSummary_(t); }catch(e){}
+    return t;
+  }
+  // ✅ V168: 물방울 스폰 스케줄(sched)이 없으면 6~12시간 뒤 첫 스폰으로 초기화한다.
+  async function ensureWorldTreeSched_(){
+    if(!state.roomId || !state.joined) return;
+    const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
+      if(raw && typeof raw==="object") return; // 이미 있음 → 중단
+      return {nextSpawnAtMs:Date.now()+worldTreeDewSpawnDelay_(),seq:0};
+    });
+    try{
+      const next=Number(res?.snapshot?.val()?.nextSpawnAtMs)||0;
+      if(next>0 && Number(worldTreeS2Runtime.summary?.nextSpawnAtMs)!==next){
+        await rUpdate(rWorldTreeSummaryRef(state.roomId),{nextSpawnAtMs:next});
+        worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{nextSpawnAtMs:next});
+      }
+    }catch(e){}
+  }
+  // ✅ V168: 초경량 summary(약 300B) 재작성. item/nextSpawnAtMs는 물방울 흐름이 따로 관리하므로 건드리지 않는다.
+  async function writeWorldTreeSummary_(tree){
+    if(!state.roomId || !state.joined) return;
+    try{
+      const t=normalizeWorldTreeS2_(tree||worldTreeS2Runtime.snapshot||{});
+      const core=worldTreeCoreView_(t);
+      const max=t.config.maxLevel;
+      const finished=core.level>=max;
+      let alignment="balance";
+      if(finished && ["angel","demon","balance"].includes(core.finishedTeam)) alignment=core.finishedTeam;
+      else if(core.claimsAngel>core.claimsDemon) alignment="angel";
+      else if(core.claimsDemon>core.claimsAngel) alignment="demon";
+      else if(core.angelSec>core.demonSec) alignment="angel";
+      else if(core.demonSec>core.angelSec) alignment="demon";
+      const members=Object.values(t.members||{});
+      const patch={
+        level:core.level,maxLevel:max,hoursPerLevel:t.config.hoursPerLevel,
+        angelSec:core.angelSec,demonSec:core.demonSec,
+        claimsAngel:core.claimsAngel,claimsDemon:core.claimsDemon,
+        alignment,finished,finishedTeam:core.finishedTeam||"",
+        treeName:t.config.content.treeName,
+        angelTeamName:t.config.content.angelTeamName,
+        demonTeamName:t.config.content.demonTeamName,
+        memberAngel:members.filter(m=>m && m.team==="angel").length,
+        memberDemon:members.filter(m=>m && m.team==="demon").length,
+        updatedAtMs:Date.now()
+      };
+      await rUpdate(rWorldTreeSummaryRef(state.roomId),patch);
+      worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},patch);
+    }catch(e){ console.warn("[world tree s2] summary write failed",e); }
+  }
+  // ✅ V168: 대시보드 120초 폴링용 — summary(약 300B)만 읽는다. 루트 전체(약 10KB)는 읽지 않는다.
+  async function loadWorldTreeSummaryOnce_(){
+    if(!state.roomId || !state.joined) return null;
+    try{
+      const snap=await rGet(rWorldTreeSummaryRef(state.roomId));
+      const summary=snap.val();
+      if(summary && typeof summary==="object"){
+        worldTreeS2Runtime.summary=summary;
+      }else{
+        // 아직 summary가 없는 방(마이그레이션 전) → 한 번만 루트 전체를 읽어 core/summary를 만든다.
+        await loadWorldTreeS2Once_(false);
+      }
+      maybeSpawnWorldTreeDew_().catch(()=>{});
+      return worldTreeS2Runtime.summary||null;
+    }catch(e){ console.warn("[world tree s2] summary load failed",e); return null; }
+  }
+  // ✅ V168: core 트랜잭션 — ledger에 남은 모든 기여(다른 클라이언트가 죽으며 남긴 것 포함)를
+  // 팀별로 합산해 레벨업 로직에 적용하고 ledger를 비운다. 이어서 summary/레거시 level 미러까지 갱신.
+  async function consumeWorldTreeLedger_(){
+    if(!state.roomId || !state.joined) return null;
+    const cfg=worldTreeMergedForRender_().config;
+    const claimName=normalizeNick(state.nickname||els.name?.value||"익명");
+    const result=await rRunTransaction(rWorldTreeChildRef_("core"),(raw)=>{
+      if(!raw || typeof raw!=="object" || !Number(raw.updatedAtMs)) return; // core 미생성(레거시 이관 전) → 소비 보류
+      const core=normalizeWorldTreeCore_(raw);
+      const ledger=core.ledger;
+      core.ledger=null;
+      if(ledger){
+        const sums={angel:0,demon:0};
+        const names={angel:claimName,demon:claimName};
+        Object.keys(ledger).sort().forEach((key)=>{
+          const entry=ledger[key];
+          if(!entry) return;
+          const team=entry.t==="demon"?"demon":(entry.t==="angel"?"angel":"");
+          if(!team) return;
+          sums[team]+=Math.max(0,Math.floor(Number(entry.s)||0));
+          if(entry.n) names[team]=String(entry.n);
+        });
+        if(sums.angel>0) applyWorldTreeCoreDelta_(core,cfg,"angel",sums.angel,names.angel);
+        if(sums.demon>0) applyWorldTreeCoreDelta_(core,cfg,"demon",sums.demon,names.demon);
+      }
+      core.updatedAtMs=Date.now();
+      return core;
+    });
+    if(!result.committed) return null;
+    const core=normalizeWorldTreeCore_(result.snapshot.val());
+    if(worldTreeS2Runtime.snapshot) worldTreeS2Runtime.snapshot.core=Object.assign({},core,{ledger:null});
+    await writeWorldTreeSummary_();
+    // V167 탭 호환: core 레벨이 바뀌었으면 레거시 level만 미러한다(progress/claims는 레거시 소유로 남긴다).
+    try{
+      const legacyLevel=Math.max(0,Math.round(Number(worldTreeS2Runtime.snapshot?.level)||0));
+      if(core.level!==legacyLevel){
+        await rUpdate(rWorldTreeS2Ref(state.roomId),{level:core.level,updatedAtMs:Date.now()});
+        if(worldTreeS2Runtime.snapshot) worldTreeS2Runtime.snapshot.level=core.level;
+      }
+    }catch(e){}
+    return core;
+  }
+  // ✅ V168: 관리자 전용 — 로스터에서 특정 프로필(개인 기록)을 제거한다. 팀에 보탠 시간/레벨은 유지.
+  async function adminRemoveWorldTreeMember_(uid,name){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.roomId || !state.joined) return;
+    const target=String(uid||"");
+    if(!target) return;
+    const label=String(name||"이 작가");
+    if(!confirm(`${label}님의 세계수 프로필을 제거할까요?\n\n개인 누적 기여 기록이 삭제돼요.\n이미 팀에 보탠 시간과 선점한 레벨은 그대로 남아요.`)) return;
+    try{
+      const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
+        const t=normalizeWorldTreeS2_(raw);
+        if(t.members) delete t.members[target];
+        if(t.anchors) delete t.anchors[target];
+        t.updatedAtMs=Date.now();
+        return t;
+      });
+      const t=normalizeWorldTreeS2_(result.snapshot.val()||{});
+      worldTreeS2Runtime.snapshot=t;
+      worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
+      if(target===String(state.uid||"")){ forgetWorldTreeTeam_(); worldTreeS2Runtime.anchor=null; }
+      await writeWorldTreeSummary_(t);
+      renderWorldTreeS2_();
+      showToast(`${label}님의 프로필을 제거했어요`,2600);
+    }catch(e){
+      console.warn("[world tree s2] member remove failed",e);
+      showToast("프로필 제거에 실패했어요 · 연결을 확인해 주세요",3000);
+    }
+  }
+  // ✅ V168: 로스터/랭킹의 1시간 캐시 기준 시각 안내
+  function updateWorldTreeCacheNote_(){
+    const at=Number(worldTreeS2Runtime.rosterFetchedAtMs)||0;
+    let text="누적 시간 현황은 1시간마다 갱신돼요";
+    if(at){
+      const d=new Date(at);
+      const hh=String(d.getHours()).padStart(2,"0");
+      const mm=String(d.getMinutes()).padStart(2,"0");
+      text=`누적 시간 현황은 1시간마다 갱신돼요 · ${hh}:${mm} 기준`;
+    }
+    ["worldTreeRankCacheNote","worldTreeRosterCacheNote"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && el.textContent!==text) el.textContent=text;
+    });
+  }
+
+  // ===== ✅ V168: 신비로운 물방울 (랜덤 아이템) =====
+  function worldTreeDewSpawnDelay_(){
+    return WORLD_TREE_DEW_SPAWN_MIN_MS+Math.floor(Math.random()*(WORLD_TREE_DEW_SPAWN_MAX_MS-WORLD_TREE_DEW_SPAWN_MIN_MS+1));
+  }
+  // feed는 기록용 10개만 유지 — 새로 쓸 때 초과분을 같은 update에 실어 지운다.
+  async function worldTreeFeedTrimInto_(updates){
+    try{
+      const snap=await rGet(rWorldTreeItemsRef(state.roomId,"feed"));
+      const feed=snap.val()||{};
+      const keys=Object.keys(feed).sort();
+      for(let i=0;i<keys.length-9;i++) updates[`worldTreeItemsV1/feed/${keys[i]}`]=null;
+    }catch(e){}
+  }
+  // 스폰 체크: 대시보드 120초 폴(loadWorldTreeSummaryOnce_)과 기여 동기화 3단계 뒤에 호출된다.
+  async function maybeSpawnWorldTreeDew_(){
+    if(!state.joined || !state.uid || !state.roomId) return;
+    const summary=worldTreeS2Runtime.summary;
+    if(!summary) return;
+    if(summary.item && summary.item.mode==="click") return; // 클릭 이벤트 진행 중
+    const nextAt=Number(summary.nextSpawnAtMs)||0;
+    if(!nextAt || Date.now()<nextAt) return;
+    const uid=String(state.uid);
+    const spawnId=`dew-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    let sched=null;
+    try{
+      // 스폰 선점: 한 클라이언트만 지급을 실행한다.
+      const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
+        const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
+        const curNext=Number(cur.nextSpawnAtMs)||0;
+        if(!curNext || curNext>Date.now()) return; // 이미 처리됐거나 아직 시간이 안 됨 → 중단
+        if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<120000) return; // 2분 내 다른 지급 작업 → 중단
+        cur.spawning={id:spawnId,by:uid,atMs:Date.now()};
+        cur.seq=(Number(cur.seq)||0)+1;
+        return cur;
+      });
+      if(!res.committed) return;
+      sched=res.snapshot.val()||{};
+      if(!sched.spawning || sched.spawning.id!==spawnId) return; // 선점 실패
+    }catch(e){ return; }
+    try{
+      if(Math.random()<.5) await spawnWorldTreeDew10_();
+      else await spawnWorldTreeDew50_();
+    }catch(e){
+      console.warn("[world tree s2] dew spawn failed",e);
+      // 지급 실패 시 선점 마커만 지워 다음 클라이언트가 다시 시도하게 한다.
+      try{ await rUpdate(rWorldTreeItemsRef(state.roomId,"sched"),{spawning:null}); }catch(_e){}
+    }
+  }
+  // dew10: 참여 작가 1명에게 즉시 10시간 물방울 지급
+  async function spawnWorldTreeDew10_(){
+    const now=Date.now();
+    let members=worldTreeS2Runtime.snapshot?.members||null;
+    if(!members || !Object.keys(members).length){
+      try{ const snap=await rGet(rWorldTreeChildRef_("members")); members=snap.val()||{}; }catch(e){ members={}; }
+    }
+    const pool=Object.entries(members).filter(([,m])=>m && (m.team==="angel" || m.team==="demon"));
+    const nextSpawnAtMs=now+worldTreeDewSpawnDelay_();
+    const updates={};
+    if(!pool.length){
+      // 받을 사람이 없으면 다음 스폰만 예약한다.
+      updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=nextSpawnAtMs;
+      updates["worldTreeItemsV1/sched/spawning"]=null;
+      updates["worldTreeSummaryV1/nextSpawnAtMs"]=nextSpawnAtMs;
+      await rUpdate(rWorldTreePlaygroundRef_(),updates);
+      worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{nextSpawnAtMs});
+      return;
+    }
+    const [luckyUid,lucky]=pool[Math.floor(Math.random()*pool.length)];
+    const luckyName=String(lucky?.name||"익명");
+    const itemId=`itm-${now}-${Math.random().toString(36).slice(2,8)}`;
+    const bagItem={kind:"dew10",hours:10,obtainedAtMs:now,source:"drop"};
+    const feedKey=rPush(rWorldTreeItemsRef(state.roomId,"feed")).key;
+    const item={mode:"idle",id:itemId,kind:"dew10",count:0,target:0,lastDropAtMs:now,lastDropName:luckyName,lastDropHours:10};
+    updates[`worldTreeItemsV1/bags/${luckyUid}/${itemId}`]=bagItem;
+    updates[`worldTreeItemsV1/feed/${feedKey}`]={kind:"dew10",name:luckyName,hours:10,atMs:now};
+    updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=nextSpawnAtMs;
+    updates["worldTreeItemsV1/sched/spawning"]=null;
+    updates["worldTreeSummaryV1/item"]=item;
+    updates["worldTreeSummaryV1/nextSpawnAtMs"]=nextSpawnAtMs;
+    await worldTreeFeedTrimInto_(updates);
+    await rUpdate(rWorldTreePlaygroundRef_(),updates);
+    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item,nextSpawnAtMs});
+    if(luckyUid===String(state.uid||"")){
+      worldTreeS2Runtime.bag=Object.assign({},worldTreeS2Runtime.bag||{},{[itemId]:bagItem});
+      renderWorldTreeBag_();
+      showToast("신비로운 물방울(10h)이 내 가방에 떨어졌어요 💧",3200);
+    }
+  }
+  // dew50: 방 전체가 함께 클릭 목표를 채우는 이벤트 시작 (마지막 클릭자가 50시간 물방울 획득)
+  async function spawnWorldTreeDew50_(){
+    const now=Date.now();
+    const target=WORLD_TREE_DEW_CLICK_MIN+Math.floor(Math.random()*(WORLD_TREE_DEW_CLICK_MAX-WORLD_TREE_DEW_CLICK_MIN+1));
+    const eventId=`evt-${now}-${Math.random().toString(36).slice(2,8)}`;
+    const prevItem=(worldTreeS2Runtime.summary?.item && typeof worldTreeS2Runtime.summary.item==="object")?worldTreeS2Runtime.summary.item:{};
+    const active={id:eventId,target,count:0,startedAtMs:now,claimed:false};
+    const item={
+      mode:"click",id:eventId,kind:"dew50",count:0,target,
+      lastDropAtMs:Number(prevItem.lastDropAtMs)||0,
+      lastDropName:String(prevItem.lastDropName||""),
+      lastDropHours:Number(prevItem.lastDropHours)||0
+    };
+    const updates={};
+    updates["worldTreeItemsV1/active"]=active;
+    updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=0; // 이벤트 종료(지급) 때 다시 예약된다.
+    updates["worldTreeItemsV1/sched/spawning"]=null;
+    updates["worldTreeSummaryV1/item"]=item;
+    updates["worldTreeSummaryV1/nextSpawnAtMs"]=0;
+    await rUpdate(rWorldTreePlaygroundRef_(),updates);
+    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item,nextSpawnAtMs:0});
+  }
+  // 클릭 이벤트: 150ms 스로틀 + active 트랜잭션으로 함께 카운트를 올린다.
+  async function clickWorldTreeDew_(){
+    const now=Date.now();
+    if(now-worldTreeS2Runtime.dewClickAt<WORLD_TREE_DEW_CLICK_THROTTLE_MS) return;
+    worldTreeS2Runtime.dewClickAt=now;
+    if(!state.joined || !state.uid || !state.roomId) return;
+    const uid=String(state.uid);
+    const myName=normalizeNick(state.nickname||els.name?.value||"익명");
+    try{
+      const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"active"),(raw)=>{
+        if(!raw || typeof raw!=="object" || !raw.id) return; // 이벤트 없음 → 중단
+        if(raw.winnerUid) return; // 이미 종료 → 무시
+        const active=Object.assign({},raw);
+        active.count=(Number(active.count)||0)+1;
+        if(active.count>=Math.max(1,Number(active.target)||0)){
+          active.winnerUid=uid;
+          active.winnerName=myName;
+          active.doneAtMs=Date.now();
+        }
+        return active;
+      });
+      if(!res.committed) return;
+      const active=res.snapshot.val()||null;
+      worldTreeS2Runtime.active=active;
+      renderWorldTreeDewEvent_();
+      if(active && active.winnerUid===uid && !active.claimed && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
+        worldTreeS2Runtime.dewClaimingId=String(active.id||"");
+        await claimWorldTreeDewWin_(active).catch(()=>{ worldTreeS2Runtime.dewClaimingId=""; });
+      }
+    }catch(e){}
+  }
+  // 당첨 지급: 내 가방에 dew50 + 다음 스폰 예약 + summary 정리 (한 번의 멀티패스 update)
+  async function claimWorldTreeDewWin_(active){
+    const uid=String(state.uid||"");
+    if(!state.roomId || !uid || !active || active.winnerUid!==uid || active.claimed) return;
+    const now=Date.now();
+    const myName=normalizeNick(state.nickname||els.name?.value||String(active.winnerName||"익명"));
+    const itemId=`itm-${now}-${Math.random().toString(36).slice(2,8)}`;
+    const bagItem={kind:"dew50",hours:50,obtainedAtMs:now,source:"click",eventId:String(active.id||"")};
+    const feedKey=rPush(rWorldTreeItemsRef(state.roomId,"feed")).key;
+    const nextSpawnAtMs=now+worldTreeDewSpawnDelay_();
+    const item={
+      mode:"idle",id:String(active.id||""),kind:"dew50",
+      count:Number(active.count)||0,target:Number(active.target)||0,
+      lastDropAtMs:now,lastDropName:myName,lastDropHours:50
+    };
+    const updates={};
+    updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=bagItem;
+    updates["worldTreeItemsV1/active/claimed"]=true;
+    updates[`worldTreeItemsV1/feed/${feedKey}`]={kind:"dew50",name:myName,hours:50,atMs:now};
+    updates["worldTreeItemsV1/sched/nextSpawnAtMs"]=nextSpawnAtMs;
+    updates["worldTreeItemsV1/sched/spawning"]=null;
+    updates["worldTreeSummaryV1/item"]=item;
+    updates["worldTreeSummaryV1/nextSpawnAtMs"]=nextSpawnAtMs;
+    await worldTreeFeedTrimInto_(updates);
+    await rUpdate(rWorldTreePlaygroundRef_(),updates);
+    worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item,nextSpawnAtMs});
+    worldTreeS2Runtime.bag=Object.assign({},worldTreeS2Runtime.bag||{},{[itemId]:bagItem});
+    if(worldTreeS2Runtime.active && String(worldTreeS2Runtime.active.id||"")===String(active.id||"")) worldTreeS2Runtime.active.claimed=true;
+    renderWorldTreeBag_();
+    renderWorldTreeDewEvent_();
+    showToast("마지막 클릭 성공! 신비로운 물방울(50h)을 획득했어요 🌊",3400);
+  }
+  // 씬 위 물방울 오브/카운터 렌더 (active 구독 기준 실시간)
+  function renderWorldTreeDewEvent_(){
+    const orb=document.getElementById("worldTreeDewOrb");
+    const label=document.getElementById("worldTreeDewCount");
+    if(!orb || !label) return;
+    const active=worldTreeS2Runtime.active;
+    const hasEvent=!!(active && active.id);
+    const running=hasEvent && !active.winnerUid;
+    orb.style.display=running?"":"none";
+    if(!hasEvent){ label.style.display="none"; return; }
+    if(running){
+      label.style.display="";
+      label.textContent=`💧 함께 모은 클릭 ${(Number(active.count)||0).toLocaleString("ko-KR")} / ${(Number(active.target)||0).toLocaleString("ko-KR")}`;
+      return;
+    }
+    // 당첨자 발표는 종료 후 10분까지만 보여준다.
+    if(Date.now()-(Number(active.doneAtMs)||0)>10*60*1000){ label.style.display="none"; return; }
+    label.style.display="";
+    label.textContent=`${String(active.winnerName||"누군가")}님이 마지막 클릭! 신비로운 물방울 획득 💧`;
+  }
+  // 내 물방울 가방 — 모달 열 때 1회 rGet, 지급/사용 시 로컬 갱신
+  async function loadWorldTreeBag_(){
+    if(!state.joined || !state.uid || !state.roomId) return;
+    try{
+      const snap=await rGet(rWorldTreeItemsRef(state.roomId,`bags/${String(state.uid)}`));
+      worldTreeS2Runtime.bag=snap.val()||{};
+      renderWorldTreeBag_();
+    }catch(e){ console.warn("[world tree s2] bag load failed",e); }
+  }
+  function renderWorldTreeBag_(){
+    const list=document.getElementById("worldTreeBagList");
+    const countEl=document.getElementById("worldTreeBagCount");
+    if(!list) return;
+    const bag=worldTreeS2Runtime.bag||{};
+    const items=Object.entries(bag)
+      .filter(([,it])=>it && (it.kind==="dew10" || it.kind==="dew50"))
+      .sort((a,b)=>(Number(a[1].obtainedAtMs)||0)-(Number(b[1].obtainedAtMs)||0));
+    if(countEl) countEl.textContent=`${items.length}개`;
+    list.textContent="";
+    if(!items.length){
+      const empty=document.createElement("div");
+      empty.className="worldTreeBagEmpty";
+      empty.textContent=worldTreeS2Runtime.bag===null?"가방을 확인하는 중이에요…":"아직 받은 물방울이 없어요 · 가끔 세계수에서 떨어져요";
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(([id,it])=>{
+      const hours=Number(it.hours)||(it.kind==="dew50"?50:10);
+      const card=document.createElement("button");
+      card.type="button";
+      card.className="worldTreeBagItem";
+      card.dataset.itemId=id;
+      card.title=`빠르게 두 번 누르면 +${hours}h 사용`;
+      const icon=document.createElement("span");
+      icon.className="worldTreeBagIcon";
+      icon.textContent=it.kind==="dew50"?"🌊":"💧";
+      const label=document.createElement("b");
+      label.textContent=`+${hours}h`;
+      const date=document.createElement("span");
+      const d=new Date(Number(it.obtainedAtMs)||Date.now());
+      date.textContent=`${d.getMonth()+1}/${d.getDate()} 획득`;
+      card.appendChild(icon);
+      card.appendChild(label);
+      card.appendChild(date);
+      list.appendChild(card);
+    });
+  }
+  // 450ms 내 2회 클릭(더블클릭/더블탭)으로 사용
+  function onWorldTreeBagClick_(ev){
+    const card=ev.target?.closest?.(".worldTreeBagItem");
+    if(!card) return;
+    const id=String(card.dataset.itemId||"");
+    if(!id) return;
+    const now=Date.now();
+    const last=worldTreeS2Runtime.bagTap||{id:"",at:0};
+    if(last.id===id && now-last.at<=450){
+      worldTreeS2Runtime.bagTap={id:"",at:0};
+      useWorldTreeDewItem_(id).catch(()=>{});
+      return;
+    }
+    worldTreeS2Runtime.bagTap={id,at:now};
+    card.classList.add("isArmed");
+    setTimeout(()=>{ try{ card.classList.remove("isArmed"); }catch(e){} },500);
+  }
+  // 물방울 사용: 가방에서 빼고 ledger+개인 누적에 더한 뒤 core 트랜잭션으로 레벨업까지 반영.
+  // 앵커(anchors)는 건드리지 않는다 — 작업 타이머 델타 계산과 무관해야 한다.
+  async function useWorldTreeDewItem_(itemId){
+    if(worldTreeS2Runtime.dewUseLock) return;
+    if(!state.joined || !state.uid || !state.roomId) return;
+    const uid=String(state.uid);
+    const item=worldTreeS2Runtime.bag?.[itemId];
+    if(!item) return;
+    const myTeam=worldTreeS2Runtime.snapshot?.members?.[uid]?.team||"";
+    if(myTeam!=="angel" && myTeam!=="demon"){ showToast("팀을 먼저 선택하면 물방울을 사용할 수 있어요 💧",3000); return; }
+    const hours=Number(item.hours)||(item.kind==="dew50"?50:10);
+    const sec=Math.max(1,Math.round(hours*3600));
+    const name=normalizeNick(state.nickname||els.name?.value||"익명");
+    worldTreeS2Runtime.dewUseLock=true;
+    try{
+      const ledgerKey=rPush(rWorldTreeChildRef_("core/ledger")).key;
+      const updates={};
+      updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=null;
+      updates[`worldTreeSeason2/core/ledger/${ledgerKey}`]={t:myTeam,s:sec,u:uid,n:name,at:Date.now(),src:String(item.kind||"dew10")};
+      updates[`worldTreeSeason2/members/${uid}/contribSec`]=rIncrement(sec);
+      await rUpdate(rWorldTreePlaygroundRef_(),updates);
+      if(worldTreeS2Runtime.bag) delete worldTreeS2Runtime.bag[itemId];
+      try{
+        const me=worldTreeS2Runtime.snapshot?.members?.[uid];
+        if(me) me.contribSec=Math.max(0,Math.floor(Number(me.contribSec)||0))+sec;
+      }catch(e){}
+      renderWorldTreeBag_();
+      await consumeWorldTreeLedger_();
+      if(document.getElementById("worldTreeModal")?.classList.contains("show")) renderWorldTreeS2_();
+      showToast(`물방울 사용! +${hours}h가 누적 시간에 반영됐어요 ✨`,3000);
+    }catch(e){
+      console.warn("[world tree s2] dew use failed",e);
+      showToast("물방울 사용에 실패했어요 · 연결을 확인해 주세요",3000);
+    }finally{
+      worldTreeS2Runtime.dewUseLock=false;
+    }
+  }
   async function syncWorldTreeContribution_(reason="timer"){
     if(worldTreeS2Runtime.syncLock || !state.joined || !state.uid || !state.roomId) return;
     const uid=String(state.uid);
@@ -22397,10 +23189,13 @@ joinRoom();
     const day=seoulDateKey();
     const total=worldTreeCurrentFocusSeconds_();
     if(worldTreeS2Runtime.lastObservedDay===day && worldTreeS2Runtime.lastObservedSec===total && reason!=="force") return;
-    // ✅ V166: 이 동기화는 runTransaction이라 한 번에 세계수 노드(약 10KB)를 통째로 내려받는다.
+    // ✅ V168: 예전에는 루트 전체 runTransaction(약 10KB 다운로드)이었다. 이제는 3단계 소형 쓰기다.
+    //  1단계: 앵커+개인 누적+core/ledger 델타를 한 번의 원자적 멀티패스 update로 기록
+    //         (이 한 번으로 유실/이중계상이 없다 — 어느 시점에 죽어도 ledger가 남는다)
+    //  2단계: core 트랜잭션이 ledger 전부(다른 클라이언트 잔여분 포함)를 소비해 레벨업 반영
+    //  3단계: summary 갱신 + 레거시 level 미러 (베스트에포트, consumeWorldTreeLedger_ 안)
     // 기여 시간은 "지금까지의 총 작업초 − 마지막으로 기록한 초"의 차이로 계산하므로,
     // 자주 부르든 가끔 부르든 최종 누적값은 완전히 같다(늦게 반영될 뿐 1초도 사라지지 않는다).
-    // 그래서 꼭 필요한 순간에만 부르고, 배경에서 반복되는 호출은 최소 간격으로 눌러 둔다.
     const NEEDED_NOW = { open:1, join:1, leave:1, pagehide:1, status:1, force:1 };
     if(!NEEDED_NOW[reason]){
       const since = Date.now() - Number(worldTreeS2Runtime.lastSyncAtMs || 0);
@@ -22408,46 +23203,51 @@ joinRoom();
     }
     worldTreeS2Runtime.syncLock=true;
     try{
-      const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
-        const tree=normalizeWorldTreeS2_(raw);
-        const member=tree.members?.[uid];
-        if(!member || (member.team!=="angel" && member.team!=="demon")) return tree;
-        const memberTeam=member.team;
-        const anchor=tree.anchors?.[uid];
-        let delta=0;
-        if(member && anchor){
-          if(String(anchor.day||"")===day){
-            const before=Math.max(0,Math.floor(Number(anchor.sec)||0));
-            delta=total>=before ? total-before : 0;
-          }else{
-            // 자정 이후 오늘 타이머가 이미 오른 채 첫 동기화되어도 그 시간을 잃지 않는다.
-            delta=total;
-          }
+      // 1단계 준비: 앵커는 매 동기화마다 내 anchors/{uid}만 소형 rGet(~100B)으로 신선하게 읽는다.
+      // 같은 uid로 두 탭이 열려 있어도 서로의 최신 기록을 보게 되어 델타 이중 계상이 없다.
+      // 읽기에 실패했을 때만 런타임 캐시로 폴백한다.
+      let anchor=null;
+      try{
+        const snap=await rGet(rWorldTreeChildRef_(`anchors/${uid}`));
+        anchor=snap.val()||null;
+      }catch(e){ anchor=worldTreeS2Runtime.anchor||null; }
+      let delta=0;
+      if(anchor){
+        if(String(anchor.day||"")===day){
+          const before=Math.max(0,Math.floor(Number(anchor.sec)||0));
+          delta=total>=before ? total-before : 0;
+        }else{
+          // 자정 이후 오늘 타이머가 이미 오른 채 첫 동기화되어도 그 시간을 잃지 않는다.
+          delta=total;
         }
-        tree.members[uid]={
-          team:memberTeam,
-          name:normalizeNick(state.nickname||els.name?.value||member?.name||"익명"),
-          joinedAtMs:Number(member?.joinedAtMs)||Date.now(),
-          // 개인 누적 기여는 만렙 이후에도 계속 쌓는다(개인 작업 기록이므로 applyWorldTreeContribution_의 조기 return과 무관).
-          contribSec:Math.max(0,Math.floor(Number(member?.contribSec)||0))+Math.max(0,Math.floor(Number(delta)||0)),
-          wave:Math.max(1,Math.min(WORLD_TREE_TEAM_MAX_WAVES,Number(member?.wave)||1)),
-          selectionId:String(member?.selectionId||"").slice(0,100),
-          updatedAtMs:Date.now()
-        };
-        tree.anchors[uid]={day,sec:total,team:memberTeam,updatedAtMs:Date.now()};
-        applyWorldTreeContribution_(tree,memberTeam,delta);
-        tree.updatedAtMs=Date.now();
-        tree.lastSyncReason=String(reason||"timer").slice(0,20);
-        return tree;
-      });
-      const tree=normalizeWorldTreeS2_(result.snapshot.val()||{});
-      worldTreeS2Runtime.snapshot=tree;
+      }
+      const name=normalizeNick(state.nickname||els.name?.value||"익명");
+      const nowMs=Date.now();
+      const updates={};
+      updates[`anchors/${uid}`]={day,sec:total,team,updatedAtMs:nowMs};
+      // 개인 누적 기여는 만렙 이후에도 계속 쌓는다(개인 작업 기록이므로 팀 레벨 진행과 무관).
+      updates[`members/${uid}/contribSec`]=rIncrement(delta);
+      updates[`members/${uid}/name`]=name;
+      updates[`members/${uid}/updatedAtMs`]=nowMs;
+      if(delta>0){
+        const ledgerKey=rPush(rWorldTreeChildRef_("core/ledger")).key;
+        updates[`core/ledger/${ledgerKey}`]={t:team,s:delta,u:uid,n:name,at:nowMs,src:"work"};
+      }
+      await rUpdate(rWorldTreeS2Ref(state.roomId),updates);
+      worldTreeS2Runtime.anchor={day,sec:total,team,updatedAtMs:nowMs};
       worldTreeS2Runtime.lastObservedDay=day;
       worldTreeS2Runtime.lastObservedSec=total;
       worldTreeS2Runtime.lastSyncAtMs=Date.now();
-      const remoteTeam=tree.members?.[uid]?.team;
-      if(remoteTeam==="angel" || remoteTeam==="demon") rememberWorldTreeTeam_(remoteTeam);
-      if(document.getElementById("worldTreeModal")?.classList.contains("show")) renderWorldTreeS2_(tree);
+      // 1시간 캐시(로스터) 화면이 내 누적만큼은 뒤처지지 않게 로컬 캐시에도 반영한다.
+      try{
+        const me=worldTreeS2Runtime.snapshot?.members?.[uid];
+        if(me){ me.contribSec=Math.max(0,Math.floor(Number(me.contribSec)||0))+delta; me.name=name; }
+      }catch(e){}
+      // 2·3단계: ledger 소비(레벨업) + summary/레거시 미러.
+      await consumeWorldTreeLedger_();
+      if(document.getElementById("worldTreeModal")?.classList.contains("show")) renderWorldTreeS2_();
+      // 물방울 스폰 시각이 지났으면 지급 시도.
+      maybeSpawnWorldTreeDew_().catch(()=>{});
     }catch(e){
       console.warn("[world tree s2] contribution sync failed",e);
       if(document.getElementById("worldTreeModal")?.classList.contains("show") && Date.now()-worldTreeS2Runtime.lastErrorAt>12000){
@@ -22481,7 +23281,9 @@ joinRoom();
     try{
       const result=await rRunTransaction(rWorldTreeS2Ref(state.roomId),(raw)=>{
         const tree=normalizeWorldTreeS2_(raw);
-        if(maxLevel<tree.level) return;
+        // ✅ V168: core가 있으면 core 레벨 기준으로도 하향을 막는다.
+        const coreLevelNow=worldTreeCoreReady_(tree)?Math.max(0,Math.round(Number(tree.core.level)||0)):0;
+        if(maxLevel<Math.max(tree.level,coreLevelNow)) return;
         const oldNeed=Math.max(3600,Math.round(tree.config.hoursPerLevel*3600));
         const newNeed=Math.max(3600,Math.round(hoursPerLevel*3600));
         const ratio=newNeed/oldNeed;
@@ -22496,6 +23298,24 @@ joinRoom();
           tree.finishedTeam="";
           tree.finishedAtMs=0;
         }
+        // ✅ V168: core 진행 초도 레거시와 같은 비율로 보정하고 완성 상태를 갱신한다.
+        if(worldTreeCoreReady_(tree)){
+          const core=normalizeWorldTreeCore_(tree.core);
+          core.angelSec=Math.min(newNeed-1,Math.max(0,Math.floor(core.angelSec*ratio)));
+          core.demonSec=Math.min(newNeed-1,Math.max(0,Math.floor(core.demonSec*ratio)));
+          if(core.level>=maxLevel){
+            core.level=maxLevel;
+            core.finishedTeam=core.claimsAngel>core.claimsDemon?"angel":core.claimsDemon>core.claimsAngel?"demon":"balance";
+            core.finishedAtMs=core.finishedAtMs||Date.now();
+            core.angelSec=0;
+            core.demonSec=0;
+          }else{
+            core.finishedTeam="";
+            core.finishedAtMs=0;
+          }
+          core.updatedAtMs=Date.now();
+          tree.core=core;
+        }
         tree.updatedAtMs=Date.now();
         return tree;
       });
@@ -22504,6 +23324,9 @@ joinRoom();
         showToast(`이미 Lv.${tree.level}이라 최대 레벨을 그보다 낮출 수 없어요`,3200);
       }else{
         worldTreeS2Runtime.snapshot=tree;
+        worldTreeS2Runtime.rosterFetchedAtMs=Date.now();
+        // ✅ V168: summary의 이름/팀명/maxLevel/hoursPerLevel도 함께 갱신한다.
+        await writeWorldTreeSummary_(tree);
         renderWorldTreeS2_(tree);
         showToast("세계수 시즌 2 설정을 저장했어요 🌳",2600);
       }
@@ -22547,8 +23370,12 @@ joinRoom();
       renderWorldTreeS2_(worldTreeS2Runtime.snapshot||{});
     });
     document.getElementById("worldTreeAdminSave")?.addEventListener("click",()=>saveWorldTreeAdminConfig_());
+    // ✅ V168: 물방울 클릭 이벤트 오브 + 가방 더블탭 사용
+    document.getElementById("worldTreeDewOrb")?.addEventListener("click",()=>{ clickWorldTreeDew_().catch(()=>{}); });
+    document.getElementById("worldTreeBagList")?.addEventListener("click",onWorldTreeBagClick_);
+    // ✅ V168: menuBtn은 1시간 캐시 경유, adminUnlock은 강제 fetch(관리자 화면은 최신 로스터가 필요).
     document.getElementById("menuBtn")?.addEventListener("click",()=>setTimeout(()=>loadWorldTreeS2Once_(true),250));
-    document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{ if(state.adminOk) loadWorldTreeS2Once_(true); },650));
+    document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{ if(state.adminOk) loadWorldTreeS2Once_(true,{force:true}); },650));
     document.getElementById("joinBtn")?.addEventListener("click",()=>setTimeout(()=>{ loadWorldTreeS2Once_(false).then(()=>syncWorldTreeContribution_("join")); },1500));
     document.getElementById("leaveBtn")?.addEventListener("click",()=>{ syncWorldTreeContribution_("leave").catch(()=>{}); stopWorldTreeS2Realtime_(); },true);
     ["btnBreak","btnIdle"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setTimeout(()=>syncWorldTreeContribution_("status"),350)));
@@ -22572,7 +23399,8 @@ joinRoom();
       render:renderWorldTreeS2_,getState:()=>worldTreeS2Runtime.snapshot,
       // 대시보드 미니 카드용. 펫 코드는 별도 스크립트 블록이라 이 창구로만 접근한다.
       getDashInfo:worldTreeDashInfo_,
-      refresh:()=>loadWorldTreeS2Once_(false)
+      // ✅ V168: 대시보드 폴링은 루트 전체(약 10KB)가 아니라 summary(약 300B)만 읽는다.
+      refresh:()=>loadWorldTreeSummaryOnce_()
     };
   }catch(e){ console.warn("[world tree s2] init failed",e); }
 
@@ -22756,6 +23584,18 @@ if(!window.__MK_BOOT_OK__){
      여기서도 !important 로 눌러야 전환이 동작한다. 안 그러면 펫/세계수가 동시에 보인다. */
   .petDashBox[data-dash-mode="pet"] #worldTreeDashInner{display:none !important;}
   .petDashBox[data-dash-mode="tree"] #petDashInner{display:none !important;}
+  /* ✅ V168: 신비로운 물방울 소식 배지 (전환 버튼 반대편 구석, 펫/세계수 모드 공통) */
+  #worldTreeDewBadge{
+    position:absolute; left:10px; top:10px; z-index:3;
+    font-size:14px; line-height:1; pointer-events:none;
+    filter:drop-shadow(0 0 6px rgba(120,190,255,.7));
+    animation:worldTreeDewBadgePulse 1.6s ease-in-out infinite;
+  }
+  @keyframes worldTreeDewBadgePulse{0%,100%{transform:scale(1);opacity:.72;}50%{transform:scale(1.28);opacity:1;}}
+  @media (max-width:1100px){
+    body.joined #dashboardCard #worldTreeDewBadge{left:5px !important; top:5px !important; font-size:12px !important;}
+  }
+  body.mkLowSpecMode #worldTreeDewBadge{animation:none;}
   /* 대시보드 칸은 화면 폭에 따라 114px까지 좁아진다(V113/V115 규칙).
      그래서 고정 그리드를 쓰지 않고, 어떤 폭에서도 접히는 세로 중앙 정렬로 만든다. */
   .worldTreeDashInner{
@@ -23520,19 +24360,44 @@ if(!window.__MK_BOOT_OK__){
   }
   function renderWorldTreeDash(){
     const box = document.querySelector('.petDashBox');
-    if(!box || box.dataset.dashMode !== 'tree') return;
+    if(!box) return;
     const api = window.__MK_WORLD_TREE_S2__;
     const info = (api && typeof api.getDashInfo === 'function') ? api.getDashInfo() : null;
 
     // 세계수 데이터는 모달을 열 때만 구독한다. 카드가 켜져 있는 동안에만 가끔 한 번씩 새로 읽는다.
     // 입장 전에는 refresh가 어차피 아무것도 못 읽으므로 쿨다운을 태우지 않는다.
+    // ✅ V168: refresh는 이제 summary(약 300B)만 읽는다. 펫 모드일 때도 같은 120초 쿨다운으로
+    // 폴링을 계속해 물방울 배지를 갱신한다(기존에는 tree 모드에서만 루트 전체 10KB를 읽었다).
     const joined = !!(window.__mk_state && window.__mk_state.joined);
     const now = Date.now();
     if(joined && api && typeof api.refresh === 'function' && (!info || !info.ready || now - worldTreeDashLastFetchMs > 120000)){
       worldTreeDashLastFetchMs = now;
-      Promise.resolve(api.refresh()).then(()=>{ try{ paintWorldTreeDash(api.getDashInfo()); }catch(e){} }).catch(()=>{});
+      Promise.resolve(api.refresh()).then(()=>{ try{
+        const fresh = api.getDashInfo();
+        // 배지는 모드와 관계없이 항상 갱신하고, tree 모드일 때만 카드 본문을 추가로 그린다.
+        paintWorldTreeDewBadge(fresh);
+        if(box.dataset.dashMode === 'tree') paintWorldTreeDash(fresh);
+      }catch(e){} }).catch(()=>{});
     }
-    paintWorldTreeDash(joined ? info : (info && info.ready ? info : null));
+    paintWorldTreeDewBadge(joined ? info : null);
+    if(box.dataset.dashMode === 'tree') paintWorldTreeDash(joined ? info : (info && info.ready ? info : null));
+  }
+  // ✅ V168: 대시보드 카드 구석의 💧 펄스 배지 (펫 모드에서도 표시)
+  function paintWorldTreeDewBadge(info){
+    const box = document.querySelector('.petDashBox');
+    if(!box) return;
+    let badge = document.getElementById('worldTreeDewBadge');
+    const show = !!(info && info.dewBadge);
+    if(!show){ if(badge) badge.style.display = 'none'; return; }
+    if(!badge){
+      badge = document.createElement('span');
+      badge.id = 'worldTreeDewBadge';
+      badge.textContent = '💧';
+      badge.title = '신비로운 물방울 소식이 있어요 · 세계수에서 확인해 보세요';
+      badge.setAttribute('aria-hidden', 'true');
+      box.appendChild(badge);
+    }
+    if(badge.style.display) badge.style.display = '';
   }
   function paintWorldTreeDash(info){
     const inner = document.getElementById('worldTreeDashInner');
@@ -23552,6 +24417,8 @@ if(!window.__MK_BOOT_OK__){
       const teamLabel = info.myTeam ? `${info.myTeam === 'angel' ? '🤍' : '🖤'} ${info.teamName}` : '팀 미선택';
       inner.title = `${info.treeName} · ${info.finished ? '완성' : info.stageName} · ${teamLabel} · MAX ${Number(info.maxLevel).toLocaleString('ko-KR')} · 눌러서 자세히 보기`;
     }
+    // ✅ V168: tree 모드에서도 물방울 배지를 함께 갱신한다.
+    try{ paintWorldTreeDewBadge(info); }catch(e){}
   }
   function renderDash(){
     replaceDashCard();
