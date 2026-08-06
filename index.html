@@ -3,6 +3,7 @@
 <!-- V163_WORLD_TREE_SEASON2: 펫 놀이터 은퇴 + 천사/악마 팀 세계수 공동 성장 -->
 <!-- V161_POMO_COUNT_STABILITY_GUARD: 공용 뽀모 인원 응답 순서·불완전 0명 전파 방지 -->
 <!-- V161_POMO_API_12S_TIMEOUT_GUARD: 지연 요청 종료·다음 주기 자동 재시도 -->
+<!-- V167_POMO_FIREBASE_PRESENCE_LIVE: 공용 뽀모 인원 mmagampomoo RTDB 직접 조회(LIVE) + Apps Script 폴백 유지 -->
 
 <html lang="ko">
 <head>
@@ -7179,6 +7180,19 @@ function loadLocalProfile(){
     measurementId: "G-JNBR17YE6B"
   };
 
+  // -----------------------------
+  // ✅ V167: 공용 뽀모(mmagampomoo) Firebase 설정 (분리) — 접속 인원 LIVE 조회용
+  // -----------------------------
+  const pomoFirebaseConfig = {
+    apiKey: "AIzaSyBy09h77pCXYkU8JpriYihaGUrizGlvhe0",
+    authDomain: "mmagampomoo.firebaseapp.com",
+    databaseURL: "https://mmagampomoo-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "mmagampomoo",
+    storageBucket: "mmagampomoo.firebasestorage.app",
+    messagingSenderId: "730289089438",
+    appId: "1:730289089438:web:d1de0f7acefa602d29048f"
+  };
+
 
 
     // Firebase imports (CDN)
@@ -7252,6 +7266,10 @@ const auth = getAuth(app);
     const sudaApp = initializeApp(sudaFirebaseConfig, "sudaApp");
     const sudaAuth = getAuth(sudaApp);
     const sudaRtdb = getDatabase(sudaApp, sudaFirebaseConfig.databaseURL);
+    // ✅ V167: 공용 뽀모(mmagampomoo) DB도 초기화 (접속 인원 LIVE 조회용)
+    const pomoApp = initializeApp(pomoFirebaseConfig, "pomoApp");
+    const pomoAuth = getAuth(pomoApp);
+    const pomoRtdb = getDatabase(pomoApp, pomoFirebaseConfig.databaseURL);
 
     // ✅ v14: 수다방과 같은 named app(sudaApp)의 기존 익명 로그인 복원을 먼저 기다립니다.
     // 이전에는 currentUser가 아직 복원되기 전에 바로 새 익명 로그인을 만들어,
@@ -7292,6 +7310,46 @@ const auth = getAuth(app);
         throw err;
       });
       return __sudaAuthReadyPromise;
+    }
+
+    // ✅ V167: 뽀모(mmagampomoo) named app의 익명 인증 준비 (suda와 동일 패턴:
+    // persistence 설정 → 기존 익명 세션 복원 3초 대기 → 없으면 signInAnonymously)
+    let __pomoAuthReadyPromise = null;
+    function ensurePomoAuthReady_(){
+      if(__pomoAuthReadyPromise) return __pomoAuthReadyPromise;
+      __pomoAuthReadyPromise = (async ()=>{
+        try{ await setPersistence(pomoAuth, browserLocalPersistence); }catch(_e){}
+        const restoredUser = await new Promise((resolve)=>{
+          let settled = false;
+          let unsub = null;
+          const finish = (user)=>{
+            if(settled) return;
+            settled = true;
+            try{ if(unsub) unsub(); }catch(_e){}
+            resolve(user || null);
+          };
+          const timer = setTimeout(()=>finish(pomoAuth.currentUser || null), 3000);
+          try{
+            unsub = onAuthStateChanged(pomoAuth, (user)=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(user || null);
+            }, ()=>{
+              try{ clearTimeout(timer); }catch(_e){}
+              finish(pomoAuth.currentUser || null);
+            });
+          }catch(_e){
+            try{ clearTimeout(timer); }catch(_e2){}
+            finish(pomoAuth.currentUser || null);
+          }
+        });
+        if(restoredUser) return restoredUser;
+        const cred = await signInAnonymously(pomoAuth);
+        return cred.user;
+      })().catch((err)=>{
+        __pomoAuthReadyPromise = null;
+        throw err;
+      });
+      return __pomoAuthReadyPromise;
     }
 
     // DOM
@@ -7587,6 +7645,7 @@ onlineBtn: $("onlineBtn"),
       uid: null,
       roomId: FIXED_ROOM_ID,
             liveSudaCount: null,
+            livePomoCount: null,
 sfxEnabled: true,
       unsubParticipants: null,
       _lastDayKey: null,
@@ -10449,6 +10508,125 @@ function dockRightRail(){
       }
     }
 
+    // ✅ V167: 공용 뽀모 접속 현황(LIVE): mmagampomoo RTDB의 rooms/<sessionId>/presenceConn 직접 조회
+    // - 수다방 패턴과 달리, 세션 없음/오류 시 pomoCount/pomoOk DOM은 건드리지 않는다.
+    //   (Apps Script 폴러가 폴백으로 계속 표시하므로 state.livePomoCount만 null로 되돌린다)
+    let __pomoPresenceUnsub = null;
+    function stopPomoPresenceWatch_(){
+      try{ if(__pomoPresenceUnsub) __pomoPresenceUnsub(); }catch(e){}
+      __pomoPresenceUnsub = null;
+      try{ state.livePomoCount = null; }catch(e){}
+    }
+    function startPomoPresenceWatch_(){
+      try{
+        stopPomoPresenceWatch_();
+
+        if(!pomoRtdb){
+          try{ state.livePomoCount = null; }catch(e){}
+          return;
+        }
+
+        let __stopped = false;
+        let __pollTimer = null;
+        let __pollSessionTimer = null;
+        let __activeSessionId = "";
+        let __presenceRef = null;
+
+        function computeCountFromPresence_(raw){
+          // 뽀모 presence 구조: <uid>/<connKey>/{ cid, name, joinedAt|ts }
+          // onDisconnect가 서버에서 제거하므로 신선도(ts) 필터링 금지(60초 창은 과소집계 유발).
+          // 인원수 = 고유 cid 개수 (conn의 cid가 없으면 uid로 대체)
+          const ids = new Set();
+          for(const uid in (raw||{})){
+            const conns = raw[uid];
+            if(!conns || typeof conns !== "object") continue;
+            for(const ck in conns){
+              const v = conns[ck] || {};
+              ids.add(String((v && v.cid) ? v.cid : uid));
+            }
+          }
+          return ids.size;
+        }
+
+        async function refreshPresenceOnce_(){
+          if(__stopped || !__presenceRef) return;
+          try{
+            const s = await rGet(__presenceRef);
+            const raw = s.exists() ? (s.val() || {}) : {};
+            const count = computeCountFromPresence_(raw);
+            if(__stopped) return;
+            try{ state.livePomoCount = count; }catch(e){}
+            if(els.pomoCount) els.pomoCount.textContent = String(count);
+            if(els.pomoOk) els.pomoOk.textContent = "연결됨";
+          }catch(e){
+            console.warn("[pomo presence] poll error", e);
+            try{ state.livePomoCount = null; }catch(_e){}
+          }
+        }
+
+        async function refreshSessionAndMaybeSwap_(){
+          if(__stopped) return;
+          try{
+            const s = await rGet(rRef(pomoRtdb, "pomoHub/currentSessionV1"));
+            const hub = s.exists() ? (s.val() || {}) : {};
+            const sid = String(hub.sessionId || "").trim();
+            if(!sid){
+              // 허브에 세션이 없으면 LIVE 값만 비우고 DOM은 Apps Script 폴백 표시 유지
+              try{ state.livePomoCount = null; }catch(e){}
+              return;
+            }
+            if(sid !== __activeSessionId){
+              __activeSessionId = sid;
+              // ⚠️ 뽀모 앱은 sessionId를 raw 그대로 경로에 쓴다 — __toRoomKey 변환 금지
+              __presenceRef = rRef(pomoRtdb, `rooms/${sid}/presenceConn`);
+
+              // 즉시 1회 갱신
+              await refreshPresenceOnce_();
+
+              // presence 폴링(60초)
+              try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
+              __pollTimer = setInterval(refreshPresenceOnce_, 60000);
+            }
+          }catch(e){
+            console.warn("[pomo presence] session poll error", e);
+            try{ state.livePomoCount = null; }catch(_e){}
+          }
+        }
+
+        // stop 함수에 타이머 정리 훅 추가
+        __pomoPresenceUnsub = ()=>{
+          __stopped = true;
+          try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
+          __pollTimer = null;
+          try{ if(__pollSessionTimer) clearInterval(__pollSessionTimer); }catch(_){}
+          __pollSessionTimer = null;
+          __presenceRef = null;
+          __activeSessionId = "";
+        };
+
+        // 익명 인증 준비 후 세션 폴링 시작 (실패 시 조용히 중단 → 폴백 유지)
+        (async ()=>{
+          let user = null;
+          try{ user = await ensurePomoAuthReady_(); }catch(e){
+            console.warn("[pomo presence] auth failed", e);
+          }
+          if(__stopped) return;
+          if(!user){
+            try{ state.livePomoCount = null; }catch(e){}
+            return;
+          }
+          // 세션 폴링: 60초마다 확인
+          __pollSessionTimer = setInterval(refreshSessionAndMaybeSwap_, 60000);
+          // 첫 실행
+          refreshSessionAndMaybeSwap_();
+        })();
+
+      }catch(e){
+        console.warn("[pomo presence] start failed", e);
+        try{ state.livePomoCount = null; }catch(_){}
+      }
+    }
+
 function setControlsEnabled(joined){
       els.leaveBtn.disabled = !joined;
       els.joinBtn.disabled = joined;
@@ -10504,6 +10682,8 @@ function setControlsEnabled(joined){
       }
       // ✅ 수다방 LIVE 접속 현황 업데이트(대시보드)
       try{ if(joined) startSudaPresenceWatch_(); else stopSudaPresenceWatch_(); }catch(e){}
+      // ✅ V167: 공용 뽀모 LIVE 접속 현황 업데이트(대시보드)
+      try{ if(joined) startPomoPresenceWatch_(); else stopPomoPresenceWatch_(); }catch(e){}
       state.joined = joined;
       /* 입장 공지/출근 유도 자동 팝업 제거됨 */
       // keep dashboard positioned under ☰
@@ -12982,12 +13162,13 @@ async function transitionTo(nextStatus, source="manual"){
     const pomoVal = coerceCount(c.pomoCount);
     const sudaVal = coerceCount(c.sudaCount);
     const liveSudaVal = (state.liveSudaCount!=null ? Number(state.liveSudaCount) : null);
+    const livePomoVal = (state.livePomoCount!=null ? Number(state.livePomoCount) : null);
 
-    if(els.pomoCount) els.pomoCount.textContent = (pomoVal!=null ? pomoVal : "—");
+    if(els.pomoCount) els.pomoCount.textContent = (livePomoVal!=null && isFinite(livePomoVal) ? livePomoVal : (pomoVal!=null ? pomoVal : "—"));
     if(els.sudaCount) els.sudaCount.textContent = (liveSudaVal!=null && isFinite(liveSudaVal) ? liveSudaVal : (sudaVal!=null ? sudaVal : "—"));
 
-    // raw 값이 객체면 툴팁으로 확인 가능하게
-    if(els.pomoCount) els.pomoCount.title = (typeof c.pomoCount==="object" ? JSON.stringify(c.pomoCount) : "");
+    // raw 값이 객체면 툴팁으로 확인 가능하게 (LIVE 값이 있으면 LIVE 표기 우선)
+    if(els.pomoCount) els.pomoCount.title = (state.livePomoCount!=null ? `LIVE:${state.livePomoCount}` : (typeof c.pomoCount==="object" ? JSON.stringify(c.pomoCount) : ""));
     if(els.sudaCount) els.sudaCount.title = (state.liveSudaCount!=null ? `LIVE:${state.liveSudaCount}` : (typeof c.sudaCount==="object" ? JSON.stringify(c.sudaCount) : ""));
 
     const updated = c.updatedAtMs ? new Date(c.updatedAtMs).toLocaleString("ko-KR") : "-";
