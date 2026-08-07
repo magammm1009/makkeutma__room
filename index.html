@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.6_DEW_TUNE_FLASH: 클릭 목표 5000~6000 → 900~1600 하향 + 레이스 중 오브가 씬 안을 도망 다님(클릭 시+2.2초마다 이동, 로컬 연출) + 히든 번개 레이스(매시 1% 독립 확률, 예고 없음, 목표 1클릭, 첫 클릭이 50h 획득, 일일 2~4회 한도 미포함) -->
 <!-- V168.5_DEW_AUDIT_FIX: 트랜잭션 전수 점검 — (1)consumeWorldTreeLedger_ null-중단으로 기여가 레벨에 반영되지 않고 ledger가 무한 증식하던 버그 수정(핵심) (2)물방울 사용에 CAS 도장(usedAtMs)을 도입해 두 탭 이중 사용 차단 (3)오브 클릭 트랜잭션 null 안전장치 (4)진행 대기 중인 dew50 당첨 판정 덮어쓰기 방지 -->
 <!-- V168.4_DEW_CLAIM_CAS_FIX: 클릭 레이스 지급 오배송 수정 — 낙관적 로컬 트랜잭션 에코로 비승자 화면에서 지급이 실행되던 버그(발표 승자≠아이템 수령자). 지급 전 active 트랜잭션으로 서버 기준 승자/미지급을 재검증(CAS)한 뒤에만 가방에 지급 -->
 <!-- V168.3_DEW_TXN_NULL_FIX: 스폰/게릴라 선점 트랜잭션이 첫 실행(캐시 없음, raw=null)에서 undefined 반환으로 즉시 중단되어 스폰이 한 번도 실행되지 않던 버그 수정(실측 sched.seq=0). null 반환으로 서버 왕복을 강제해 실제 값으로 재실행되게 함 -->
@@ -5571,6 +5572,8 @@ body.joined #preJoinCard{ display:none; }
     background:radial-gradient(circle at 38% 32%, rgba(255,255,255,.85), rgba(120,190,255,.5) 46%, rgba(40,90,160,.42) 82%);
     box-shadow:0 0 18px rgba(120,190,255,.55),0 0 40px rgba(120,190,255,.28);
     animation:worldTreeDewFloat 2.6s ease-in-out infinite;
+    /* ✅ V168.6: 씬 안을 이리저리 도망 다니는 이동(JS가 left/top을 갱신) */
+    transition:left .26s cubic-bezier(.3,.9,.4,1.15), top .26s cubic-bezier(.3,.9,.4,1.15);
     -webkit-tap-highlight-color:transparent; user-select:none; touch-action:manipulation;
   }
   .worldTreeDewOrb:active{transform:scale(.9);}
@@ -21864,8 +21867,11 @@ joinRoom();
   const WORLD_TREE_DEW50_DAILY_MAX = 4;
   const WORLD_TREE_DEW50_HOURLY_CHANCE = 0.3;
   const WORLD_TREE_DEW50_WINDOW_MS = 10 * 60 * 1000;
-  const WORLD_TREE_DEW_CLICK_MIN = 5000;              // 클릭 이벤트 목표 최소 (사용자 확정: 5000~6000)
-  const WORLD_TREE_DEW_CLICK_MAX = 6000;              // 클릭 이벤트 목표 최대
+  const WORLD_TREE_DEW_CLICK_MIN = 900;               // 클릭 이벤트 목표 최소 (V168.6: 오브가 도망 다니게 되면서 5000~6000 → 900~1600 하향)
+  const WORLD_TREE_DEW_CLICK_MAX = 1600;              // 클릭 이벤트 목표 최대
+  // ✅ V168.6: 히든 번개 레이스 — 매시 판정 때 30%와 독립적으로 1% 확률. 예고 없이 목표 1클릭짜리
+  // dew50 레이스가 나타나 "빠른 첫 클릭"이 50h를 가져간다. 하루 2~4회 한도에 포함되지 않는다.
+  const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
   const WORLD_TREE_DEW_SEEN_KEY = "mk_wt_dew_seen_v1";
 
@@ -21894,7 +21900,8 @@ joinRoom();
     dewUseLock:false,        // 물방울 사용 중복 방지
     dewCueHour:"",           // ✅ V168.1: 59분 예고 문구를 시간당 1회만 띄우기 위한 마커
     guerrillaCueId:"",       // ✅ V168.2: 게릴라 1분 전 예고를 예약당 1회만 띄우기 위한 마커
-    guerrillaStartId:""      // ✅ V168.2: 게릴라 시작 안내를 예약당 1회만 띄우기 위한 마커
+    guerrillaStartId:"",     // ✅ V168.2: 게릴라 시작 안내를 예약당 1회만 띄우기 위한 마커
+    dewOrbTimer:null         // ✅ V168.6: 레이스 중 오브 순회 이동 타이머 (로컬 연출)
   };
 
   function rWorldTreeS2Ref(roomId){
@@ -22970,9 +22977,10 @@ joinRoom();
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
         const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
         if(cur.roll && cur.roll.hour===hourKey) return; // 다른 클라이언트가 먼저 판정 → 중단
-        // ✅ V168.5: 아직 소비되지 않았고 스폰 유효시간(atMs+50분)이 남은 당첨 판정은 덮어쓰지 않는다
+        // ✅ V168.5: 아직 소비되지 않았고 스폰 유효시간(atMs+50분)이 남은 당첨/번개 판정은 덮어쓰지 않는다
         // (시계가 크게 빠른 클라이언트가 진행 대기 중인 판정을 지워 스폰이 유실되는 사고 방지).
-        if(cur.roll && cur.roll.will && !cur.roll.done && Number(cur.roll.atMs)>0 && Date.now()-Number(cur.roll.atMs)<50*60*1000) return;
+        if(cur.roll && ((cur.roll.will && !cur.roll.done && Number(cur.roll.atMs)>0 && Date.now()-Number(cur.roll.atMs)<50*60*1000)
+          || (cur.roll.fw && !cur.roll.fdone && Number(cur.roll.fAtMs)>0 && Date.now()-Number(cur.roll.fAtMs)<50*60*1000))) return;
         // 일일 카운터(day/d10/d50) 리셋은 스폰 트랜잭션이 담당한다. 여기서는 읽기만.
         const dayKey=hourKey.slice(0,10);
         const d50=(cur.day===dayKey)?(Number(cur.d50)||0):0;
@@ -22984,6 +22992,12 @@ joinRoom();
           else will=Math.random()<WORLD_TREE_DEW50_HOURLY_CHANCE;
         }
         cur.roll={hour:hourKey,will:will?1:0,atMs:will?(nextHourStartMs+Math.floor(Math.random()*WORLD_TREE_DEW50_WINDOW_MS)):0};
+        // ✅ V168.6: 히든 번개 레이스 — 30% 판정과 독립적인 1%. 예고 문구에 반영하지 않고(히든),
+        // 일일 d50 카운터에도 넣지 않는다. 정각~10분 사이 랜덤 시각에 목표 1클릭짜리 레이스가 나타난다.
+        if(Math.random()<WORLD_TREE_DEW_FLASH_CHANCE){
+          cur.roll.fw=1;
+          cur.roll.fAtMs=nextHourStartMs+Math.floor(Math.random()*WORLD_TREE_DEW50_WINDOW_MS);
+        }
         return cur;
       });
       const sched=res.snapshot.val()||{};
@@ -23146,9 +23160,11 @@ joinRoom();
     const now=Date.now();
     const roll=(summary.dewRoll && typeof summary.dewRoll==="object")?summary.dewRoll:null;
     const due50=!!(roll && roll.will && !roll.done && Number(roll.atMs)>0 && now>=Number(roll.atMs) && now-Number(roll.atMs)<50*60*1000);
+    // ✅ V168.6: 히든 번개 레이스(1클릭) due 판정 — 정규 dew50과 독립
+    const dueFlash=!!(roll && roll.fw && !roll.fdone && Number(roll.fAtMs)>0 && now>=Number(roll.fAtMs) && now-Number(roll.fAtMs)<50*60*1000);
     const nextAt=Number(summary.nextSpawnAtMs)||0;
     const due10=!!(nextAt && now>=nextAt);
-    if(!due50 && !due10) return;
+    if(!due50 && !due10 && !dueFlash) return;
     const uid=String(state.uid);
     const spawnId=`dew-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     let kind="";
@@ -23166,8 +23182,13 @@ joinRoom();
         if(cur.day!==dayKey){ cur.day=dayKey; cur.d10=0; cur.d50=0; }
         const curRoll=(cur.roll && typeof cur.roll==="object")?Object.assign({},cur.roll):null;
         const fifty=!!(curRoll && curRoll.will && !curRoll.done && Number(curRoll.atMs)>0 && nowT>=Number(curRoll.atMs) && nowT-Number(curRoll.atMs)<50*60*1000);
+        // ✅ V168.6: 번개 레이스가 due면 최우선(1클릭이라 즉시 끝나므로 정규 레이스를 오래 막지 않는다).
+        const flash=!!(curRoll && curRoll.fw && !curRoll.fdone && Number(curRoll.fAtMs)>0 && nowT>=Number(curRoll.fAtMs) && nowT-Number(curRoll.fAtMs)<50*60*1000);
         let k="";
-        if(fifty){
+        if(flash){
+          curRoll.fdone=1; cur.roll=curRoll;
+          k="flash"; // 일일 d50 카운터에 넣지 않는다(전체 확률과 독립인 히든 이벤트)
+        }else if(fifty){
           curRoll.done=1; cur.roll=curRoll;
           cur.d50=(Number(cur.d50)||0)+1;
           k="dew50";
@@ -23201,6 +23222,7 @@ joinRoom();
     }catch(e){ return; }
     try{
       if(kind==="dew50") await spawnWorldTreeDew50_();
+      else if(kind==="flash") await spawnWorldTreeDewClickEvent_("dew50",50,1,"fdone"); // ✅ V168.6: 번개 — 첫 클릭이 즉시 획득
       else await spawnWorldTreeDew10_();
     }catch(e){
       console.warn("[world tree s2] dew spawn failed",e);
@@ -23250,7 +23272,8 @@ joinRoom();
   }
   // ✅ V168.2: 방 전체가 함께 클릭 목표를 채우는 이벤트 시작 (마지막 클릭자가 물방울 획득).
   // dew50(정기)과 dew20(게릴라)이 같은 인프라를 쓴다 — kind/hours/target만 다르다.
-  async function spawnWorldTreeDewClickEvent_(kind,hours,target){
+  // ✅ V168.6: rollMirrorKey — 이 스폰이 소진시킨 시간 판정 필드("done"=정규 dew50, "fdone"=번개, ""=게릴라).
+  async function spawnWorldTreeDewClickEvent_(kind,hours,target,rollMirrorKey){
     const now=Date.now();
     const eventId=`evt-${now}-${Math.random().toString(36).slice(2,8)}`;
     const prevItem=(worldTreeS2Runtime.summary?.item && typeof worldTreeS2Runtime.summary.item==="object")?worldTreeS2Runtime.summary.item:{};
@@ -23266,19 +23289,19 @@ joinRoom();
     updates["worldTreeItemsV1/sched/spawning"]=null;
     updates["worldTreeSummaryV1/item"]=item;
     // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 더 이상 건드리지 않는다(이벤트 중엔 어차피 스폰이 멈춘다).
-    // 판정 소진(done)을 summary에도 미러해 다른 클라이언트가 헛 트랜잭션을 안 돌게 한다.
-    if(kind==="dew50") updates["worldTreeSummaryV1/dewRoll/done"]=1;
+    // 판정 소진(done/fdone)을 summary에도 미러해 다른 클라이언트가 헛 트랜잭션을 안 돌게 한다.
+    if(rollMirrorKey==="done" || rollMirrorKey==="fdone") updates[`worldTreeSummaryV1/dewRoll/${rollMirrorKey}`]=1;
     if(kind==="dew20") updates["worldTreeSummaryV1/guerrilla"]=null; // 예약 소진
     await rUpdate(rWorldTreePlaygroundRef_(),updates);
     worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item});
-    if(kind==="dew50" && worldTreeS2Runtime.summary.dewRoll && typeof worldTreeS2Runtime.summary.dewRoll==="object"){
-      worldTreeS2Runtime.summary.dewRoll=Object.assign({},worldTreeS2Runtime.summary.dewRoll,{done:1});
+    if((rollMirrorKey==="done" || rollMirrorKey==="fdone") && worldTreeS2Runtime.summary.dewRoll && typeof worldTreeS2Runtime.summary.dewRoll==="object"){
+      worldTreeS2Runtime.summary.dewRoll=Object.assign({},worldTreeS2Runtime.summary.dewRoll,{[rollMirrorKey]:1});
     }
     if(kind==="dew20" && worldTreeS2Runtime.summary.guerrilla) delete worldTreeS2Runtime.summary.guerrilla;
   }
   async function spawnWorldTreeDew50_(){
     const target=WORLD_TREE_DEW_CLICK_MIN+Math.floor(Math.random()*(WORLD_TREE_DEW_CLICK_MAX-WORLD_TREE_DEW_CLICK_MIN+1));
-    await spawnWorldTreeDewClickEvent_("dew50",50,target);
+    await spawnWorldTreeDewClickEvent_("dew50",50,target,"done");
   }
   // 클릭 이벤트: 150ms 스로틀 + active 트랜잭션으로 함께 카운트를 올린다.
   async function clickWorldTreeDew_(){
@@ -23366,6 +23389,20 @@ joinRoom();
     renderWorldTreeDewEvent_();
     showToast(`마지막 클릭 성공! 신비로운 물방울(${hours}h)을 획득했어요 ${kind==="dew20"?"💦":"🌊"}`,3400);
   }
+  // ✅ V168.6: 오브를 씬 안 랜덤 위치로 옮긴다(클릭 직후 + 진행 중 2.2초마다). 순수 로컬 연출이라 네트워크 비용 0.
+  function moveWorldTreeDewOrb_(){
+    const orb=document.getElementById("worldTreeDewOrb");
+    const scene=orb?.parentElement;
+    if(!orb || !scene || orb.style.display==="none") return;
+    const w=scene.clientWidth||0, h=scene.clientHeight||0;
+    if(w<140 || h<180) return; // 씬이 아직 안 그려졌으면 기본 위치 유지
+    const pad=8, size=58;
+    const left=pad+Math.random()*Math.max(1,w-size-pad*2);
+    const top=pad+Math.random()*Math.max(1,h-size-pad*2-46); // 하단 라벨 영역은 살짝 피한다
+    orb.style.right="auto";
+    orb.style.left=Math.round(left)+"px";
+    orb.style.top=Math.round(top)+"px";
+  }
   // 씬 위 물방울 오브/카운터 렌더 (active 구독 기준 실시간)
   function renderWorldTreeDewEvent_(){
     const orb=document.getElementById("worldTreeDewOrb");
@@ -23375,6 +23412,14 @@ joinRoom();
     const hasEvent=!!(active && active.id);
     const running=hasEvent && !active.winnerUid;
     orb.style.display=running?"":"none";
+    // ✅ V168.6: 진행 중에만 순회 이동 타이머 가동(저사양 모드는 클릭 이동만). 끝나면 기본 위치로 복귀.
+    if(running && !worldTreeS2Runtime.dewOrbTimer && !document.body.classList.contains("mkLowSpecMode")){
+      worldTreeS2Runtime.dewOrbTimer=setInterval(()=>{ try{ moveWorldTreeDewOrb_(); }catch(e){} },2200);
+    }else if(!running && worldTreeS2Runtime.dewOrbTimer){
+      clearInterval(worldTreeS2Runtime.dewOrbTimer);
+      worldTreeS2Runtime.dewOrbTimer=null;
+      orb.style.left=""; orb.style.right=""; orb.style.top="";
+    }
     if(!hasEvent){ label.style.display="none"; return; }
     if(running){
       label.style.display="";
@@ -23699,7 +23744,7 @@ joinRoom();
     document.getElementById("worldTreeGuerrillaSet")?.addEventListener("click",()=>setWorldTreeGuerrilla_());
     document.getElementById("worldTreeGuerrillaCancel")?.addEventListener("click",()=>cancelWorldTreeGuerrilla_());
     // ✅ V168: 물방울 클릭 이벤트 오브 + 가방 더블탭 사용
-    document.getElementById("worldTreeDewOrb")?.addEventListener("click",()=>{ clickWorldTreeDew_().catch(()=>{}); });
+    document.getElementById("worldTreeDewOrb")?.addEventListener("click",()=>{ try{ moveWorldTreeDewOrb_(); }catch(e){} clickWorldTreeDew_().catch(()=>{}); });
     document.getElementById("worldTreeBagList")?.addEventListener("click",onWorldTreeBagClick_);
     // ✅ V168: menuBtn은 1시간 캐시 경유, adminUnlock은 강제 fetch(관리자 화면은 최신 로스터가 필요).
     document.getElementById("menuBtn")?.addEventListener("click",()=>setTimeout(()=>loadWorldTreeS2Once_(true),250));
