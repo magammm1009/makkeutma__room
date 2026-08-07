@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.8_DEW_ORB_REST: 실전 테스트 반영 — 클릭 목표 900~1600 → 600~800 재조정 + 오브가 이동 후 30% 확률로 4~6초 한 자리에 머무는 "쉬는 텀"(쉬는 동안은 클릭해도 자리 유지). 빌드 16880 — 구버전 탭 새로고침 안내 첫 실전 작동 -->
 <!-- V168.7_DEW_STALE_TAB_GUARD: 구버전 탭 방어 — (1)지급 완료 판정을 claimedBy(새 코드 전용 마커)로 전환해, 구버전 탭의 유령 claimed가 진짜 승자의 지급을 가로막던 사고 수정(실사례: 나또님 미지급/비승자 3명 자가지급) (2)summary.appBuild 비교로 구버전 탭에 2분마다 강력 새로고침 안내 토스트 (3)레이스 참가자 명단(pt) 기록 — 클릭 시 이벤트당 1회 이름을 남기고, 새 이벤트 스폰 때 이전 명단 자동 청소 -->
 <!-- V168.6_DEW_TUNE_FLASH: 클릭 목표 5000~6000 → 900~1600 하향 + 레이스 중 오브가 씬 안을 도망 다님(클릭 시+2.2초마다 이동, 로컬 연출) + 히든 번개 레이스(매시 1% 독립 확률, 예고 없음, 목표 1클릭, 첫 클릭이 50h 획득, 일일 2~4회 한도 미포함) -->
 <!-- V168.5_DEW_AUDIT_FIX: 트랜잭션 전수 점검 — (1)consumeWorldTreeLedger_ null-중단으로 기여가 레벨에 반영되지 않고 ledger가 무한 증식하던 버그 수정(핵심) (2)물방울 사용에 CAS 도장(usedAtMs)을 도입해 두 탭 이중 사용 차단 (3)오브 클릭 트랜잭션 null 안전장치 (4)진행 대기 중인 dew50 당첨 판정 덮어쓰기 방지 -->
@@ -21868,14 +21869,14 @@ joinRoom();
   const WORLD_TREE_DEW50_DAILY_MAX = 4;
   const WORLD_TREE_DEW50_HOURLY_CHANCE = 0.3;
   const WORLD_TREE_DEW50_WINDOW_MS = 10 * 60 * 1000;
-  const WORLD_TREE_DEW_CLICK_MIN = 900;               // 클릭 이벤트 목표 최소 (V168.6: 오브가 도망 다니게 되면서 5000~6000 → 900~1600 하향)
-  const WORLD_TREE_DEW_CLICK_MAX = 1600;              // 클릭 이벤트 목표 최대
+  const WORLD_TREE_DEW_CLICK_MIN = 600;               // 클릭 이벤트 목표 최소 (V168.8: 실전 테스트 후 900~1600 → 600~800 재조정)
+  const WORLD_TREE_DEW_CLICK_MAX = 800;               // 클릭 이벤트 목표 최대
   // ✅ V168.6: 히든 번개 레이스 — 매시 판정 때 30%와 독립적으로 1% 확률. 예고 없이 목표 1클릭짜리
   // dew50 레이스가 나타나 "빠른 첫 클릭"이 50h를 가져간다. 하루 2~4회 한도에 포함되지 않는다.
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16870;
+  const MK_APP_BUILD = 16880;
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
   const WORLD_TREE_DEW_SEEN_KEY = "mk_wt_dew_seen_v1";
 
@@ -21906,6 +21907,7 @@ joinRoom();
     guerrillaCueId:"",       // ✅ V168.2: 게릴라 1분 전 예고를 예약당 1회만 띄우기 위한 마커
     guerrillaStartId:"",     // ✅ V168.2: 게릴라 시작 안내를 예약당 1회만 띄우기 위한 마커
     dewOrbTimer:null,        // ✅ V168.6: 레이스 중 오브 순회 이동 타이머 (로컬 연출)
+    dewOrbRestUntil:0,       // ✅ V168.8: 오브가 한 자리에 머무는 "쉬는 텀"의 종료 시각
     dewPtMarked:""           // ✅ V168.7: 참가자 명단(pt) 기록을 이벤트당 1회로 제한하는 마커
   };
 
@@ -23418,10 +23420,12 @@ joinRoom();
     showToast(`마지막 클릭 성공! 신비로운 물방울(${hours}h)을 획득했어요 ${kind==="dew20"?"💦":"🌊"}`,3400);
   }
   // ✅ V168.6: 오브를 씬 안 랜덤 위치로 옮긴다(클릭 직후 + 진행 중 2.2초마다). 순수 로컬 연출이라 네트워크 비용 0.
+  // ✅ V168.8: 이동 후 30% 확률로 4~6초 "쉬는 텀" — 그동안은 클릭해도/타이머가 돌아도 자리를 지킨다.
   function moveWorldTreeDewOrb_(){
     const orb=document.getElementById("worldTreeDewOrb");
     const scene=orb?.parentElement;
     if(!orb || !scene || orb.style.display==="none") return;
+    if(Date.now()<worldTreeS2Runtime.dewOrbRestUntil) return; // 쉬는 중 → 자리 유지
     const w=scene.clientWidth||0, h=scene.clientHeight||0;
     if(w<140 || h<180) return; // 씬이 아직 안 그려졌으면 기본 위치 유지
     const pad=8, size=58;
@@ -23430,6 +23434,7 @@ joinRoom();
     orb.style.right="auto";
     orb.style.left=Math.round(left)+"px";
     orb.style.top=Math.round(top)+"px";
+    worldTreeS2Runtime.dewOrbRestUntil=(Math.random()<.3)?(Date.now()+4000+Math.floor(Math.random()*2000)):0;
   }
   // 씬 위 물방울 오브/카운터 렌더 (active 구독 기준 실시간)
   function renderWorldTreeDewEvent_(){
@@ -23446,6 +23451,7 @@ joinRoom();
     }else if(!running && worldTreeS2Runtime.dewOrbTimer){
       clearInterval(worldTreeS2Runtime.dewOrbTimer);
       worldTreeS2Runtime.dewOrbTimer=null;
+      worldTreeS2Runtime.dewOrbRestUntil=0;
       orb.style.left=""; orb.style.right=""; orb.style.top="";
     }
     if(!hasEvent){ label.style.display="none"; return; }
