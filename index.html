@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V169.2_PRUNE_ATTEND_GUARD: 자동 청소에 출석부 대조 추가 — 삭제 조건을 "presence 14일 미접속 + 최근 30일 중 출석도 휴가(leave)도 아닌 날 14일 이상"으로 강화. 장기 휴가·병가를 출석부에 남긴 작가는 보존(강퇴 예외 규칙 반영). 출석부 읽기는 후보가 있을 때만 월 2회분(~10KB). 빌드 16920 -->
+<!-- V169.1_NICK_PROFILE: 닉네임 기준 프로필 — ①프로필 저장 시 playground/profilesByNickV1/{닉키}에 덮어쓰기 미러(닉당 1개, 용량 고정) ②입장 시 profiles/{uid} 미등록이면 미러→예전 presence 순으로 이어받기 ③presence 자동 청소 30일→14일(강퇴 규칙 13일+1) + 프로필 시체 동반 정리. 실측: presence 전체 로드가 다운로드의 48%(146KB)였음. 빌드 16910 -->
 <!-- V169.0_FULL_AUDIT_FIX: 전체 코드 정밀 감사(채팅/펫/프로필/미션/뽀모/타이머/손캠/모드) 후 10건 수정 — (1)두 탭 동시 사용 시 작업 시간 2배 계상(하트비트 기준누적 짝 기록) (2)미션 성공 인원 래치 고정 (3)내 미션 dayKey 미검사 3곳(자정 후 👑 잔존) (4)미션 완료자 목록 사망(죽은 메모리 맵→실저장소 1회 조회) (5)채팅 대기열 두 탭 이중 전송 (6)퇴장 후 대시보드 폴링 잔존 (7)퇴장 시 채팅 리스너 잔존 경합 (8)저사양 모드 손캠 구독 부활 (9)뽀모 LIVE 0명 오표시(3분 신뢰 판정+죽은 세션 폴링 정리) (10)절약모드 집중시간 두 탭 이중 가산. 빌드 16900 -->
 <!-- V168.9_ADMIN_RELOAD: 관리자 전원 새로고침 — 관리자 패널 버튼으로 summary.reloadReq 전파(120초 폴링). 백그라운드 탭/미입장 화면은 즉시 location.reload(), 화면을 보는 중인 탭은 안내 토스트 후 탭을 벗어나는 순간 적용. localStorage 마커로 무한 새로고침 방지. 빌드 16890 -->
 <!-- V168.8_DEW_ORB_REST: 실전 테스트 반영 — 클릭 목표 900~1600 → 600~800 재조정 + 오브가 이동 후 30% 확률로 4~6초 한 자리에 머무는 "쉬는 텀"(쉬는 동안은 클릭해도 자리 유지). 빌드 16880 — 구버전 탭 새로고침 안내 첫 실전 작동 -->
@@ -11537,6 +11539,18 @@ function rMissionsRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId
 // profileUpdates는 과거 로그가 계속 쌓여 RTDB 다운로드/스토리지 비용을 키우므로 더 이상 기본 저장하지 않습니다.
 function rProfilesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles`); }
 function rProfileRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles/${uid}`); }
+// ✅ V169.1: 닉네임 기준 프로필 미러 — 익명 uid가 바뀌어도 닉네임으로 프로필을 되찾는다.
+// 닉네임당 1개를 덮어쓰기 저장하므로 용량이 늘지 않는다. playground 하위라 규칙 배포도 불필요.
+function profileNickKey_(nick){
+  try{
+    const n = normalizeNick(String(nick||"")).trim();
+    if(!n) return "";
+    return encodeURIComponent(n).replace(/\./g,"%2E").slice(0,120);
+  }catch(e){ return ""; }
+}
+function rProfileByNickRef_(roomId, nickKey){
+  return rRef(rtdb, `${rRoomBase(roomId)}/playground/profilesByNickV1/${nickKey}`);
+}
 function rProfileUpdatesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profileUpdates`); }
 function rPlaygroundActiveRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/active`); }
 function rPlaygroundActiveRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/playground/active/${uid}`); }
@@ -13160,6 +13174,18 @@ async function transitionTo(nextStatus, source="manual"){
           await rSet(rProfileRef(state.roomId, state.uid), legacyPayload);
           state.__v160OptionalFieldsRejected = true;
         }
+        // ✅ V169.1: 닉네임 미러에도 덮어쓰기 저장 — uid가 바뀌어도 다음 입장 때 닉네임으로 되찾는다.
+        try{
+          const nickKey = profileNickKey_(state.nickname || els.name?.value || "");
+          if(nickKey){
+            await rSet(rProfileByNickRef_(state.roomId, nickKey), {
+              uid: String(state.uid),
+              name: normalizeNick(state.nickname || els.name?.value || ""),
+              updatedAtMs: Date.now(),
+              p: payload
+            });
+          }
+        }catch(e){}
       }catch(e){ console.warn('[profiles] set failed', e); }
 
       // 긴급 롤백용: localStorage.mk_keep_profile_updates_v1 = "1" 일 때만 레거시 로그를 남김
@@ -17164,12 +17190,63 @@ t.appendChild(bg);
     }
 
     // Join / Leave
-    // ✅ 30일 이상 접속이 없는 presence를 스스로 정리한다(브라우저마다 하루 1회).
+    // ✅ V169.1: 14일 이상 접속이 없는 presence를 스스로 정리한다(브라우저마다 하루 1회).
+    // 방 규칙상 13일 미접속은 강퇴 대상이라 14일이면 안전하다. (예전 30일 기준은 14~30일짜리
+    // 시체를 남겨 presence 전체 로드가 146KB까지 커졌었다 — 2026-08-07 실측.)
     // 이미 구독으로 받아 둔 state.currentParticipants만 훑으므로 추가 다운로드가 0이고,
     // 같은 항목을 여러 명이 동시에 지워도 결과가 같아서 별도 잠금이 필요 없다.
-    // 규칙에서도 "30일 지난 항목의 삭제"만 허용하므로 살아있는 사람은 지워질 수 없다.
-    const PRESENCE_PRUNE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+    const PRESENCE_PRUNE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
     const PRESENCE_PRUNE_MAX_PER_RUN = 300;
+    // ✅ V169.2: 출석부(attend) 대조용 헬퍼 — KST 기준 i일 전의 {달, 일} 키
+    function seoulYmd_(offsetDays){
+      const iso = new Date(Date.now() - offsetDays*86400000 + 9*3600000).toISOString();
+      return { ym: iso.slice(0,7), dd: iso.slice(8,10) };
+    }
+    // 최근 30일 창이 걸치는 달(이번 달+지난 달, 각 ~5KB)의 출석부를 읽는다. 후보가 있을 때만 호출된다.
+    async function loadAttendWindow_(){
+      const months = {};
+      const need = new Set();
+      for(let i=1;i<=30;i++) need.add(seoulYmd_(i).ym);
+      for(const ym of need){
+        const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/attend/months/${ym}`));
+        const v = snap.val();
+        months[ym] = (v && typeof v === "object") ? v : { days:{}, leave:{} };
+      }
+      return months;
+    }
+    // 출석부 키는 출석부 쪽 닉네임 — 정확 일치가 없으면 normalizeNick 기준으로 찾는다.
+    function attendKeyForNick_(monthObj, nick){
+      const pools = [monthObj?.days || {}, monthObj?.leave || {}];
+      for(const pool of pools){
+        if(pool[nick]) return nick;
+        for(const k of Object.keys(pool)){
+          if(normalizeNick(String(k)) === nick) return k;
+        }
+      }
+      return "";
+    }
+    // ✅ V169.2: 삭제 허용 판정 — 최근 30일 중 "출석도 휴가도 아닌 날"이 14일 이상일 때만 true.
+    // 장기 휴가/병가를 출석부(leave)에 남긴 작가는 presence가 오래돼도 보존된다(강퇴 예외 규칙 반영).
+    // 출석부 어디에도 흔적이 없는 닉은 관리 대상 밖(옛 시체)이므로 기존 규칙대로 삭제를 허용한다.
+    function attendAllowsPrune_(months, nick){
+      try{
+        if(!nick) return true;
+        let seen = false, missed = 0;
+        for(let i=1;i<=30;i++){
+          const { ym, dd } = seoulYmd_(i);
+          const mo = months[ym];
+          if(!mo){ missed++; continue; }
+          const key = attendKeyForNick_(mo, nick);
+          if(!key){ missed++; continue; }
+          seen = true;
+          const attended = !!(mo.days && mo.days[key] && mo.days[key][dd]);
+          const onLeave  = !!(mo.leave && mo.leave[key] && mo.leave[key][dd]);
+          if(!attended && !onLeave) missed++;
+        }
+        if(!seen) return true; // 출석부에 흔적 없음 → 기존 14일 규칙
+        return missed >= 14;
+      }catch(e){ return false; } // 판단 실패 시 보존(안전 우선)
+    }
     async function prunePresenceOnce_(){
       try{
         if(!state.roomId || !state.uid || !state.joined) return;
@@ -17182,22 +17259,108 @@ t.appendChild(bg);
         try{ localStorage.setItem(key, today); }catch(e){}
 
         const now = Date.now();
-        const updates = {};
-        let n = 0;
+        const candidates = [];
         state.currentParticipants.forEach((p, uid)=>{
-          if(n >= PRESENCE_PRUNE_MAX_PER_RUN) return;
           if(!p || String(uid) === String(state.uid)) return;
           const ls = Number(p.lastSeenAtMs || 0);
           // lastSeenAtMs가 없으면 판단할 수 없으므로 건드리지 않는다.
           if(!Number.isFinite(ls) || ls <= 0) return;
           if((now - ls) <= PRESENCE_PRUNE_AFTER_MS) return;
-          updates[`${rRoomBase(state.roomId)}/presence/${uid}`] = null;
-          n++;
+          candidates.push({ uid: String(uid), nick: normalizeNick(String(p.name || "")) });
         });
+        if(!candidates.length) return;
+        // ✅ V169.2: 출석부 대조 후 삭제 — 읽기 실패 시 오늘은 보류(안전 우선, 내일 재시도)
+        let attendMonths = null;
+        try{ attendMonths = await loadAttendWindow_(); }catch(e){ return; }
+        const updates = {};
+        let n = 0;
+        for(const c of candidates){
+          if(n >= PRESENCE_PRUNE_MAX_PER_RUN) break;
+          if(!attendAllowsPrune_(attendMonths, c.nick)) continue; // 휴가·병가 등 보호 대상
+          updates[`${rRoomBase(state.roomId)}/presence/${c.uid}`] = null;
+          updates[`${rRoomBase(state.roomId)}/profiles/${c.uid}`] = null; // ✅ V169.1: 프로필 시체도 함께 정리
+          n++;
+        }
         if(!n) return;
         await rUpdate(rRef(rtdb), updates);
-        console.info(`[presence] 30일 이상 미접속 ${n}건 정리`);
+        console.info(`[presence] 14일 미접속+출석부 미출근 ${n}건 정리`);
       }catch(e){ console.warn("[presence] 정리 실패", e); }
+    }
+
+    // ✅ V169.1: 닉네임 기준 프로필 이어받기 — 브라우저 저장소 초기화 등으로 익명 uid가 바뀌면
+    // 프로필 미등록 상태가 되어 매번 새 계정처럼 보였다. ①프로필 저장 때 남긴 닉네임 미러
+    // (playground/profilesByNickV1, 닉네임당 1개 덮어쓰기)를 우선 찾고, ②없으면 같은 닉의
+    // 예전 presence/profiles 기록에서 이어받으며 미러를 새로 만든다(과도기 시드).
+    // 예전 uid의 잔재 삭제는 베스트에포트(규칙상 관리자 브라우저만 성공)이고, 아니면 14일 청소가 정리한다.
+    async function inheritProfileByNick_(){
+      try{
+        if(!state.joined || !state.uid || !state.roomId) return;
+        const uid = String(state.uid);
+        const guardKey = `mk_nick_inherit_${uid}`;
+        try{ if(localStorage.getItem(guardKey) === "1") return; }catch(e){}
+        const rawNick = state.nickname || els.name?.value || "";
+        const myNick = normalizeNick(String(rawNick));
+        const nickKey = profileNickKey_(rawNick);
+        if(!myNick || !nickKey) return;
+        const mySnap = await rGet(rProfileRef(state.roomId, uid));
+        if(mySnap.exists() && mySnap.val()){ try{ localStorage.setItem(guardKey,"1"); }catch(e){} return; } // 이미 등록됨
+        // 1순위: 닉네임 미러
+        let payload = null, fromUid = "";
+        try{
+          const ms = await rGet(rProfileByNickRef_(state.roomId, nickKey));
+          const mv = ms.val();
+          if(mv && typeof mv === "object" && mv.p && typeof mv.p === "object"){
+            payload = Object.assign({}, mv.p);
+            fromUid = String(mv.uid || "");
+          }
+        }catch(e){}
+        // 2순위(과도기): 같은 닉의 예전 presence(오프라인) → profiles 기록
+        if(!payload && (state.currentParticipants instanceof Map)){
+          let corpse = null;
+          state.currentParticipants.forEach((p, ouid)=>{
+            if(!p || String(ouid) === uid) return;
+            if(normalizeNick(String(p.name||"")) !== myNick) return;
+            let off = true;
+            try{ off = isOfflinePresence(p); }catch(e){ off = String(p.status||"off") === "off"; }
+            if(!off) return; // 접속 중인 동명 프로필은 건드리지 않는다
+            const at = Math.max(Number(p.lastSeenAtMs)||0, Number(p.ts)||0);
+            if(!corpse || at > corpse.at) corpse = { uid:String(ouid), at, presence:p };
+          });
+          if(corpse){
+            try{
+              const os = await rGet(rProfileRef(state.roomId, corpse.uid));
+              const ov = os.val();
+              if(ov && typeof ov === "object") payload = Object.assign({}, ov);
+            }catch(e){}
+            if(!payload && corpse.presence?.theme && typeof corpse.presence.theme === "object"){
+              payload = { theme: Object.assign({}, corpse.presence.theme), bubbleText: String(corpse.presence.bubbleText||"") };
+            }
+            if(payload) fromUid = corpse.uid;
+          }
+        }
+        if(!payload){ try{ localStorage.setItem(guardKey,"1"); }catch(e){} return; } // 신규 작가 — 이어받을 것 없음
+        payload.uid = uid;
+        payload.name = myNick;
+        payload.updatedAtMs = Date.now();
+        try{ await rSet(rProfileRef(state.roomId, uid), payload); }catch(e){ return; } // 실패 시 다음 입장 때 재시도
+        // 내 타일에도 즉시 반영
+        try{
+          const pres = {};
+          if(payload.theme && typeof payload.theme === "object") pres.theme = payload.theme;
+          if(payload.bubbleText != null) pres.bubbleText = String(payload.bubbleText||"");
+          if(Object.keys(pres).length) await rUpdate(rMePresenceRef(state.roomId, uid), pres);
+        }catch(e){}
+        // 미러 갱신(닉네임당 1개 덮어쓰기 — 용량 고정)
+        try{
+          await rSet(rProfileByNickRef_(state.roomId, nickKey), { uid, name: myNick, updatedAtMs: Date.now(), p: payload });
+        }catch(e){}
+        try{ localStorage.setItem(guardKey,"1"); }catch(e){}
+        if(fromUid && fromUid !== uid){
+          try{ await rRemove(rProfileRef(state.roomId, fromUid)); }catch(e){}
+          try{ await rRemove(rMePresenceRef(state.roomId, fromUid)); }catch(e){}
+        }
+        showToast("예전 프로필 꾸미기를 닉네임으로 이어받았어요 ✨", 3200);
+      }catch(e){}
     }
 
     async function subscribeParticipants(){
@@ -17702,6 +17865,8 @@ try{
 
       await heartbeat();
       // 입장 직후 렌더와 겹치지 않도록 잠시 뒤에 오래된 presence를 정리한다.
+      // ✅ V169.1: 그 전에 닉네임 기준 프로필 이어받기를 먼저 시도한다(첫 스냅샷 수신 후).
+      try{ setTimeout(()=>{ inheritProfileByNick_(); }, 8000); }catch(_e){}
       try{ setTimeout(()=>{ prunePresenceOnce_(); }, 20000); }catch(_e){}
       state.__joinProfileReady = true;
       try{ els.chatInput.disabled = false; els.sendBtn.disabled = false; }catch(e){}
@@ -21950,7 +22115,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16900;
+  const MK_APP_BUILD = 16920;
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
