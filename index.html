@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.5_DEW_AUDIT_FIX: 트랜잭션 전수 점검 — (1)consumeWorldTreeLedger_ null-중단으로 기여가 레벨에 반영되지 않고 ledger가 무한 증식하던 버그 수정(핵심) (2)물방울 사용에 CAS 도장(usedAtMs)을 도입해 두 탭 이중 사용 차단 (3)오브 클릭 트랜잭션 null 안전장치 (4)진행 대기 중인 dew50 당첨 판정 덮어쓰기 방지 -->
 <!-- V168.4_DEW_CLAIM_CAS_FIX: 클릭 레이스 지급 오배송 수정 — 낙관적 로컬 트랜잭션 에코로 비승자 화면에서 지급이 실행되던 버그(발표 승자≠아이템 수령자). 지급 전 active 트랜잭션으로 서버 기준 승자/미지급을 재검증(CAS)한 뒤에만 가방에 지급 -->
 <!-- V168.3_DEW_TXN_NULL_FIX: 스폰/게릴라 선점 트랜잭션이 첫 실행(캐시 없음, raw=null)에서 undefined 반환으로 즉시 중단되어 스폰이 한 번도 실행되지 않던 버그 수정(실측 sched.seq=0). null 반환으로 서버 왕복을 강제해 실제 값으로 재실행되게 함 -->
 <!-- V168.2_DEW_GUERRILLA: 게릴라 물방울 레이스 — 관리자가 시작 시각·목표 클릭을 예약하면 1분 전 예고 토스트 후 +20h(dew20 💦) 클릭 레이스 시작. dew50 클릭 인프라 재사용 -->
@@ -22849,6 +22850,10 @@ joinRoom();
     const cfg=worldTreeMergedForRender_().config;
     const claimName=normalizeNick(state.nickname||els.name?.value||"익명");
     const result=await rRunTransaction(rWorldTreeChildRef_("core"),(raw)=>{
+      // ✅ V168.5: V168 절감 패치로 core는 어떤 클라이언트도 구독하지 않게 되어, 이 트랜잭션의
+      // 첫 실행은 거의 항상 raw=null(캐시 없음)이다. 여기서 undefined로 중단하면 서버 확인 없이
+      // 끝나 ledger가 무한히 쌓인다(실측: 6시간치 기여 ~130건 미소비). null을 되돌려 서버 왕복을 강제한다.
+      if(raw===null) return null;
       if(!raw || typeof raw!=="object" || !Number(raw.updatedAtMs)) return; // core 미생성(레거시 이관 전) → 소비 보류
       const core=normalizeWorldTreeCore_(raw);
       const ledger=core.ledger;
@@ -22871,7 +22876,9 @@ joinRoom();
       return core;
     });
     if(!result.committed) return null;
-    const core=normalizeWorldTreeCore_(result.snapshot.val());
+    const coreRaw=result.snapshot.val();
+    if(!coreRaw || !Number(coreRaw.updatedAtMs)) return null; // ✅ V168.5: core가 실제로 없던 방(no-op 커밋) → 소비 없음
+    const core=normalizeWorldTreeCore_(coreRaw);
     if(worldTreeS2Runtime.snapshot) worldTreeS2Runtime.snapshot.core=Object.assign({},core,{ledger:null});
     await writeWorldTreeSummary_();
     // V167 탭 호환: core 레벨이 바뀌었으면 레거시 level만 미러한다(progress/claims는 레거시 소유로 남긴다).
@@ -22963,6 +22970,9 @@ joinRoom();
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
         const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
         if(cur.roll && cur.roll.hour===hourKey) return; // 다른 클라이언트가 먼저 판정 → 중단
+        // ✅ V168.5: 아직 소비되지 않았고 스폰 유효시간(atMs+50분)이 남은 당첨 판정은 덮어쓰지 않는다
+        // (시계가 크게 빠른 클라이언트가 진행 대기 중인 판정을 지워 스폰이 유실되는 사고 방지).
+        if(cur.roll && cur.roll.will && !cur.roll.done && Number(cur.roll.atMs)>0 && Date.now()-Number(cur.roll.atMs)<50*60*1000) return;
         // 일일 카운터(day/d10/d50) 리셋은 스폰 트랜잭션이 담당한다. 여기서는 읽기만.
         const dayKey=hourKey.slice(0,10);
         const d50=(cur.day===dayKey)?(Number(cur.d50)||0):0;
@@ -23280,6 +23290,7 @@ joinRoom();
     const myName=normalizeNick(state.nickname||els.name?.value||"익명");
     try{
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"active"),(raw)=>{
+        if(raw===null) return null; // ✅ V168.5: 캐시 미보유 첫 실행 → 서버 왕복 강제
         if(!raw || typeof raw!=="object" || !raw.id) return; // 이벤트 없음 → 중단
         if(raw.winnerUid) return; // 이미 종료 → 무시
         const active=Object.assign({},raw);
@@ -23319,9 +23330,11 @@ joinRoom();
         if(raw.claimed) return; // 이미 지급됨 → 중단
         return Object.assign({},raw,{claimed:true});
       });
-      if(!res.committed) return;
+      // ✅ V168.5: CAS가 통과 못 했으면 재시도 마커를 풀어준다 — 내 낙관적 에코가 서버 확정보다
+      // 먼저 지급을 깨웠다가 중단된 경우, 서버 확정 이벤트가 오면 다시 시도할 수 있어야 한다.
+      if(!res.committed){ worldTreeS2Runtime.dewClaimingId=""; return; }
       srv=res.snapshot.val()||null;
-      if(!srv || String(srv.winnerUid||"")!==uid || !srv.claimed) return;
+      if(!srv || String(srv.winnerUid||"")!==uid || !srv.claimed){ worldTreeS2Runtime.dewClaimingId=""; return; }
     }catch(e){ worldTreeS2Runtime.dewClaimingId=""; return; }
     const now=Date.now();
     const kind=(srv.kind==="dew20")?"dew20":"dew50";
@@ -23454,6 +23467,23 @@ joinRoom();
     const name=normalizeNick(state.nickname||els.name?.value||"익명");
     worldTreeS2Runtime.dewUseLock=true;
     try{
+      // ✅ V168.5: 같은 계정의 두 탭/기기가 같은 물방울을 동시에 쓰는 이중 반영 방지 —
+      // 가방 아이템에 사용 도장(usedAtMs)을 CAS로 먼저 찍고, 성공한 쪽만 반영을 진행한다.
+      // (도장 후 2분 내 반영이 안 된 아이템은 크래시로 보고 재시도를 허용한다.)
+      const casRes=await rRunTransaction(rWorldTreeItemsRef(state.roomId,`bags/${uid}/${itemId}`),(raw)=>{
+        if(raw===null) return null; // 캐시 미보유 첫 실행 → 서버 왕복 강제
+        if(!raw || typeof raw!=="object") return; // 아이템 없음(이미 사용) → 중단
+        if(raw.usedAtMs && Date.now()-Number(raw.usedAtMs)<120000) return; // 다른 탭이 사용 중 → 중단
+        return Object.assign({},raw,{usedAtMs:Date.now()});
+      });
+      const stamped=casRes.committed?(casRes.snapshot.val()||null):null;
+      if(!stamped || !Number(stamped.usedAtMs)){
+        // 다른 탭에서 이미 사용됐거나 서버에 아이템이 없음 → 내 화면의 가방만 정리
+        if(worldTreeS2Runtime.bag) delete worldTreeS2Runtime.bag[itemId];
+        renderWorldTreeBag_();
+        showToast("이미 사용된 물방울이에요 💧",2600);
+        return;
+      }
       const ledgerKey=rPush(rWorldTreeChildRef_("core/ledger")).key;
       const updates={};
       updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=null;
