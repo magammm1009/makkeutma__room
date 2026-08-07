@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.7_DEW_STALE_TAB_GUARD: 구버전 탭 방어 — (1)지급 완료 판정을 claimedBy(새 코드 전용 마커)로 전환해, 구버전 탭의 유령 claimed가 진짜 승자의 지급을 가로막던 사고 수정(실사례: 나또님 미지급/비승자 3명 자가지급) (2)summary.appBuild 비교로 구버전 탭에 2분마다 강력 새로고침 안내 토스트 (3)레이스 참가자 명단(pt) 기록 — 클릭 시 이벤트당 1회 이름을 남기고, 새 이벤트 스폰 때 이전 명단 자동 청소 -->
 <!-- V168.6_DEW_TUNE_FLASH: 클릭 목표 5000~6000 → 900~1600 하향 + 레이스 중 오브가 씬 안을 도망 다님(클릭 시+2.2초마다 이동, 로컬 연출) + 히든 번개 레이스(매시 1% 독립 확률, 예고 없음, 목표 1클릭, 첫 클릭이 50h 획득, 일일 2~4회 한도 미포함) -->
 <!-- V168.5_DEW_AUDIT_FIX: 트랜잭션 전수 점검 — (1)consumeWorldTreeLedger_ null-중단으로 기여가 레벨에 반영되지 않고 ledger가 무한 증식하던 버그 수정(핵심) (2)물방울 사용에 CAS 도장(usedAtMs)을 도입해 두 탭 이중 사용 차단 (3)오브 클릭 트랜잭션 null 안전장치 (4)진행 대기 중인 dew50 당첨 판정 덮어쓰기 방지 -->
 <!-- V168.4_DEW_CLAIM_CAS_FIX: 클릭 레이스 지급 오배송 수정 — 낙관적 로컬 트랜잭션 에코로 비승자 화면에서 지급이 실행되던 버그(발표 승자≠아이템 수령자). 지급 전 active 트랜잭션으로 서버 기준 승자/미지급을 재검증(CAS)한 뒤에만 가방에 지급 -->
@@ -21872,6 +21873,9 @@ joinRoom();
   // ✅ V168.6: 히든 번개 레이스 — 매시 판정 때 30%와 독립적으로 1% 확률. 예고 없이 목표 1클릭짜리
   // dew50 레이스가 나타나 "빠른 첫 클릭"이 50h를 가져간다. 하루 2~4회 한도에 포함되지 않는다.
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
+  // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
+  // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
+  const MK_APP_BUILD = 16870;
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
   const WORLD_TREE_DEW_SEEN_KEY = "mk_wt_dew_seen_v1";
 
@@ -21901,7 +21905,8 @@ joinRoom();
     dewCueHour:"",           // ✅ V168.1: 59분 예고 문구를 시간당 1회만 띄우기 위한 마커
     guerrillaCueId:"",       // ✅ V168.2: 게릴라 1분 전 예고를 예약당 1회만 띄우기 위한 마커
     guerrillaStartId:"",     // ✅ V168.2: 게릴라 시작 안내를 예약당 1회만 띄우기 위한 마커
-    dewOrbTimer:null         // ✅ V168.6: 레이스 중 오브 순회 이동 타이머 (로컬 연출)
+    dewOrbTimer:null,        // ✅ V168.6: 레이스 중 오브 순회 이동 타이머 (로컬 연출)
+    dewPtMarked:""           // ✅ V168.7: 참가자 명단(pt) 기록을 이벤트당 1회로 제한하는 마커
   };
 
   function rWorldTreeS2Ref(roomId){
@@ -22478,9 +22483,10 @@ joinRoom();
       worldTreeS2Runtime.active=active;
       renderWorldTreeDewEvent_();
       // 복구: 내가 당첨자인데 지급이 안 끝났으면 다시 지급을 시도한다.
+      // ✅ V168.7: 완료 판정은 claimedBy 기준 — 구버전 탭이 찍은 유령 claimed에 승자가 막히지 않게.
       try{
         const uid=String(state.uid||"");
-        if(active && active.winnerUid===uid && !active.claimed && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
+        if(active && active.winnerUid===uid && !active.claimedBy && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
           worldTreeS2Runtime.dewClaimingId=String(active.id||"");
           claimWorldTreeDewWin_(active).catch(()=>{ worldTreeS2Runtime.dewClaimingId=""; });
         }
@@ -22842,6 +22848,15 @@ joinRoom();
         worldTreeS2Runtime.summary=summary;
         // ✅ V168.1: 과거 버전이 남긴 nextSpawnAtMs=0(이벤트 중 스폰 정지) 상태를 복구한다.
         if(!(Number(summary.nextSpawnAtMs)>0) && summary.item?.mode!=="click") ensureWorldTreeSched_().catch(()=>{});
+        // ✅ V168.7: 구버전 탭 감지 — 내 빌드가 더 높으면 방 기준을 올리고, 낮으면 새로고침을 안내한다.
+        // (V168.7 이전 탭에는 이 코드가 없어 소급 적용은 안 되지만, 다음 배포부터는 옛 탭이 스스로 알게 된다.)
+        const remoteBuild=Number(summary.appBuild)||0;
+        if(remoteBuild<MK_APP_BUILD){
+          rUpdate(rWorldTreeSummaryRef(state.roomId),{appBuild:MK_APP_BUILD}).catch(()=>{});
+          worldTreeS2Runtime.summary.appBuild=MK_APP_BUILD;
+        }else if(remoteBuild>MK_APP_BUILD){
+          showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200);
+        }
       }else{
         // 아직 summary가 없는 방(마이그레이션 전) → 한 번만 루트 전체를 읽어 core/summary를 만든다.
         await loadWorldTreeS2Once_(false);
@@ -23287,6 +23302,7 @@ joinRoom();
     const updates={};
     updates["worldTreeItemsV1/active"]=active;
     updates["worldTreeItemsV1/sched/spawning"]=null;
+    updates["worldTreeItemsV1/pt"]=null; // ✅ V168.7: 이전 이벤트 참가자 명단 청소(새 명단은 클릭과 함께 쌓인다)
     updates["worldTreeSummaryV1/item"]=item;
     // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 더 이상 건드리지 않는다(이벤트 중엔 어차피 스폰이 멈춘다).
     // 판정 소진(done/fdone)을 summary에도 미러해 다른 클라이언트가 헛 트랜잭션을 안 돌게 한다.
@@ -23329,7 +23345,17 @@ joinRoom();
       const active=res.snapshot.val()||null;
       worldTreeS2Runtime.active=active;
       renderWorldTreeDewEvent_();
-      if(active && active.winnerUid===uid && !active.claimed && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
+      // ✅ V168.7: 참여 기록 — 이벤트당 1회, 내 이름을 참가자 명단(pt)에 남긴다(약 60B 쓰기 1번).
+      // 세계수 화면을 계속 열어두고 조용히 참여한 작가님도 명단에서 빠지지 않게 한다.
+      try{
+        const evtId=String(active?.id||"");
+        if(evtId && worldTreeS2Runtime.dewPtMarked!==evtId){
+          worldTreeS2Runtime.dewPtMarked=evtId;
+          rUpdate(rWorldTreeItemsRef(state.roomId,`pt/${evtId}`),{[uid]:{n:myName,at:Date.now()}}).catch(()=>{ worldTreeS2Runtime.dewPtMarked=""; });
+        }
+      }catch(e){}
+      // ✅ V168.7: 완료 판정은 claimedBy 기준(구버전 탭의 유령 claimed 방어)
+      if(active && active.winnerUid===uid && !active.claimedBy && worldTreeS2Runtime.dewClaimingId!==String(active.id||"")){
         worldTreeS2Runtime.dewClaimingId=String(active.id||"");
         await claimWorldTreeDewWin_(active).catch(()=>{ worldTreeS2Runtime.dewClaimingId=""; });
       }
@@ -23343,15 +23369,17 @@ joinRoom();
   //    (실사례: 발표는 뽀솜, 아이템은 초초 가방). 서버 CAS를 통과한 경우에만 지급한다.
   async function claimWorldTreeDewWin_(active){
     const uid=String(state.uid||"");
-    if(!state.roomId || !uid || !active || active.winnerUid!==uid || active.claimed) return;
+    if(!state.roomId || !uid || !active || active.winnerUid!==uid || active.claimedBy) return; // ✅ V168.7: claimedBy 기준
     let srv=null;
     try{
       const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"active"),(raw)=>{
         if(raw===null) return null; // 캐시 미보유 첫 실행 → 서버 왕복 강제
         if(!raw || typeof raw!=="object" || String(raw.id||"")!==String(active.id||"")) return; // 다른 이벤트 → 중단
         if(String(raw.winnerUid||"")!==uid) return; // 서버 기준 승자가 아님 → 지급 금지
-        if(raw.claimed) return; // 이미 지급됨 → 중단
-        return Object.assign({},raw,{claimed:true});
+        // ✅ V168.7: 지급 완료 판정은 claimedBy(새 코드 전용 마커)만 신뢰한다. 구버전 탭의 유령
+        // 클레임이 claimed=true만 찍어 진짜 승자의 지급을 가로막던 사고 방지(실사례: 나또님 미지급).
+        if(raw.claimedBy) return; // 이미 정식 지급됨 → 중단
+        return Object.assign({},raw,{claimed:true,claimedBy:uid});
       });
       // ✅ V168.5: CAS가 통과 못 했으면 재시도 마커를 풀어준다 — 내 낙관적 에코가 서버 확정보다
       // 먼저 지급을 깨웠다가 중단된 경우, 서버 확정 이벤트가 오면 다시 시도할 수 있어야 한다.
