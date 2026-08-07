@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V169.3_PRUNE_DUP_BYPASS: 같은 닉네임의 더 최신 presence가 존재하는 항목(교체된 중복)은 출석부 보호 없이 14일 규칙만으로 삭제 — 활동 중인 작가의 옛 uid 시체가 본인 출석 기록 덕에 영구 잔존하는 구멍 봉합. 후보 전원이 중복이면 출석부 읽기 생략. 빌드 16930 -->
 <!-- V169.2_PRUNE_ATTEND_GUARD: 자동 청소에 출석부 대조 추가 — 삭제 조건을 "presence 14일 미접속 + 최근 30일 중 출석도 휴가(leave)도 아닌 날 14일 이상"으로 강화. 장기 휴가·병가를 출석부에 남긴 작가는 보존(강퇴 예외 규칙 반영). 출석부 읽기는 후보가 있을 때만 월 2회분(~10KB). 빌드 16920 -->
 <!-- V169.1_NICK_PROFILE: 닉네임 기준 프로필 — ①프로필 저장 시 playground/profilesByNickV1/{닉키}에 덮어쓰기 미러(닉당 1개, 용량 고정) ②입장 시 profiles/{uid} 미등록이면 미러→예전 presence 순으로 이어받기 ③presence 자동 청소 30일→14일(강퇴 규칙 13일+1) + 프로필 시체 동반 정리. 실측: presence 전체 로드가 다운로드의 48%(146KB)였음. 빌드 16910 -->
 <!-- V169.0_FULL_AUDIT_FIX: 전체 코드 정밀 감사(채팅/펫/프로필/미션/뽀모/타이머/손캠/모드) 후 10건 수정 — (1)두 탭 동시 사용 시 작업 시간 2배 계상(하트비트 기준누적 짝 기록) (2)미션 성공 인원 래치 고정 (3)내 미션 dayKey 미검사 3곳(자정 후 👑 잔존) (4)미션 완료자 목록 사망(죽은 메모리 맵→실저장소 1회 조회) (5)채팅 대기열 두 탭 이중 전송 (6)퇴장 후 대시보드 폴링 잔존 (7)퇴장 시 채팅 리스너 잔존 경합 (8)저사양 모드 손캠 구독 부활 (9)뽀모 LIVE 0명 오표시(3분 신뢰 판정+죽은 세션 폴링 정리) (10)절약모드 집중시간 두 탭 이중 가산. 빌드 16900 -->
@@ -17259,6 +17260,15 @@ t.appendChild(bg);
         try{ localStorage.setItem(key, today); }catch(e){}
 
         const now = Date.now();
+        // ✅ V169.3: 닉네임별 최신 접속 시각 — "더 최신 항목이 있는 시체(교체된 중복)"를 가려낸다.
+        const newestByNick = new Map();
+        state.currentParticipants.forEach((p)=>{
+          if(!p) return;
+          const nk = normalizeNick(String(p.name || ""));
+          if(!nk) return;
+          const at = Math.max(Number(p.lastSeenAtMs)||0, Number(p.ts)||0);
+          if(!newestByNick.has(nk) || at > newestByNick.get(nk)) newestByNick.set(nk, at);
+        });
         const candidates = [];
         state.currentParticipants.forEach((p, uid)=>{
           if(!p || String(uid) === String(state.uid)) return;
@@ -17266,17 +17276,24 @@ t.appendChild(bg);
           // lastSeenAtMs가 없으면 판단할 수 없으므로 건드리지 않는다.
           if(!Number.isFinite(ls) || ls <= 0) return;
           if((now - ls) <= PRESENCE_PRUNE_AFTER_MS) return;
-          candidates.push({ uid: String(uid), nick: normalizeNick(String(p.name || "")) });
+          const nick = normalizeNick(String(p.name || ""));
+          // ✅ V169.3: 같은 닉의 더 최신 presence가 있으면 교체된 중복 — 출석부 보호를 건너뛴다.
+          // (활동 중인 작가의 옛 uid 시체가 본인 출석 기록 덕에 영구 잔존하는 구멍 방지)
+          const superseded = Math.max(ls, Number(p.ts)||0) < (newestByNick.get(nick) || 0);
+          candidates.push({ uid: String(uid), nick, superseded });
         });
         if(!candidates.length) return;
-        // ✅ V169.2: 출석부 대조 후 삭제 — 읽기 실패 시 오늘은 보류(안전 우선, 내일 재시도)
+        // ✅ V169.2: 출석부 대조 후 삭제 — 읽기 실패 시 오늘은 보류(안전 우선, 내일 재시도).
+        // 후보 전원이 교체된 중복이면 출석부를 읽을 필요가 없다.
         let attendMonths = null;
-        try{ attendMonths = await loadAttendWindow_(); }catch(e){ return; }
+        if(candidates.some(c=>!c.superseded)){
+          try{ attendMonths = await loadAttendWindow_(); }catch(e){ return; }
+        }
         const updates = {};
         let n = 0;
         for(const c of candidates){
           if(n >= PRESENCE_PRUNE_MAX_PER_RUN) break;
-          if(!attendAllowsPrune_(attendMonths, c.nick)) continue; // 휴가·병가 등 보호 대상
+          if(!c.superseded && !attendAllowsPrune_(attendMonths, c.nick)) continue; // 휴가·병가 등 보호 대상
           updates[`${rRoomBase(state.roomId)}/presence/${c.uid}`] = null;
           updates[`${rRoomBase(state.roomId)}/profiles/${c.uid}`] = null; // ✅ V169.1: 프로필 시체도 함께 정리
           n++;
@@ -22115,7 +22132,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16920;
+  const MK_APP_BUILD = 16930;
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
