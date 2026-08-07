@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V168.4_DEW_CLAIM_CAS_FIX: 클릭 레이스 지급 오배송 수정 — 낙관적 로컬 트랜잭션 에코로 비승자 화면에서 지급이 실행되던 버그(발표 승자≠아이템 수령자). 지급 전 active 트랜잭션으로 서버 기준 승자/미지급을 재검증(CAS)한 뒤에만 가방에 지급 -->
 <!-- V168.3_DEW_TXN_NULL_FIX: 스폰/게릴라 선점 트랜잭션이 첫 실행(캐시 없음, raw=null)에서 undefined 반환으로 즉시 중단되어 스폰이 한 번도 실행되지 않던 버그 수정(실측 sched.seq=0). null 반환으로 서버 왕복을 강제해 실제 값으로 재실행되게 함 -->
 <!-- V168.2_DEW_GUERRILLA: 게릴라 물방울 레이스 — 관리자가 시작 시각·목표 클릭을 예약하면 1분 전 예고 토스트 후 +20h(dew20 💦) 클릭 레이스 시작. dew50 클릭 인프라 재사용 -->
 <!-- V168.1_DEW_RHYTHM: 물방울 리듬 개편 — dew10 3~6시간 간격·하루 5개 / dew50 매시 50분 판정(30%)·정각~10분 스폰·하루 2~4회 / 매시 59분 예고 문구 / 배지 이펙트 10h(은은)·50h(번쩍) 구분 -->
@@ -23302,30 +23303,49 @@ joinRoom();
   }
   // 당첨 지급: 내 가방에 물방울 + summary 정리 (한 번의 멀티패스 update)
   // ✅ V168.2: kind/hours를 active에서 읽어 dew50(정기)/dew20(게릴라)을 모두 처리한다.
+  // ✅ V168.4: 지급 전에 active 트랜잭션으로 "서버 기준 승자"를 재검증한다.
+  //  - 클릭 트랜잭션의 낙관적 로컬 적용(applyLocally) 때문에, 경합 순간 비승자의 화면에서
+  //    잠깐 "내가 승자"인 가짜 상태가 구독 콜백으로 흘러나와 지급이 실행될 수 있었다
+  //    (실사례: 발표는 뽀솜, 아이템은 초초 가방). 서버 CAS를 통과한 경우에만 지급한다.
   async function claimWorldTreeDewWin_(active){
     const uid=String(state.uid||"");
     if(!state.roomId || !uid || !active || active.winnerUid!==uid || active.claimed) return;
+    let srv=null;
+    try{
+      const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"active"),(raw)=>{
+        if(raw===null) return null; // 캐시 미보유 첫 실행 → 서버 왕복 강제
+        if(!raw || typeof raw!=="object" || String(raw.id||"")!==String(active.id||"")) return; // 다른 이벤트 → 중단
+        if(String(raw.winnerUid||"")!==uid) return; // 서버 기준 승자가 아님 → 지급 금지
+        if(raw.claimed) return; // 이미 지급됨 → 중단
+        return Object.assign({},raw,{claimed:true});
+      });
+      if(!res.committed) return;
+      srv=res.snapshot.val()||null;
+      if(!srv || String(srv.winnerUid||"")!==uid || !srv.claimed) return;
+    }catch(e){ worldTreeS2Runtime.dewClaimingId=""; return; }
     const now=Date.now();
-    const kind=(active.kind==="dew20")?"dew20":"dew50";
-    const hours=Number(active.hours)||(kind==="dew20"?20:50);
-    const myName=normalizeNick(state.nickname||els.name?.value||String(active.winnerName||"익명"));
+    const kind=(srv.kind==="dew20")?"dew20":"dew50";
+    const hours=Number(srv.hours)||(kind==="dew20"?20:50);
+    const myName=normalizeNick(state.nickname||els.name?.value||String(srv.winnerName||"익명"));
     const itemId=`itm-${now}-${Math.random().toString(36).slice(2,8)}`;
-    const bagItem={kind,hours,obtainedAtMs:now,source:"click",eventId:String(active.id||"")};
+    const bagItem={kind,hours,obtainedAtMs:now,source:"click",eventId:String(srv.id||"")};
     const feedKey=rPush(rWorldTreeItemsRef(state.roomId,"feed")).key;
     const item={
-      mode:"idle",id:String(active.id||""),kind,
-      count:Number(active.count)||0,target:Number(active.target)||0,
+      mode:"idle",id:String(srv.id||""),kind,
+      count:Number(srv.count)||0,target:Number(srv.target)||0,
       lastDropAtMs:now,lastDropName:myName,lastDropHours:hours
     };
     const updates={};
     updates[`worldTreeItemsV1/bags/${uid}/${itemId}`]=bagItem;
-    updates["worldTreeItemsV1/active/claimed"]=true;
     updates[`worldTreeItemsV1/feed/${feedKey}`]={kind,name:myName,hours,atMs:now};
     // ✅ V168.1: dew10 예약(nextSpawnAtMs)은 별도 흐름이라 여기서 재설정하지 않는다.
+    // (claimed=true는 위 트랜잭션이 이미 원자적으로 기록했다.)
     updates["worldTreeItemsV1/sched/spawning"]=null;
     updates["worldTreeSummaryV1/item"]=item;
     await worldTreeFeedTrimInto_(updates);
-    await rUpdate(rWorldTreePlaygroundRef_(),updates);
+    // 지급 표시(claimed)는 이미 커밋됐으므로, 가방 지급이 네트워크 오류로 유실되지 않게 1회 재시도한다.
+    try{ await rUpdate(rWorldTreePlaygroundRef_(),updates); }
+    catch(e){ await new Promise(r=>setTimeout(r,1200)); await rUpdate(rWorldTreePlaygroundRef_(),updates); }
     worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{item});
     worldTreeS2Runtime.bag=Object.assign({},worldTreeS2Runtime.bag||{},{[itemId]:bagItem});
     if(worldTreeS2Runtime.active && String(worldTreeS2Runtime.active.id||"")===String(active.id||"")) worldTreeS2Runtime.active.claimed=true;
