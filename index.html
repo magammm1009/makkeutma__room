@@ -17192,6 +17192,13 @@ t.appendChild(bg);
           return true;
         }catch(e){ return false; }
       },
+      // V169_FIX: mover watchdog이 "타일 uid → 현재 참가자 레코드(profiles 병합본)"를 조회하는 읽기 전용 통로
+      participantOf(uid){
+        try{
+          const p = state.currentParticipants?.get?.(String(uid || ""));
+          return p ? mergePublicProfileIntoParticipant(p) : null;
+        }catch(e){ return null; }
+      },
       // 검증 훅: Firebase 없이 가짜 로스터 레코드로 렌더 경로(renderTile)를 직접 호출
       renderTileForTest(p){ try{ return renderTile(p); }catch(e){ return null; } }
     };
@@ -24374,6 +24381,26 @@ if(!window.__MK_BOOT_OK__){
     body.joined #dashboardCard .petDashToggle{right:5px !important; top:5px !important; padding:3px 6px !important;}
     body.joined #dashboardCard .petDashToggleText{display:none !important;}
   }
+  /* ✨ V169_DASH: 펫 카드 펫↔캐릭터 표시 토글 (자기 화면 전용)
+     기존 세계수 전환 버튼(우상단, V163/V164)은 그대로 두고 바로 아래 별도 소형 컨트롤로 공존.
+     세계수 보기 중에는 숨긴다(V164 단일 표시 강제와 같은 원칙). */
+  .charaDashToggle{
+    position:absolute; right:10px; top:40px; z-index:3;
+    min-height:0; min-width:0; width:24px; height:24px; padding:0; border-radius:999px;
+    font-size:12px; line-height:22px; text-align:center;
+    color:rgba(255,255,255,.86);
+    background:rgba(10,8,18,.5);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 4px 12px rgba(0,0,0,.22);
+    opacity:.62;
+  }
+  .charaDashToggle:hover{opacity:1; background:rgba(20,16,32,.82); border-color:rgba(255,172,207,.5);}
+  .petDashBox[data-dash-mode="tree"] .charaDashToggle{display:none !important;}
+  @media (max-width:1100px){
+    body.joined #dashboardCard .charaDashToggle{right:5px !important; top:29px !important; width:20px !important; height:20px !important; font-size:10px !important; line-height:18px !important;}
+  }
+  /* V169_DASH: 캐릭터 모드 이미지 — petStageArt(하트·통통 모션 CSS 대상)를 쓰지 않아 펫 모션 무적용 */
+  #petHeroArt img.mkCharaDashImg{width:98px; height:98px; max-width:100%; object-fit:contain; display:block;}
   .petDashBox[data-dash-mode="tree"]{
     border-color:rgba(196,170,255,.48) !important;
     background:
@@ -25123,11 +25150,13 @@ if(!window.__MK_BOOT_OK__){
     box.classList.add('petDashBox');
     const row = box.closest('.dashRow'); if(row) row.classList.add('petDashRowReady');
     box.innerHTML = `<button type="button" class="petDashToggle" id="petDashToggle" title="펫 / 세계수 전환"><span id="petDashToggleIcon">🌳</span> <span class="petDashToggleText" id="petDashToggleText">세계수</span></button>`
+      + `<button type="button" class="charaDashToggle" id="charaDashToggle" title="캐릭터 보기로 전환"><span id="charaDashToggleIcon">✨</span></button>` /* V169_DASH: 펫↔캐릭터 표시 토글 (세계수 전환 버튼과 별개) */
       + `<div class="petDashInner petDashOnlyCurrent" id="petDashInner" title="펫 상세 정보 열기"><div class="petHeroArtWrap"><div id="petHeroArt"></div></div><div class="petHeroInfo"><div class="petHeroName" id="petHeroName">작은 고양이</div><div class="petHeroFullCount" id="petHeroFullCount">🏆 만렙 0/0</div></div></div>`
       + `<div class="worldTreeDashInner" id="worldTreeDashInner" title="세계수 키우기 열기"><div class="worldTreeDashArtWrap"><div class="worldTreeDashArt" id="worldTreeDashArt" data-align="angel" data-stage="0"></div></div><div class="worldTreeDashLevel" id="worldTreeDashLevel">Lv.0</div></div>`;
     box.dataset.dashMode = loadDashCardMode();
     box.addEventListener('click', (e)=>{
       if(e.target.closest('#petDashToggle')) return;   // 전환 버튼은 아래에서 따로 처리
+      if(e.target.closest('#charaDashToggle')) return; // V169_DASH: 펫↔캐릭터 토글도 카드 클릭(모달)과 분리
       if(box.dataset.dashMode === 'tree') openWorldTreeFromDash();
       else openModal();
     });
@@ -25139,6 +25168,22 @@ if(!window.__MK_BOOT_OK__){
       });
     }
     syncDashToggleLabel();
+    /* V169_DASH: 펫↔캐릭터 표시 토글 — 카드 클릭(모달)·세계수 전환과 이벤트 분리 */
+    const charaToggle = document.getElementById('charaDashToggle');
+    if(charaToggle){
+      charaToggle.addEventListener('click', (e)=>{
+        e.preventDefault(); e.stopPropagation();
+        const next = loadDashPetView() === 'chara' ? 'pet' : 'chara';
+        saveDashPetView(next);
+        if(next === 'chara'){
+          dashCharaFailedSig = ''; // 새 전환은 다시 시도
+          if(!dashCharaPayload()) dashToastV169('아직 꾸민 캐릭터가 없어서 펫을 보여줄게요 ✨ 카드를 눌러 캐릭터를 꾸며보세요');
+        }
+        syncCharaDashToggle();
+        renderDash();
+      });
+    }
+    syncCharaDashToggle();
   }
 
   // ===== 대시보드 카드 전환(펫 ↔ 세계수) =====
@@ -25173,6 +25218,101 @@ if(!window.__MK_BOOT_OK__){
     btn.setAttribute('aria-label', isTree ? '펫 보기로 전환' : '세계수 보기로 전환');
     btn.title = isTree ? '펫 보기로 전환' : '세계수 보기로 전환';
   }
+  // ===== V169_DASH: 펫 카드 펫↔캐릭터 표시 (자기 화면 전용 — RTDB/charaV1 무접촉) =====
+  // 저장: mk_profile_pref_v1 최상위 dashCardMode "pet"|"chara" (charaDisplaySlot/charaMotionMode 선례와 동일 위치)
+  // 세계수 전환(mk_dash_card_mode_v1, pet|tree)과는 별개 축 — tree 모드에서는 토글이 CSS로 숨고 이 선택은 보존된다.
+  const LS_DASH_PET_VIEW = 'mk_profile_pref_v1';
+  let dashCharaFailedSig = ''; // bake 실패한 착장 시그니처 — 같은 착장 재시도 루프 방지
+  let dashCharaHookDone = false;
+  function dashToastV169(msg, ms){ // 이 모듈의 toast()는 window.showToast 부재 시 console로만 가서, V169 모듈들과 같은 #toast 폴백을 쓴다
+    try{
+      if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2400); return; }
+      const el = document.getElementById('toast');
+      if(el){
+        el.textContent = msg;
+        el.classList.add('show');
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, ms || 2400);
+        return;
+      }
+    }catch(e){}
+    try{ console.log(msg); }catch(e){}
+  }
+  function loadDashPetView(){
+    try{
+      const lp = JSON.parse(localStorage.getItem(LS_DASH_PET_VIEW) || 'null');
+      return (lp && lp.dashCardMode === 'chara') ? 'chara' : 'pet';
+    }catch(e){ return 'pet'; }
+  }
+  function saveDashPetView(v){
+    try{
+      let lp = null;
+      try{ lp = JSON.parse(localStorage.getItem(LS_DASH_PET_VIEW) || 'null'); }catch(e){}
+      if(!lp || typeof lp !== 'object') lp = {};
+      lp.dashCardMode = (v === 'chara') ? 'chara' : 'pet'; // 최상위 키 — applyProfile의 lp.theme 교체에서 살아남는다
+      localStorage.setItem(LS_DASH_PET_VIEW, JSON.stringify(lp));
+    }catch(e){}
+  }
+  function dashCharaPayload(){ // 내 로컬 캐릭터(mk_chara_state) → {parts,hue} / 미설정이면 null
+    try{
+      const api = window.__MK_CHARA_TILE_V169__;
+      if(!api || typeof api.buildCharaV1 !== 'function') return null;
+      const p = api.buildCharaV1();
+      if(!p || !p.parts || !Object.keys(p.parts).length) return null;
+      return p;
+    }catch(e){ return null; }
+  }
+  function syncCharaDashToggle(){
+    const btn = document.getElementById('charaDashToggle');
+    if(!btn) return;
+    const isChara = loadDashPetView() === 'chara';
+    const icon = document.getElementById('charaDashToggleIcon');
+    if(icon) icon.textContent = isChara ? '🐾' : '✨'; // 세계수 버튼처럼 "지금 누르면 갈 곳"을 표시
+    const tip = isChara ? '펫 보기로 전환 (지금: 내 캐릭터)' : '캐릭터 보기로 전환 (지금: 펫)';
+    btn.title = tip;
+    btn.setAttribute('aria-label', tip);
+  }
+  function ensureDashCharaHook(){ // 꾸미기 persist → onLocalCharaChanged 경유 착장 변경 시 카드 즉시 갱신
+    if(dashCharaHookDone) return;
+    const api = window.__MK_CHARA_TILE_V169__;
+    if(!api || typeof api.onLocalCharaChanged !== 'function') return;
+    dashCharaHookDone = true;
+    const orig = api.onLocalCharaChanged;
+    api.onLocalCharaChanged = function(){
+      dashCharaFailedSig = ''; // 새 착장은 다시 시도
+      try{ return orig.apply(this, arguments); }
+      finally{ try{ renderDash(); }catch(e){} }
+    };
+  }
+  function renderDashChara(art){ // true=캐릭터 표시(또는 유지), false=펫 폴백
+    ensureDashCharaHook(); // 폴백(캐릭터 미설정) 상태에서 꾸미기 저장으로 복구해도 즉시 갱신되도록 먼저 설치
+    const payload = dashCharaPayload();
+    if(!payload) return false;
+    const api = window.__MK_CHARA_TILE_V169__;
+    const sig = 'chara:' + JSON.stringify(payload.parts) + '|' + JSON.stringify(payload.hue || {});
+    if(dashCharaFailedSig === sig) return false; // 이 착장은 bake 실패 → 펫 폴백 유지
+    // V86 원칙: 같은 착장이면 renderDash 5초 주기에서도 DOM 무교체 (깜빡임 타이머 보존)
+    if(art.dataset.petHeroKey === sig && art.firstElementChild) return true;
+    art.dataset.petHeroKey = sig;
+    art.innerHTML = '';
+    const img = document.createElement('img');
+    img.className = 'mkCharaDashImg'; // petStageArt 미사용 → 하트/통통 펫 모션 CSS 무적용
+    img.alt = '내 캐릭터';
+    img.decoding = 'async';
+    art.appendChild(img);
+    api.bake(payload.parts, payload.hue).then(res => {
+      if(!img.isConnected) return; // 그 사이 재렌더됨
+      img.src = res.url;
+      // 깜빡임: 프레임 스왑만 — 저사양/hidden 생략은 blink 엔진 규칙 그대로
+      if(res.urlClosed && typeof api.blinkAttach === 'function') api.blinkAttach(img, res.url, res.urlClosed);
+    }, () => {
+      dashCharaFailedSig = sig;
+      if(img.isConnected){ dashToastV169('캐릭터 이미지를 불러오지 못해서 펫으로 보여줄게요 🐾'); renderDash(); }
+    });
+    return true;
+  }
+  // ===== V169_DASH 끝 =====
+
   function openWorldTreeFromDash(){
     try{
       const api = window.__MK_WORLD_TREE_S2__;
@@ -25261,7 +25401,9 @@ if(!window.__MK_BOOT_OK__){
     // 기존에는 renderDash()가 5초 주기/성장 tick마다 petHeroArt.innerHTML을 다시 넣어서
     // CSS animation이 계속 0초부터 재시작될 수 있었다. 펫 종류/레벨이 바뀔 때만 SVG DOM을 교체한다.
     const art = document.getElementById('petHeroArt');
-    if(art){
+    // V169_DASH: dashCardMode가 "chara"면 캐릭터 표시 시도, 실패/미설정이면 기존 펫 렌더로 폴백
+    const charaShown = (art && loadDashPetView() === 'chara') ? renderDashChara(art) : false;
+    if(art && !charaShown){
       const key = `${id}:${lv}`;
       if(art.dataset.petHeroKey !== key || !art.firstElementChild){
         art.dataset.petHeroKey = key;
@@ -25270,11 +25412,11 @@ if(!window.__MK_BOOT_OK__){
     }
 
     const name = document.getElementById('petHeroName');
-    const nextName = displayName(id);
+    const nextName = charaShown ? '내 캐릭터' : displayName(id); // V169_DASH: 캐릭터 모드 캡션
     if(name){
       // 텍스트 이름은 기본 화면/접근성용으로 계속 유지하고, 좁은 화면 CSS가 data-pet-level만 꺼내 쓴다.
       name.dataset.petLevel = String(lv);
-      name.setAttribute('aria-label', `펫 레벨 ${lv}`);
+      name.setAttribute('aria-label', charaShown ? '내 캐릭터' : `펫 레벨 ${lv}`);
       if(name.textContent !== nextName) name.textContent = nextName;
     }
     const fullCountEl = document.getElementById('petHeroFullCount');
@@ -25282,6 +25424,9 @@ if(!window.__MK_BOOT_OK__){
       const label = petFullLabel(st);
       if(fullCountEl.textContent !== label) fullCountEl.textContent = label;
       fullCountEl.title = 'Lv.30까지 키운 펫 수';
+      // V169_DASH: 캐릭터 모드에서는 펫 통계(만렙 수) 줄 숨김 — 펫 모드 복귀 시 원복
+      const wantDisplay = charaShown ? 'none' : '';
+      if(fullCountEl.style.display !== wantDisplay) fullCountEl.style.display = wantDisplay;
     }
     const status = document.getElementById('petHeroStatus'); if(status) status.textContent = '';
     const exp = document.getElementById('petHeroExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
@@ -27095,7 +27240,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaThumb.on::after{ content:"✓"; position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%; background:#ff8dc2; color:#1b1720; font-size:11px; font-weight:1000; display:flex; align-items:center; justify-content:center; }
   .mkCharaThumb.noneTile{ display:flex; flex-direction:column; gap:2px; align-items:center; justify-content:center; color:rgba(255,255,255,.55); font-size:11px; font-weight:900; background:rgba(255,255,255,.04); }
   .mkCharaThumb.noneTile .ic{ font-size:18px; }
-  /* ── V169 3차: 파츠 상점 — 미보유 잠금 톤 + 가격 배지 + 구매 확인 ── */
+  /* ── V169 3차: 파츠 상점 — 미보유 잠금 톤 + 가격 배지 ── */
   .mkCharaThumb.mkLocked img{ filter:grayscale(.4) brightness(.72); opacity:.9; }
   .mkCharaThumb.mkLocked:hover img{ filter:grayscale(.15) brightness(.9); }
   .mkCharaPrice{
@@ -27103,24 +27248,39 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     font-size:9.5px; font-weight:1000; font-variant-numeric:tabular-nums;
     color:#ffe9b8; background:rgba(10,8,4,.72); border:1px solid rgba(255,216,92,.45);
   }
-  #mkCharaBuyOv{
-    position:fixed; inset:0; z-index:10190; display:flex; align-items:center; justify-content:center;
-    background:rgba(4,5,10,.62); padding:16px; box-sizing:border-box;
+  /* V169: 보유 파츠 배지 — 가격(금색)과 구분되는 차분한 민트 톤 */
+  .mkCharaPrice.mkOwnedBadge{
+    color:#c9f3dd; background:rgba(8,24,16,.62); border-color:rgba(120,220,170,.4);
   }
-  .mkCharaBuyPanel{
-    width:min(340px,92vw); border:1px solid rgba(255,255,255,.16); border-radius:18px; padding:18px 16px 14px;
-    background:linear-gradient(180deg,rgba(15,18,29,.99),rgba(10,12,19,.99));
-    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 30px rgba(255,216,92,.08);
-    display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
-  }
-  .mkCharaBuyThumb{ width:84px; height:84px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.12); background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
-  .mkCharaBuyThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
-  .mkCharaBuyMsg{ font-size:13px; font-weight:1000; color:rgba(255,255,255,.92); line-height:1.6; letter-spacing:-.3px; word-break:break-all; }
-  .mkCharaBuyCoins{ font-size:11px; color:rgba(255,255,255,.55); font-variant-numeric:tabular-nums; }
-  .mkCharaBuyBtns{ display:flex; gap:8px; margin-top:2px; }
-  #mkCharaBuyOk{ border:1px solid rgba(255,216,92,.55); background:rgba(255,216,92,.14); color:#ffe9b8; border-radius:999px; padding:8px 18px; font-size:12.5px; font-weight:1000; cursor:pointer; min-width:auto !important; }
-  #mkCharaBuyOk:hover{ background:rgba(255,216,92,.22); }
-  #mkCharaBuyCancel{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.8); border-radius:999px; padding:8px 16px; font-size:12.5px; font-weight:900; cursor:pointer; min-width:auto !important; }
+  /* ── V169_SHOP: 입어보는 중(미결제 착장) — 선택 핑크와 구분되는 금색 톤, 가격 배지 유지 ── */
+  .mkCharaThumb.mkTryOn{ border-color:#ffd85c; }
+  .mkCharaThumb.mkTryOn.on{ box-shadow:0 0 0 2px rgba(255,216,92,.28); }
+  .mkCharaThumb.mkTryOn.on::after{ content:"👕"; background:#ffd85c; font-size:10px; }
+  /* ── V169_SHOP: 썸네일 크롭 — _rects contain 박스(inline style이 위치/크기 지정, 정사각 wrapper 전제) ── */
+  .mkCharaThumb img.mkRectCrop, .mkComboSlot .th img.mkRectCrop, .mkCartThumb img.mkRectCrop{ position:absolute; max-width:none; }
+  .mkComboSlot .th{ position:relative; }
+  /* ── V169_SHOP: 조합칸 acc 다중(최대 3) 미니 썸네일 ── */
+  .mkComboSlot .th.mkAccMulti{ display:flex; align-items:center; justify-content:center; gap:1px; overflow:hidden; }
+  .mkComboSlot .mkAccMini{ position:relative; flex:0 0 auto; width:32%; aspect-ratio:1/1; border-radius:6px; overflow:hidden; background:rgba(0,0,0,.18); }
+  .mkComboSlot .mkAccMini img{ width:100%; height:100%; object-fit:contain; display:block; }
+  /* ── V169_SHOP: 장바구니(입어보는 중 파츠 결제) 패널 ── */
+  .mkCartBox{ margin-top:10px; }
+  .mkCartList{ display:flex; flex-direction:column; gap:6px; max-height:170px; overflow-y:auto; scrollbar-width:thin; }
+  .mkCartItem{ display:flex; align-items:center; gap:8px; border:1px solid rgba(255,216,92,.18); background:rgba(0,0,0,.16); border-radius:12px; padding:6px 8px; cursor:pointer; }
+  .mkCartItem:hover{ border-color:rgba(255,216,92,.4); }
+  .mkCartItem input[type="checkbox"]{ accent-color:#ffd85c; width:15px; height:15px; flex:0 0 auto; cursor:pointer; margin:0; }
+  .mkCartThumb{ flex:0 0 auto; width:40px; height:40px; border-radius:9px; overflow:hidden; position:relative; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/12px 12px, #1b1720; }
+  .mkCartThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkCartInfo{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:1px; }
+  .mkCartInfo b{ font-size:11.5px; color:rgba(255,255,255,.88); letter-spacing:-.3px; }
+  .mkCartInfo span{ font-size:9.5px; color:rgba(255,255,255,.45); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mkCartPrice{ flex:0 0 auto; font-size:11px; font-weight:1000; color:#ffe9b8; font-variant-numeric:tabular-nums; }
+  .mkCartFoot{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; }
+  .mkCartTotal{ font-size:11.5px; color:rgba(255,255,255,.62); font-variant-numeric:tabular-nums; min-width:0; }
+  .mkCartTotal b{ color:#ffe9b8; }
+  #mkCartPay{ border:1px solid rgba(255,216,92,.55); background:rgba(255,216,92,.14); color:#ffe9b8; border-radius:999px; padding:7px 16px; font-size:12px; font-weight:1000; cursor:pointer; min-width:auto !important; white-space:nowrap; }
+  #mkCartPay:hover{ background:rgba(255,216,92,.22); }
+  #mkCartPay:disabled{ opacity:.4; cursor:default; }
 
   .mkCharaMsg{ grid-column:1 / -1; padding:22px 8px; text-align:center; color:rgba(255,255,255,.55); font-size:12.5px; line-height:1.7; }
   .mkCharaRetryBtn{ margin-top:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:900; cursor:pointer; min-width:auto !important; }
@@ -27224,8 +27384,21 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   function persist(){
     try{
+      /* V169_SHOP: 저장/공유는 보유 파츠만 — 입어보기(미결제) 착장은 모달 미리보기 한정(세션 한정).
+         acc는 배열(최대 3, 착용 순서 유지)로 저장 — 읽는 쪽은 구형 단일 문자열도 정규화한다. */
+      var owned = getOwned();
       var parts={}, hue={};
-      chara.cats.forEach(function(c){ if(isHairBackCat(c.key)) return; parts[catName(c.key)] = chara.sel[c.key] || null; });
+      chara.cats.forEach(function(c){
+        if(isHairBackCat(c.key)) return;
+        var n = catName(c.key);
+        if(isAccCat(c.key)){
+          var arr = selArr(c.key).filter(function(nm){ return !!owned[ownedKeyFor(c.key, nm)]; }).slice(0,3);
+          parts[n] = arr.length ? arr : null;
+        }else{
+          var s = chara.sel[c.key];
+          parts[n] = (s && owned[ownedKeyFor(c.key, s)]) ? s : null;
+        }
+      });
       Object.keys(chara.adj).forEach(function(k){
         var a=chara.adj[k]; if(!a) return;
         if(a.h===0 && a.s===100 && a.b===100) return;
@@ -27237,10 +27410,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){ console.warn('[chara v169] 저장 실패', e); }
   }
 
-  /* ---------- V169 3차: 파츠 상점 (mk_chara_owned 보유 목록 + mk_chara_stats.coins 차감) ---------- */
+  /* ---------- V169 3차/V169_SHOP: 파츠 상점 (mk_chara_owned_v2 보유 목록 + mk_chara_stats.coins 차감)
+     V169_SHOP(2026-08-09): 보유 전면 리셋(구 키 폐기, 기득권 마이그레이션 제거) + 입어보기·체크박스 장바구니 결제.
+     미보유 파츠 클릭 = 즉시 미리보기 착장(입어보기, 세션 한정) — persist()는 보유 파츠만 저장/공유한다. */
   var V169_PART_PRICE_DEFAULT = 2; // manifest _prices에 없는 파츠의 폴백 가격 (2026-08-09부터 _prices가 정식 가격표)
-  var OWNED_KEY = 'mk_chara_owned';   // {"04_look/04_look_auto_11.png": true, ...} — 카테고리폴더/파일명 키
+  var OWNED_KEY = 'mk_chara_owned_v2'; // {"04_look/04_look_auto_11.png": true, ...} — 카테고리폴더/파일명 키
   var STATS_KEY = 'mk_chara_stats';   // {"totalSec":누적초,"coins":코인} — 독립 꾸미기앱과의 계약, 형태 변경 금지
+  try{ localStorage.removeItem('mk_chara_owned'); }catch(e){} // V169_SHOP: 전면 리셋 — 구 키는 발견 즉시 삭제(마이그레이션 없음)
   function toast(msg, ms){
     try{
       if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
@@ -27269,21 +27445,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){ return null; }
   }
   function saveOwned(o){ try{ localStorage.setItem(OWNED_KEY, JSON.stringify(o)); }catch(e){} }
-  /* 기득권 부여(1회 마이그레이션): mk_chara_owned가 없으면 생성하면서 현재 장착 파츠(+헤어 동반 뒷면)를 자동 보유 처리 */
-  function ensureOwned(){
-    var o = loadOwned();
-    if(o) return o;
-    o = {};
-    chara.cats.forEach(function(c){
-      var sel = chara.sel[c.key]; if(!sel) return;
-      o[ownedKeyFor(c.key, sel)] = true;
-      var back = c.backParts && c.backParts.get(sel);
-      if(back) o[ownedKeyFor(c.key, back.name)] = true;
-    });
-    saveOwned(o);
-    return o;
-  }
-  function isOwned(catKey, name){ var o = loadOwned(); return !!(o && o[ownedKeyFor(catKey, name)]); }
+  /* V169_SHOP: 보유 목록 — 없으면 빈 객체(전원 완전 미보유 시작). 기득권 마이그레이션은 폐기됨. */
+  function getOwned(){ return loadOwned() || {}; }
   function grantOwned(catKey, name){
     var o = loadOwned() || {};
     o[ownedKeyFor(catKey, name)] = true;
@@ -27307,31 +27470,118 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){ return false; }
   }
   function refreshWalletPill(){ try{ var a = window.__MK_PET_V24__; if(a && typeof a.updateWalletUI === 'function') a.updateWalletUI(); }catch(e){} }
-  function closeBuyConfirm(){ var ov = $id('mkCharaBuyOv'); if(ov && ov.parentNode) ov.parentNode.removeChild(ov); }
-  function openBuyConfirm(catKey, name){
-    closeBuyConfirm();
-    var price = partPrice(catKey, name);
-    var c = chara.cats.find(function(x){ return x.key === catKey; });
-    var part = c && c.parts.find(function(p){ return p.name === name; });
-    var ov = document.createElement('div');
-    ov.id = 'mkCharaBuyOv';
-    ov.innerHTML = '<div class="mkCharaBuyPanel">'
-      + (part ? '<div class="mkCharaBuyThumb"><img src="' + esc(part.url) + '" alt="' + esc(name) + '"></div>' : '')
-      + '<div class="mkCharaBuyMsg">『' + esc(name) + '』을(를) 🪙' + fmtCoins(price) + '로 구매할까요?</div>'
-      + '<div class="mkCharaBuyCoins">보유 코인 🪙' + readCoins().toLocaleString('ko-KR') + '</div>'
-      + '<div class="mkCharaBuyBtns"><button type="button" id="mkCharaBuyOk">🪙' + fmtCoins(price) + ' 구매</button><button type="button" id="mkCharaBuyCancel">취소</button></div>'
-      + '</div>';
-    document.body.appendChild(ov);
-    ov.addEventListener('click', function(e){ if(e.target === ov) closeBuyConfirm(); });
-    ov.querySelector('#mkCharaBuyCancel').addEventListener('click', closeBuyConfirm);
-    ov.querySelector('#mkCharaBuyOk').addEventListener('click', function(){
-      closeBuyConfirm();
-      if(!spendCoins(price)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 10초당 1코인!'); return; }
-      grantOwned(catKey, name);
-      refreshWalletPill();
-      toast('『' + name + '』 구매 완료! 바로 입혀 줄게 🪙-' + fmtCoins(price));
-      selectPart(catKey, name); // 즉시 장착 — renderGrid가 가격 배지 제거까지 처리
+
+  /* ---------- V169_SHOP: 다중 착장 헬퍼 (acc = 배열, 그 외 = 단일 문자열) ---------- */
+  function isAccCat(key){ return catName(key) === 'acc'; }
+  function selArr(catKey){ // 카테고리의 현재 착장을 항상 배열로 (acc 외에는 0~1개)
+    var v = chara.sel[catKey];
+    if(Array.isArray(v)) return v;
+    return v ? [v] : [];
+  }
+  /* 미보유 파츠 착장 벗김 — 저장 복원 직후·모달 닫힘(입어보기 되돌림)에 사용. 변경 여부 반환 */
+  function stripUnownedSel(){
+    var owned = getOwned(), changed = false;
+    chara.cats.forEach(function(c){
+      if(isAccCat(c.key)){
+        var arr = selArr(c.key);
+        var kept = arr.filter(function(n){ return !!owned[ownedKeyFor(c.key, n)]; });
+        if(kept.length !== arr.length){ chara.sel[c.key] = kept; changed = true; }
+      }else{
+        var s = chara.sel[c.key];
+        if(s && !owned[ownedKeyFor(c.key, s)]){ chara.sel[c.key] = null; changed = true; }
+      }
     });
+    return changed;
+  }
+
+  /* ---------- V169_SHOP: 썸네일 크롭 — manifest._rects([x,y,w,h], 1024 좌표계) contain 배치 ----------
+     정사각 wrapper(overflow:hidden) 안에 img를 percentage로 확대 배치해 rect 내용물이 타일에 꽉 차게.
+     박스는 max(w,h)×PAD 정사각(contain) — rect 전체가 항상 wrapper 안에 들어오고(cover 잘림 없음),
+     rect가 없는 파츠는 ''(기존 전체 표시 폴백). 캔버스 재합성 없음(CSS만). */
+  var RECT_BASE = 1024, RECT_PAD = 1.10;
+  function rectBoxFor(catKey, name){
+    var r = (chara.rects || {})[catKey + '/' + name];
+    if(!Array.isArray(r) || r.length !== 4) return null;
+    var x = Number(r[0]), y = Number(r[1]), w = Number(r[2]), h = Number(r[3]);
+    if(!(w > 0 && h > 0) || !isFinite(x) || !isFinite(y)) return null;
+    var box = Math.max(w, h) * RECT_PAD; // 정사각 contain 박스 — 긴 축 기준이라 rect가 절대 잘리지 않는다
+    var lo = Math.min(0, RECT_BASE - box), hi = Math.max(0, RECT_BASE - box);
+    var bx = Math.max(lo, Math.min(hi, x + (w - box) / 2));
+    var by = Math.max(lo, Math.min(hi, y + (h - box) / 2));
+    return { box: box, bx: bx, by: by, x: x, y: y, w: w, h: h };
+  }
+  function rectStyleFor(catKey, name){ // img inline style ('' = rect 없는 파츠 → 기존 전체 표시 폴백)
+    // box>1024(몸통처럼 내용물이 캔버스를 거의 채우는 파츠)도 같은 수식 — 이미지가 살짝 축소돼 가장자리 여백이 생겨
+    // 테두리/둥근 모서리에 물리던 "미세 잘림"까지 해소된다(contain이라 어느 경우에도 rect는 잘리지 않음).
+    var b = rectBoxFor(catKey, name);
+    if(!b) return '';
+    var size = (RECT_BASE / b.box * 100).toFixed(3);
+    return 'width:' + size + '%;height:' + size + '%;left:' + (-b.bx / b.box * 100).toFixed(3) + '%;top:' + (-b.by / b.box * 100).toFixed(3) + '%;';
+  }
+  function thumbImgHtml(catKey, name, url, extraStyle){ // 크롭 스타일이 있으면 mkRectCrop(absolute)로
+    var st = rectStyleFor(catKey, name);
+    var style = st + (extraStyle || '');
+    return '<img loading="lazy" src="' + esc(url) + '" alt="' + esc(name) + '"'
+      + (st ? ' class="mkRectCrop"' : '')
+      + (style ? ' style="' + esc(style) + '"' : '') + '>';
+  }
+
+  /* ---------- V169_SHOP: 입어보기 장바구니 (현재 착장 중인 미보유 파츠 = 결제 후보) ---------- */
+  var cartUnchecked = {}; // 사용자가 체크 해제한 키 — 착장 해제 시 자동 정리(재착장은 기본 체크로 복귀)
+  function tryOnItems(){
+    var items = [];
+    if(chara.phase !== 'ready') return items;
+    var owned = getOwned();
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return;
+      selArr(c.key).forEach(function(nm){
+        if(owned[ownedKeyFor(c.key, nm)]) return;
+        var part = c.parts.find(function(p){ return p.name === nm; });
+        items.push({ catKey: c.key, name: nm, label: c.label, price: partPrice(c.key, nm), url: part ? part.url : '' });
+      });
+    });
+    return items;
+  }
+  function renderCart(){
+    var box = $id('mkCharaCartBox'); if(!box) return;
+    var items = tryOnItems();
+    var keep = {};
+    items.forEach(function(it){ keep[ownedKeyFor(it.catKey, it.name)] = 1; });
+    Object.keys(cartUnchecked).forEach(function(k){ if(!keep[k]) delete cartUnchecked[k]; });
+    var list = $id('mkCartList');
+    if(!items.length){ box.style.display = 'none'; if(list) list.innerHTML = ''; return; }
+    box.style.display = '';
+    var total = 0, checkedN = 0;
+    if(list) list.innerHTML = items.map(function(it){
+      var k = ownedKeyFor(it.catKey, it.name);
+      var checked = !cartUnchecked[k];
+      if(checked){ total += it.price; checkedN++; }
+      return '<label class="mkCartItem">'
+        + '<input type="checkbox" data-key="' + esc(k) + '"' + (checked ? ' checked' : '') + '>'
+        + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
+        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
+        + '<span class="mkCartPrice">🪙' + fmtCoins(it.price) + '</span>'
+        + '</label>';
+    }).join('');
+    var tot = $id('mkCartTotal');
+    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>🪙' + fmtCoins(total) + '</b> · 보유 🪙' + fmtCoins(readCoins());
+    var pay = $id('mkCartPay');
+    if(pay){ pay.disabled = !checkedN; pay.textContent = '🪙 ' + fmtCoins(total) + ' 결제'; }
+  }
+  function payCart(){
+    var items = tryOnItems().filter(function(it){ return !cartUnchecked[ownedKeyFor(it.catKey, it.name)]; });
+    if(!items.length) return;
+    var total = items.reduce(function(s, it){ return s + it.price; }, 0);
+    if(!spendCoins(total)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 10초당 1코인!'); renderCart(); return; }
+    items.forEach(function(it){ grantOwned(it.catKey, it.name); });
+    refreshWalletPill();
+    persist(); // 결제된 파츠는 이제 보유 → 저장/공유(mk_chara_state·charaV1·타일)에 실린다. 미체크 입어보기는 그대로 세션 한정.
+    toast('🪙-' + fmtCoins(total) + ' · 파츠 ' + items.length + '개 구매 완료! 이제 내 거예요 ✨');
+    renderChara();
+  }
+  function revertTryOn(){ // 모달 닫힘 — 미결제 입어보기 착장을 보유 착장으로 되돌림 (저장본은 원래 보유분만 담고 있어 persist 불필요)
+    if(chara.phase !== 'ready') return;
+    if(stripUnownedSel()) renderChara();
   }
 
   /* ---------- 파츠 로딩: manifest는 항상 ?t 캐시 버스터, PNG는 _version 기반 ?v ---------- */
@@ -27343,6 +27593,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       .then(function(mf){
         var ver = (mf && mf._version!=null && typeof mf._version!=='object') ? String(mf._version) : '';
         chara.prices = (mf && mf._prices && typeof mf._prices==='object') ? mf._prices : {}; // V169: 파츠 가격표
+        chara.rects = (mf && mf._rects && typeof mf._rects==='object') ? mf._rects : {}; // V169_SHOP: 썸네일 크롭 영역([x,y,w,h], 1024 좌표계)
         var cats=[];
         Object.keys(mf||{}).forEach(function(key){
           if(key.charAt(0)==='_') return;             // _version 등 메타 키는 카테고리가 아니다
@@ -27359,12 +27610,22 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         cats.forEach(splitBackParts);
 
         chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={};
-        cats.forEach(function(c){ chara.sel[c.key]=null; });
+        cats.forEach(function(c){ chara.sel[c.key] = isAccCat(c.key) ? [] : null; }); // V169_SHOP: acc는 다중(배열, 최대 3)
 
         var saved = loadSaved();
         if(saved){
           cats.forEach(function(c){
             var want = saved.parts[catName(c.key)];
+            if(isAccCat(c.key)){
+              // V169_SHOP: acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만 최대 3개
+              var arr = Array.isArray(want) ? want : (typeof want==='string' ? [want] : []);
+              var kept = [];
+              arr.forEach(function(nm){
+                if(typeof nm==='string' && kept.indexOf(nm)<0 && kept.length<3 && c.parts.some(function(p){ return p.name===nm; })) kept.push(nm);
+              });
+              chara.sel[c.key]=kept;
+              return;
+            }
             if(typeof want==='string' && c.parts.some(function(p){ return p.name===want; })) chara.sel[c.key]=want;
           });
           if(saved.hue && typeof saved.hue==='object'){
@@ -27383,7 +27644,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
           chara.active = first ? first.key : null;
         }
         chara.phase='ready';
-        ensureOwned(); // V169 3차: 보유 목록 없으면 현재 장착 파츠 기득권 부여(1회 마이그레이션)
+        // V169_SHOP: 보유 전면 리셋 — 저장된 착장에서 미보유 파츠는 자동으로 벗기고 저장본도 정리(persist)
+        if(saved && stripUnownedSel()) persist();
         renderChara();
       })
       .catch(function(err){
@@ -27411,13 +27673,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function stageLayers(){
     var layers=[];
     chara.cats.forEach(function(cat){
-      var sel=chara.sel[cat.key]; if(!sel) return;
-      var part=null;
-      for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
-      if(!part) return;
-      layers.push({ catKey:cat.key, part:part, z:zRankFor(cat) });
-      var back = cat.backParts && cat.backParts.get(sel);
-      if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); // 뒷머리 자동 동반, 색 필터는 헤어와 공유
+      // V169_SHOP: acc 다중 착장 — selArr가 항상 배열로 정규화(그 외 카테고리는 0~1개), 착용 순서대로 같은 z에 겹침(안정 정렬)
+      selArr(cat.key).forEach(function(sel){
+        var part=null;
+        for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
+        if(!part) return;
+        layers.push({ catKey:cat.key, part:part, z:zRankFor(cat) });
+        var back = cat.backParts && cat.backParts.get(sel);
+        if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); // 뒷머리 자동 동반, 색 필터는 헤어와 공유
+      });
     });
     return layers.map(function(l,i){ return { l:l, i:i }; })
       .sort(function(a,b){ return (a.l.z-b.l.z) || (a.i-b.i); })
@@ -27444,22 +27708,25 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       return;
     }
     var cat=activeCat(); if(!cat){ el.innerHTML=''; return; }
-    var owned = ensureOwned(); // V169 3차: 파츠 상점 — 미보유 파츠는 가격 배지+잠금 톤, 클릭 시 구매 확인
-    var html = '<div class="mkCharaThumb noneTile'+(chara.sel[cat.key]===null?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="ic">🚫</span>없음</div>';
+    var owned = getOwned(); // V169_SHOP: 미보유는 가격 배지+잠금 톤, 클릭 = 즉시 입어보기(장바구니 결제)
+    var noneOn = isAccCat(cat.key) ? selArr(cat.key).length===0 : chara.sel[cat.key]===null;
+    var html = '<div class="mkCharaThumb noneTile'+(noneOn?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="ic">🚫</span>없음</div>';
     html += cat.parts.map(function(p){
       var has = !!owned[ownedKeyFor(cat.key, p.name)];
+      var isOn = isAccCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name;
+      var tryOn = isOn && !has; // V169_SHOP: 입어보는 중(미결제) — 가격 배지 유지 + 금색 톤
       var price = partPrice(cat.key, p.name);
-      return '<div class="mkCharaThumb'+(chara.sel[cat.key]===p.name?' on':'')+(has?'':' mkLocked')+'" data-name="'+esc(p.name)+'" title="'+esc(p.name)+(has?'':(' — 🪙'+fmtCoins(price)+'로 구매'))+'">'
-        + '<img loading="lazy" src="'+esc(p.url)+'" alt="'+esc(p.name)+'">'
-        + (has?'':('<span class="mkCharaPrice">🪙'+fmtCoins(price)+'</span>'))
+      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 🪙'+fmtCoins(price)+' · 눌러서 입어보기'));
+      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" title="'+title+'">'
+        + thumbImgHtml(cat.key, p.name, p.url, '') // V169_SHOP: _rects 크롭(contain) — rect 없으면 전체 표시 폴백
+        // V169: 모든 파츠가 상태 배지를 가진다 — 보유는 "보유 ✓", 미보유는 가격 (배지 없음 = 상태 불명 혼란 방지)
+        + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">🪙'+fmtCoins(price)+'</span>'))
         + '</div>';
     }).join('');
     el.innerHTML = html;
     el.querySelectorAll('.mkCharaThumb').forEach(function(tile){
       tile.addEventListener('click', function(){
-        var name = tile.dataset.name || null;
-        if(name && !isOwned(cat.key, name)){ openBuyConfirm(cat.key, name); return; } // V169 3차: 미보유 → 구매 확인
-        selectPart(cat.key, name);
+        selectPart(cat.key, tile.dataset.name || null); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
       });
     });
   }
@@ -27467,12 +27734,24 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var el=$id('mkCharaCombo'); if(!el) return;
     if(chara.phase!=='ready'){ el.innerHTML=''; return; }
     el.innerHTML = visibleCats().map(function(c){
-      var sel=chara.sel[c.key];
-      var part = sel ? c.parts.find(function(p){ return p.name===sel; }) : null;
-      var f = part ? filterFor(c.key) : '';
-      var th = part
-        ? '<span class="th"><img src="'+esc(part.url)+'" alt="'+esc(part.name)+'"'+(f?(' style="filter:'+esc(f)+'"'):'')+'></span>'
-        : '<span class="th">없음</span>';
+      var th;
+      if(isAccCat(c.key)){
+        // V169_SHOP: acc 다중(최대 3) — 착용 순서대로 미니 썸네일, hue 필터는 카테고리 단위로 동일 적용
+        var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ return p.name===nm; }); }).filter(Boolean);
+        var fAcc = accParts.length ? filterFor(c.key) : '';
+        th = accParts.length
+          ? '<span class="th mkAccMulti">'+accParts.map(function(p){
+              return '<span class="mkAccMini">'+thumbImgHtml(c.key, p.name, p.url, (fAcc?('filter:'+fAcc+';'):''))+'</span>';
+            }).join('')+'</span>'
+          : '<span class="th">없음</span>';
+      }else{
+        var sel=chara.sel[c.key];
+        var part = sel ? c.parts.find(function(p){ return p.name===sel; }) : null;
+        var f = part ? filterFor(c.key) : '';
+        th = part
+          ? '<span class="th">'+thumbImgHtml(c.key, part.name, part.url, (f?('filter:'+f+';'):''))+'</span>' // V169_SHOP: _rects 크롭 동일 적용
+          : '<span class="th">없음</span>';
+      }
       return '<button type="button" class="mkComboSlot'+(c.key===chara.active?' on':'')+'" data-cat="'+esc(c.key)+'" title="'+esc(c.label)+' 탭으로 이동">'+th+'<b>'+esc(c.label)+'</b></button>';
     }).join('');
     el.querySelectorAll('.mkComboSlot').forEach(function(b){
@@ -27525,7 +27804,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function renderColorPanel(){
     var panel=$id('mkCharaColorPanel'); if(!panel) return;
     var cat=activeCat();
-    var on = !!(chara.phase==='ready' && cat && chara.sel[cat.key]);
+    var on = !!(chara.phase==='ready' && cat && (isAccCat(cat.key) ? selArr(cat.key).length : chara.sel[cat.key])); // V169_SHOP: acc는 배열 기준
     panel.classList.toggle('off', !on);
     ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
     var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
@@ -27561,11 +27840,26 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     renderColorPanel(); applyStageFilters(); renderCombo();
   }
   function selectPart(catKey, name){
-    chara.sel[catKey]=name;
-    persist();
-    renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel();
+    if(isAccCat(catKey)){
+      // V169_SHOP: 액세서리 다중 선택 — 클릭 = 착용/해제 토글, 최대 3개(착용 순서 유지)
+      var arr = selArr(catKey).slice();
+      if(!name){ arr = []; }
+      else{
+        var i = arr.indexOf(name);
+        if(i >= 0) arr.splice(i, 1);
+        else{
+          if(arr.length >= 3){ toast('액세서리는 최대 3개까지!'); return; }
+          arr.push(name);
+        }
+      }
+      chara.sel[catKey] = arr;
+    }else{
+      chara.sel[catKey]=name;
+    }
+    persist(); // V169_SHOP: persist는 보유분만 내보냄 — 입어보기(미결제)는 저장/공유에 안 실린다
+    renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart();
   }
-  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); }
+  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); } // V169_SHOP: 장바구니 포함
 
   /* ---------- 모달 개편: 기존 #petModal 안에 2컬럼 본문을 만들고 옛 본문은 숨긴다 ---------- */
   var BODY_HTML =
@@ -27599,6 +27893,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +     '<div class="petSectionTitle"><span>✨ 미리보기</span><span class="tiny">입힌 순서대로 겹쳐 보여줘요</span></div>'
     +     '<div class="mkCharaStageWrap"><div id="mkCharaStage"></div></div>'
     +   '</div>'
+    /* V169_SHOP: 입어보기 장바구니 — 착장 중인 미보유 파츠 목록(기본 체크) + 일괄 결제. 미보유 착장이 없으면 숨김 */
+    +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox" style="display:none">'
+    +     '<div class="petSectionTitle"><span>🛒 입어보는 중</span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
+    +     '<div id="mkCartList" class="mkCartList"></div>'
+    +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">🪙 결제</button></div>'
+    +   '</div>'
     + '</div>';
 
   function restructure(){
@@ -27627,6 +27927,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var s=body.querySelector('#'+id); if(s) s.addEventListener('input', onColorInput);
     });
     var reset=body.querySelector('#mkCharaColorReset'); if(reset) reset.addEventListener('click', resetColor);
+    /* V169_SHOP: 장바구니 결제 버튼 + 체크박스 위임 바인딩(1회) */
+    var payBtn=body.querySelector('#mkCartPay'); if(payBtn) payBtn.addEventListener('click', payCart);
+    var cartList=body.querySelector('#mkCartList');
+    if(cartList) cartList.addEventListener('change', function(e){
+      var t=e.target;
+      if(!t || t.type!=='checkbox' || !t.dataset.key) return;
+      if(t.checked) delete cartUnchecked[t.dataset.key]; else cartUnchecked[t.dataset.key]=true;
+      renderCart(); // 합계/결제 버튼 실시간 갱신
+    });
     renderChara();
     return true;
   }
@@ -27640,7 +27949,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var mo = (typeof MutationObserver!=='undefined') ? new MutationObserver(function(){
     var ov=$id('petModal');
     if(ov && ov.classList.contains('show')) onShown();
-    else closeBuyConfirm(); // V169 3차: 모달 닫힘 시 구매 확인 오버레이도 닫기
+    else revertTryOn(); // V169_SHOP: 모달 닫힘 — 미결제 입어보기 착장을 보유 착장으로 되돌림
   }) : null;
   var tries=0;
   (function waitPetModal(){
@@ -27665,7 +27974,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       return false;
     },
     reload:function(){ chara.phase='idle'; loadManifest(); },
-    state:chara
+    state:chara,
+    /* V169_SHOP: 검증용 훅 — 장바구니/보유/크롭 박스 관측 */
+    shop:{
+      getOwned:getOwned, tryOnItems:tryOnItems, payCart:payCart, renderCart:renderCart,
+      stripUnownedSel:stripUnownedSel, rectBoxFor:rectBoxFor, rectStyleFor:rectStyleFor,
+      selArr:selArr, selectPart:selectPart, cartUnchecked:cartUnchecked
+    }
   };
 })();
 </script>
@@ -28133,6 +28448,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
 <!-- V169_CHARA_TILE_DISPLAY: 프로필 타일 캐릭터 표시 (4차)
   - 목표: 꾸민 캐릭터를 내/타인 프로필 타일의 사진칸 또는 이모지칸에 표시. 펫과 다른 칸이면 동시 표시.
   - 공유: rooms/{roomId}/profiles/{uid}/charaV1 = {v,parts:{body,hair,face,look,acc},hue,show,updatedAtMs} (~150B)
+    · V169_SHOP: parts.acc는 배열(최대 3, 착용 순서) — 구버전 단일 문자열 데이터도 읽기 시 [문자열]로 정규화(하위 호환).
     · 규칙 배포 없음 — profiles/$uid는 본인 쓰기·전원 읽기 허용이 이미 있고 앱이 온라인 uid별로 구독/병합 중.
     · 쓰기 시점: 꾸미기 모달 착장 저장(persist 훅) + "캐릭터 보여주기" 변경 + 입장 후 1회 동기화(원격본과 다를 때만).
     · 모든 쓰기는 1.5초 디바운스. 초당/주기적 쓰기 없음. presence 페이로드는 건드리지 않는다.
@@ -28208,12 +28524,25 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
 
   /* ---------- 데이터 정규화 ---------- */
+  function validPartName(v){ return typeof v === 'string' && v.length && v.length <= 120 && /\.png$/i.test(v) && !/[\/\\<>"']/.test(v); }
   function sanitizeParts(src){
     var out = {};
     if(!src || typeof src !== 'object') return out;
     PART_KEYS.forEach(function(k){
       var v = src[k];
-      if(typeof v === 'string' && v.length && v.length <= 120 && /\.png$/i.test(v) && !/[\/\\<>"']/.test(v)) out[k] = v;
+      if(k === 'acc'){
+        /* V169_SHOP: acc 다중(최대 3) — 배열이 정본, 구버전 단일 문자열은 [문자열]로 정규화.
+           RTDB가 배열을 숫자 키 객체로 돌려주는 경우도 흡수. 빈 배열이면 키 자체를 뺀다(hasParts 호환). */
+        if(v && typeof v === 'object' && !Array.isArray(v)){
+          v = Object.keys(v).sort(function(a, b){ return a - b; }).map(function(kk){ return v[kk]; });
+        }
+        var arr = Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
+        var kept = [];
+        arr.forEach(function(n){ if(validPartName(n) && kept.indexOf(n) < 0 && kept.length < 3) kept.push(n); });
+        if(kept.length) out[k] = kept;
+        return;
+      }
+      if(validPartName(v)) out[k] = v;
     });
     return out;
   }
@@ -28236,7 +28565,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function sigOf(parts, hue){
     var p = [], h = [];
     PART_KEYS.forEach(function(k){
-      p.push(parts && parts[k] ? parts[k] : '');
+      var v = parts && parts[k];
+      p.push(Array.isArray(v) ? v.join(',') : (v || '')); // V169_SHOP: acc 배열은 착용 순서대로 시그니처화
       var a = hue && hue[k];
       h.push(a ? (a.h + ',' + a.s + ',' + a.b) : '');
     });
@@ -28540,6 +28870,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var MOVE_SIZE_HANDCAM_PX = 60;        // 손캠 화면 위 캐릭터 높이
   var MOVE_IDLE_MIN_MS = 2000, MOVE_IDLE_RANGE_MS = 3000;   // 행동 간격 2~5초
   var MOVE_WALK_MIN_MS = 1000, MOVE_WALK_RANGE_MS = 1500;   // 걷기 1~2.5초
+  var MOVE_STAY_MIN_MS = 60000, MOVE_STAY_RANGE_MS = 120000; // V169_FIX: 장기 머무름 60~180초 (행동 선택의 약 35%)
   var moverReg = new Set(); // {root,host,wrap,flip,img,t:[timeoutIds],x,y,dir}
   function moverDestroy(m){
     m.t.forEach(clearTimeout); m.t.length = 0;
@@ -28611,6 +28942,53 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     m.t.push(setTimeout(function(){ moverFace(m, m.dir, 0); }, walk + 1260));
     return walk + 1500;
   }
+  /* V169_FIX(경계 밖 빼꼼): 네 변 어디서든 몸을 경계 밖으로 내밀어 일부가 잘린 채 내다보는 행동.
+     host(타일/손캠 박스)는 overflow:hidden이라 밖으로 나간 부분이 자연스럽게 클리핑된다.
+     핵심 제한 — 눈은 항상 보인다: 변마다 최대 돌출량 = 눈 영역(bake 메타 faceRect + manifest._eyes)이
+     그 방향 경계에 닿기까지의 거리. 민얼굴/메타 실패는 이미지 상단 ~40% 눈 라인 가정 폴백.
+     일반 걷기의 clamp([0..mx]×[0..my])는 그대로 — 이 행동만 확장 좌표를 쓴다. */
+  var EYE_FRAC_FALLBACK = { top: 0.34, bot: 0.46, xmin: 0.30, xmax: 0.70 };
+  function computeEyeFracs(mani, res){ // bake 이미지(정사각) 기준 눈 영역 경계를 0~1 비율로
+    var f = { top: EYE_FRAC_FALLBACK.top, bot: EYE_FRAC_FALLBACK.bot, xmin: EYE_FRAC_FALLBACK.xmin, xmax: EYE_FRAC_FALLBACK.xmax };
+    try{
+      if(mani && res && res.faceRect && res.facePart){
+        var boxes = eyeBoxesFor(mani, res.facePart); // [[cx,cy,rx,ry]×2] (1024 좌표계, 폴백 박스 포함)
+        var t = 1e9, bt = -1e9, xn = 1e9, xx = -1e9;
+        boxes.forEach(function(bx){
+          t = Math.min(t, bx[1] - bx[3]); bt = Math.max(bt, bx[1] + bx[3]);
+          xn = Math.min(xn, bx[0] - bx[2]); xx = Math.max(xx, bx[0] + bx[2]);
+        });
+        var fr = res.faceRect, W = res.w || BAKE_SIZE, H = res.h || BAKE_SIZE;
+        f.top = (fr.y + (t / EYE_BASE) * fr.h) / H;
+        f.bot = (fr.y + (bt / EYE_BASE) * fr.h) / H;
+        f.xmin = (fr.x + (xn / EYE_BASE) * fr.w) / W;
+        f.xmax = (fr.x + (xx / EYE_BASE) * fr.w) / W;
+      }
+    }catch(e){}
+    return f;
+  }
+  function moverPeekOut(m, b, forceEdge, dwellMs){ // 경계 밖 빼꼼: 나가서 머문 뒤 들어온다 (forceEdge 검증용 / dwellMs 지정 시 장기 눌러앉기)
+    var E = m.eyes || EYE_FRAC_FALLBACK;
+    var e = forceEdge || ['left', 'right', 'bottom', 'top'][Math.floor(Math.random() * 4)];
+    var tx, ty, dir = m.dir;
+    if(e === 'left'){ // 왼쪽을 보며 내밀기 → 좌우 반전 상태의 눈 x 경계는 (1 - xmax)
+      dir = -1;
+      tx = -(1 - E.xmax) * b.s; ty = Math.random() * b.my;
+    }else if(e === 'right'){
+      dir = 1;
+      tx = b.W - E.xmax * b.s; ty = Math.random() * b.my;
+    }else if(e === 'bottom'){ // 몸이 가라앉아 눈 밑 경계가 타일 아래변에 닿는 지점까지
+      tx = Math.random() * b.mx; ty = b.H - E.bot * b.s;
+    }else{ // top: 머리 일부만 위로 — 눈 위 경계가 윗변에 닿는 지점까지
+      tx = Math.random() * b.mx; ty = -E.top * b.s;
+    }
+    var walk = moverWalkTo(m, tx, ty);
+    if(e === 'left' || e === 'right') m.t.push(setTimeout(function(){ moverFace(m, dir, 0); }, walk + 30)); // 눈 경계 계산과 실제 반전 일치 보장
+    var dwell = (dwellMs > 0) ? dwellMs : (1000 + Math.random() * 2000); // 기본 1~3초, 장기 눌러앉기는 호출측 지정
+    var backX = Math.random() * b.mx, backY = Math.random() * b.my;
+    m.t.push(setTimeout(function(){ moverWalkTo(m, backX, backY); }, walk + dwell));
+    return walk + dwell + MOVE_WALK_MIN_MS + MOVE_WALK_RANGE_MS; // 복귀 걷기 최대치까지 점유
+  }
   function moverStep(m){
     m.t.forEach(clearTimeout); m.t.length = 0; // 이번 스텝 기준으로 리셋(이전 걷기/빼꼼 보조 타이머는 이미 완료)
     if(!m.root.isConnected){ moverDestroy(m); return; }
@@ -28631,9 +29009,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }else{
       moverSizeSync(m, b);
       var r = Math.random();
-      if(r < 0.5) busy = moverWalkTo(m, Math.random() * b.mx, Math.random() * b.my); // 목적지 랜덤 걷기
-      else if(r < 0.75) busy = 300 + Math.random() * 900;                            // 잠깐 멈춰 서기
-      else busy = moverPeek(m, b);                                                   // 가장자리 빼꼼
+      if(r < 0.30) busy = moverWalkTo(m, Math.random() * b.mx, Math.random() * b.my); // 목적지 랜덤 걷기
+      else if(r < 0.42) busy = 300 + Math.random() * 900;                             // 잠깐 멈춰 서기
+      else if(r < 0.54) busy = moverPeek(m, b);                                       // 가장자리 기울임 빼꼼
+      else if(r < 0.65) busy = moverPeekOut(m, b);                                    // V169_FIX: 경계 밖 빼꼼 (눈은 항상 가시)
+      else if(r < 0.90) busy = MOVE_STAY_MIN_MS + Math.random() * MOVE_STAY_RANGE_MS; // V169_FIX: 장기 머무름 60~180초 (깜빡임은 독립 엔진이라 계속)
+      else busy = moverPeekOut(m, b, null, MOVE_STAY_MIN_MS + Math.random() * MOVE_STAY_RANGE_MS); // V169_FIX: 빼꼼 자세로 장기 눌러앉기
     }
     m.t.push(setTimeout(function(){ moverStep(m); }, busy + MOVE_IDLE_MIN_MS + Math.random() * MOVE_IDLE_RANGE_MS));
   }
@@ -28654,13 +29035,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         if(!moverReg.has(m)) return; // 이미 정리됨
         img.src = res.url;
         if(res.urlClosed) blinkAttach(img, res.url, res.urlClosed); // 깜빡임은 이동 중에도 프레임 스왑으로 계속
+        try{ ensureManifest().then(function(mani){ m.eyes = computeEyeFracs(mani, res); }, function(){}); }catch(e){} // V169_FIX: 경계 밖 빼꼼용 눈 경계(실패 시 폴백 유지)
         var host = moverHostOf(m);
         if(host !== m.host){ m.host = host; try{ host.appendChild(wrap); }catch(e){} }
         var b = moverBounds(m);
         moverSizeSync(m, b);
         moverSetPos(m, Math.random() * b.mx, Math.random() * b.my, 0); // 시작 위치 랜덤(관전자마다 달라도 무방)
         m.t.push(setTimeout(function(){ moverStep(m); }, 400 + Math.random() * 2200)); // 위상 랜덤
-      }, function(){ moverDestroy(m); }); // bake 실패 → 오버레이 조용히 제거(칸엔 기존 콘텐츠가 이미 있음)
+      }, function(){
+        moverDestroy(m); // bake 실패 → 오버레이 조용히 제거(칸엔 기존 콘텐츠가 이미 있음)
+        moverRetryBackoffUntil = Date.now() + 8000; // V169_FIX: watchdog 재부착이 5초 내 복귀를 담당하되 실패 직후 폭주는 방지
+      });
       return m;
     }catch(e){ return null; }
   }
@@ -28672,19 +29057,65 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         if(!m.root.isConnected){ moverDestroy(m); return; }
         if(!m.t.length) m.t.push(setTimeout(function(){ moverStep(m); }, 300 + Math.random() * 1200));
       });
+      try{ moverWatchdog(); }catch(e){} // V169_FIX: 숨김 중 파괴된 mover도 복귀 즉시 재부착
     }
   });
+  /* V169_FIX(사라짐 자가회복): move 모드 캐릭터가 어떤 재렌더 경로에서든 소실되면 5초 안에 복귀시킨다.
+     소실 경로 실측/분석: ① 타일이 잠시 떨어진 사이(놀이터/미니 전환, 로스터 재구성) moverStep·moverSweep이
+     "isConnected 아님"으로 컨트롤러를 파괴 → 같은 tileKey로 캐시 타일이 재부착되면 attachMover가 다시 불리지 않음.
+     ② bake 일시 실패(manifest/PNG 네트워크 흔들림) 시 attachMover가 오버레이를 제거한 채 재시도 없음.
+     ③ 저사양 동결(moverFreeze) 후 해제돼도 타이머가 재개되지 않음.
+     감시는 2.5초 주기(hidden이면 건너뜀), "#grid 안 move 모드 타일인데 mover가 없거나 타이머가 죽은 것"만 되살린다.
+     재부착은 기존 attachMover(멱등: 내부 moverSweep이 이전 컨트롤러 정리)라 타이머·DOM 누수가 없다. */
+  var moverRetryBackoffUntil = 0; // bake 연속 실패 시 재부착 폭주 방지 (attachMover 실패 콜백이 갱신)
+  function moverOf(root){
+    var found = null;
+    moverReg.forEach(function(m){ if(m.root === root) found = m; });
+    return found;
+  }
+  function moverWatchdog(){
+    try{
+      if(document.hidden || blinkLowSpec()) return;
+      moverReg.forEach(function(m){ if(!m.root.isConnected) moverDestroy(m); }); // 떨어진 타일의 잔여 컨트롤러 즉시 정리(장기 머무름 타이머가 붙잡는 DOM 해제)
+      var b = bridge();
+      if(!b || typeof b.participantOf !== 'function') return;
+      var tiles = document.querySelectorAll('#grid .tile[data-uid]');
+      for(var i = 0; i < tiles.length; i++){
+        var el = tiles[i];
+        if(!el.isConnected) continue;
+        var p = b.participantOf(el.dataset.uid || '');
+        if(!p || moveModeOf(p) !== 'move') continue;
+        var m = moverOf(el);
+        if(!m){
+          if(Date.now() < moverRetryBackoffUntil) continue; // bake 실패 직후 잠시 대기
+          attachMover(el, p);
+        }else if(!m.t.length){
+          moverStep(m); // 동결/유실된 타이머 재개 (moverStep이 재스케줄까지 담당)
+        }
+      }
+    }catch(e){}
+  }
+  setInterval(moverWatchdog, 2500); // hidden 탭에선 스로틀돼도 무방 — 어차피 hidden이면 즉시 return
   function moveDebug(){ // 검증용
     var timers = 0, list = [];
     moverReg.forEach(function(m){
       timers += m.t.length;
       list.push({ connected: m.root.isConnected, inHandcam: m.host !== m.root, x: m.x, y: m.y,
-                  w: m.host.clientWidth || 0, h: m.host.clientHeight || 0 });
+                  w: m.host.clientWidth || 0, h: m.host.clientHeight || 0,
+                  s: parseFloat(m.wrap.style.width) || 0, eyes: m.eyes || null }); // V169_FIX: 경계 밖 빼꼼 검증용
     });
     return { movers: moverReg.size, pendingTimers: timers, attach: stats.moverAttachCount, list: list };
   }
   function moveStepNow(){ // 검증용: 대기 없이 즉시 다음 행동
     moverReg.forEach(function(m){ m.t.forEach(clearTimeout); m.t.length = 0; moverStep(m); });
+  }
+  function movePeekOutNow(edge){ // V169_FIX 검증용: 모든 mover가 즉시 지정 변으로 경계 밖 빼꼼
+    moverReg.forEach(function(m){
+      m.t.forEach(clearTimeout); m.t.length = 0;
+      var b = moverBounds(m);
+      var busy = moverPeekOut(m, b, edge);
+      m.t.push(setTimeout(function(){ moverStep(m); }, busy + MOVE_IDLE_MIN_MS));
+    });
   }
 
   /* ---------- bake: 오프스크린 캔버스 1회 합성 (착장 시그니처가 바뀔 때만 재합성) ----------
@@ -28705,6 +29136,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var pr = ensureManifest().then(function(mani){
       var layers = [];
       Z_ORDER.forEach(function(cat){
+        if(cat === 'acc'){
+          /* V169_SHOP: acc 다중(최대 3) — 착용 순서대로 같은 z에 겹침(Z_ORDER 순회 순서가 곧 안정 순서) */
+          var accs = Array.isArray(parts.acc) ? parts.acc : (parts.acc ? [parts.acc] : []);
+          if(!mani.folders.acc) return;
+          accs.forEach(function(n){
+            if(mani.files.acc && mani.files.acc[n]) layers.push({ cat: 'acc', name: n, adjKey: 'acc', url: urlFor(mani, 'acc', n) });
+          });
+          return;
+        }
         var name, adjKey, srcCat;
         if(cat === 'hair_back'){
           name = parts.hair ? (mani.hairBackOf[parts.hair] || null) : null;
@@ -28828,13 +29268,24 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
 
   var rerenderTimer = 0;
+  /* V169_FIX(반영 지연): 기존에는 200ms setTimeout 뒤에만 내 타일을 다시 그렸다.
+     크롬이 백그라운드/가림 창에서 타이머를 1초~1분 단위로 지연시키면 로컬 변경이
+     RTDB 왕복 에코(디바운스 1.5초+왕복)를 탄 렌더에서야 보였다(실측: 200ms 타이머가 +1002ms에 발화).
+     → 사용자 이벤트 핸들러 안에서 같은 프레임에 동기 재렌더하고, 200ms 후 1회만 재확인한다. */
+  function selfRerenderNow(){
+    var b = bridge();
+    if(!b) return false;
+    try{ return !!b.rerenderTiles(b.selfUid()); }catch(e){ return false; }
+  }
+  var lastSelfRerenderMs = 0;
   function scheduleSelfRerender(){
+    var now = Date.now();
+    if(now - lastSelfRerenderMs > 150){ // 연타 방호: 꾸미기 hue 슬라이더 드래그(input마다 persist)는 첫 이벤트만 즉시
+      lastSelfRerenderMs = now;
+      selfRerenderNow(); // 같은 프레임 즉시 반영 (bake는 시그니처 캐시라 재합성 없음)
+    }
     clearTimeout(rerenderTimer);
-    rerenderTimer = setTimeout(function(){
-      var b = bridge();
-      if(!b) return;
-      try{ b.rerenderTiles(b.selfUid()); }catch(e){}
-    }, 200);
+    rerenderTimer = setTimeout(function(){ lastSelfRerenderMs = Date.now(); selfRerenderNow(); }, 200); // 버스트 꼬리/경합 보정
   }
   function onLocalCharaChanged(){ // 꾸미기 모달 persist() 인라인 훅이 호출
     localCacheLoaded = false;
@@ -28975,6 +29426,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     getMyMode: getMyMode,
     moveDebug: moveDebug,         // 검증용: {movers,pendingTimers,attach,list}
     moveStepNow: moveStepNow,     // 검증용: 대기 없이 즉시 다음 행동
+    /* V169_FIX: 자가회복/경계 밖 빼꼼 API */
+    moverWatchdog: moverWatchdog,     // 검증용: 감시 1회 즉시 실행 (2.5초 주기와 동일 로직)
+    movePeekOutNow: movePeekOutNow,   // 검증용: (edge?) 즉시 경계 밖 빼꼼
+    computeEyeFracs: computeEyeFracs, // 검증용: (mani,res) → {top,bot,xmin,xmax}
     __testSelfUid: null        // 검증용: selfUid 강제 지정 (Firebase 없이 내 타일 경로 테스트)
   };
 })();
