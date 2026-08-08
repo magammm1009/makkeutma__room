@@ -5684,6 +5684,8 @@ body.joined #preJoinCard{ display:none; }
 <button class="primary" id="joinBtn">입장</button>
 <button class="primary" disabled="" id="leaveBtn">퇴장</button>
 <span class="meMini" id="meHint">—</span>
+<!-- V169: 절약 모드는 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 —
+     파일 끝 V169 블록 CSS(#dataSaverBtn{display:none})로만 숨긴다. 추후 점검 시 이 기능 점검 포함할 것. -->
 <button class="ghost" disabled="" id="dataSaverBtn" title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
 <button aria-pressed="false" class="ghost perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃 경량</button>
 <button aria-pressed="false" class="ghost perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶 저사양</button>
@@ -5884,6 +5886,25 @@ body.joined #preJoinCard{ display:none; }
 </select>
 <input id="showPetInPhotoSlot" style="display:none;" type="checkbox"/>
 <span class="tiny">사진칸 또는 이모지칸 중 하나에 현재 선택한 펫을 보여줘요. 사진과 이모지는 삭제되지 않아요.</span>
+</div>
+<!-- V169: 캐릭터 보여주기 — 꾸민 캐릭터를 프로필 타일에 표시 (동작은 파일 끝 V169_CHARA_TILE_DISPLAY 블록) -->
+<div class="row" id="charaDisplayRow">
+<label>✨캐릭터 보여주기</label>
+<select id="charaDisplaySlot">
+<option value="none">표시 안 함</option>
+<option value="photo">사진칸에 캐릭터</option>
+<option value="emoji">이모지칸에 캐릭터</option>
+</select>
+<span class="tiny">꾸민 캐릭터를 사진칸/이모지칸에 보여줘요. 펫과 다른 칸을 고르면 캐릭터와 펫이 동시에 보여요.</span>
+</div>
+<!-- V169_MOVE: 캐릭터 움직임 — 서 있기/움직이기 (동작은 파일 끝 V169_CHARA_TILE_DISPLAY 블록) -->
+<div class="row" id="charaMotionRow">
+<label>✨캐릭터 움직임</label>
+<select id="charaMotionMode">
+<option value="stand">🧍 서 있기</option>
+<option value="move">🚶 움직이기</option>
+</select>
+<span class="tiny">움직이기를 고르면 캐릭터가 내 프로필 타일 안을 자유롭게 돌아다녀요. 캐릭터 보여주기를 켰을 때만 골라요.</span>
 </div>
 <div class="row" id="petSlotBgRow">
 <label>🐾펫 배경</label>
@@ -11855,7 +11876,7 @@ function buildCurrentProfilePayload({uid, name, theme, bubbleText, autoBreakMin,
   const safeName = String(name || '').trim().slice(0, 40);
   const safeBubble = String(bubbleText || '').trim().slice(0, 15);
   const safeTheme = Object.assign({}, theme || defaultTheme());
-  return {
+  const out = {
     uid: String(uid || ''),
     name: safeName,
     bubbleText: safeBubble,
@@ -11867,6 +11888,14 @@ function buildCurrentProfilePayload({uid, name, theme, bubbleText, autoBreakMin,
     updatedAtMs: now,
     source: source || 'profile_current_v103'
   };
+  // V169: 프로필 저장은 profiles/{uid}를 rSet(전체 덮어쓰기)하므로, 별도 경로로 저장되는
+  // 캐릭터 공개 데이터(charaV1)가 유실되지 않게 현재 로컬 착장을 payload에 동봉한다.
+  try{
+    const c = (window.__MK_CHARA_TILE_V169__ && typeof window.__MK_CHARA_TILE_V169__.buildCharaV1 === "function")
+      ? window.__MK_CHARA_TILE_V169__.buildCharaV1() : null;
+    if(c) out.charaV1 = c;
+  }catch(e){}
+  return out;
 }
 
 async function ensureCurrentProfileMirror(existingPresence){
@@ -15552,6 +15581,8 @@ async function sendChatCore(text, isFlush=false){
         petSlotBgColor:p.theme?.petSlotBgColor,
         petSlotBgTransparent:p.theme?.petSlotBgTransparent,
         petFullCount:p.theme?.petFullCount, petFullTotal:p.theme?.petFullTotal,
+        // V169: 캐릭터 표시(슬롯/착장/색조)가 바뀌면 해당 타일만 재렌더되도록 키에 포함
+        charaTile:(window.__MK_CHARA_TILE_V169__ ? window.__MK_CHARA_TILE_V169__.tileKeyOf(p) : ""),
         bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl, photoEnabled:p.theme?.photoEnabled, showPet:p.theme?.showPetInPhotoSlot, petDisplaySlot:p.theme?.petDisplaySlot, petId:p.theme?.petSlotId, petLv:p.theme?.petSlotLv,
         // ✅ text colors (added v47): must be part of key so tile rerenders when only text colors change
         nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
@@ -15641,6 +15672,8 @@ async function sendChatCore(text, isFlush=false){
       statusLeft.appendChild(b);
       statusLeft.appendChild(namePill);
       // ✅ V130: 만렙 펫 현황을 개인 프로필 타일 상단 영역에 항상 표시(0개도 현황으로 노출)
+      // V169: 펫 메달은 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 —
+      // 파일 끝 V169 블록 CSS(.petFullTileBadge{display:none})로만 숨긴다. 추후 점검 시 이 기능 점검 포함할 것.
       try{
         const fullCnt2 = Math.max(0, Math.floor(Number(p.theme?.petFullCount ?? p.petFullCount ?? 0)));
         const fullTotal2 = Math.max(1, Math.floor(Number(p.theme?.petFullTotal ?? p.petFullTotal ?? 21)));
@@ -15657,6 +15690,8 @@ async function sendChatCore(text, isFlush=false){
         statusLeft.appendChild(petMedal);
       }catch(e){}
 
+      // V169: 미션 메달은 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 —
+      // 파일 끝 V169 블록 CSS(.missionMedal{display:none})로만 숨긴다. 추후 점검 시 이 기능 점검 포함할 것.
       const medal = document.createElement("div");
       medal.className = "missionMedal hidden";
       medal.textContent = "👑";
@@ -15676,6 +15711,8 @@ t.style.setProperty("--photoSize", photoSize + "px");
 const avatar = document.createElement("div");
 avatar.className = "avatar";
 const petDisplaySlot = normalizePetDisplaySlot(p.theme || {});
+// V169: 캐릭터 표시 슬롯 — 설정 UI가 같은 칸 동시 지정을 막지만, 원격 레코드가 충돌하면 캐릭터가 그 칸을 차지한다.
+const charaSlot = (window.__MK_CHARA_TILE_V169__ ? window.__MK_CHARA_TILE_V169__.slotOf(p) : "none");
 
 const emoBg = clampHexColor(p.theme?.emojiBg || "#2b2b2b");
 const emoBgTransparent = (p.theme?.emojiBgTransparent === true || p.theme?.emojiBgTransparent === "true");
@@ -15694,7 +15731,11 @@ if(emoBgTransparent){
   avatar.style.borderColor = hexToRgba(emoBg, 0.95);
 }
 
-if(petDisplaySlot === "emoji"){
+if(charaSlot === "emoji"){
+  // V169: 이모지칸에 캐릭터 (펫 모션 클래스는 붙이지 않음 — 정지 표시)
+  avatar.textContent = "";
+  window.__MK_CHARA_TILE_V169__.fillSlot(avatar, p);
+}else if(petDisplaySlot === "emoji"){
   avatar.textContent = "";
   fillPetSlotBox(avatar, p, { nameTag:true });
 }else{
@@ -15707,7 +15748,10 @@ const idPhoto = document.createElement("div");
 idPhoto.className = "idPhoto" + (photoEnabled ? "" : " photoOff");
 
 if(photoEnabled){
-  if(petDisplaySlot === "photo"){
+  if(charaSlot === "photo"){
+    // V169: 사진칸에 캐릭터 (펫 배경 시스템 재사용, 펫 모션 없음)
+    window.__MK_CHARA_TILE_V169__.fillSlot(idPhoto, p);
+  }else if(petDisplaySlot === "photo"){
     fillPetSlotBox(idPhoto, p, { nameTag:true });
   }else{
     const photoUrl = (p.theme?.photoUrl || "").trim();
@@ -15775,6 +15819,10 @@ content.appendChild(bottomStack);
 t.appendChild(bg);
       t.appendChild(shade);
       t.appendChild(content);
+
+      // V169_MOVE: 움직이기 모드면 타일 루트에 캐릭터 오버레이 부착(칸에는 기존 콘텐츠 유지).
+      // attachMover가 모드/저사양 판정과 이전 컨트롤러 정리를 모두 담당한다.
+      try{ if(window.__MK_CHARA_TILE_V169__ && window.__MK_CHARA_TILE_V169__.attachMover) window.__MK_CHARA_TILE_V169__.attachMover(t, p); }catch(e){}
 
       state.lastRendered.set(p.id, { key, el: t, timeEl: (timer && timer.querySelector) ? timer.querySelector('.time') : null });
       return t;
@@ -17096,6 +17144,8 @@ t.appendChild(bg);
         if((merged.bubbleText === undefined || merged.bubbleText === null) && prof.bubbleText !== undefined){
           merged.bubbleText = String(prof.bubbleText || "").slice(0, 15);
         }
+        // V169: 캐릭터 공개 데이터(charaV1)는 profiles/{uid}에서만 오는 값 — 타일 렌더가 읽도록 그대로 전달
+        try{ if(prof.charaV1 && typeof prof.charaV1 === "object") merged.charaV1 = prof.charaV1; }catch(e){}
         const hasPetFullPublic = !!(prof && (((prof.theme||{}).petFullCount !== undefined) || prof.petFullCount !== undefined));
         if(!hasPetFullPublic) return merged;
         const inf = normalizePetFullPublicInfo(prof);
@@ -17111,6 +17161,40 @@ t.appendChild(bg);
       }catch(e){}
       return p;
     }
+
+    // V169: 캐릭터 타일 표시 브리지 — 파일 끝 append 블록(V169_CHARA_TILE_DISPLAY)이
+    // 모듈 내부(state/renderTile/RTDB 쓰기)에 접근하는 최소 통로. 이 외 내부 심볼은 노출하지 않는다.
+    window.__MK_CHARA_TILE_BRIDGE__ = {
+      selfUid(){ try{ return String(state.uid || ""); }catch(e){ return ""; } },
+      roomId(){ try{ return String(state.roomId || ""); }catch(e){ return ""; } },
+      joined(){ try{ return !!state.joined; }catch(e){ return false; } },
+      // 내 profiles/{uid} 공개본의 charaV1 (입장 직후 동기화 판단용 — 같으면 재쓰기 생략)
+      myRemoteCharaV1(){ try{ return state.publicProfiles?.get?.(String(state.uid || ""))?.charaV1 || null; }catch(e){ return null; } },
+      // charaV1 부분 키 쓰기(11801행 패턴과 동일한 multi-path update). 호출측(append 블록)이 1.5초 디바운스를 보장한다.
+      async writeCharaV1(payload){
+        if(!state.uid || !state.roomId || !payload || typeof payload !== "object") return false;
+        const updates = {};
+        updates[`${rRoomBase(state.roomId)}/profiles/${state.uid}/charaV1`] = payload;
+        updates[`${rRoomBase(state.roomId)}/profiles/${state.uid}/updatedAtMs`] = Date.now();
+        await rUpdate(rRef(rtdb), updates);
+        return true;
+      },
+      // uid 지정 시 해당 타일만 캐시 무효화 후 현재 명단으로 다시 그림 (applyProfile의 즉시 반영 패턴)
+      rerenderTiles(uid){
+        try{
+          if(uid) state.lastRendered?.delete?.(String(uid));
+          else state.lastRendered?.clear?.();
+          const arr = Array.from(state.currentParticipants?.values?.() || []).filter(Boolean)
+            .map(p=>{ try{ return mergePublicProfileIntoParticipant(p); }catch(e){ return p; } });
+          const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+          sortPresenceArr(onlineArr);
+          renderGridTilesOrRoster(onlineArr);
+          return true;
+        }catch(e){ return false; }
+      },
+      // 검증 훅: Firebase 없이 가짜 로스터 레코드로 렌더 경로(renderTile)를 직접 호출
+      renderTileForTest(p){ try{ return renderTile(p); }catch(e){ return null; } }
+    };
 
     // ✅ V158: 구독 재연결 순간에도 내 타일/프로필이 사라지지 않게 로컬 그림자 레코드 유지
     function buildLocalSelfPresenceShadow_(base=null){
@@ -20155,9 +20239,13 @@ try{
           e.preventDefault();
           if(!els.joinBtn.disabled) 
 // restore read-saver preference
+// ✅ V169: 절약 모드 은퇴 — 저장된 선호를 더 이상 복원하지 않는다.
+// (버튼이 숨겨진 상태에서 과거 "0"이 복원되면 절약 상태(채팅만 실시간)에 갇혀 빠져나올 수 없음.
+//  setNonChatEnabled 등 로직 자체는 보존 — 추후 점검 시 절약 모드 점검 포함할 것.)
 try{
-  const v = localStorage.getItem("mk_nonchat_enabled");
-  if(v === "0"){ state.nonChatEnabled = false; }
+  if(localStorage.getItem("mk_nonchat_enabled") === "0"){
+    localStorage.setItem("mk_nonchat_enabled", "1"); // 과거 사용자 구제: 실시간으로 정상화
+  }
 }catch(e){}
 try{
   const b = document.getElementById("dataSaverBtn");
@@ -20487,6 +20575,8 @@ joinRoom();
       if(!shouldRestore) return false;
 
       petCloudSaveLocal(remoteState);
+      // ✅ V169: 백업 payload에 실린 선택 펫 3마리(mkPetPicks)도 복구한다. 헬퍼는 파일 끝 V169 블록이 붙인다.
+      try{ if(typeof window.__MK_PET_PICKS_RESTORE_V169__ === 'function') window.__MK_PET_PICKS_RESTORE_V169__(remote); }catch(e){}
       if(token) petCloudMarkApplied(nick, token);
       petCloudLastHash = petCloudDigest(remoteState);
 
@@ -20554,7 +20644,10 @@ joinRoom();
 
       const payload = petCloudBackupPayload(nick, st, {
         updatedBy:'client',
-        backupReason:reasonStr
+        backupReason:reasonStr,
+        // ✅ V169: 선택 펫 3마리(mk_pet_picks)도 백업에 함께 실어 복구 시 되살린다.
+        // 헬퍼는 파일 끝 V169 블록이 window에 붙인다. 유효한 3마리가 아니면 빈 객체(키 미포함).
+        ...(typeof window.__MK_PET_PICKS_BACKUP_V169__ === 'function' ? window.__MK_PET_PICKS_BACKUP_V169__() : {})
       });
 
       // ✅ V156 펫 기록 단조 증가(감소 금지) 안전장치
@@ -25498,7 +25591,15 @@ if(!window.__MK_BOOT_OK__){
       const stBefore = loadState();
       const id = isPetId(stBefore.activePetId) ? stBefore.activePetId : (isPetId(stBefore.growingPetId) ? stBefore.growingPetId : 'cat');
       const before = Number(stBefore.pets?.[id]?.totalSec || 0);
-      addGrowth(safeDelta, false);
+      // ✅ V169: 코인 지갑(mk_chara_stats) + 선택 펫 3마리(mk_pet_picks) 동시 성장으로 교체.
+      // accrueV169는 파일 끝 V169_PET_PICKS_AND_WALLET 블록이 __MK_PET_V24__에 붙인다.
+      // 아직 안 붙었으면(로딩 직후 극초기 tick) 기존 단일 펫 적립으로 폴백 — 중복 적립 없음.
+      // 원래 줄: addGrowth(safeDelta, false);
+      if(window.__MK_PET_V24__ && typeof window.__MK_PET_V24__.accrueV169 === 'function'){
+        window.__MK_PET_V24__.accrueV169(safeDelta);
+      }else{
+        addGrowth(safeDelta, false);
+      }
       const stAfter = loadState();
       const after = Number(stAfter.pets?.[id]?.totalSec || 0);
       window.__MK_PET_DEBUG__.petId = id;
@@ -25516,7 +25617,7 @@ if(!window.__MK_BOOT_OK__){
       try{ renderAll(); }catch(e){}
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState, /* V169: 파일 끝 V169 블록(코인+선택 펫 3마리 성장/피커)이 쓰는 내부 노출 */ saveState, clampSec, levelOf, isPetId, MAX_SEC, LEVEL_SEC, MAX_LEVEL, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 
@@ -26939,6 +27040,1945 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
 }
 </style>
+
+<!-- V169_CHARA_DRESSUP_MODAL: 펫 상세보기 모달 → "캐릭터 꾸미기" 좌/우 2컬럼 개편
+  - 참조 구현: 캐릭터꾸미기앱.html (manifest 로드 / _back 페어링 / Z_RANK 레이어 / hue·채도·명도 색상 조절)
+  - 파츠 로딩: assets_배포/manifest.json (?t 캐시 버스터, _version 값을 PNG ?v 캐시 버스터로 사용)
+  - 저장: localStorage mk_chara_state 만 사용. RTDB에는 아무것도 쓰지 않는다(타인 표시용 avatars 노드는 후속 패치).
+  - 기존 펫 상세 UI(petV24Body)는 삭제하지 않고 숨긴 채 유지 → renderModal() 갱신 무해 + 후속 패치가 재활용 가능.
+  - 타이머/성장/코인 적립, 펫 메달/미션 메달/절약 모드, petCloud*, Firebase 코드는 일절 건드리지 않는다. -->
+<style id="v169CharaDressupModal">
+  /* 2컬럼 레이아웃에 맞게 모달 폭 소폭 확장 */
+  #petModal.petModalV2 .modal{ width:min(1200px,96vw); }
+
+  /* 기존 펫 상세 본문은 숨긴 채 유지 (id 갱신은 계속 일어나도 무해) */
+  #petModal.petModalV2 .petV24Body.mkCharaLegacyBody{ display:none !important; }
+
+  .mkCharaBody{
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);
+    gap:12px;
+    padding:14px 16px 16px;
+    height:calc(100svh - 130px);
+    max-height:780px;
+    box-sizing:border-box;
+  }
+  .mkCharaLeft{ display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0; overflow:hidden; }
+  .mkCharaBody .mkCharaSection{ border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(255,255,255,.035); padding:12px; box-sizing:border-box; }
+
+  /* ── ① 내 펫 칸 (펫 선택 UI는 후속 패치가 #mkMyPetsSlot 안에 구현) ── */
+  .mkMyPetsBox{ flex:0 0 auto; }
+  .mkMyPetsRow{ display:flex; align-items:center; gap:12px; min-height:96px; }
+  #petModal.petModalV2 .mkMyPetsRow .petCurrentArt{
+    flex:0 0 auto; width:104px; height:104px; min-height:104px; padding:4px; border-radius:16px;
+  }
+  #petModal.petModalV2 .mkMyPetsRow .petStageArt.current{ width:92px !important; height:92px !important; }
+  #petModal.petModalV2 .mkMyPetsRow .petSizeControlsV24{ display:none !important; }
+  .mkMyPetsCaption{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:0 1 auto; }
+  #petModal.petModalV2 .mkMyPetsCaption h4{ margin:0; font-size:15px; letter-spacing:-.4px; color:rgba(255,255,255,.92); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #petModal.petModalV2 .mkMyPetsCaption .lv{ font-weight:1100; color:#ff91c4; font-size:12px; }
+  .mkMyPetsSlot{ flex:1 1 auto; align-self:stretch; min-height:88px; min-width:0; border:1.5px dashed rgba(255,255,255,.16); border-radius:14px; background:rgba(0,0,0,.14); display:flex; align-items:center; justify-content:center; }
+  .mkMyPetsSlot:empty::after{ content:"펫 선택 칸 — 곧 열려요 🐾"; font-size:11.5px; font-weight:800; color:rgba(255,255,255,.42); padding:0 8px; text-align:center; }
+
+  /* ── ② 파츠 그리드 — 좌측 컬럼에서 이 영역만 세로 스크롤 ── */
+  .mkPartsBox{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  .mkCharaTabs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; flex:0 0 auto; }
+  .mkCharaTab{ border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:rgba(255,255,255,.72); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:900; cursor:pointer; line-height:1.2; min-width:auto !important; }
+  .mkCharaTab .cnt{ font-size:10px; opacity:.6; margin-left:3px; }
+  .mkCharaTab:hover{ border-color:rgba(255,141,194,.45); }
+  .mkCharaTab.on{ border-color:#ff8dc2; background:rgba(255,141,194,.16); color:#ffd2e7; box-shadow:0 0 0 1px rgba(255,141,194,.25); }
+  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
+  .mkCharaThumb{ position:relative; aspect-ratio:1/1; border:2px solid transparent; border-radius:14px; overflow:hidden; cursor:pointer; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
+  .mkCharaThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkCharaThumb:hover{ border-color:rgba(255,141,194,.45); }
+  .mkCharaThumb.on{ border-color:#ff8dc2; box-shadow:0 0 0 2px rgba(255,141,194,.22); }
+  .mkCharaThumb.on::after{ content:"✓"; position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%; background:#ff8dc2; color:#1b1720; font-size:11px; font-weight:1000; display:flex; align-items:center; justify-content:center; }
+  .mkCharaThumb.noneTile{ display:flex; flex-direction:column; gap:2px; align-items:center; justify-content:center; color:rgba(255,255,255,.55); font-size:11px; font-weight:900; background:rgba(255,255,255,.04); }
+  .mkCharaThumb.noneTile .ic{ font-size:18px; }
+  /* ── V169 3차: 파츠 상점 — 미보유 잠금 톤 + 가격 배지 + 구매 확인 ── */
+  .mkCharaThumb.mkLocked img{ filter:grayscale(.4) brightness(.72); opacity:.9; }
+  .mkCharaThumb.mkLocked:hover img{ filter:grayscale(.15) brightness(.9); }
+  .mkCharaPrice{
+    position:absolute; right:4px; bottom:4px; padding:2px 6px; border-radius:999px; pointer-events:none;
+    font-size:9.5px; font-weight:1000; font-variant-numeric:tabular-nums;
+    color:#ffe9b8; background:rgba(10,8,4,.72); border:1px solid rgba(255,216,92,.45);
+  }
+  #mkCharaBuyOv{
+    position:fixed; inset:0; z-index:10190; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,5,10,.62); padding:16px; box-sizing:border-box;
+  }
+  .mkCharaBuyPanel{
+    width:min(340px,92vw); border:1px solid rgba(255,255,255,.16); border-radius:18px; padding:18px 16px 14px;
+    background:linear-gradient(180deg,rgba(15,18,29,.99),rgba(10,12,19,.99));
+    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 30px rgba(255,216,92,.08);
+    display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
+  }
+  .mkCharaBuyThumb{ width:84px; height:84px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.12); background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
+  .mkCharaBuyThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkCharaBuyMsg{ font-size:13px; font-weight:1000; color:rgba(255,255,255,.92); line-height:1.6; letter-spacing:-.3px; word-break:break-all; }
+  .mkCharaBuyCoins{ font-size:11px; color:rgba(255,255,255,.55); font-variant-numeric:tabular-nums; }
+  .mkCharaBuyBtns{ display:flex; gap:8px; margin-top:2px; }
+  #mkCharaBuyOk{ border:1px solid rgba(255,216,92,.55); background:rgba(255,216,92,.14); color:#ffe9b8; border-radius:999px; padding:8px 18px; font-size:12.5px; font-weight:1000; cursor:pointer; min-width:auto !important; }
+  #mkCharaBuyOk:hover{ background:rgba(255,216,92,.22); }
+  #mkCharaBuyCancel{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.8); border-radius:999px; padding:8px 16px; font-size:12.5px; font-weight:900; cursor:pointer; min-width:auto !important; }
+
+  .mkCharaMsg{ grid-column:1 / -1; padding:22px 8px; text-align:center; color:rgba(255,255,255,.55); font-size:12.5px; line-height:1.7; }
+  .mkCharaRetryBtn{ margin-top:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:900; cursor:pointer; min-width:auto !important; }
+
+  /* ── ③ 조합칸: 카테고리별 장착 요약 + 색상 조절 ── */
+  .mkComboBox{ flex:0 0 auto; }
+  .mkCharaCombo{ display:grid; grid-template-columns:repeat(auto-fit,minmax(58px,1fr)); gap:8px; }
+  .mkComboSlot{ border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.16); border-radius:14px; padding:6px 4px 5px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; min-width:auto !important; }
+  .mkComboSlot:hover{ border-color:rgba(255,141,194,.45); }
+  .mkComboSlot.on{ border-color:#ff8dc2; box-shadow:0 0 0 1px rgba(255,141,194,.22); }
+  .mkComboSlot .th{ width:44px; height:44px; border-radius:10px; overflow:hidden; background:#1b1720; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); font-size:10px; font-weight:900; }
+  .mkComboSlot .th img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkComboSlot b{ font-size:10.5px; color:rgba(255,255,255,.72); letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .mkCharaColorPanel{ margin-top:10px; border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:10px 12px; }
+  .mkCharaColorPanel.off{ opacity:.45; }
+  .mkCharaColorHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:1000; color:rgba(255,255,255,.85); margin-bottom:8px; }
+  .mkCharaColorHead b{ color:#ffd2e7; }
+  #mkCharaColorReset{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; }
+  .mkCharaSliderRow{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .mkCharaSliderRow:last-child{ margin-bottom:0; }
+  .mkCharaSliderRow label{ flex:0 0 30px; font-size:11px; font-weight:900; color:rgba(255,255,255,.62); }
+  .mkCharaSliderRow input[type="range"]{ flex:1; accent-color:#ff8dc2; min-width:0; }
+  .mkCharaSliderRow .val{ flex:0 0 42px; text-align:right; font-size:11px; color:rgba(255,255,255,.62); font-variant-numeric:tabular-nums; }
+
+  /* ── 우측: 미리보기 무대 — 작업방 테마와 무관하게 다크 고정(#1b1720, 펫 슬롯 기본 배경 계열) ── */
+  .mkCharaRight{ min-width:0; min-height:0; display:flex; flex-direction:column; }
+  .mkCharaStageCard{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  .mkCharaStageWrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; }
+  #mkCharaStage{ position:relative; height:100%; max-height:100%; aspect-ratio:1/1; max-width:100%; border-radius:18px; overflow:hidden; background:#1b1720; border:1px solid rgba(255,255,255,.10); box-shadow:inset 0 0 44px rgba(0,0,0,.35); }
+  #mkCharaStage img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .mkCharaStageEmpty{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:rgba(255,255,255,.5); font-size:13px; line-height:1.7; text-align:center; padding:18px; }
+  .mkCharaStageEmpty .ic{ font-size:34px; }
+
+  /* 좁은 화면: 상하 스택(미리보기 위) — 이때는 본문 전체가 스크롤 */
+  @media (max-width:760px){
+    .mkCharaBody{ display:flex; flex-direction:column; height:auto; max-height:calc(100svh - 110px); overflow-y:auto; }
+    /* 세로 스택에서는 어떤 칸도 압축(shrink)되지 않게 — 본문 전체 스크롤이 대신한다 */
+    .mkCharaLeft{ overflow:visible; flex:0 0 auto; min-height:auto; }
+    .mkCharaLeft .mkCharaSection{ flex:0 0 auto; min-height:auto; }
+    .mkCharaRight{ order:-1; flex:0 0 auto; min-height:auto; }
+    .mkCharaStageCard{ flex:0 0 auto; }
+    .mkCharaStageWrap{ flex:0 0 auto; }
+    #mkCharaStage{ width:min(100%,320px); height:auto; margin:0 auto; }
+    .mkCharaGrid{ flex:0 0 auto; max-height:38vh; }
+    .mkMyPetsRow{ flex-wrap:wrap; }
+  }
+</style>
+<script id="v169CharaDressupScript">
+(function(){
+  'use strict';
+  var ASSET_DIR = 'assets_배포';
+  var LS_KEY = 'mk_chara_state';
+  /* 알려진 카테고리 라벨 — manifest에 새 폴더가 늘어나면 라벨이 없어도 폴더명 그대로 자동 노출 */
+  var KNOWN_LABELS = { body:'몸통', hair:'헤어', face:'얼굴', look:'룩', acc:'액세서리', facedeco:'얼굴 꾸미기', background:'배경', hair_back:'뒷머리' };
+  /* 레이어 z순서 (폴더 번호와 분리): 뒷머리10 → 몸통20 → 룩35 → 얼굴50 → 앞머리60 → 액세서리71 */
+  var Z_RANK = { background:0, hair_back:10, body:20, look:35, face:50, facedeco:55, hair:60, acc:71 };
+  var UNKNOWN_Z_BASE = 1000;
+
+  var chara = {
+    phase:'idle',   // idle | loading | ready | error
+    ver:'',         // manifest _version → PNG ?v 캐시 버스터
+    cats:[],        // [{key,order,label,parts:[{name,url}],backParts:Map}]
+    sel:{},         // { "01_body": "파일명" | null }
+    adj:{},         // { body:{h,s,b} } — 짧은 카테고리명 키, 앞·뒷머리 공유
+    active:null
+  };
+
+  function $id(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function clampNum(v,min,max,fb){ v=Number(v); if(!isFinite(v)) return fb; return Math.max(min,Math.min(max,Math.round(v))); }
+  function catName(key){ var m=String(key).match(/^\d+_(.+)$/); return (m?m[1]:String(key)).toLowerCase(); }
+  function isHairCat(key){ var n=catName(key); return n==='hair'||n==='hair_front'; }
+  function isHairBackCat(key){ return catName(key)==='hair_back'; }
+  function backPairBase(name){ var m=String(name).match(/^(.+)_back(\.png)$/i); return m ? m[1]+m[2] : null; }
+  function zRankFor(cat){ var r=Z_RANK[catName(cat.key)]; return (r===undefined) ? UNKNOWN_Z_BASE+(cat.order||0) : r; }
+  function labelFor(key){ var n=catName(key); return KNOWN_LABELS[n]||n; }
+  function visibleCats(){ return chara.cats.filter(function(c){ return !isHairBackCat(c.key); }); }
+  function activeCat(){ return chara.cats.find(function(c){ return c.key===chara.active; }) || null; }
+
+  /* 02_hair 폴더의 xxx_back.png는 그리드에 노출하지 않고 xxx.png 선택 시 자동 동반 */
+  function splitBackParts(cat){
+    cat.backParts = new Map();
+    if(!isHairCat(cat.key)) return;
+    var names = {}; cat.parts.forEach(function(p){ names[p.name]=1; });
+    var kept = [];
+    cat.parts.forEach(function(p){
+      var base = backPairBase(p.name);
+      if(base && names[base]) cat.backParts.set(base, p);
+      else kept.push(p);
+    });
+    cat.parts = kept;
+  }
+
+  /* ---------- 저장/복원: localStorage mk_chara_state ---------- */
+  function loadSaved(){
+    try{
+      var d = JSON.parse(localStorage.getItem(LS_KEY)||'null');
+      if(d && d.v===1 && d.parts && typeof d.parts==='object') return d;
+    }catch(e){}
+    return null;
+  }
+  function persist(){
+    try{
+      var parts={}, hue={};
+      chara.cats.forEach(function(c){ if(isHairBackCat(c.key)) return; parts[catName(c.key)] = chara.sel[c.key] || null; });
+      Object.keys(chara.adj).forEach(function(k){
+        var a=chara.adj[k]; if(!a) return;
+        if(a.h===0 && a.s===100 && a.b===100) return;
+        hue[k]={ h:a.h, s:a.s, b:a.b };
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify({ v:1, parts:parts, hue:hue }));
+      /* V169: 착장 저장 → 타일 캐릭터 재합성 + charaV1 디바운스 공유 (V169_CHARA_TILE_DISPLAY 블록) */
+      try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e2){}
+    }catch(e){ console.warn('[chara v169] 저장 실패', e); }
+  }
+
+  /* ---------- V169 3차: 파츠 상점 (mk_chara_owned 보유 목록 + mk_chara_stats.coins 차감) ---------- */
+  var V169_PART_PRICE_DEFAULT = 2; // manifest _prices에 없는 파츠의 폴백 가격 (2026-08-09부터 _prices가 정식 가격표)
+  var OWNED_KEY = 'mk_chara_owned';   // {"04_look/04_look_auto_11.png": true, ...} — 카테고리폴더/파일명 키
+  var STATS_KEY = 'mk_chara_stats';   // {"totalSec":누적초,"coins":코인} — 독립 꾸미기앱과의 계약, 형태 변경 금지
+  function toast(msg, ms){
+    try{
+      if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
+      var el = document.getElementById('toast');
+      if(el){
+        el.textContent = msg;
+        el.classList.add('show');
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms || 2200);
+        return;
+      }
+    }catch(e){}
+    try{ console.log(msg); }catch(e){}
+  }
+  // V169: manifest _prices("카테고리/파일명"→코인)에서 조회, 없으면 폴백. "없음"은 상점 대상 아님(항상 무료).
+  function partPrice(catKey, name){
+    var p = Number((chara.prices || {})[catKey + '/' + name]);
+    return (isFinite(p) && p > 0) ? Math.floor(p) : V169_PART_PRICE_DEFAULT;
+  }
+  function fmtCoins(n){ try{ return Number(n).toLocaleString('ko-KR'); }catch(e){ return String(n); } }
+  function ownedKeyFor(catKey, name){ return catKey + '/' + name; }
+  function loadOwned(){
+    try{
+      var d = JSON.parse(localStorage.getItem(OWNED_KEY) || 'null');
+      return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+    }catch(e){ return null; }
+  }
+  function saveOwned(o){ try{ localStorage.setItem(OWNED_KEY, JSON.stringify(o)); }catch(e){} }
+  /* 기득권 부여(1회 마이그레이션): mk_chara_owned가 없으면 생성하면서 현재 장착 파츠(+헤어 동반 뒷면)를 자동 보유 처리 */
+  function ensureOwned(){
+    var o = loadOwned();
+    if(o) return o;
+    o = {};
+    chara.cats.forEach(function(c){
+      var sel = chara.sel[c.key]; if(!sel) return;
+      o[ownedKeyFor(c.key, sel)] = true;
+      var back = c.backParts && c.backParts.get(sel);
+      if(back) o[ownedKeyFor(c.key, back.name)] = true;
+    });
+    saveOwned(o);
+    return o;
+  }
+  function isOwned(catKey, name){ var o = loadOwned(); return !!(o && o[ownedKeyFor(catKey, name)]); }
+  function grantOwned(catKey, name){
+    var o = loadOwned() || {};
+    o[ownedKeyFor(catKey, name)] = true;
+    var c = chara.cats.find(function(x){ return x.key === catKey; });
+    var back = c && c.backParts && c.backParts.get(name);
+    if(back) o[ownedKeyFor(catKey, back.name)] = true; // 헤어의 _back 자동 동반분도 함께 보유
+    saveOwned(o);
+  }
+  function readCoins(){
+    try{ var d = JSON.parse(localStorage.getItem(STATS_KEY) || 'null') || {}; return Math.max(0, Math.floor(Number(d.coins) || 0)); }
+    catch(e){ return 0; }
+  }
+  function spendCoins(n){
+    try{
+      var d = JSON.parse(localStorage.getItem(STATS_KEY) || 'null') || {};
+      var s = { totalSec: Math.max(0, Math.floor(Number(d.totalSec) || 0)), coins: Math.max(0, Math.floor(Number(d.coins) || 0)) };
+      if(s.coins < n) return false;
+      s.coins -= n;
+      localStorage.setItem(STATS_KEY, JSON.stringify(s));
+      return true;
+    }catch(e){ return false; }
+  }
+  function refreshWalletPill(){ try{ var a = window.__MK_PET_V24__; if(a && typeof a.updateWalletUI === 'function') a.updateWalletUI(); }catch(e){} }
+  function closeBuyConfirm(){ var ov = $id('mkCharaBuyOv'); if(ov && ov.parentNode) ov.parentNode.removeChild(ov); }
+  function openBuyConfirm(catKey, name){
+    closeBuyConfirm();
+    var price = partPrice(catKey, name);
+    var c = chara.cats.find(function(x){ return x.key === catKey; });
+    var part = c && c.parts.find(function(p){ return p.name === name; });
+    var ov = document.createElement('div');
+    ov.id = 'mkCharaBuyOv';
+    ov.innerHTML = '<div class="mkCharaBuyPanel">'
+      + (part ? '<div class="mkCharaBuyThumb"><img src="' + esc(part.url) + '" alt="' + esc(name) + '"></div>' : '')
+      + '<div class="mkCharaBuyMsg">『' + esc(name) + '』을(를) 🪙' + fmtCoins(price) + '로 구매할까요?</div>'
+      + '<div class="mkCharaBuyCoins">보유 코인 🪙' + readCoins().toLocaleString('ko-KR') + '</div>'
+      + '<div class="mkCharaBuyBtns"><button type="button" id="mkCharaBuyOk">🪙' + fmtCoins(price) + ' 구매</button><button type="button" id="mkCharaBuyCancel">취소</button></div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target === ov) closeBuyConfirm(); });
+    ov.querySelector('#mkCharaBuyCancel').addEventListener('click', closeBuyConfirm);
+    ov.querySelector('#mkCharaBuyOk').addEventListener('click', function(){
+      closeBuyConfirm();
+      if(!spendCoins(price)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 10초당 1코인!'); return; }
+      grantOwned(catKey, name);
+      refreshWalletPill();
+      toast('『' + name + '』 구매 완료! 바로 입혀 줄게 🪙-' + fmtCoins(price));
+      selectPart(catKey, name); // 즉시 장착 — renderGrid가 가격 배지 제거까지 처리
+    });
+  }
+
+  /* ---------- 파츠 로딩: manifest는 항상 ?t 캐시 버스터, PNG는 _version 기반 ?v ---------- */
+  function loadManifest(){
+    if(chara.phase==='loading') return;
+    chara.phase='loading'; renderChara();
+    fetch(ASSET_DIR+'/manifest.json?t='+Date.now(), { cache:'no-store' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(mf){
+        var ver = (mf && mf._version!=null && typeof mf._version!=='object') ? String(mf._version) : '';
+        chara.prices = (mf && mf._prices && typeof mf._prices==='object') ? mf._prices : {}; // V169: 파츠 가격표
+        var cats=[];
+        Object.keys(mf||{}).forEach(function(key){
+          if(key.charAt(0)==='_') return;             // _version 등 메타 키는 카테고리가 아니다
+          var files=mf[key]; if(!Array.isArray(files)) return;
+          var parts=files
+            .filter(function(f){ return typeof f==='string' && /\.png$/i.test(f); })
+            .sort()
+            .map(function(f){ return { name:f, url: ASSET_DIR+'/'+encodeURIComponent(key)+'/'+encodeURIComponent(f)+(ver?('?v='+encodeURIComponent(ver)):'') }; });
+          if(!parts.length) return;
+          cats.push({ key:key, order:parseInt(key,10)||0, label:labelFor(key), parts:parts });
+        });
+        cats.sort(function(a,b){ return (a.order-b.order) || (a.key<b.key?-1:a.key>b.key?1:0); });
+        if(!cats.length) throw new Error('manifest에 파츠 카테고리가 없음');
+        cats.forEach(splitBackParts);
+
+        chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={};
+        cats.forEach(function(c){ chara.sel[c.key]=null; });
+
+        var saved = loadSaved();
+        if(saved){
+          cats.forEach(function(c){
+            var want = saved.parts[catName(c.key)];
+            if(typeof want==='string' && c.parts.some(function(p){ return p.name===want; })) chara.sel[c.key]=want;
+          });
+          if(saved.hue && typeof saved.hue==='object'){
+            Object.keys(saved.hue).forEach(function(k){
+              var a=saved.hue[k]; if(!a || typeof a!=='object') return;
+              chara.adj[k]={ h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
+            });
+          }
+        }else{
+          // 첫 방문: 몸통 첫 파츠만 기본 장착 (저장은 사용자가 직접 만졌을 때부터)
+          var bodyCat = cats.find(function(c){ return catName(c.key)==='body' && c.parts.length; });
+          if(bodyCat) chara.sel[bodyCat.key]=bodyCat.parts[0].name;
+        }
+        if(!chara.active || !cats.some(function(c){ return c.key===chara.active && !isHairBackCat(c.key); })){
+          var first = cats.find(function(c){ return !isHairBackCat(c.key); }) || cats[0];
+          chara.active = first ? first.key : null;
+        }
+        chara.phase='ready';
+        ensureOwned(); // V169 3차: 보유 목록 없으면 현재 장착 파츠 기득권 부여(1회 마이그레이션)
+        renderChara();
+      })
+      .catch(function(err){
+        console.warn('[chara v169] 파츠 목록을 불러오지 못했어요', err);
+        chara.phase='error'; renderChara();
+      });
+  }
+
+  /* ---------- 색상 조절 (hue/채도/명도, 앞·뒷머리 공유) ---------- */
+  function getAdj(short){ return chara.adj[short] || { h:0, s:100, b:100 }; }
+  function adjShortFor(catKey){
+    if(isHairBackCat(catKey)){
+      var hc = chara.cats.find(function(c){ return isHairCat(c.key); });
+      if(hc) return catName(hc.key);
+    }
+    return catName(catKey);
+  }
+  function filterFor(catKey){
+    var a = getAdj(adjShortFor(catKey));
+    if(a.h===0 && a.s===100 && a.b===100) return '';
+    return 'hue-rotate('+a.h+'deg) saturate('+a.s+'%) brightness('+a.b+'%)';
+  }
+
+  /* ---------- 레이어 합성: z랭크 오름차순 (뒷머리→몸통→룩→얼굴→앞머리→액세서리) ---------- */
+  function stageLayers(){
+    var layers=[];
+    chara.cats.forEach(function(cat){
+      var sel=chara.sel[cat.key]; if(!sel) return;
+      var part=null;
+      for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
+      if(!part) return;
+      layers.push({ catKey:cat.key, part:part, z:zRankFor(cat) });
+      var back = cat.backParts && cat.backParts.get(sel);
+      if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); // 뒷머리 자동 동반, 색 필터는 헤어와 공유
+    });
+    return layers.map(function(l,i){ return { l:l, i:i }; })
+      .sort(function(a,b){ return (a.l.z-b.l.z) || (a.i-b.i); })
+      .map(function(x){ return x.l; });
+  }
+
+  /* ---------- 렌더러들 ---------- */
+  function renderTabs(){
+    var el=$id('mkCharaTabs'); if(!el) return;
+    el.innerHTML = visibleCats().map(function(c){
+      return '<button type="button" class="mkCharaTab'+(c.key===chara.active?' on':'')+'" data-cat="'+esc(c.key)+'">'+esc(c.label)+'<span class="cnt">'+c.parts.length+'</span></button>';
+    }).join('');
+    el.querySelectorAll('.mkCharaTab').forEach(function(b){
+      b.addEventListener('click', function(){ chara.active=b.dataset.cat; renderTabs(); renderGrid(); renderColorPanel(); renderCombo(); });
+    });
+  }
+  function renderGrid(){
+    var el=$id('mkCharaGrid'); if(!el) return;
+    if(chara.phase!=='ready'){
+      el.innerHTML = '<div class="mkCharaMsg">'+(chara.phase==='error'
+        ? '파츠 목록을 불러오지 못했어요 🥺<br><button type="button" id="mkCharaRetry" class="mkCharaRetryBtn">다시 불러오기</button>'
+        : '파츠를 불러오는 중이에요…')+'</div>';
+      var rb=$id('mkCharaRetry'); if(rb) rb.addEventListener('click', function(){ chara.phase='idle'; loadManifest(); });
+      return;
+    }
+    var cat=activeCat(); if(!cat){ el.innerHTML=''; return; }
+    var owned = ensureOwned(); // V169 3차: 파츠 상점 — 미보유 파츠는 가격 배지+잠금 톤, 클릭 시 구매 확인
+    var html = '<div class="mkCharaThumb noneTile'+(chara.sel[cat.key]===null?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="ic">🚫</span>없음</div>';
+    html += cat.parts.map(function(p){
+      var has = !!owned[ownedKeyFor(cat.key, p.name)];
+      var price = partPrice(cat.key, p.name);
+      return '<div class="mkCharaThumb'+(chara.sel[cat.key]===p.name?' on':'')+(has?'':' mkLocked')+'" data-name="'+esc(p.name)+'" title="'+esc(p.name)+(has?'':(' — 🪙'+fmtCoins(price)+'로 구매'))+'">'
+        + '<img loading="lazy" src="'+esc(p.url)+'" alt="'+esc(p.name)+'">'
+        + (has?'':('<span class="mkCharaPrice">🪙'+fmtCoins(price)+'</span>'))
+        + '</div>';
+    }).join('');
+    el.innerHTML = html;
+    el.querySelectorAll('.mkCharaThumb').forEach(function(tile){
+      tile.addEventListener('click', function(){
+        var name = tile.dataset.name || null;
+        if(name && !isOwned(cat.key, name)){ openBuyConfirm(cat.key, name); return; } // V169 3차: 미보유 → 구매 확인
+        selectPart(cat.key, name);
+      });
+    });
+  }
+  function renderCombo(){
+    var el=$id('mkCharaCombo'); if(!el) return;
+    if(chara.phase!=='ready'){ el.innerHTML=''; return; }
+    el.innerHTML = visibleCats().map(function(c){
+      var sel=chara.sel[c.key];
+      var part = sel ? c.parts.find(function(p){ return p.name===sel; }) : null;
+      var f = part ? filterFor(c.key) : '';
+      var th = part
+        ? '<span class="th"><img src="'+esc(part.url)+'" alt="'+esc(part.name)+'"'+(f?(' style="filter:'+esc(f)+'"'):'')+'></span>'
+        : '<span class="th">없음</span>';
+      return '<button type="button" class="mkComboSlot'+(c.key===chara.active?' on':'')+'" data-cat="'+esc(c.key)+'" title="'+esc(c.label)+' 탭으로 이동">'+th+'<b>'+esc(c.label)+'</b></button>';
+    }).join('');
+    el.querySelectorAll('.mkComboSlot').forEach(function(b){
+      b.addEventListener('click', function(){ chara.active=b.dataset.cat; renderTabs(); renderGrid(); renderColorPanel(); renderCombo(); });
+    });
+  }
+  function renderStage(){
+    var el=$id('mkCharaStage'); if(!el) return;
+    if(chara.phase!=='ready'){
+      el.innerHTML = '<div class="mkCharaStageEmpty"><span class="ic">'+(chara.phase==='error'?'🥺':'⏳')+'</span>'
+        + (chara.phase==='error' ? '파츠를 불러오지 못했어요.<br>네트워크 확인 후 다시 열어 주세요.' : '캐릭터를 준비하는 중…')+'</div>';
+      return;
+    }
+    var layers=stageLayers();
+    if(!layers.length){
+      el.innerHTML = '<div class="mkCharaStageEmpty"><span class="ic">🐣</span>아직 입힌 파츠가 없어요.<br>왼쪽에서 파츠를 골라 캐릭터를 만들어 보세요!</div>';
+      return;
+    }
+    el.innerHTML='';
+    layers.forEach(function(L){
+      var img=document.createElement('img');
+      img.src=L.part.url; img.alt=L.part.name;
+      img.dataset.cat=L.catKey;
+      var f=filterFor(L.catKey); if(f) img.style.filter=f;
+      el.appendChild(img);
+    });
+    try{ setupStageBlink(el); }catch(e){} // V169_BLINK: 얼굴 레이어 눈 깜빡임
+  }
+  /* ---------- V169_BLINK: 미리보기 깜빡임 ----------
+     타일 블록(v169CharaTileScript)의 감은눈 프레임 생성기/스케줄러를 재사용해
+     얼굴 <img>의 src만 원본 ↔ 감은눈 dataURL로 스왑한다(레이어 재합성·마스크 없음).
+     hue 필터는 img 스타일에 그대로 남아 두 프레임에 동일하게 적용된다. 민얼굴이면 아무것도 안 한다. */
+  function setupStageBlink(stage){
+    var api = window.__MK_CHARA_TILE_V169__;
+    if(!api || typeof api.closedFaceUrl !== 'function' || typeof api.blinkAttach !== 'function') return;
+    var img = null;
+    stage.querySelectorAll('img[data-cat]').forEach(function(im){ if(catName(im.dataset.cat)==='face') img = im; });
+    if(!img) return; // 민얼굴 — 깜빡임 없음
+    var openUrl = img.getAttribute('src');
+    api.closedFaceUrl(img.alt).then(function(closed){
+      // 비동기 사이에 재렌더/얼굴 교체가 일어났으면 부착하지 않는다
+      if(!closed || !img.isConnected || img.getAttribute('src') !== openUrl) return;
+      api.blinkAttach(img, openUrl, closed);
+    }, function(){});
+  }
+  function applyStageFilters(){
+    var el=$id('mkCharaStage'); if(!el) return;
+    el.querySelectorAll('img[data-cat]').forEach(function(img){ img.style.filter=filterFor(img.dataset.cat); });
+  }
+  function renderColorPanel(){
+    var panel=$id('mkCharaColorPanel'); if(!panel) return;
+    var cat=activeCat();
+    var on = !!(chara.phase==='ready' && cat && chara.sel[cat.key]);
+    panel.classList.toggle('off', !on);
+    ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
+    var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
+    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? cat.label : '-';
+    var a = cat ? getAdj(adjShortFor(cat.key)) : { h:0, s:100, b:100 };
+    var sh=$id('mkCharaHue'); if(sh) sh.value=a.h;
+    var ss=$id('mkCharaSat'); if(ss) ss.value=a.s;
+    var sb=$id('mkCharaBri'); if(sb) sb.value=a.b;
+    syncSliderVals(a);
+  }
+  function syncSliderVals(a){
+    var h=$id('mkCharaHueVal'); if(h) h.textContent=a.h+'°';
+    var s=$id('mkCharaSatVal'); if(s) s.textContent=a.s+'%';
+    var b=$id('mkCharaBriVal'); if(b) b.textContent=a.b+'%';
+  }
+  function onColorInput(){
+    var cat=activeCat(); if(!cat || !chara.sel[cat.key]) return;
+    var a={
+      h:clampNum(($id('mkCharaHue')||{}).value,-180,180,0),
+      s:clampNum(($id('mkCharaSat')||{}).value,0,200,100),
+      b:clampNum(($id('mkCharaBri')||{}).value,50,150,100)
+    };
+    chara.adj[adjShortFor(cat.key)]=a;
+    persist();
+    syncSliderVals(a);
+    applyStageFilters();   // 미리보기: 앞·뒷머리 레이어에 동시 반영
+    renderCombo();         // 조합칸 썸네일에도 같은 필터 반영
+  }
+  function resetColor(){
+    var cat=activeCat(); if(!cat) return;
+    delete chara.adj[adjShortFor(cat.key)];
+    persist();
+    renderColorPanel(); applyStageFilters(); renderCombo();
+  }
+  function selectPart(catKey, name){
+    chara.sel[catKey]=name;
+    persist();
+    renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel();
+  }
+  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); }
+
+  /* ---------- 모달 개편: 기존 #petModal 안에 2컬럼 본문을 만들고 옛 본문은 숨긴다 ---------- */
+  var BODY_HTML =
+      '<div class="mkCharaLeft">'
+    +   '<div class="mkCharaSection mkMyPetsBox">'
+    +     '<div class="petSectionTitle"><span>🐾 내 펫</span><span class="tiny">펫 3마리 선택은 후속 패치에서 열려요</span></div>'
+    +     '<div class="mkMyPetsRow">'
+    +       '<div id="mkMyPetsCurrent" class="mkMyPetsCurrent"></div>'
+    +       '<div id="mkMyPetsCaption" class="mkMyPetsCaption"></div>'
+    +       '<div id="mkMyPetsSlot" class="mkMyPetsSlot"><!--V169: 펫 선택은 후속 패치 — 다른 작업자가 이 컨테이너에 내 펫 3마리 선택 UI를 구현할 예정 (여기는 구조만)--></div>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="mkCharaSection mkPartsBox">'
+    +     '<div class="petSectionTitle"><span>👗 파츠 고르기</span><span class="tiny">탭을 골라 파츠를 입혀 보세요</span></div>'
+    +     '<div id="mkCharaTabs" class="mkCharaTabs"></div>'
+    +     '<div id="mkCharaGrid" class="mkCharaGrid"></div>'
+    +   '</div>'
+    +   '<div class="mkCharaSection mkComboBox">'
+    +     '<div class="petSectionTitle"><span>🧩 현재 조합</span><span class="tiny">칸을 누르면 해당 카테고리로 이동해요</span></div>'
+    +     '<div id="mkCharaCombo" class="mkCharaCombo"></div>'
+    +     '<div id="mkCharaColorPanel" class="mkCharaColorPanel">'
+    +       '<div class="mkCharaColorHead"><span>🎨 색상 조절 · <b id="mkCharaColorCat">-</b></span><button id="mkCharaColorReset" type="button">원래 색으로</button></div>'
+    +       '<div class="mkCharaSliderRow"><label for="mkCharaHue">색조</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
+    +       '<div class="mkCharaSliderRow"><label for="mkCharaSat">채도</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
+    +       '<div class="mkCharaSliderRow"><label for="mkCharaBri">명도</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="mkCharaRight">'
+    +   '<div class="mkCharaSection mkCharaStageCard">'
+    +     '<div class="petSectionTitle"><span>✨ 미리보기</span><span class="tiny">입힌 순서대로 겹쳐 보여줘요</span></div>'
+    +     '<div class="mkCharaStageWrap"><div id="mkCharaStage"></div></div>'
+    +   '</div>'
+    + '</div>';
+
+  function restructure(){
+    var ov=$id('petModal');
+    if(!ov || ov.dataset.petV2!=='v24') return false;
+    if(ov.dataset.charaV169==='1') return true;
+    var modal=ov.querySelector('.modal');
+    var legacy=ov.querySelector('.petV24Body');
+    if(!modal || !legacy) return false;
+    ov.dataset.charaV169='1';
+    var t=modal.querySelector('.modalHeader .t'); if(t) t.textContent='캐릭터 꾸미기';
+    modal.setAttribute('aria-label','캐릭터 꾸미기');
+    var body=document.createElement('div');
+    body.className='mkCharaBody';
+    body.innerHTML=BODY_HTML;
+    modal.insertBefore(body, legacy);
+    legacy.classList.add('mkCharaLegacyBody'); // 기존 펫 상세 UI는 숨긴 채 유지 (renderModal 갱신 무해)
+    // 기존 모달의 펫 표시(현재 펫 아트/이름/레벨)를 "내 펫" 칸으로 이동 — id 유지로 기존 갱신 로직 그대로 동작
+    var host=body.querySelector('#mkMyPetsCurrent');
+    var cap=body.querySelector('#mkMyPetsCaption');
+    var art=$id('petCurrentArt'); if(host && art) host.appendChild(art);
+    var nm=$id('petCurrentName'); if(cap && nm) cap.appendChild(nm);
+    var lv=$id('petCurrentLv'); if(cap && lv) cap.appendChild(lv);
+    // 색상 슬라이더 바인딩(1회)
+    ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){
+      var s=body.querySelector('#'+id); if(s) s.addEventListener('input', onColorInput);
+    });
+    var reset=body.querySelector('#mkCharaColorReset'); if(reset) reset.addEventListener('click', resetColor);
+    renderChara();
+    return true;
+  }
+
+  /* 진입점 유지: 대시보드 펫 카드 클릭 → 기존 openModal()이 .show를 붙이면 여기서 이어받는다 */
+  function onShown(){
+    restructure();
+    if(chara.phase==='idle' || chara.phase==='error') loadManifest();
+    else renderChara();
+  }
+  var mo = (typeof MutationObserver!=='undefined') ? new MutationObserver(function(){
+    var ov=$id('petModal');
+    if(ov && ov.classList.contains('show')) onShown();
+    else closeBuyConfirm(); // V169 3차: 모달 닫힘 시 구매 확인 오버레이도 닫기
+  }) : null;
+  var tries=0;
+  (function waitPetModal(){
+    var ov=$id('petModal');
+    if(ov && ov.dataset.petV2==='v24'){
+      restructure();
+      if(mo) mo.observe(ov, { attributes:true, attributeFilter:['class'] });
+      if(ov.classList.contains('show')) onShown();
+      return;
+    }
+    if(++tries<100) setTimeout(waitPetModal, 150); // 펫 모듈 init(waitReady 최대 4초) 대기
+  })();
+
+  /* 검증/후속 패치용 최소 API */
+  window.__MK_CHARA_V169__ = {
+    open:function(){
+      try{
+        if(window.__MK_PET_V24__ && typeof window.__MK_PET_V24__.openModal==='function'){ window.__MK_PET_V24__.openModal(); return true; }
+      }catch(e){}
+      var ov=$id('petModal');
+      if(ov){ ov.classList.add('show','petModalV2'); ov.setAttribute('aria-hidden','false'); onShown(); return true; }
+      return false;
+    },
+    reload:function(){ chara.phase='idle'; loadManifest(); },
+    state:chara
+  };
+})();
+</script>
+
+<!-- V169_PET_PICKS_AND_WALLET: 자동 동기화 성장(코인+선택 펫 3마리) · 펫 3마리 선택 피커 · 지갑 표시 · 구기능 3종 숨김
+  - 타이머 적립: 10초당 코인 +1(mk_chara_stats, 나머지 초는 coinCarrySec 이월, 소모 없는 독립 지갑) + 선택 펫 3마리(mk_pet_picks) 각각 초당 +1초 성장(만렙 스킵).
+  - growthTick의 addGrowth 한 줄을 accrueV169 호출로 교체(인라인, V169 마커). 이 블록이 __MK_PET_V24__에 accrueV169를 붙인다.
+  - mk_chara_stats = {"totalSec":누적초,"coins":코인} — 독립 꾸미기앱(캐릭터꾸미기앱.html)도 읽는 계약. 형태 변경 금지.
+  - mk_pet_picks = ["id","id","id"] — 항상 정확히 3마리. petCloud 백업 payload에 mkPetPicks로 실려 복구된다.
+  - 소급 없음: 기존 누적치 그대로, 이 패치 시점부터 신규 적립만.
+  - anchor/카운트다운/백업 트리거, Firebase 연결·구독, 채팅/세계수/물방울 코드는 무접촉. -->
+<style id="v169PetPicksStyle">
+  /* V169: 펫 메달은 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 — 추후 점검 시 이 기능 점검 포함할 것. */
+  .petFullTileBadge{ display:none !important; }
+  /* V169: 미션 메달은 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 — 추후 점검 시 이 기능 점검 포함할 것. */
+  .missionMedal{ display:none !important; }
+  /* V169: 절약 모드는 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 — 추후 점검 시 이 기능 점검 포함할 것. */
+  #dataSaverBtn{ display:none !important; }
+
+  /* ── 지갑 표시 (모달 헤더 제목 옆, 보기 전용) ── */
+  #mkCharaWallet{
+    margin-left:10px; padding:4px 10px; border-radius:999px; white-space:nowrap;
+    font-size:11.5px; font-weight:1000; letter-spacing:-.2px; font-variant-numeric:tabular-nums;
+    color:rgba(255,255,255,.86); background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+  }
+  @media (max-width:760px){ #mkCharaWallet{ font-size:10.5px; padding:3px 8px; } }
+
+  /* ── 내 펫 칸: 선택된 3마리 칩 ── */
+  .mkMyPetsSlot.mkHasPicks{ border-style:solid; border-color:rgba(255,141,194,.28); background:rgba(0,0,0,.10); padding:6px; }
+  .mkPetPicksRow{ display:flex; align-items:stretch; justify-content:center; gap:8px; width:100%; min-width:0; }
+  .mkPetPickChip{
+    flex:1 1 0; min-width:0; max-width:120px; border:1px solid rgba(255,255,255,.12); border-radius:12px;
+    background:rgba(255,255,255,.04); color:rgba(255,255,255,.9); cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px 5px; min-height:0;
+  }
+  .mkPetPickChip:hover{ border-color:rgba(255,141,194,.5); background:rgba(255,141,194,.08); }
+  .mkPetPickChip img{ width:44px; height:44px; object-fit:contain; display:block; }
+  .mkPetPickChip b{ font-size:10.5px; letter-spacing:-.3px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mkPetPickChip span{ font-size:9.5px; color:rgba(255,255,255,.55); font-variant-numeric:tabular-nums; }
+
+  /* ── 21종 교체 피커 (펫 모달 위 오버레이) ── */
+  #mkPetPickerOv{
+    position:fixed; inset:0; z-index:10180; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,5,10,.62); padding:16px; box-sizing:border-box;
+  }
+  .mkPetPickerPanel{
+    width:min(680px,94vw); max-height:min(78svh,640px); overflow:hidden; display:flex; flex-direction:column;
+    border:1px solid rgba(255,255,255,.16); border-radius:18px;
+    background:linear-gradient(180deg,rgba(15,18,29,.99),rgba(10,12,19,.99));
+    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 30px rgba(255,126,183,.10);
+  }
+  .mkPetPickerHead{ display:flex; align-items:center; gap:8px; padding:12px 14px; background:rgba(0,0,0,.22); }
+  .mkPetPickerHead b{ font-size:14px; font-weight:1100; letter-spacing:-.4px; color:rgba(255,255,255,.92); }
+  .mkPetPickerHead .tiny{ font-size:11px; color:rgba(255,255,255,.55); flex:1; }
+  #mkPetPickerClose{ border:0; background:transparent; color:rgba(255,255,255,.72); font-size:20px; cursor:pointer; padding:2px 8px; min-width:auto !important; }
+  .mkPetPickerGrid{
+    overflow-y:auto; padding:12px; display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px; scrollbar-width:thin;
+  }
+  .mkPetPickTile{
+    position:relative; border:1px solid rgba(255,255,255,.10); border-radius:13px; background:rgba(255,255,255,.04);
+    color:rgba(255,255,255,.88); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px 6px; min-width:0;
+  }
+  .mkPetPickTile:hover{ border-color:rgba(255,141,194,.45); background:rgba(255,141,194,.07); }
+  .mkPetPickTile img{ width:50px; height:50px; object-fit:contain; display:block; }
+  .mkPetPickTile b{ font-size:10.5px; letter-spacing:-.3px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mkPetPickTile span{ font-size:9.5px; color:rgba(255,255,255,.55); font-variant-numeric:tabular-nums; }
+  .mkPetPickTile.on{ border-color:#ff8dc2; background:rgba(255,141,194,.10); box-shadow:0 0 0 1px rgba(255,141,194,.28); }
+  .mkPetPickTile.on::after{
+    content:"선택중"; position:absolute; top:5px; right:5px; font-size:8.5px; font-weight:1000;
+    color:#32111e; background:linear-gradient(135deg,#ff77b8,#ffd2e7); border-radius:999px; padding:2px 6px;
+  }
+  .mkPetPickTile.cur{ border-color:#ffd2e7; }
+  .mkPetPickTile.cur::after{ content:"이 칸"; background:linear-gradient(135deg,#ffd85c,#fff3b2); }
+
+  /* ── V169 3차: 펫 이름 더블클릭 수정 오버레이 ── */
+  #mkPetNameEditOv{
+    position:fixed; inset:0; z-index:10190; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,5,10,.62); padding:16px; box-sizing:border-box;
+  }
+  .mkPetNameEditPanel{
+    width:min(420px,94vw); overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:18px;
+    background:linear-gradient(180deg,rgba(15,18,29,.99),rgba(10,12,19,.99));
+    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 30px rgba(255,126,183,.10);
+  }
+  .mkPetNameEditBody{ display:flex; align-items:center; gap:10px; padding:14px; }
+  .mkPetNameEditBody img{ width:44px; height:44px; object-fit:contain; display:block; flex:0 0 auto; }
+  #mkPetNameEditField{
+    flex:1 1 auto; min-width:0; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.25);
+    color:rgba(255,255,255,.92); border-radius:10px; padding:9px 10px; font-size:13px; font-weight:800; outline:none;
+  }
+  #mkPetNameEditField:focus{ border-color:#ff8dc2; box-shadow:0 0 0 2px rgba(255,141,194,.18); }
+  #mkPetNameEditSave{
+    flex:0 0 auto; border:1px solid rgba(255,141,194,.55); background:rgba(255,141,194,.16); color:#ffd2e7;
+    border-radius:999px; padding:8px 16px; font-size:12px; font-weight:1000; cursor:pointer; min-width:auto !important;
+  }
+  #mkPetNameEditSave:hover{ background:rgba(255,141,194,.24); }
+</style>
+<script id="v169PetPicksScript">
+(function(){
+  'use strict';
+  var PICKS_KEY = 'mk_pet_picks';
+  var STATS_KEY = 'mk_chara_stats';   // {"totalSec":누적초,"coins":코인} — 독립 꾸미기앱과의 계약, 형태 변경 금지
+  var api = null;                     // window.__MK_PET_V24__ (init 이후 폴링으로 확보)
+  var pickerSlotIdx = -1;
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  /* V169 3차: window.showToast는 모듈 스코프라 존재하지 않음 → #toast 요소를 같은 방식(textContent+.show)으로 직접 구동 */
+  function toast(msg, ms){
+    try{
+      if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
+      var el = document.getElementById('toast');
+      if(el){
+        el.textContent = msg;
+        el.classList.add('show');
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms || 2200);
+        return;
+      }
+    }catch(e){}
+    try{ console.log(msg); }catch(e){}
+  }
+
+  /* ---------- 지갑 (mk_chara_stats) ---------- */
+  function readStats(){
+    try{
+      var d = JSON.parse(localStorage.getItem(STATS_KEY) || 'null') || {};
+      return {
+        totalSec: Math.max(0, Math.floor(Number(d.totalSec) || 0)),
+        coins: Math.max(0, Math.floor(Number(d.coins) || 0)),
+        coinCarrySec: Math.max(0, Math.floor(Number(d.coinCarrySec) || 0)) // V169: 10초=1코인 이월분
+      };
+    }catch(e){ return { totalSec:0, coins:0, coinCarrySec:0 }; }
+  }
+  function writeStats(s){
+    try{ localStorage.setItem(STATS_KEY, JSON.stringify({ totalSec:s.totalSec, coins:s.coins, coinCarrySec:(Math.floor(Number(s.coinCarrySec))||0) })); }catch(e){}
+  }
+  function fmtDur(sec){
+    sec = Math.max(0, Math.floor(Number(sec)||0));
+    var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+    return h ? (h + '시간 ' + m + '분') : (m + '분');
+  }
+  function ensureWalletEl(){
+    var ov = document.getElementById('petModal'); if(!ov) return null;
+    var head = ov.querySelector('.modalHeader'); if(!head) return null;
+    var el = document.getElementById('mkCharaWallet');
+    if(!el){
+      el = document.createElement('span');
+      el.id = 'mkCharaWallet';
+      var t = head.querySelector('.t');
+      if(t && t.nextSibling) head.insertBefore(el, t.nextSibling); else head.appendChild(el);
+    }
+    return el;
+  }
+  function updateWalletUI(){
+    var el = ensureWalletEl(); if(!el) return;
+    var s = readStats();
+    el.textContent = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · 🪙 ' + s.coins.toLocaleString('ko-KR');
+    el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; // V169 3차: 파츠 상점 오픈
+  }
+
+  /* ---------- 선택 펫 3마리 (mk_pet_picks) ---------- */
+  function isPetIdV(id){ return !!(api && api.isPetId && api.isPetId(id)); }
+  function readPicksRaw(){
+    try{ var a = JSON.parse(localStorage.getItem(PICKS_KEY) || 'null'); return Array.isArray(a) ? a.map(String) : null; }
+    catch(e){ return null; }
+  }
+  function defaultPicks(st){
+    var first = isPetIdV(st.activePetId) ? st.activePetId : 'cat';
+    var rest = api.PETS.map(function(p){ return p.id; }).filter(function(id){ return id !== first; });
+    rest.sort(function(a,b){
+      return Number((st.pets[b]||{}).totalSec||0) - Number((st.pets[a]||{}).totalSec||0);
+    });
+    return [first, rest[0], rest[1]];
+  }
+  /* 저장된 값 정리 + 부족분 기본값 채움 + activePetId 자동 보정. 항상 정확히 3마리를 돌려준다. */
+  function getPicks(){
+    if(!api) return null;
+    var st = api.loadState();
+    var raw = readPicksRaw() || [];
+    var picks = [];
+    raw.forEach(function(id){ if(isPetIdV(id) && picks.indexOf(id) < 0 && picks.length < 3) picks.push(id); });
+    if(picks.length < 3){
+      defaultPicks(st).concat(api.PETS.map(function(p){ return p.id; })).forEach(function(id){
+        if(picks.length < 3 && isPetIdV(id) && picks.indexOf(id) < 0) picks.push(id);
+      });
+    }
+    try{
+      if(JSON.stringify(picks) !== JSON.stringify(readPicksRaw())) localStorage.setItem(PICKS_KEY, JSON.stringify(picks));
+    }catch(e){}
+    // 미선택 펫 데이터는 보존, activePetId만 선택 3마리 안으로 보정
+    if(picks.indexOf(st.activePetId) < 0){
+      st.activePetId = picks[0];
+      st.growingPetId = picks[0];
+      api.saveState(st);
+      try{ api.renderAll(); }catch(e){}
+    }
+    return picks;
+  }
+  function setPicks(arr){
+    try{ localStorage.setItem(PICKS_KEY, JSON.stringify((Array.isArray(arr)?arr:[]).slice(0,3).map(String))); }catch(e){}
+    var picks = getPicks();
+    renderPicks(true);
+    try{ api && api.renderAll(); }catch(e){}
+    return picks;
+  }
+
+  /* ---------- 자동 동기화 성장: 타이머 적립 10초 = 코인 +1 + 선택 펫 3마리 각각 +1초/초 ---------- */
+  // V169: 코인 환율 1초=1코인 → 10초=1코인으로 하향 (2026-08-09 사용자 확정 — 적립이 너무 빨랐음).
+  // 10으로 나눈 나머지 초는 coinCarrySec에 이월 저장해 세션이 끊겨도 유실되지 않는다.
+  // 누적 작업 시간(totalSec)·펫 성장(1초=1초, 만렙 100시간)은 기존 속도 그대로.
+  var COIN_SEC_PER_COIN = 10;
+  function accrueV169(delta){
+    delta = Math.max(0, Math.floor(Number(delta) || 0));
+    var out = { added:delta, pets:{}, skippedMax:[] };
+    if(!delta) return out;
+
+    // ① 지갑: 코인은 소모되지 않는 독립 지갑 — 펫 성장 ON/OFF와 무관하게 타이머 적립분만큼 쌓인다.
+    var s = readStats();
+    s.totalSec += delta;
+    var carry = Math.max(0, Math.floor(Number(s.coinCarrySec) || 0)) + delta;
+    s.coins += Math.floor(carry / COIN_SEC_PER_COIN);
+    s.coinCarrySec = carry % COIN_SEC_PER_COIN;
+    writeStats(s);
+    out.walletTotalSec = s.totalSec; out.coins = s.coins;
+
+    // ② 선택 펫 3마리 성장 (기존 addGrowth의 growthEnabled 게이트/만렙 클램프/레벨업 토스트/저장·렌더 유지)
+    if(api){
+      var picks = getPicks();
+      out.picks = picks.slice();
+      var st = api.loadState();
+      if(st.growthEnabled){
+        var msgs = [];
+        picks.forEach(function(id){
+          st.pets[id] = st.pets[id] || { totalSec:0 };
+          var before = api.clampSec(st.pets[id].totalSec);
+          if(before >= api.MAX_SEC){ out.skippedMax.push(id); return; } // 만렙 펫은 스킵
+          var after = api.clampSec(before + delta);
+          st.pets[id].totalSec = after;
+          out.pets[id] = { before:before, after:after };
+          var bl = api.levelOf(before), al = api.levelOf(after);
+          if(al > bl){
+            var base = api.PETS.filter(function(p){ return p.id === id; })[0];
+            var nm = (st.customNames && st.customNames[id]) || (base && base.name) || id;
+            msgs.push(nm + '가 Lv.' + al + '로 성장했어!');
+          }
+        });
+        // addGrowth와 동일하게 성장 중 펫 포인터를 활성 펫으로 정리
+        st.growingPetId = picks.indexOf(st.activePetId) >= 0 ? st.activePetId : picks[0];
+        api.saveState(st);
+        msgs.forEach(toast);
+        try{ api.renderAll(); }catch(e){}
+      }else{
+        out.growthDisabled = true;
+      }
+    }
+
+    try{
+      window.__MK_PET_DEBUG__ = Object.assign({}, window.__MK_PET_DEBUG__ || {}, {
+        v169:{ picks:(out.picks||[]).slice(), pets:out.pets, skippedMax:out.skippedMax.slice(),
+               coins:s.coins, walletTotalSec:s.totalSec, added:delta, at:new Date().toISOString() }
+      });
+    }catch(e){}
+    updateWalletUI();
+    renderPicks(false);
+    return out;
+  }
+
+  /* ---------- 내 펫 칸: 선택 3마리 칩 렌더 (#mkMyPetsSlot — 1차분이 만든 빈 컨테이너) ---------- */
+  function renderPicks(force){
+    if(!api) return;
+    var slot = document.getElementById('mkMyPetsSlot'); if(!slot) return;
+    var picks = getPicks(); if(!picks) return;
+    var st = api.loadState();
+    var key = picks.map(function(id){
+      var sec = Number((st.pets[id]||{}).totalSec||0);
+      return id + ':' + api.levelOf(sec) + ':' + ((st.customNames && st.customNames[id]) || '');
+    }).join('|');
+    if(!force && slot.dataset.mkPicksKey === key && slot.firstElementChild) return;
+    slot.dataset.mkPicksKey = key;
+    slot.classList.add('mkHasPicks');
+    slot.innerHTML = '<div class="mkPetPicksRow">' + picks.map(function(id, i){
+      var sec = Number((st.pets[id]||{}).totalSec||0);
+      var lv = api.levelOf(sec);
+      var base = api.PETS.filter(function(p){ return p.id === id; })[0];
+      var nm = esc((st.customNames && st.customNames[id]) || (base && base.name) || id);
+      var maxed = sec >= api.MAX_SEC;
+      return '<button type="button" class="mkPetPickChip" data-slot="' + i + '" title="' + nm + ' — 클릭: 교체 · 더블클릭: 이름 수정">'
+        + '<img src="' + api.petSvg(id, lv) + '" alt="' + nm + '">'
+        + '<b>' + nm + '</b><span>Lv.' + lv + (maxed ? ' · MAX' : '') + '</span></button>';
+    }).join('') + '</div>';
+    slot.querySelectorAll('.mkPetPickChip').forEach(function(b){
+      // V169 3차: 단일클릭=피커, 더블클릭=이름 수정. 더블클릭 시 피커가 열리지 않게 클릭을 260ms 지연 후 실행.
+      var pending = null;
+      b.addEventListener('click', function(){
+        if(pending) return; // 더블클릭의 두 번째 클릭은 무시 (dblclick 핸들러가 처리)
+        pending = setTimeout(function(){ pending = null; openPicker(Number(b.dataset.slot) || 0); }, 260);
+      });
+      b.addEventListener('dblclick', function(e){
+        e.preventDefault();
+        if(pending){ clearTimeout(pending); pending = null; }
+        openNameEdit(Number(b.dataset.slot) || 0);
+      });
+    });
+    // 1차분의 "후속 패치" 안내 문구를 실제 기능 안내로 교체 (런타임 텍스트만 — 1차분 코드는 무수정)
+    try{
+      var box = slot.closest('.mkMyPetsBox');
+      var tiny = box && box.querySelector('.petSectionTitle .tiny');
+      if(tiny && tiny.textContent.indexOf('후속 패치') >= 0) tiny.textContent = '펫 3마리 — 클릭해 교체, 더블클릭해 이름 수정';
+    }catch(e){}
+  }
+
+  /* ---------- 21종 교체 피커 ---------- */
+  function closePicker(){
+    var ov = document.getElementById('mkPetPickerOv');
+    if(ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    pickerSlotIdx = -1;
+  }
+  function openPicker(slotIdx){
+    if(!api) return;
+    closePicker();
+    pickerSlotIdx = Math.max(0, Math.min(2, Math.floor(Number(slotIdx) || 0)));
+    var picks = getPicks();
+    var st = api.loadState();
+    var ov = document.createElement('div');
+    ov.id = 'mkPetPickerOv';
+    ov.innerHTML = '<div class="mkPetPickerPanel">'
+      + '<div class="mkPetPickerHead"><b>함께 성장할 펫 고르기</b><span class="tiny">' + (pickerSlotIdx + 1) + '번째 칸을 교체해요 · 이미 선택된 펫을 누르면 자리를 바꿔요</span><button id="mkPetPickerClose" type="button" aria-label="닫기">×</button></div>'
+      + '<div class="mkPetPickerGrid">' + api.PETS.map(function(p){
+          var sec = Number((st.pets[p.id]||{}).totalSec||0);
+          var lv = api.levelOf(sec);
+          var nm = esc((st.customNames && st.customNames[p.id]) || p.name);
+          var cls = 'mkPetPickTile' + (picks.indexOf(p.id) >= 0 ? ' on' : '') + (p.id === picks[pickerSlotIdx] ? ' cur' : '');
+          return '<button type="button" class="' + cls + '" data-pet="' + p.id + '">'
+            + '<img src="' + api.petSvg(p.id, lv) + '" alt="' + nm + '">'
+            + '<b>' + nm + '</b><span>Lv.' + lv + '/30</span></button>';
+        }).join('') + '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target === ov) closePicker(); });
+    ov.querySelector('#mkPetPickerClose').addEventListener('click', closePicker);
+    ov.querySelectorAll('.mkPetPickTile').forEach(function(tile){
+      tile.addEventListener('click', function(){
+        var id = tile.dataset.pet;
+        var cur = getPicks();
+        var idx = pickerSlotIdx;
+        if(!isPetIdV(id) || idx < 0){ closePicker(); return; }
+        if(cur[idx] === id){ closePicker(); return; }
+        var dup = cur.indexOf(id);
+        if(dup >= 0){ cur[dup] = cur[idx]; } // 이미 선택된 펫이면 두 칸의 자리를 맞바꾼다 (항상 정확히 3마리)
+        cur[idx] = id;
+        setPicks(cur);
+        closePicker();
+      });
+    });
+  }
+
+  /* ---------- V169 3차: 펫 이름 더블클릭 수정 ----------
+     - 저장은 기존 customNames 메커니즘(mk_pet_growth_v2)만 사용 → petCloud 백업 payload(petState.customNames)에 자동 동봉.
+     - 표시는 기존 렌더러(칩/피커의 customNames 조회, renderAll의 displayName)가 그대로 처리 — 렌더러 무수정. */
+  var NAME_MAX = 8; // 펫 명찰 폭 관례
+  function closeNameEdit(){
+    var ov = document.getElementById('mkPetNameEditOv');
+    if(ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  }
+  function openNameEdit(slotIdx){
+    if(!api) return;
+    closePicker(); closeNameEdit();
+    var picks = getPicks(); if(!picks) return;
+    var idx = Math.max(0, Math.min(2, Math.floor(Number(slotIdx) || 0)));
+    var id = picks[idx]; if(!isPetIdV(id)) return;
+    var st = api.loadState();
+    var base = api.PETS.filter(function(p){ return p.id === id; })[0];
+    var defName = (base && base.name) || id;
+    var lv = api.levelOf(Number((st.pets[id]||{}).totalSec || 0));
+    var ov = document.createElement('div');
+    ov.id = 'mkPetNameEditOv';
+    ov.innerHTML = '<div class="mkPetNameEditPanel">'
+      + '<div class="mkPetPickerHead"><b>펫 이름 바꾸기</b><span class="tiny">비워서 저장하면 기본 이름(' + esc(defName) + ')으로 돌아가요 · 최대 ' + NAME_MAX + '자</span><button id="mkPetNameEditClose" type="button" aria-label="닫기">×</button></div>'
+      + '<div class="mkPetNameEditBody">'
+      +   '<img src="' + api.petSvg(id, lv) + '" alt="' + esc(defName) + '">'
+      +   '<input id="mkPetNameEditField" type="text" autocomplete="off" spellcheck="false">'
+      +   '<button id="mkPetNameEditSave" type="button">저장</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    var input = ov.querySelector('#mkPetNameEditField');
+    input.value = (st.customNames && st.customNames[id] || '').toString();
+    input.placeholder = defName;
+    function save(){
+      var v = String(input.value || '').replace(/\s+/g, ' ').trim();
+      var cutMsg = '';
+      if(v.length > NAME_MAX){ v = v.slice(0, NAME_MAX); cutMsg = ' · 최대 ' + NAME_MAX + '자라 ' + NAME_MAX + '자로 줄였어요 ✂️'; }
+      var s = api.loadState();
+      s.customNames = s.customNames || {};
+      if(v) s.customNames[id] = v; else delete s.customNames[id];
+      api.saveState(s);
+      closeNameEdit();
+      renderPicks(true);
+      try{ api.renderAll(); }catch(e){}
+      toast((v ? ('이제 「' + v + '」(이)라고 부를게 🐾') : ('기본 이름 「' + defName + '」(으)로 돌아갔어 🐾')) + cutMsg, cutMsg ? 3200 : undefined);
+    }
+    ov.addEventListener('click', function(e){ if(e.target === ov) closeNameEdit(); });
+    ov.querySelector('#mkPetNameEditClose').addEventListener('click', closeNameEdit);
+    ov.querySelector('#mkPetNameEditSave').addEventListener('click', save);
+    input.addEventListener('keydown', function(e){
+      if(e.isComposing || e.keyCode === 229) return; // 한글 IME 조합 확정 Enter는 저장으로 치지 않는다
+      if(e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); save(); }
+      else if(e.key === 'Escape'){ e.preventDefault(); closeNameEdit(); }
+    });
+    try{ input.focus(); input.select(); }catch(e){}
+  }
+
+  /* ---------- petCloud 백업/복구 연동 (호출부 인라인 훅에서 사용) ---------- */
+  window.__MK_PET_PICKS_BACKUP_V169__ = function(){
+    var a = readPicksRaw();
+    return (Array.isArray(a) && a.length === 3) ? { mkPetPicks:a } : {};
+  };
+  window.__MK_PET_PICKS_RESTORE_V169__ = function(remote){
+    try{
+      var a = remote && remote.mkPetPicks;
+      if(!Array.isArray(a) || !a.length) return;
+      // 유효 id 3마리 선별은 getPicks가 하므로 여기서는 앞쪽 몇 개만 잘라 저장한다(비정상 대형 배열 방어).
+      localStorage.setItem(PICKS_KEY, JSON.stringify(a.slice(0,10).map(String)));
+      if(api){
+        getPicks(); // 유효성 정리 + activePetId 보정
+        renderPicks(true);
+        updateWalletUI();
+      }
+    }catch(e){}
+  };
+
+  /* ---------- 부트스트랩: __MK_PET_V24__ init(최대 4초 폴백) 대기 후 연결 ---------- */
+  function onModalShown(){
+    updateWalletUI();
+    renderPicks(true);
+    // 1차분 restructure(MutationObserver)와 순서 경합 대비 — 슬롯이 늦게 생겨도 한 번 더 시도
+    setTimeout(function(){ updateWalletUI(); renderPicks(false); }, 80);
+  }
+  function hookModal(){
+    var ov = document.getElementById('petModal');
+    if(!ov) return;
+    if(typeof MutationObserver !== 'undefined'){
+      new MutationObserver(function(){
+        if(ov.classList.contains('show')) onModalShown();
+        else { closePicker(); closeNameEdit(); } // V169 3차: 이름 수정 오버레이도 함께 닫기
+      }).observe(ov, { attributes:true, attributeFilter:['class'] });
+    }
+    if(ov.classList.contains('show')) onModalShown();
+  }
+  var tries = 0;
+  (function waitApi(){
+    var a = window.__MK_PET_V24__;
+    if(a && typeof a.saveState === 'function' && typeof a.levelOf === 'function'){
+      api = a;
+      api.accrueV169 = accrueV169;
+      api.getPetPicks = function(){ return getPicks(); };
+      api.setPetPicks = setPicks;
+      api.updateWalletUI = updateWalletUI; // V169 3차: 파츠 상점이 구매(코인 차감) 후 지갑 pill 갱신에 사용
+      hookModal();
+      return;
+    }
+    if(++tries < 200) setTimeout(waitApi, 100);
+  })();
+})();
+</script>
+
+<!-- V169_CHARA_TILE_DISPLAY: 프로필 타일 캐릭터 표시 (4차)
+  - 목표: 꾸민 캐릭터를 내/타인 프로필 타일의 사진칸 또는 이모지칸에 표시. 펫과 다른 칸이면 동시 표시.
+  - 공유: rooms/{roomId}/profiles/{uid}/charaV1 = {v,parts:{body,hair,face,look,acc},hue,show,updatedAtMs} (~150B)
+    · 규칙 배포 없음 — profiles/$uid는 본인 쓰기·전원 읽기 허용이 이미 있고 앱이 온라인 uid별로 구독/병합 중.
+    · 쓰기 시점: 꾸미기 모달 착장 저장(persist 훅) + "캐릭터 보여주기" 변경 + 입장 후 1회 동기화(원격본과 다를 때만).
+    · 모든 쓰기는 1.5초 디바운스. 초당/주기적 쓰기 없음. presence 페이로드는 건드리지 않는다.
+  - 렌더: 파츠 PNG(assets_배포, 타인도 같은 정적 파일 → 브라우저 캐시 공유)를 오프스크린 캔버스에 1회 합성(bake).
+    · 레이어: 뒷머리→몸통→룩→얼굴→앞머리→액세서리, hue-rotate/saturate/brightness 필터(앞·뒷머리 공유).
+    · 착장이 바뀔 때만 재합성(시그니처 캐시). 펫 모션 CSS 미적용(정지). 배경은 기존 펫 슬롯 배경 설정 그대로.
+    · bake 결과에 facePart/faceRect/layers 좌표를 포함.
+    · V169_BLINK(5차): bake가 감은눈 프레임(urlClosed)도 함께 생성 — manifest._eyes 타원을 뚫어 밑 살색 노출 + 감은눈 호.
+      깜빡임은 프레임 스왑만(재합성 0회), 3~6초 랜덤·130ms·20% 더블, hidden 시 정지, 저사양 모드 생략, 민얼굴 제외.
+      모달 미리보기는 같은 엔진을 closedFaceUrl/blinkAttach로 재사용(얼굴 img src 스왑).
+  - 인라인 지점: 설정 select(#charaDisplaySlot), buildCurrentProfilePayload(charaV1 동봉), tileKey(charaTile),
+    renderTile 2분기, mergePublicProfileIntoParticipant(charaV1 전달), __MK_CHARA_TILE_BRIDGE__, 꾸미기 persist 훅.
+  - V169_MOVE(6차): 캐릭터 "움직이기" 모드 — charaV1.mode:"stand"|"move"만 공유(위치는 RTDB 비동기화, 로컬 랜덤 연출).
+    · 설정: #charaMotionMode select(표시 "없음"이면 비활성), 저장 mk_profile_pref_v1 최상위 charaMotionMode.
+    · move면 칸(slotOf→'none')엔 기존 콘텐츠, 캐릭터는 타일 루트(or 그 타일 손캠 handcamBox) absolute 오버레이 —
+      bake 1장 + CSS transform만(걷기 translate/반전 scaleX/까딱 키프레임/빼꼼 rotate), 깜빡임(blinkAttach) 공존.
+    · 저사양·hidden 동결, 유효 모드는 tileKeyOf에 포함되어 전환 시 해당 타일만 재렌더. 인라인 지점: renderTile 끝 attachMover 훅 1곳.
+  - charaV1 없는 사용자/표시 안 함은 기존 렌더와 완전히 동일. 펫 성장/anchor/채팅/세계수 무접촉. -->
+<style id="v169CharaTileStyle">
+  .avatar.charaSlotOn, .idPhoto.charaSlotOn{ display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .charaSlotOn img.mkCharaTileImg{ width:100% !important; height:100% !important; object-fit:contain !important; display:block; }
+  /* V169_MOVE: 움직이기 오버레이 — 타일(.tile은 position:relative + overflow:hidden) 또는 내 손캠 박스 경계 안에서만 이동 */
+  .mkCharaMoveWrap{ position:absolute; left:0; top:0; z-index:6; pointer-events:none; will-change:transform; }
+  .tile .handcamBox .mkCharaMoveWrap{ z-index:1; } /* 손캠 영상(video) 위, LIVE 태그(z2) 아래 */
+  .mkCharaMoveFlip{ width:100%; height:100%; transition:transform .45s ease; transform-origin:50% 85%; }
+  .mkCharaMoveWrap img.mkCharaMoveImg{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkCharaMoveImg.mkCharaWalking{ animation:mkCharaBobV169 .38s ease-in-out infinite alternate; }
+  @keyframes mkCharaBobV169{ from{ transform:translateY(0); } to{ transform:translateY(-4%); } }
+  body.mkLowSpecMode .mkCharaMoveWrap{ display:none !important; } /* 저사양: 재렌더 전 잔여 오버레이도 즉시 숨김 */
+</style>
+<script id="v169CharaTileScript">
+(function(){
+  'use strict';
+  var ASSET_DIR = 'assets_배포';
+  var LS_CHARA = 'mk_chara_state';      // 꾸미기 모달(v169CharaDressupScript)과의 계약 — 형태 변경 금지
+  var LS_PROFILE = 'mk_profile_pref_v1'; // 메인 모듈 loadLocalProfile()과 같은 키 (표시 슬롯은 최상위 charaDisplaySlot에 저장)
+  var PART_KEYS = ['body','hair','face','look','acc']; // charaV1 스키마 고정 5종
+  var Z_ORDER = ['hair_back','body','look','face','hair','acc']; // 뒷머리10→몸통20→룩35→얼굴50→앞머리60→액세서리71
+  var BAKE_SIZE = 256;                  // 타일 슬롯(82px)보다 넉넉한 1장 — 레티나에서도 선명
+  var WRITE_DEBOUNCE_MS = 1500;
+
+  var stats = { bakeCount:0, bakeCacheHit:0, writeFlushCount:0, writeAttemptCount:0, writeOkCount:0, blinkCount:0, moverAttachCount:0 }; // V169_BLINK: blinkCount / V169_MOVE: moverAttachCount
+
+  function bridge(){ return window.__MK_CHARA_TILE_BRIDGE__ || null; }
+  function selfUid(){
+    var api = window.__MK_CHARA_TILE_V169__;
+    if(api && api.__testSelfUid) return String(api.__testSelfUid); // 검증 훅: Firebase 없이 "내 타일" 경로 테스트
+    var b = bridge();
+    return b ? b.selfUid() : '';
+  }
+  function normShow(v){
+    v = String(v || 'none').toLowerCase();
+    return (v === 'photo' || v === 'emoji') ? v : 'none';
+  }
+  function normMode(v){ /* V169_MOVE: 캐릭터 움직임 모드 stand|move */
+    return String(v || 'stand').toLowerCase() === 'move' ? 'move' : 'stand';
+  }
+  function safeHex(v, fb){ v = String(v || '').trim(); return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fb; }
+  function clampNum(v, min, max, fb){ v = Number(v); if(!isFinite(v)) return fb; return Math.max(min, Math.min(max, Math.round(v))); }
+  function toast(msg, ms){
+    try{
+      if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
+      var el = document.getElementById('toast');
+      if(el){
+        el.textContent = msg;
+        el.classList.add('show');
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms || 2200);
+        return;
+      }
+    }catch(e){}
+    try{ console.log(msg); }catch(e){}
+  }
+
+  /* ---------- 데이터 정규화 ---------- */
+  function sanitizeParts(src){
+    var out = {};
+    if(!src || typeof src !== 'object') return out;
+    PART_KEYS.forEach(function(k){
+      var v = src[k];
+      if(typeof v === 'string' && v.length && v.length <= 120 && /\.png$/i.test(v) && !/[\/\\<>"']/.test(v)) out[k] = v;
+    });
+    return out;
+  }
+  function sanitizeHue(src){
+    var out = {};
+    if(!src || typeof src !== 'object') return out;
+    PART_KEYS.forEach(function(k){
+      var a = src[k];
+      if(!a || typeof a !== 'object') return;
+      var h = clampNum(a.h, -180, 180, 0), s = clampNum(a.s, 0, 200, 100), b = clampNum(a.b, 50, 150, 100);
+      if(h === 0 && s === 100 && b === 100) return;
+      out[k] = { h:h, s:s, b:b };
+    });
+    return out;
+  }
+  function hasParts(parts){
+    for(var i = 0; i < PART_KEYS.length; i++){ if(parts && parts[PART_KEYS[i]]) return true; }
+    return false;
+  }
+  function sigOf(parts, hue){
+    var p = [], h = [];
+    PART_KEYS.forEach(function(k){
+      p.push(parts && parts[k] ? parts[k] : '');
+      var a = hue && hue[k];
+      h.push(a ? (a.h + ',' + a.s + ',' + a.b) : '');
+    });
+    return p.join('|') + '#' + h.join('|');
+  }
+  function writeSigOf(payload){
+    return normShow(payload && payload.show) + '@' + sigOf(payload && payload.parts, payload && payload.hue)
+      + '@' + normMode(payload && payload.mode); // V169_MOVE: 모드만 바뀌어도 재쓰기
+  }
+
+  /* ---------- 내 로컬 상태 (mk_chara_state + 표시 슬롯) ---------- */
+  var localCache = null, localCacheLoaded = false;
+  function readLocalChara(){
+    if(localCacheLoaded) return localCache;
+    localCacheLoaded = true;
+    localCache = null;
+    try{
+      var d = JSON.parse(localStorage.getItem(LS_CHARA) || 'null');
+      if(d && d.v === 1 && d.parts && typeof d.parts === 'object'){
+        localCache = { parts: sanitizeParts(d.parts), hue: sanitizeHue(d.hue) };
+      }
+    }catch(e){}
+    return localCache;
+  }
+  function readLpShow(){
+    try{
+      var lp = JSON.parse(localStorage.getItem(LS_PROFILE) || 'null');
+      if(lp && typeof lp === 'object') return normShow(lp.charaDisplaySlot);
+    }catch(e){}
+    return 'none';
+  }
+  function saveLpShow(v){
+    try{
+      var lp = null;
+      try{ lp = JSON.parse(localStorage.getItem(LS_PROFILE) || 'null'); }catch(e){}
+      if(!lp || typeof lp !== 'object') lp = {};
+      // lp.theme이 아닌 최상위 키 — applyProfile()이 lp.theme 전체를 교체해도 살아남는다.
+      lp.charaDisplaySlot = normShow(v);
+      localStorage.setItem(LS_PROFILE, JSON.stringify(lp));
+    }catch(e){}
+  }
+  function getMyShow(){
+    var el = document.getElementById('charaDisplaySlot');
+    if(el && el.value) return normShow(el.value);
+    return readLpShow();
+  }
+  /* V169_MOVE: 내 움직임 모드 — 저장은 mk_profile_pref_v1 최상위 charaMotionMode */
+  function readLpMode(){
+    try{
+      var lp = JSON.parse(localStorage.getItem(LS_PROFILE) || 'null');
+      if(lp && typeof lp === 'object') return normMode(lp.charaMotionMode);
+    }catch(e){}
+    return 'stand';
+  }
+  function saveLpMode(v){
+    try{
+      var lp = null;
+      try{ lp = JSON.parse(localStorage.getItem(LS_PROFILE) || 'null'); }catch(e){}
+      if(!lp || typeof lp !== 'object') lp = {};
+      lp.charaMotionMode = normMode(v); // charaDisplaySlot과 동일하게 최상위 키 — applyProfile의 lp.theme 교체에서 살아남는다
+      localStorage.setItem(LS_PROFILE, JSON.stringify(lp));
+    }catch(e){}
+  }
+  function getMyMode(){
+    var el = document.getElementById('charaMotionMode');
+    if(el && el.value) return normMode(el.value);
+    return readLpMode();
+  }
+
+  /* ---------- 참가자 레코드 → 캐릭터 데이터 (내 것은 로컬, 타인은 charaV1) ---------- */
+  function charaOf(p){
+    var uid = (p && p.id) ? String(p.id) : '';
+    var isMe = !!uid && uid === selfUid();
+    if(isMe){
+      var lc = readLocalChara();
+      if(lc && hasParts(lc.parts)) return { parts: lc.parts, hue: lc.hue, show: getMyShow(), mode: getMyMode() }; // V169_MOVE: mode 동봉
+      // 로컬이 비어 있으면 공개본으로 폴백(다른 사람이 보는 모습과 동일하게)
+    }
+    var cv = p && p.charaV1;
+    if(cv && typeof cv === 'object'){
+      var parts = sanitizeParts(cv.parts);
+      if(hasParts(parts)) return { parts: parts, hue: sanitizeHue(cv.hue),
+        show: isMe ? getMyShow() : normShow(cv.show),
+        mode: isMe ? getMyMode() : normMode(cv.mode) }; // V169_MOVE: 타인은 charaV1.mode
+    }
+    return null;
+  }
+  /* V169_MOVE: 유효 움직임 모드 — 표시 꺼짐/캐릭터 없음/저사양이면 무조건 stand */
+  function moveModeOf(p){
+    try{
+      if(blinkLowSpec()) return 'stand';
+      var c = charaOf(p);
+      if(!c || normShow(c.show) === 'none') return 'stand';
+      return normMode(c.mode);
+    }catch(e){ return 'stand'; }
+  }
+  function slotOf(p){
+    try{
+      var c = charaOf(p);
+      if(!c) return 'none';
+      if(moveModeOf(p) === 'move') return 'none'; // V169_MOVE: 움직이기 — 칸은 기존 콘텐츠(사진/이모지/펫), 캐릭터는 오버레이
+      return normShow(c.show);
+    }catch(e){ return 'none'; }
+  }
+  function tileKeyOf(p){
+    try{
+      var c = charaOf(p);
+      // V169_MOVE: 유효 모드를 키에 포함 — 모드 전환/저사양 전환 시 해당 타일만 재렌더
+      return c ? (normShow(c.show) + '@' + sigOf(c.parts, c.hue) + '@' + moveModeOf(p)) : '';
+    }catch(e){ return ''; }
+  }
+
+  /* ---------- manifest (모달과 같은 URL 규칙 → 브라우저 캐시 공유) ---------- */
+  var maniPromise = null;
+  function ensureManifest(){
+    if(maniPromise) return maniPromise;
+    maniPromise = fetch(ASSET_DIR + '/manifest.json?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(mf){
+        var ver = (mf && mf._version != null && typeof mf._version !== 'object') ? String(mf._version) : '';
+        var eyes = (mf && mf._eyes && typeof mf._eyes === 'object') ? mf._eyes : {}; // V169_BLINK: 얼굴별 눈 타원 좌표(1024 기준, +12% 패딩)
+        var folders = {}, files = {}, hairBackOf = {};
+        Object.keys(mf || {}).forEach(function(key){
+          if(key.charAt(0) === '_') return; // _version/_eyes 등 메타 키
+          var arr = mf[key];
+          if(!Array.isArray(arr)) return;
+          var short = String(key).replace(/^\d+_/, '').toLowerCase();
+          if(short === 'hair_front') short = 'hair';
+          if(PART_KEYS.indexOf(short) === -1) return; // charaV1 스키마 5종 외 폴더는 무시
+          folders[short] = key;
+          var set = files[short] || (files[short] = {});
+          arr.forEach(function(f){ if(typeof f === 'string' && /\.png$/i.test(f)) set[f] = 1; });
+        });
+        // 헤어 _back 자동 동반 페어링 (xxx.png ↔ xxx_back.png)
+        if(files.hair){
+          Object.keys(files.hair).forEach(function(f){
+            var m = f.match(/^(.+)(\.png)$/i);
+            if(!m || /_back\.png$/i.test(f)) return;
+            var back = m[1] + '_back' + m[2];
+            if(files.hair[back]) hairBackOf[f] = back;
+          });
+        }
+        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes };
+      })
+      .catch(function(err){ maniPromise = null; throw err; });
+    return maniPromise;
+  }
+  function urlFor(mani, shortCat, name){
+    var folder = mani.folders[shortCat];
+    return ASSET_DIR + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(name)
+      + (mani.ver ? ('?v=' + encodeURIComponent(mani.ver)) : '');
+  }
+  var imgCache = new Map(); // url -> Promise<Image>
+  function loadImg(url){
+    var hit = imgCache.get(url);
+    if(hit) return hit;
+    var pr = new Promise(function(res, rej){
+      var img = new Image();
+      img.decoding = 'async';
+      img.onload = function(){ res(img); };
+      img.onerror = function(){ rej(new Error('img load fail: ' + url)); };
+      img.src = url;
+    });
+    pr.catch(function(){ imgCache.delete(url); });
+    imgCache.set(url, pr);
+    return pr;
+  }
+
+  /* ---------- V169_BLINK: 감은눈 얼굴 프레임 ----------
+     얼굴 PNG의 눈 타원(manifest._eyes, 1024 좌표계)을 destination-out으로 뚫어
+     밑의 몸통 살색이 드러나게 하고, 그 위에 감은눈 호(무표정 입과 같은 짙은 회갈색)를 그린다.
+     manifest에 좌표가 없는 얼굴은 5장 실측 평균 고정 박스로 폴백. 얼굴별 1회 생성 후 캐시. */
+  var EYE_BASE = 1024;
+  var EYE_FALLBACK = { l:[403,372,62,54], r:[616,372,60,54] };
+  var EYE_ARC_COLOR = 'rgb(52,30,30)';
+  var closedFaceCache = new Map();    // faceName -> Promise<canvas>
+  var closedFaceUrlCache = new Map(); // faceName -> Promise<dataURL> (모달 미리보기용)
+  function eyeBoxesFor(mani, faceName){
+    var e = mani && mani.eyes ? mani.eyes[faceName] : null;
+    var l = (e && Array.isArray(e.l) && e.l.length === 4) ? e.l : EYE_FALLBACK.l;
+    var r = (e && Array.isArray(e.r) && e.r.length === 4) ? e.r : EYE_FALLBACK.r;
+    return [l, r];
+  }
+  function closedFaceCanvas(mani, faceName){
+    var hit = closedFaceCache.get(faceName);
+    if(hit) return hit;
+    var pr = loadImg(urlFor(mani, 'face', faceName)).then(function(img){
+      var iw = img.naturalWidth || EYE_BASE, ih = img.naturalHeight || EYE_BASE;
+      var s = iw / EYE_BASE; // _eyes 좌표는 원본 1024 기준
+      var cv = document.createElement('canvas');
+      cv.width = iw; cv.height = ih;
+      var ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      var boxes = eyeBoxesFor(mani, faceName);
+      ctx.globalCompositeOperation = 'destination-out'; // 눈 타원만 투명하게 → 아래 레이어 살색 노출
+      ctx.fillStyle = '#000';
+      boxes.forEach(function(b){
+        ctx.beginPath();
+        ctx.ellipse(b[0]*s, b[1]*s, b[2]*s, b[3]*s, 0, 0, Math.PI*2);
+        ctx.fill();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = EYE_ARC_COLOR; // 합성 시 얼굴 hue 필터를 함께 통과 → 입 선 톤과 일관
+      ctx.lineCap = 'round';
+      boxes.forEach(function(b){
+        ctx.lineWidth = Math.max(3, b[3]*s*0.16);
+        ctx.beginPath();
+        ctx.ellipse(b[0]*s, (b[1]-b[3]*0.15)*s, b[2]*s*0.72, b[3]*s*0.5, 0, Math.PI*0.15, Math.PI*0.85); // 아래로 볼록한 감은눈 호
+        ctx.stroke();
+      });
+      return cv;
+    });
+    pr.catch(function(){ closedFaceCache.delete(faceName); });
+    closedFaceCache.set(faceName, pr);
+    return pr;
+  }
+  function closedFaceUrl(faceName){ // 모달 미리보기(v169CharaDressupScript)가 사용 — 얼굴 원본과 스왑할 감은눈 dataURL
+    if(typeof faceName !== 'string' || !faceName) return Promise.reject(new Error('no face'));
+    var hit = closedFaceUrlCache.get(faceName);
+    if(hit) return hit;
+    var pr = ensureManifest().then(function(mani){
+      if(!mani.files.face || !mani.files.face[faceName]) throw new Error('unknown face: ' + faceName);
+      return closedFaceCanvas(mani, faceName);
+    }).then(function(cv){ return cv.toDataURL('image/png'); });
+    pr.catch(function(){ closedFaceUrlCache.delete(faceName); });
+    closedFaceUrlCache.set(faceName, pr);
+    return pr;
+  }
+
+  /* ---------- V169_BLINK: 깜빡임 엔진 (프레임 스왑만 — 레이어 재합성 없음) ----------
+     캐릭터(이미지 엘리먼트)마다 3~6초 랜덤 간격, 감은 상태 130ms, 약 20% 두 번 연속.
+     첫 지연도 랜덤이라 타일 여러 개가 동시에 깜빡이지 않는다.
+     document.hidden이면 타이머 전부 정지(복귀 시 재개), 저사양 모드/숨김 상태면 그 회차는 건너뛴다. */
+  var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUBLE_P = 0.2, BLINK_DOUBLE_GAP_MS = 150;
+  var blinkReg = new Set(); // {el, open, closed, t:[timeoutIds], nextAt}
+  function blinkLowSpec(){ try{ return document.body.classList.contains('mkLowSpecMode'); }catch(e){ return false; } }
+  function blinkClearTimers(c){ c.t.forEach(clearTimeout); c.t.length = 0; }
+  function blinkSetFrame(c, closed){
+    try{ c.el.src = closed ? c.closed : c.open; }catch(e){}
+    if(closed) stats.blinkCount++;
+  }
+  function blinkSchedule(c){
+    blinkClearTimers(c);
+    var delay = BLINK_MIN_MS + Math.random()*BLINK_RANGE_MS;
+    c.nextAt = Date.now() + delay;
+    c.t.push(setTimeout(function(){ blinkFire(c); }, delay));
+  }
+  function blinkFire(c){
+    c.t.length = 0;
+    if(!c.el.isConnected){ blinkReg.delete(c); return; }        // 타일 재렌더 등으로 떨어진 노드 → 정리
+    if(document.hidden) return;                                  // visibilitychange 리스너가 재개
+    if(blinkLowSpec() || c.el.offsetParent === null){ blinkSchedule(c); return; } // 저사양/닫힌 모달 → 이번 회 생략
+    blinkSetFrame(c, true);
+    c.t.push(setTimeout(function(){
+      blinkSetFrame(c, false);
+      if(Math.random() < BLINK_DOUBLE_P){
+        c.t.push(setTimeout(function(){
+          if(c.el.isConnected && !document.hidden && !blinkLowSpec()){
+            blinkSetFrame(c, true);
+            c.t.push(setTimeout(function(){ blinkSetFrame(c, false); blinkSchedule(c); }, BLINK_CLOSE_MS));
+          }else blinkSchedule(c);
+        }, BLINK_DOUBLE_GAP_MS));
+      }else blinkSchedule(c);
+    }, BLINK_CLOSE_MS));
+  }
+  function blinkAttach(el, openUrl, closedUrl){
+    if(!el || !openUrl || !closedUrl) return null;
+    blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkReg.delete(c); } });
+    var c = { el: el, open: openUrl, closed: closedUrl, t: [], nextAt: 0 };
+    blinkReg.add(c);
+    blinkSchedule(c);
+    return c;
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){
+      blinkReg.forEach(function(c){ blinkClearTimers(c); blinkSetFrame(c, false); }); // 정지 + 뜬 눈으로 복원
+    }else{
+      blinkReg.forEach(function(c){ if(c.el.isConnected) blinkSchedule(c); else blinkReg.delete(c); });
+    }
+  });
+  function blinkDebug(){ // 검증용
+    var pending = 0, nextAts = [];
+    blinkReg.forEach(function(c){ pending += c.t.length; nextAts.push(c.nextAt); });
+    return { controllers: blinkReg.size, pendingTimers: pending, blinkCount: stats.blinkCount, nextAts: nextAts };
+  }
+  function blinkFireNow(){ // 검증용: 대기 없이 즉시 1회 깜빡임
+    blinkReg.forEach(function(c){ blinkClearTimers(c); blinkFire(c); });
+  }
+
+  /* ---------- V169_MOVE: 움직이기 엔진 ----------
+     bake 이미지 1장을 타일 카드 루트(또는 그 타일의 손캠 박스)에 absolute 오버레이로 부착하고
+     CSS transform(translate/scaleX/rotate)만으로 이동 — 재합성 0회, 위치는 RTDB 비동기화(브라우저별 로컬 랜덤).
+     행동 루프: 2~5초 간격으로 [목적지 랜덤 걷기 1~2.5초 / 잠깐 멈춰 서기 / 가장자리 빼꼼] 랜덤.
+     걷는 동안 진행 방향 좌우 반전(scaleX) + 미세 상하 까딱(mkCharaWalking 키프레임).
+     경계: host(타일 or handcamBox)는 overflow:hidden — translate 목표도 [0..W-s]×[0..H-s]로 clamp.
+     document.hidden → 전부 동결(복귀 재개), 저사양 → 동결(+tileKey 변경으로 곧 stand 재렌더).
+     타일 재렌더/모드 전환 시 attachMover의 sweep이 이전 컨트롤러(타이머·DOM)를 정리한다. */
+  // V169_MOVE: 크기 재조정 (2026-08-09 사용자) — 비율(55%)이 타일에서 너무 컸음.
+  // 타일에서는 서 있기(사진칸) 캐릭터와 같은 82px, 손캠 위에서는 더 작게 60px. host보다 크면 clamp.
+  var MOVE_SIZE_TILE_PX = 82;           // 프로필 타일 위 캐릭터 높이
+  var MOVE_SIZE_HANDCAM_PX = 60;        // 손캠 화면 위 캐릭터 높이
+  var MOVE_IDLE_MIN_MS = 2000, MOVE_IDLE_RANGE_MS = 3000;   // 행동 간격 2~5초
+  var MOVE_WALK_MIN_MS = 1000, MOVE_WALK_RANGE_MS = 1500;   // 걷기 1~2.5초
+  var moverReg = new Set(); // {root,host,wrap,flip,img,t:[timeoutIds],x,y,dir}
+  function moverDestroy(m){
+    m.t.forEach(clearTimeout); m.t.length = 0;
+    try{ if(m.wrap && m.wrap.parentNode) m.wrap.parentNode.removeChild(m.wrap); }catch(e){}
+    moverReg.delete(m);
+  }
+  function moverSweep(root){
+    moverReg.forEach(function(m){ if(!m.root.isConnected || m.root === root) moverDestroy(m); });
+  }
+  function moverHostOf(m){ // 내/타인 타일이 손캠 LIVE(handcamBox가 타일 전체 덮음, z20)면 그 안에서 돌아다닌다
+    var box = null;
+    try{ if(m.root.classList.contains('hcLiveTile')) box = m.root.querySelector('.handcamBox'); }catch(e){}
+    return box || m.root;
+  }
+  function moverBounds(m){
+    var W = m.host.clientWidth || 0, H = m.host.clientHeight || 0;
+    var isHandcam = false;
+    try{ isHandcam = m.host.classList.contains('handcamBox'); }catch(e){}
+    var target = isHandcam ? MOVE_SIZE_HANDCAM_PX : MOVE_SIZE_TILE_PX;
+    // host가 목표보다 작으면 host에 맞춰 줄임 (최소 24px)
+    var s = Math.max(24, Math.min(target, Math.round(H || target), Math.round(W || target)));
+    return { W: W, H: H, s: s, mx: Math.max(0, W - s), my: Math.max(0, H - s) };
+  }
+  function moverSizeSync(m, b){
+    var px = b.s + 'px';
+    if(m.wrap.style.width !== px){ m.wrap.style.width = px; m.wrap.style.height = px; }
+  }
+  function moverSetPos(m, x, y, ms, ease){
+    m.x = x; m.y = y;
+    m.wrap.style.transition = (ms > 0) ? ('transform ' + Math.round(ms) + 'ms ' + (ease || 'ease-in-out')) : 'none';
+    m.wrap.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  }
+  function moverFace(m, dir, tiltDeg){
+    m.dir = (dir === -1) ? -1 : 1;
+    m.flip.style.transform = 'scaleX(' + m.dir + ')' + (tiltDeg ? (' rotate(' + tiltDeg + 'deg)') : '');
+  }
+  function moverFreeze(m){ // hidden/저사양: 현재 렌더 위치에 그대로 고정 + 타이머 전부 해제
+    m.t.forEach(clearTimeout); m.t.length = 0;
+    try{
+      var tr = getComputedStyle(m.wrap).transform;
+      var mm = tr && tr !== 'none' ? tr.match(/matrix\(([^)]+)\)/) : null;
+      if(mm){
+        var a = mm[1].split(',');
+        var fx = parseFloat(a[4]), fy = parseFloat(a[5]);
+        if(isFinite(fx)) m.x = fx;
+        if(isFinite(fy)) m.y = fy;
+      }
+    }catch(e){}
+    moverSetPos(m, m.x, m.y, 0);
+    m.img.classList.remove('mkCharaWalking');
+    moverFace(m, m.dir, 0);
+  }
+  function moverWalkTo(m, tx, ty){ // 걷기 공통: 방향 반전 + 까딱, 소요 ms 반환
+    var dur = MOVE_WALK_MIN_MS + Math.random() * MOVE_WALK_RANGE_MS;
+    var dx = tx - m.x;
+    if(Math.abs(dx) > 4) moverFace(m, dx > 0 ? 1 : -1, 0);
+    m.img.classList.add('mkCharaWalking');
+    moverSetPos(m, tx, ty, dur, 'ease-in-out');
+    m.t.push(setTimeout(function(){ m.img.classList.remove('mkCharaWalking'); }, dur));
+    return dur;
+  }
+  function moverPeek(m, b){ // 가장자리에 붙어 살짝 기울여 빼꼼
+    var e = ['left', 'right', 'bottom'][Math.floor(Math.random() * 3)];
+    var tx = (e === 'left') ? 0 : (e === 'right') ? b.mx : Math.random() * b.mx;
+    var ty = (e === 'bottom') ? b.my : Math.random() * b.my;
+    var walk = moverWalkTo(m, tx, ty);
+    var tilt = (e === 'left') ? -12 : (e === 'right') ? 12 : (m.dir > 0 ? 10 : -10);
+    m.t.push(setTimeout(function(){ moverFace(m, m.dir, tilt); }, walk + 60));
+    m.t.push(setTimeout(function(){ moverFace(m, m.dir, 0); }, walk + 1260));
+    return walk + 1500;
+  }
+  function moverStep(m){
+    m.t.forEach(clearTimeout); m.t.length = 0; // 이번 스텝 기준으로 리셋(이전 걷기/빼꼼 보조 타이머는 이미 완료)
+    if(!m.root.isConnected){ moverDestroy(m); return; }
+    if(document.hidden) return; // visibilitychange가 재개
+    if(blinkLowSpec()){ moverFreeze(m); return; } // 저사양: 동결 — tileKey(모드) 변경 재렌더가 stand로 정리
+    var host = moverHostOf(m);
+    if(host !== m.host){ // 손캠 on/off 등으로 경계가 바뀌면 재부착 + 위치 clamp
+      m.host = host;
+      try{ host.appendChild(m.wrap); }catch(e){}
+      var b0 = moverBounds(m);
+      moverSizeSync(m, b0);
+      moverSetPos(m, Math.min(m.x, b0.mx), Math.min(m.y, b0.my), 0);
+    }
+    var b = moverBounds(m);
+    var busy = 0;
+    if(b.W < 40 || b.H < 40){
+      busy = 400; // 아직 레이아웃 전 — 잠시 후 재시도
+    }else{
+      moverSizeSync(m, b);
+      var r = Math.random();
+      if(r < 0.5) busy = moverWalkTo(m, Math.random() * b.mx, Math.random() * b.my); // 목적지 랜덤 걷기
+      else if(r < 0.75) busy = 300 + Math.random() * 900;                            // 잠깐 멈춰 서기
+      else busy = moverPeek(m, b);                                                   // 가장자리 빼꼼
+    }
+    m.t.push(setTimeout(function(){ moverStep(m); }, busy + MOVE_IDLE_MIN_MS + Math.random() * MOVE_IDLE_RANGE_MS));
+  }
+  function attachMover(tileEl, p){ // renderTile 인라인 훅이 모든 타일에 호출 — 판정/정리 포함
+    try{
+      moverSweep(tileEl); // 같은 타일의 이전 컨트롤러 + 떨어진 타일 잔여 정리 (모드 전환/재렌더 누수 방지)
+      if(!tileEl || moveModeOf(p) !== 'move') return null;
+      var c = charaOf(p);
+      if(!c) return null;
+      var wrap = document.createElement('div'); wrap.className = 'mkCharaMoveWrap';
+      var flip = document.createElement('div'); flip.className = 'mkCharaMoveFlip';
+      var img = document.createElement('img'); img.className = 'mkCharaMoveImg'; img.alt = '캐릭터'; img.decoding = 'async';
+      flip.appendChild(img); wrap.appendChild(flip); tileEl.appendChild(wrap);
+      var m = { root: tileEl, host: tileEl, wrap: wrap, flip: flip, img: img, t: [], x: 0, y: 0, dir: 1 };
+      moverReg.add(m);
+      stats.moverAttachCount++;
+      bakeChara(c.parts, c.hue).then(function(res){
+        if(!moverReg.has(m)) return; // 이미 정리됨
+        img.src = res.url;
+        if(res.urlClosed) blinkAttach(img, res.url, res.urlClosed); // 깜빡임은 이동 중에도 프레임 스왑으로 계속
+        var host = moverHostOf(m);
+        if(host !== m.host){ m.host = host; try{ host.appendChild(wrap); }catch(e){} }
+        var b = moverBounds(m);
+        moverSizeSync(m, b);
+        moverSetPos(m, Math.random() * b.mx, Math.random() * b.my, 0); // 시작 위치 랜덤(관전자마다 달라도 무방)
+        m.t.push(setTimeout(function(){ moverStep(m); }, 400 + Math.random() * 2200)); // 위상 랜덤
+      }, function(){ moverDestroy(m); }); // bake 실패 → 오버레이 조용히 제거(칸엔 기존 콘텐츠가 이미 있음)
+      return m;
+    }catch(e){ return null; }
+  }
+  document.addEventListener('visibilitychange', function(){ // V169_MOVE: hidden 동결/복귀 재개 (blink 리스너와 별개)
+    if(document.hidden){
+      moverReg.forEach(function(m){ if(m.root.isConnected) moverFreeze(m); else moverDestroy(m); });
+    }else{
+      moverReg.forEach(function(m){
+        if(!m.root.isConnected){ moverDestroy(m); return; }
+        if(!m.t.length) m.t.push(setTimeout(function(){ moverStep(m); }, 300 + Math.random() * 1200));
+      });
+    }
+  });
+  function moveDebug(){ // 검증용
+    var timers = 0, list = [];
+    moverReg.forEach(function(m){
+      timers += m.t.length;
+      list.push({ connected: m.root.isConnected, inHandcam: m.host !== m.root, x: m.x, y: m.y,
+                  w: m.host.clientWidth || 0, h: m.host.clientHeight || 0 });
+    });
+    return { movers: moverReg.size, pendingTimers: timers, attach: stats.moverAttachCount, list: list };
+  }
+  function moveStepNow(){ // 검증용: 대기 없이 즉시 다음 행동
+    moverReg.forEach(function(m){ m.t.forEach(clearTimeout); m.t.length = 0; moverStep(m); });
+  }
+
+  /* ---------- bake: 오프스크린 캔버스 1회 합성 (착장 시그니처가 바뀔 때만 재합성) ----------
+     반환: { url, w, h, facePart, faceRect:{x,y,w,h}, layers:[{cat,name,rect}] }
+     → 후속 "깜빡임 모션" 패치가 facePart/faceRect로 눈 위치를 계산해 이 이미지를 확장할 수 있다. */
+  var bakeCache = new Map(); // sig -> Promise<bakeResult>
+  function filterOf(hue, key){
+    var a = hue && hue[key];
+    if(!a) return '';
+    return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
+  }
+  function bakeChara(parts, hue){
+    parts = sanitizeParts(parts);
+    hue = sanitizeHue(hue);
+    var key = sigOf(parts, hue);
+    var hit = bakeCache.get(key);
+    if(hit){ stats.bakeCacheHit++; return hit; }
+    var pr = ensureManifest().then(function(mani){
+      var layers = [];
+      Z_ORDER.forEach(function(cat){
+        var name, adjKey, srcCat;
+        if(cat === 'hair_back'){
+          name = parts.hair ? (mani.hairBackOf[parts.hair] || null) : null;
+          adjKey = 'hair'; srcCat = 'hair'; // 색 필터는 앞머리와 공유, 파일은 hair 폴더
+        }else{
+          name = parts[cat] || null;
+          adjKey = cat; srcCat = cat;
+          if(name && (!mani.files[srcCat] || !mani.files[srcCat][name])) name = null; // 목록에 없는 파츠는 건너뜀
+        }
+        if(!name || !mani.folders[srcCat]) return;
+        layers.push({ cat: cat, name: name, adjKey: adjKey, url: urlFor(mani, srcCat, name) });
+      });
+      if(!layers.length) throw new Error('no layers');
+      return Promise.all(layers.map(function(L){
+        return loadImg(L.url).then(function(img){ L.img = img; return L; }, function(){ L.img = null; return L; });
+      })).then(function(ls){
+        var ok = ls.filter(function(L){ return L.img; });
+        if(!ok.length) throw new Error('no images');
+        var meta = { facePart: null, faceRect: null, layers: [] };
+        function drawFrame(faceCv){ // V169_BLINK: faceCv가 있으면 얼굴 레이어만 감은눈 캔버스로 교체 (동일 rect/필터)
+          var cv = document.createElement('canvas');
+          cv.width = BAKE_SIZE; cv.height = BAKE_SIZE;
+          var ctx = cv.getContext('2d');
+          meta.layers.length = 0;
+          ok.forEach(function(L){
+            var iw = L.img.naturalWidth || 1, ih = L.img.naturalHeight || 1;
+            var s = Math.min(BAKE_SIZE / iw, BAKE_SIZE / ih);
+            var w = iw * s, h = ih * s, x = (BAKE_SIZE - w) / 2, y = (BAKE_SIZE - h) / 2;
+            var f = filterOf(hue, L.adjKey);
+            try{ ctx.filter = f || 'none'; }catch(e){}
+            ctx.drawImage((faceCv && L.cat === 'face') ? faceCv : L.img, x, y, w, h);
+            try{ ctx.filter = 'none'; }catch(e){}
+            var rect = { x: x, y: y, w: w, h: h };
+            meta.layers.push({ cat: L.cat, name: L.name, rect: rect });
+            if(L.cat === 'face'){ meta.facePart = L.name; meta.faceRect = rect; }
+          });
+          return cv;
+        }
+        var openUrl = drawFrame(null).toDataURL('image/png');
+        stats.bakeCount++; // 감은눈 프레임 포함 착장당 1회 bake — 깜빡임 자체는 재합성 없이 프레임 스왑만
+        function result(closedUrl){
+          return { url: openUrl, urlClosed: closedUrl || null, w: BAKE_SIZE, h: BAKE_SIZE,
+                   facePart: meta.facePart, faceRect: meta.faceRect, layers: meta.layers };
+        }
+        if(!meta.facePart) return result(null); // 민얼굴 → 깜빡임 없음
+        return closedFaceCanvas(mani, meta.facePart).then(function(fcv){
+          return result(drawFrame(fcv).toDataURL('image/png'));
+        }, function(){ return result(null); }); // 감은눈 생성 실패 시 깜빡임만 조용히 생략
+      });
+    });
+    pr = pr.catch(function(err){ bakeCache.delete(key); throw err; });
+    bakeCache.set(key, pr);
+    if(bakeCache.size > 60){ var oldest = bakeCache.keys().next().value; if(oldest !== key) bakeCache.delete(oldest); }
+    return pr;
+  }
+
+  /* ---------- 타일 슬롯 채우기 (renderTile 인라인 분기에서 호출, 동기) ---------- */
+  function fillSlot(box, p){
+    try{
+      var c = charaOf(p);
+      if(!c){ box.textContent = '✨'; return false; }
+      box.classList.add('charaSlotOn'); // 펫 모션 클래스(petMotion*)는 붙이지 않는다 — 정지 표시
+      // 배경: 기존 펫 슬롯 배경 시스템 그대로 (petSlotBgColor / 투명)
+      var t = (p && p.theme) || {};
+      var bg = safeHex(t.petSlotBgColor, '#1b1720');
+      var trans = (t.petSlotBgTransparent === true || t.petSlotBgTransparent === 'true');
+      try{ box.style.setProperty('--petSlotBg', bg); }catch(e){}
+      box.style.background = trans ? 'transparent' : bg;
+      if(trans) box.classList.add('petSlotTransparent');
+      box.textContent = '';
+      var img = document.createElement('img');
+      img.className = 'mkCharaTileImg';
+      img.alt = '캐릭터';
+      img.decoding = 'async';
+      box.appendChild(img);
+      bakeChara(c.parts, c.hue).then(function(res){
+        try{
+          img.src = res.url;
+          /* V169_BLINK: 감은눈 프레임이 있으면(얼굴 장착 캐릭터) 프레임 스왑 깜빡임 부착 — 위상은 캐릭터마다 랜덤 */
+          if(res.urlClosed) blinkAttach(img, res.url, res.urlClosed);
+        }catch(e){}
+      }, function(){
+        try{ if(box.contains(img)) box.removeChild(img); box.textContent = '✨'; }catch(e){}
+      });
+      return true;
+    }catch(e){
+      try{ box.textContent = '✨'; }catch(e2){}
+      return false;
+    }
+  }
+
+  /* ---------- charaV1 빌드 + 디바운스 쓰기 ---------- */
+  function buildCharaV1(){
+    var lc = readLocalChara();
+    if(!lc) return null; // 캐릭터를 만든 적 없는 브라우저 → 공개 데이터도 만들지 않음
+    var payload = { v: 1, parts: {}, hue: {}, show: getMyShow(), mode: getMyMode(), updatedAtMs: Date.now() }; // V169_MOVE: mode 공유
+    PART_KEYS.forEach(function(k){ if(lc.parts[k]) payload.parts[k] = lc.parts[k]; });
+    PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = { h: lc.hue[k].h, s: lc.hue[k].s, b: lc.hue[k].b }; });
+    if(!Object.keys(payload.hue).length) delete payload.hue;
+    return payload;
+  }
+  var writeTimer = 0, lastWrittenSig = null;
+  function scheduleWrite(){
+    clearTimeout(writeTimer);
+    writeTimer = setTimeout(flushWrite, WRITE_DEBOUNCE_MS);
+  }
+  function flushWrite(){
+    stats.writeFlushCount++;
+    try{
+      var payload = buildCharaV1();
+      if(!payload) return;
+      var sig = writeSigOf(payload);
+      if(sig === lastWrittenSig) return; // 내용이 같으면 재쓰기 없음
+      var b = bridge();
+      if(!b || !b.joined()) return; // 입장 전에는 쓰지 않음 (입장 후 1회 동기화가 처리)
+      stats.writeAttemptCount++;
+      b.writeCharaV1(payload).then(function(ok){
+        if(ok){ lastWrittenSig = sig; stats.writeOkCount++; }
+      }, function(){});
+    }catch(e){}
+  }
+
+  var rerenderTimer = 0;
+  function scheduleSelfRerender(){
+    clearTimeout(rerenderTimer);
+    rerenderTimer = setTimeout(function(){
+      var b = bridge();
+      if(!b) return;
+      try{ b.rerenderTiles(b.selfUid()); }catch(e){}
+    }, 200);
+  }
+  function onLocalCharaChanged(){ // 꾸미기 모달 persist() 인라인 훅이 호출
+    localCacheLoaded = false;
+    scheduleSelfRerender();
+    scheduleWrite();
+  }
+  function onShowChanged(){
+    scheduleSelfRerender();
+    scheduleWrite();
+    setTimeout(syncBgRow, 0);
+  }
+
+  /* 입장 후 1회 동기화: 내 profiles 공개본과 다를 때만 디바운스 쓰기 (같으면 아무것도 안 씀) */
+  var joinSyncDone = false;
+  function maybeJoinSync(){
+    if(joinSyncDone) return;
+    try{ if(!document.body.classList.contains('joined')) return; }catch(e){ return; }
+    joinSyncDone = true;
+    setTimeout(function(){
+      try{
+        var payload = buildCharaV1();
+        if(!payload) return;
+        var sig = writeSigOf(payload);
+        var b = bridge();
+        var remote = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
+        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), mode: remote.mode }) === sig){ /* V169_MOVE: mode 포함 비교 */
+          lastWrittenSig = sig; // 원격본과 동일 → 쓰기 생략
+          return;
+        }
+        scheduleWrite();
+      }catch(e){}
+    }, 4000); // 내 profiles/{uid} 첫 스냅샷 도착을 기다린다
+  }
+  try{
+    new MutationObserver(maybeJoinSync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }catch(e){}
+  maybeJoinSync();
+
+  /* ---------- 설정 UI: "✨캐릭터 보여주기" ---------- */
+  function $id(id){ return document.getElementById(id); }
+  function syncBgRow(){
+    // 기존 updatePhotoEnabledUI가 펫 기준으로 숨긴 "펫 배경" 줄을, 캐릭터가 켜져 있으면 다시 보여준다
+    // (캐릭터도 같은 배경 설정을 쓴다). 강제로 숨기지는 않는다 — 그 외에는 기존 로직이 결정.
+    try{
+      var row = $id('petSlotBgRow');
+      if(!row) return;
+      var photoOn = ($id('photoEnabled') ? !!$id('photoEnabled').checked : true);
+      var petSlot = ($id('petDisplaySlot') ? String($id('petDisplaySlot').value || 'none') : 'none');
+      if(photoOn && petSlot === 'none' && getMyShow() !== 'none') row.style.display = '';
+    }catch(e){}
+  }
+  function initSettingsUI(){
+    var sel = $id('charaDisplaySlot');
+    if(!sel) return;
+    /* V169_MOVE: "캐릭터 움직임" select — 표시가 "없음"이면 비활성 */
+    var motionSel = $id('charaMotionMode');
+    function syncMotionRow(){
+      if(motionSel) motionSel.disabled = (normShow(sel.value) === 'none');
+    }
+    if(motionSel){
+      motionSel.value = readLpMode(); // 저장값 복원
+      motionSel.addEventListener('change', function(){
+        var mv = normMode(motionSel.value);
+        motionSel.value = mv;
+        saveLpMode(mv);
+        onShowChanged(); // 내 타일 재렌더 + charaV1(mode) 디바운스 공유 — 기존 채널 재사용
+      });
+    }
+    sel.value = readLpShow(); // 저장값 복원
+    syncMotionRow();
+    sel.addEventListener('change', function(){
+      var v = normShow(sel.value);
+      sel.value = v;
+      var petSel = $id('petDisplaySlot');
+      if(v !== 'none' && petSel && String(petSel.value) === v){
+        // 같은 칸 충돌: 나중에 고른 캐릭터가 이기고 펫 표시를 자동으로 끈다
+        petSel.value = 'none';
+        try{ petSel.dispatchEvent(new Event('change')); }catch(e){}
+        toast((v === 'photo' ? '사진칸' : '이모지칸') + '은 캐릭터가 차지! 펫 보여주기는 "표시 안 함"으로 바꿨어요 🐾');
+      }
+      saveLpShow(v);
+      syncMotionRow(); // V169_MOVE
+      onShowChanged();
+    });
+    var petSel = $id('petDisplaySlot');
+    if(petSel){
+      petSel.addEventListener('change', function(){
+        var pv = String(petSel.value || 'none');
+        if(pv !== 'none' && normShow(sel.value) === pv){
+          // 같은 칸 충돌: 나중에 고른 펫이 이기고 캐릭터 표시를 자동으로 끈다
+          sel.value = 'none';
+          saveLpShow('none');
+          toast((pv === 'photo' ? '사진칸' : '이모지칸') + '은 펫이 차지! 캐릭터 보여주기는 "표시 안 함"으로 바꿨어요 ✨');
+          onShowChanged();
+        }
+        setTimeout(syncBgRow, 0);
+      });
+    }
+    var photoChk = $id('photoEnabled');
+    if(photoChk) photoChk.addEventListener('change', function(){ setTimeout(syncBgRow, 0); });
+    // 프로필 모달이 열릴 때마다 저장값 복원 (기존 pet select 복원 경로와 대칭 — 착장은 로컬이 정본)
+    var pm = $id('profileModal');
+    if(pm && typeof MutationObserver !== 'undefined'){
+      new MutationObserver(function(){
+        if(pm.classList.contains('show')){
+          sel.value = readLpShow();
+          if(motionSel) motionSel.value = readLpMode(); // V169_MOVE: 모달 열릴 때 저장값 복원
+          syncMotionRow();
+          setTimeout(syncBgRow, 0);
+        }
+      }).observe(pm, { attributes: true, attributeFilter: ['class'] });
+    }
+    syncBgRow();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSettingsUI);
+  else initSettingsUI();
+
+  /* ---------- 공개 API (인라인 분기 + 검증 훅) ---------- */
+  window.__MK_CHARA_TILE_V169__ = {
+    slotOf: slotOf,
+    fillSlot: fillSlot,
+    tileKeyOf: tileKeyOf,
+    buildCharaV1: buildCharaV1,
+    onLocalCharaChanged: onLocalCharaChanged,
+    bake: bakeChara,           // bake(parts, hue) → Promise<{url,facePart,faceRect,layers}> (후속 깜빡임 패치용 메타 포함)
+    ensureManifest: ensureManifest,
+    getMyShow: getMyShow,
+    flushNow: flushWrite,      // 검증용: 디바운스 없이 즉시 flush
+    stats: stats,              // bake/쓰기 횟수 관측
+    /* V169_BLINK: 깜빡임 API — 모달 미리보기(v169CharaDressupScript)와 검증이 사용 */
+    closedFaceUrl: closedFaceUrl, // (faceName) → Promise<감은눈 얼굴 dataURL>
+    blinkAttach: blinkAttach,     // (imgEl, openUrl, closedUrl) → controller
+    blinkDebug: blinkDebug,       // 검증용: {controllers,pendingTimers,blinkCount,nextAts}
+    blinkFireNow: blinkFireNow,   // 검증용: 대기 없이 즉시 깜빡임
+    /* V169_MOVE: 움직이기 API — renderTile 인라인 훅과 검증이 사용 */
+    attachMover: attachMover,     // (tileEl, p) → controller|null (판정·이전 컨트롤러 정리 포함)
+    moveModeOf: moveModeOf,       // (p) → 'stand'|'move' (표시 꺼짐/저사양이면 stand)
+    getMyMode: getMyMode,
+    moveDebug: moveDebug,         // 검증용: {movers,pendingTimers,attach,list}
+    moveStepNow: moveStepNow,     // 검증용: 대기 없이 즉시 다음 행동
+    __testSelfUid: null        // 검증용: selfUid 강제 지정 (Firebase 없이 내 타일 경로 테스트)
+  };
+})();
+</script>
 
 </body>
 </html>
