@@ -27316,7 +27316,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkComboSlot .mkAccMini img{ width:100%; height:100%; object-fit:contain; display:block; }
   /* ── V169_SHOP: 장바구니(입어보는 중 파츠 결제) 패널 ── */
   .mkCartBox{ margin-top:10px; }
-  .mkCartList{ display:flex; flex-direction:column; gap:6px; max-height:170px; overflow-y:auto; scrollbar-width:thin; }
+  /* V169_SHOP2: 장바구니 자리는 항상 고정 높이로 예약 — 담긴 개수와 무관하게 미리보기 크기가 흔들리지 않는다 */
+  .mkCartList{ display:flex; flex-direction:column; gap:6px; height:170px; overflow-y:auto; scrollbar-width:thin; }
+  .mkCartEmpty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:rgba(255,255,255,.42); font-size:12px; line-height:1.7; text-align:center; border:1px dashed rgba(255,255,255,.14); border-radius:12px; }
+  .mkCartEmpty .ic{ font-size:22px; opacity:.8; }
   .mkCartItem{ display:flex; align-items:center; gap:8px; border:1px solid rgba(255,216,92,.18); background:rgba(0,0,0,.16); border-radius:12px; padding:6px 8px; cursor:pointer; }
   .mkCartItem:hover{ border-color:rgba(255,216,92,.4); }
   .mkCartItem input[type="checkbox"]{ accent-color:#ffd85c; width:15px; height:15px; flex:0 0 auto; cursor:pointer; margin:0; }
@@ -27713,8 +27716,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     items.forEach(function(it){ keep[ownedKeyFor(it.catKey, it.name)] = 1; });
     Object.keys(cartUnchecked).forEach(function(k){ if(!keep[k]) delete cartUnchecked[k]; });
     var list = $id('mkCartList');
-    if(!items.length){ box.style.display = 'none'; if(list) list.innerHTML = ''; return; }
-    box.style.display = '';
+    box.style.display = ''; // V169_SHOP2: 항상 표시 — 자리 고정으로 미리보기 크기 유지
+    if(!items.length){
+      if(list) list.innerHTML = '<div class="mkCartEmpty"><span class="ic">👗</span><span>파츠를 누르면 여기에 담겨요<br>결제 전엔 나만 보여요</span></div>';
+      var tot0 = $id('mkCartTotal');
+      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>🪙0</b> · 보유 🪙' + fmtCoins(readCoins());
+      var pay0 = $id('mkCartPay');
+      if(pay0){ pay0.disabled = true; pay0.textContent = '🪙 결제'; }
+      return;
+    }
     var total = 0, checkedN = 0;
     if(list) list.innerHTML = items.map(function(it){
       var k = ownedKeyFor(it.catKey, it.name);
@@ -28034,8 +28044,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +     '<div class="petSectionTitle"><span>✨ 미리보기</span><span class="tiny">입힌 순서대로 겹쳐 보여줘요</span></div>'
     +     '<div class="mkCharaStageWrap"><div id="mkCharaStage"></div></div>'
     +   '</div>'
-    /* V169_SHOP: 입어보기 장바구니 — 착장 중인 미보유 파츠 목록(기본 체크) + 일괄 결제. 미보유 착장이 없으면 숨김 */
-    +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox" style="display:none">'
+    /* V169_SHOP: 입어보기 장바구니 — 착장 중인 미보유 파츠 목록(기본 체크) + 일괄 결제.
+       V169_SHOP2: 항상 표시(고정 높이 자리 예약) — 비어 있으면 안내 문구, 미리보기 크기 고정 목적 */
+    +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox">'
     +     '<div class="petSectionTitle"><span>🛒 입어보는 중</span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
     +     '<div id="mkCartList" class="mkCartList"></div>'
     +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">🪙 결제</button></div>'
