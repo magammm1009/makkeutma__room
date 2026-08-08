@@ -25253,6 +25253,50 @@ if(!window.__MK_BOOT_OK__){
       localStorage.setItem(LS_DASH_PET_VIEW, JSON.stringify(lp));
     }catch(e){}
   }
+  /* V169_SHOP2: 캐릭터 모드 카드 — 펫 만렙 줄 자리에 "보유 파츠 N/M" 표시 */
+  let dashCharaTotalParts = 0;   // M: manifest 기준 구매 가능한 전체 파츠 수(_back 제외) — 1회 계산 캐시
+  let dashCharaTotalReq = false;
+  function dashCharaOwnedCount(){ // N: mk_chara_owned_v2 보유 수(_back 자동 동반분 제외)
+    try{
+      const d = JSON.parse(localStorage.getItem('mk_chara_owned_v2') || 'null');
+      if(!d || typeof d !== 'object' || Array.isArray(d)) return 0;
+      return Object.keys(d).filter(k => d[k] && !/_back\.png$/i.test(k)).length;
+    }catch(e){ return 0; }
+  }
+  function dashCharaPartsTotal(){
+    if(dashCharaTotalParts) return dashCharaTotalParts;
+    try{ // 꾸미기 모달이 이미 manifest를 로드했으면 동기 산출 (cats.parts는 _back 제거 후 목록)
+      const st = window.__MK_CHARA_V169__ && window.__MK_CHARA_V169__.state;
+      if(st && st.phase === 'ready' && Array.isArray(st.cats) && st.cats.length){
+        dashCharaTotalParts = st.cats.reduce((s, c) => s + ((!/hair_back/i.test(String(c.key)) && c.parts) ? c.parts.length : 0), 0);
+        return dashCharaTotalParts;
+      }
+    }catch(e){}
+    try{ // 타일 모듈 manifest 캐시(비동기) — 도착하면 카드 재렌더로 반영
+      const api = window.__MK_CHARA_TILE_V169__;
+      if(!dashCharaTotalReq && api && typeof api.ensureManifest === 'function'){
+        dashCharaTotalReq = true;
+        Promise.resolve(api.ensureManifest()).then(mani => {
+          try{
+            let tot = 0;
+            Object.keys(mani.files || {}).forEach(k => { tot += Object.keys(mani.files[k]).length; });
+            tot -= Object.keys(mani.hairBackOf || {}).length; // 헤어 _back 자동 동반분 제외
+            dashCharaTotalParts = Math.max(0, tot);
+            renderDash();
+          }catch(e){}
+        }, () => {});
+      }
+    }catch(e){}
+    return 0; // 아직 모름 — "보유 파츠 N"만 표시 폴백
+  }
+  function dashCharaNameV169(){ // V169_SHOP2: 저장된 캐릭터 이름(mk_chara_state.name, ≤5자) — 빈값이면 기본 '내 캐릭터'
+    try{
+      const d = JSON.parse(localStorage.getItem('mk_chara_state') || 'null');
+      const v = String((d && d.name) || '').replace(/\s+/g, ' ').trim();
+      if(v) return Array.from(v).slice(0, 5).join('');
+    }catch(e){}
+    return '내 캐릭터';
+  }
   function dashCharaPayload(){ // 내 로컬 캐릭터(mk_chara_state) → {parts,hue} / 미설정이면 null
     try{
       const api = window.__MK_CHARA_TILE_V169__;
@@ -25412,21 +25456,24 @@ if(!window.__MK_BOOT_OK__){
     }
 
     const name = document.getElementById('petHeroName');
-    const nextName = charaShown ? '내 캐릭터' : displayName(id); // V169_DASH: 캐릭터 모드 캡션
+    const nextName = charaShown ? dashCharaNameV169() : displayName(id); // V169_DASH: 캐릭터 모드 캡션 (V169_SHOP2: 저장된 이름)
     if(name){
       // 텍스트 이름은 기본 화면/접근성용으로 계속 유지하고, 좁은 화면 CSS가 data-pet-level만 꺼내 쓴다.
       name.dataset.petLevel = String(lv);
-      name.setAttribute('aria-label', charaShown ? '내 캐릭터' : `펫 레벨 ${lv}`);
+      name.setAttribute('aria-label', charaShown ? dashCharaNameV169() : `펫 레벨 ${lv}`); // V169_SHOP2
       if(name.textContent !== nextName) name.textContent = nextName;
     }
     const fullCountEl = document.getElementById('petHeroFullCount');
     if(fullCountEl){
-      const label = petFullLabel(st);
+      /* V169_SHOP2: 캐릭터 모드에서는 만렙 줄 자리에 "보유 파츠 N/M" — 펫 모드 복귀 시 만렙 줄 원복 */
+      const label = charaShown
+        ? ('👗 보유 파츠 ' + dashCharaOwnedCount() + (dashCharaPartsTotal() ? ('/' + dashCharaPartsTotal()) : ''))
+        : petFullLabel(st);
       if(fullCountEl.textContent !== label) fullCountEl.textContent = label;
-      fullCountEl.title = 'Lv.30까지 키운 펫 수';
-      // V169_DASH: 캐릭터 모드에서는 펫 통계(만렙 수) 줄 숨김 — 펫 모드 복귀 시 원복
-      const wantDisplay = charaShown ? 'none' : '';
-      if(fullCountEl.style.display !== wantDisplay) fullCountEl.style.display = wantDisplay;
+      fullCountEl.title = charaShown
+        ? ('코인으로 구매한 꾸미기 파츠 수' + (dashCharaPartsTotal() ? ` (전체 ${dashCharaPartsTotal()}개)` : ''))
+        : 'Lv.30까지 키운 펫 수';
+      if(fullCountEl.style.display !== '') fullCountEl.style.display = '';
     }
     const status = document.getElementById('petHeroStatus'); if(status) status.textContent = '';
     const exp = document.getElementById('petHeroExp'); if(exp) exp.textContent = `${hoursText(sec)} / ${MAX_HOURS}시간`;
@@ -27232,7 +27279,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaTab .cnt{ font-size:10px; opacity:.6; margin-left:3px; }
   .mkCharaTab:hover{ border-color:rgba(255,141,194,.45); }
   .mkCharaTab.on{ border-color:#ff8dc2; background:rgba(255,141,194,.16); color:#ffd2e7; box-shadow:0 0 0 1px rgba(255,141,194,.25); }
-  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
+  /* V169_SHOP2: grid-auto-rows:max-content — 크롭 도입으로 타일 내용물이 전부 absolute가 되자,
+     정해진 높이(min-height:110px 스크롤 컨테이너) 안에서 Chrome이 auto 암시 행들을 (높이-간격)/행수로
+     짓눌러(예: 21.5px) 88px 타일(aspect-ratio)이 아래 행 위로 겹쳤다. max-content 행은 내용(정사각
+     스페이서 ::before) 아래로 줄어들지 않아 어떤 뷰포트 폭에서도 행 겹침 0 — 넘치는 행은 기존대로 스크롤. */
+  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
   .mkCharaThumb{ position:relative; aspect-ratio:1/1; border:2px solid transparent; border-radius:14px; overflow:hidden; cursor:pointer; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
   .mkCharaThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkCharaThumb:hover{ border-color:rgba(255,141,194,.45); }
@@ -27281,6 +27332,26 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   #mkCartPay{ border:1px solid rgba(255,216,92,.55); background:rgba(255,216,92,.14); color:#ffe9b8; border-radius:999px; padding:7px 16px; font-size:12px; font-weight:1000; cursor:pointer; min-width:auto !important; white-space:nowrap; }
   #mkCartPay:hover{ background:rgba(255,216,92,.22); }
   #mkCartPay:disabled{ opacity:.4; cursor:default; }
+
+  /* ── V169_SHOP2: 그리드 타일 정사각 자체 보장(행 겹침 해결) ──
+     원인(실측): 크롭 도입으로 타일 안 내용물이 전부 absolute가 되자 grid 자동 행 높이가 내용 기준(≈51px)으로
+     줄었는데, 타일 자신은 aspect-ratio로 열 폭(88px)만큼 커져 아래 행 위로 겹쳤다(Chrome 행 트랙 산정이
+     "absolute 내용 + aspect-ratio" 조합을 반영하지 못함). in-flow 스페이서(padding-top 트릭)로 타일이
+     행 높이에 정사각을 직접 기여하게 한다 — 어떤 뷰포트 폭에서도 행 겹침 0, 크롭(contain)은 그대로. */
+  .mkCharaThumb::before{ content:""; display:block; padding-top:100%; }
+  .mkCharaThumb img{ position:absolute; left:0; top:0; } /* 크롭/폴백 공통 — 스페이서 아래로 쌓이지 않게 */
+  .mkCharaThumb.noneTile{ display:block; } /* 내용은 absolute 오버레이로 중앙 배치(스페이서와 공존) */
+  .mkCharaThumb .mkNoneInner{ position:absolute; inset:0; display:flex; flex-direction:column; gap:2px; align-items:center; justify-content:center; }
+
+  /* ── V169_SHOP2: 저장 바(캐릭터 이름 + 명시적 저장) — 결제(소유권)와 분리 ── */
+  .mkSaveBox{ margin-top:10px; }
+  .mkSaveRow{ display:flex; align-items:center; gap:8px; }
+  #mkCharaNameInput{ flex:1 1 auto; min-width:0; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.25); color:rgba(255,255,255,.92); border-radius:10px; padding:9px 10px; font-size:13px; font-weight:800; outline:none; }
+  #mkCharaNameInput:focus{ border-color:#ff8dc2; box-shadow:0 0 0 2px rgba(255,141,194,.18); }
+  #mkCharaSaveBtn{ flex:0 0 auto; border:1px solid rgba(255,141,194,.55); background:rgba(255,141,194,.16); color:#ffd2e7; border-radius:999px; padding:9px 18px; font-size:12.5px; font-weight:1000; cursor:pointer; min-width:auto !important; white-space:nowrap; }
+  #mkCharaSaveBtn:hover{ background:rgba(255,141,194,.24); }
+  #mkCharaSaveBtn.mkDirty{ border-color:#ffd85c; color:#ffe9b8; background:rgba(255,216,92,.16); animation:mkSavePulseV169 1.5s ease-in-out infinite; }
+  @keyframes mkSavePulseV169{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,216,92,.5); } 50%{ box-shadow:0 0 0 7px rgba(255,216,92,0); } }
 
   .mkCharaMsg{ grid-column:1 / -1; padding:22px 8px; text-align:center; color:rgba(255,255,255,.55); font-size:12.5px; line-height:1.7; }
   .mkCharaRetryBtn{ margin-top:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:900; cursor:pointer; min-width:auto !important; }
@@ -27345,6 +27416,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     cats:[],        // [{key,order,label,parts:[{name,url}],backParts:Map}]
     sel:{},         // { "01_body": "파일명" | null }
     adj:{},         // { body:{h,s,b} } — 짧은 카테고리명 키, 앞·뒷머리 공유
+    name:'',        // V169_SHOP2: 캐릭터 이름(≤5자, 빈값 = 기본 "내 캐릭터")
     active:null
   };
 
@@ -27382,29 +27454,36 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){}
     return null;
   }
+  /* V169_SHOP2: persist가 기록할 스냅샷 — 보유 파츠만 + 색 + 이름(≤5자).
+     acc는 배열(최대 3, 착용 순서 유지)로 저장 — 읽는 쪽은 구형 단일 문자열도 정규화한다. */
+  function currentSavePayload(){
+    var owned = getOwned();
+    var parts={}, hue={};
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return;
+      var n = catName(c.key);
+      if(isAccCat(c.key)){
+        var arr = selArr(c.key).filter(function(nm){ return !!owned[ownedKeyFor(c.key, nm)]; }).slice(0,3);
+        parts[n] = arr.length ? arr : null;
+      }else{
+        var s = chara.sel[c.key];
+        parts[n] = (s && owned[ownedKeyFor(c.key, s)]) ? s : null;
+      }
+    });
+    Object.keys(chara.adj).forEach(function(k){
+      var a=chara.adj[k]; if(!a) return;
+      if(a.h===0 && a.s===100 && a.b===100) return;
+      hue[k]={ h:a.h, s:a.s, b:a.b };
+    });
+    var out = { v:1, parts:parts, hue:hue };
+    var nm = sanitizeName(chara.name);
+    if(nm) out.name = nm; // V169_SHOP2: 캐릭터 이름 — 빈값이면 키 생략(기본 "내 캐릭터")
+    return out;
+  }
   function persist(){
+    /* V169_SHOP2: [💾 저장] 버튼에서만 호출 — 착장 클릭/색 조절/결제는 더 이상 자동 저장하지 않는다. */
     try{
-      /* V169_SHOP: 저장/공유는 보유 파츠만 — 입어보기(미결제) 착장은 모달 미리보기 한정(세션 한정).
-         acc는 배열(최대 3, 착용 순서 유지)로 저장 — 읽는 쪽은 구형 단일 문자열도 정규화한다. */
-      var owned = getOwned();
-      var parts={}, hue={};
-      chara.cats.forEach(function(c){
-        if(isHairBackCat(c.key)) return;
-        var n = catName(c.key);
-        if(isAccCat(c.key)){
-          var arr = selArr(c.key).filter(function(nm){ return !!owned[ownedKeyFor(c.key, nm)]; }).slice(0,3);
-          parts[n] = arr.length ? arr : null;
-        }else{
-          var s = chara.sel[c.key];
-          parts[n] = (s && owned[ownedKeyFor(c.key, s)]) ? s : null;
-        }
-      });
-      Object.keys(chara.adj).forEach(function(k){
-        var a=chara.adj[k]; if(!a) return;
-        if(a.h===0 && a.s===100 && a.b===100) return;
-        hue[k]={ h:a.h, s:a.s, b:a.b };
-      });
-      localStorage.setItem(LS_KEY, JSON.stringify({ v:1, parts:parts, hue:hue }));
+      localStorage.setItem(LS_KEY, JSON.stringify(currentSavePayload()));
       /* V169: 착장 저장 → 타일 캐릭터 재합성 + charaV1 디바운스 공유 (V169_CHARA_TILE_DISPLAY 블록) */
       try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e2){}
     }catch(e){ console.warn('[chara v169] 저장 실패', e); }
@@ -27494,6 +27573,91 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     return changed;
   }
 
+  /* ---------- V169_SHOP2: 명시적 저장 모델 + 캐릭터 이름(최대 5자) ----------
+     - 착장 클릭/색 조절/결제는 미리보기·소유권만 바꾼다. mk_chara_state는 [💾 저장]에서만 쓴다.
+     - 모달 닫힘 = 마지막 저장본으로 복원(applySavedToSel). 저장본은 리셋 시나리오에서도 파괴하지 않는다. */
+  var NAME_MAX5 = 5;
+  function sanitizeName(v){
+    v = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    var a = Array.from(v); // 이모지·서로게이트 안전한 "글자" 단위
+    return a.length > NAME_MAX5 ? a.slice(0, NAME_MAX5).join('') : v;
+  }
+  function saveSigOf(p){ // 저장 스냅샷 비교 시그니처 — 키 누락/null/구형 acc 문자열을 정규화해 형태 차이로 인한 오탐 방지
+    var src = (p && p.parts) || {}, np = {};
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return;
+      var k = catName(c.key), v = src[k];
+      if(isAccCat(c.key)){
+        var arr = Array.isArray(v) ? v : (typeof v==='string' && v ? [v] : []);
+        np[k] = arr.length ? arr : null;
+      }else{
+        np[k] = (typeof v==='string' && v) ? v : null;
+      }
+    });
+    return JSON.stringify({ parts:np, hue:(p && p.hue) || {}, name:sanitizeName(p && p.name) });
+  }
+  function isDirty(){ // 저장본과 다른가 — 보유분 스냅샷+이름 기준(입어보기(미보유)만의 변경은 저장 대상이 아님)
+    if(chara.phase !== 'ready') return false;
+    var saved = loadSaved();
+    if(!saved) return true; // 저장본 없음 — 저장 유도
+    return saveSigOf(currentSavePayload()) !== saveSigOf(saved);
+  }
+  /* 저장본(mk_chara_state) → 선택 상태 복원. 미보유 파츠는 "표시에서만" 벗긴다(저장본 무수정) —
+     벗겨진 결과는 미저장 변경으로 취급되어 저장 버튼이 강조된다(보유 리셋 시 저장본 파괴 금지). */
+  function applySavedToSel(){
+    var saved = loadSaved();
+    chara.adj = {};
+    chara.cats.forEach(function(c){ chara.sel[c.key] = isAccCat(c.key) ? [] : null; });
+    chara.name = sanitizeName(saved && saved.name);
+    if(saved){
+      chara.cats.forEach(function(c){
+        var want = saved.parts[catName(c.key)];
+        if(isAccCat(c.key)){
+          // acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만 최대 3개
+          var arr = Array.isArray(want) ? want : (typeof want==='string' ? [want] : []);
+          var kept = [];
+          arr.forEach(function(nm){
+            if(typeof nm==='string' && kept.indexOf(nm)<0 && kept.length<3 && c.parts.some(function(p){ return p.name===nm; })) kept.push(nm);
+          });
+          chara.sel[c.key]=kept;
+          return;
+        }
+        if(typeof want==='string' && c.parts.some(function(p){ return p.name===want; })) chara.sel[c.key]=want;
+      });
+      if(saved.hue && typeof saved.hue==='object'){
+        Object.keys(saved.hue).forEach(function(k){
+          var a=saved.hue[k]; if(!a || typeof a!=='object') return;
+          chara.adj[k]={ h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
+        });
+      }
+      stripUnownedSel(); // 표시만 벗김 — persist하지 않는다(저장본 그대로)
+    }else{
+      // 첫 방문: 몸통 첫 파츠만 기본 장착(입어보기) — 저장은 사용자가 [💾 저장]을 눌렀을 때부터
+      var bodyCat = chara.cats.find(function(c){ return catName(c.key)==='body' && c.parts.length; });
+      if(bodyCat) chara.sel[bodyCat.key]=bodyCat.parts[0].name;
+    }
+  }
+  function saveOutfit(){ // [💾 저장] — 보유 파츠만 mk_chara_state·charaV1·타일로 확정 반영
+    if(chara.phase !== 'ready'){ toast('아직 파츠를 준비하는 중이에요'); return; }
+    var inp = $id('mkCharaNameInput');
+    if(inp) chara.name = sanitizeName(inp.value);
+    var skipped = tryOnItems().length;
+    persist();
+    renderSaveBar();
+    toast('저장했어요 💾 타일과 친구들 화면에도 반영돼요' + (skipped ? (' · 미결제 파츠 ' + skipped + '개는 저장에서 제외돼요') : ''), skipped ? 3400 : undefined);
+  }
+  function renderSaveBar(){
+    var btn = $id('mkCharaSaveBtn'); if(!btn) return;
+    var inp = $id('mkCharaNameInput');
+    if(inp && document.activeElement !== inp && inp.value !== chara.name) inp.value = chara.name;
+    var dirty = false;
+    try{ dirty = isDirty(); }catch(e){}
+    btn.classList.toggle('mkDirty', dirty);
+    btn.title = dirty ? '미저장 변경이 있어요 — 저장해야 확정돼요' : '현재 착장이 저장돼 있어요';
+    var tiny = $id('mkCharaSaveTiny');
+    if(tiny) tiny.textContent = dirty ? '미저장 변경 있음 — 저장해야 내 캐릭터로 확정돼요' : '이름은 최대 5글자 · 저장하면 타일에도 반영';
+  }
+
   /* ---------- V169_SHOP: 썸네일 크롭 — manifest._rects([x,y,w,h], 1024 좌표계) contain 배치 ----------
      정사각 wrapper(overflow:hidden) 안에 img를 percentage로 확대 배치해 rect 내용물이 타일에 꽉 차게.
      박스는 max(w,h)×PAD 정사각(contain) — rect 전체가 항상 wrapper 안에 들어오고(cover 잘림 없음),
@@ -27575,13 +27739,16 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(!spendCoins(total)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 10초당 1코인!'); renderCart(); return; }
     items.forEach(function(it){ grantOwned(it.catKey, it.name); });
     refreshWalletPill();
-    persist(); // 결제된 파츠는 이제 보유 → 저장/공유(mk_chara_state·charaV1·타일)에 실린다. 미체크 입어보기는 그대로 세션 한정.
-    toast('🪙-' + fmtCoins(total) + ' · 파츠 ' + items.length + '개 구매 완료! 이제 내 거예요 ✨');
-    renderChara();
+    /* V169_SHOP2: 결제는 소유권 구매만 — 착장 확정은 [💾 저장] 버튼. 자동 persist 없음.
+       보유 변경으로 타일 표출(보유분 필터)이 달라질 수 있어 재계산만 트리거한다. */
+    try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e){}
+    toast('🪙-' + fmtCoins(total) + ' · 파츠 ' + items.length + '개 구매 완료! [💾 저장]을 눌러야 착장이 확정돼요 ✨', 3400);
+    renderChara(); // renderSaveBar 포함 — 미저장 상태면 저장 버튼 강조
   }
-  function revertTryOn(){ // 모달 닫힘 — 미결제 입어보기 착장을 보유 착장으로 되돌림 (저장본은 원래 보유분만 담고 있어 persist 불필요)
+  function revertTryOn(){ // V169_SHOP2: 모달 닫힘 — 미저장 변경(착장/색/이름/입어보기)을 마지막 저장본으로 되돌림
     if(chara.phase !== 'ready') return;
-    if(stripUnownedSel()) renderChara();
+    applySavedToSel();
+    renderChara();
   }
 
   /* ---------- 파츠 로딩: manifest는 항상 ?t 캐시 버스터, PNG는 _version 기반 ?v ---------- */
@@ -27612,40 +27779,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={};
         cats.forEach(function(c){ chara.sel[c.key] = isAccCat(c.key) ? [] : null; }); // V169_SHOP: acc는 다중(배열, 최대 3)
 
-        var saved = loadSaved();
-        if(saved){
-          cats.forEach(function(c){
-            var want = saved.parts[catName(c.key)];
-            if(isAccCat(c.key)){
-              // V169_SHOP: acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만 최대 3개
-              var arr = Array.isArray(want) ? want : (typeof want==='string' ? [want] : []);
-              var kept = [];
-              arr.forEach(function(nm){
-                if(typeof nm==='string' && kept.indexOf(nm)<0 && kept.length<3 && c.parts.some(function(p){ return p.name===nm; })) kept.push(nm);
-              });
-              chara.sel[c.key]=kept;
-              return;
-            }
-            if(typeof want==='string' && c.parts.some(function(p){ return p.name===want; })) chara.sel[c.key]=want;
-          });
-          if(saved.hue && typeof saved.hue==='object'){
-            Object.keys(saved.hue).forEach(function(k){
-              var a=saved.hue[k]; if(!a || typeof a!=='object') return;
-              chara.adj[k]={ h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
-            });
-          }
-        }else{
-          // 첫 방문: 몸통 첫 파츠만 기본 장착 (저장은 사용자가 직접 만졌을 때부터)
-          var bodyCat = cats.find(function(c){ return catName(c.key)==='body' && c.parts.length; });
-          if(bodyCat) chara.sel[bodyCat.key]=bodyCat.parts[0].name;
-        }
+        /* V169_SHOP2: 저장본 → 선택 복원(미보유는 표시에서만 벗김, 저장본은 절대 덮어쓰지 않음 — 미저장 변경으로 취급) */
+        applySavedToSel();
         if(!chara.active || !cats.some(function(c){ return c.key===chara.active && !isHairBackCat(c.key); })){
           var first = cats.find(function(c){ return !isHairBackCat(c.key); }) || cats[0];
           chara.active = first ? first.key : null;
         }
         chara.phase='ready';
-        // V169_SHOP: 보유 전면 리셋 — 저장된 착장에서 미보유 파츠는 자동으로 벗기고 저장본도 정리(persist)
-        if(saved && stripUnownedSel()) persist();
         renderChara();
       })
       .catch(function(err){
@@ -27710,7 +27850,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var cat=activeCat(); if(!cat){ el.innerHTML=''; return; }
     var owned = getOwned(); // V169_SHOP: 미보유는 가격 배지+잠금 톤, 클릭 = 즉시 입어보기(장바구니 결제)
     var noneOn = isAccCat(cat.key) ? selArr(cat.key).length===0 : chara.sel[cat.key]===null;
-    var html = '<div class="mkCharaThumb noneTile'+(noneOn?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="ic">🚫</span>없음</div>';
+    var html = '<div class="mkCharaThumb noneTile'+(noneOn?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="mkNoneInner"><span class="ic">🚫</span>없음</span></div>'; /* V169_SHOP2: 내용은 absolute 오버레이 — 스페이서(::before)와 공존 */
     html += cat.parts.map(function(p){
       var has = !!owned[ownedKeyFor(cat.key, p.name)];
       var isOn = isAccCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name;
@@ -27828,16 +27968,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       b:clampNum(($id('mkCharaBri')||{}).value,50,150,100)
     };
     chara.adj[adjShortFor(cat.key)]=a;
-    persist();
+    /* V169_SHOP2: 자동 저장 제거 — 미리보기만 갱신, 확정은 [💾 저장] */
     syncSliderVals(a);
     applyStageFilters();   // 미리보기: 앞·뒷머리 레이어에 동시 반영
     renderCombo();         // 조합칸 썸네일에도 같은 필터 반영
+    renderSaveBar();       // V169_SHOP2: 미저장 변경 강조
   }
   function resetColor(){
     var cat=activeCat(); if(!cat) return;
     delete chara.adj[adjShortFor(cat.key)];
-    persist();
-    renderColorPanel(); applyStageFilters(); renderCombo();
+    /* V169_SHOP2: 자동 저장 제거 */
+    renderColorPanel(); applyStageFilters(); renderCombo(); renderSaveBar();
   }
   function selectPart(catKey, name){
     if(isAccCat(catKey)){
@@ -27856,10 +27997,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }else{
       chara.sel[catKey]=name;
     }
-    persist(); // V169_SHOP: persist는 보유분만 내보냄 — 입어보기(미결제)는 저장/공유에 안 실린다
-    renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart();
+    /* V169_SHOP2: 착장 클릭 = 미리보기만 — 자동 저장 없음, 확정은 [💾 저장] */
+    renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); renderSaveBar();
   }
-  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); } // V169_SHOP: 장바구니 포함
+  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); renderSaveBar(); } // V169_SHOP2: 저장 바 포함
 
   /* ---------- 모달 개편: 기존 #petModal 안에 2컬럼 본문을 만들고 옛 본문은 숨긴다 ---------- */
   var BODY_HTML =
@@ -27899,6 +28040,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +     '<div id="mkCartList" class="mkCartList"></div>'
     +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">🪙 결제</button></div>'
     +   '</div>'
+    /* V169_SHOP2: 저장 바 — 캐릭터 이름(≤5자) + 명시적 [💾 저장] (결제와 분리, 저장해야 확정) */
+    +   '<div class="mkCharaSection mkSaveBox">'
+    +     '<div class="petSectionTitle"><span>💾 내 캐릭터 저장</span><span class="tiny" id="mkCharaSaveTiny">이름은 최대 5글자 · 저장하면 타일에도 반영</span></div>'
+    +     '<div class="mkSaveRow">'
+    +       '<input id="mkCharaNameInput" type="text" placeholder="내 캐릭터" autocomplete="off" spellcheck="false">'
+    +       '<button type="button" id="mkCharaSaveBtn">💾 저장</button>'
+    +     '</div>'
+    +   '</div>'
     + '</div>';
 
   function restructure(){
@@ -27936,6 +28085,28 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(t.checked) delete cartUnchecked[t.dataset.key]; else cartUnchecked[t.dataset.key]=true;
       renderCart(); // 합계/결제 버튼 실시간 갱신
     });
+    /* V169_SHOP2: 저장 버튼 + 이름 입력(5자 컷+토스트, 한글 IME 조합 가드 — #mkPetNameEditOv 선례) 바인딩(1회) */
+    var saveBtn=body.querySelector('#mkCharaSaveBtn'); if(saveBtn) saveBtn.addEventListener('click', saveOutfit);
+    var nameInp=body.querySelector('#mkCharaNameInput');
+    if(nameInp){
+      var composing=false;
+      var clampNameField=function(){
+        var a=Array.from(String(nameInp.value||''));
+        if(a.length>NAME_MAX5){
+          nameInp.value=a.slice(0,NAME_MAX5).join('');
+          toast('이름은 최대 '+NAME_MAX5+'글자예요 ✂️');
+        }
+        chara.name=sanitizeName(nameInp.value);
+        renderSaveBar();
+      };
+      nameInp.addEventListener('compositionstart', function(){ composing=true; });
+      nameInp.addEventListener('compositionend', function(){ composing=false; clampNameField(); });
+      nameInp.addEventListener('input', function(){ if(!composing) clampNameField(); });
+      nameInp.addEventListener('keydown', function(e){
+        if(e.isComposing || e.keyCode===229) return; // 한글 IME 조합 확정 Enter는 저장으로 치지 않는다
+        if(e.key==='Enter' || e.keyCode===13){ e.preventDefault(); saveOutfit(); }
+      });
+    }
     renderChara();
     return true;
   }
@@ -27975,11 +28146,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     },
     reload:function(){ chara.phase='idle'; loadManifest(); },
     state:chara,
-    /* V169_SHOP: 검증용 훅 — 장바구니/보유/크롭 박스 관측 */
+    /* V169_SHOP: 검증용 훅 — 장바구니/보유/크롭 박스 관측 (V169_SHOP2: 저장 모델/이름 훅 추가) */
     shop:{
       getOwned:getOwned, tryOnItems:tryOnItems, payCart:payCart, renderCart:renderCart,
       stripUnownedSel:stripUnownedSel, rectBoxFor:rectBoxFor, rectStyleFor:rectStyleFor,
-      selArr:selArr, selectPart:selectPart, cartUnchecked:cartUnchecked
+      selArr:selArr, selectPart:selectPart, cartUnchecked:cartUnchecked,
+      saveOutfit:saveOutfit, isDirty:isDirty, currentSavePayload:currentSavePayload,
+      applySavedToSel:applySavedToSel, sanitizeName:sanitizeName, revertTryOn:revertTryOn
     }
   };
 })();
@@ -28468,7 +28641,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     · 저사양·hidden 동결, 유효 모드는 tileKeyOf에 포함되어 전환 시 해당 타일만 재렌더. 인라인 지점: renderTile 끝 attachMover 훅 1곳.
   - charaV1 없는 사용자/표시 안 함은 기존 렌더와 완전히 동일. 펫 성장/anchor/채팅/세계수 무접촉. -->
 <style id="v169CharaTileStyle">
-  .avatar.charaSlotOn, .idPhoto.charaSlotOn{ display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .avatar.charaSlotOn, .idPhoto.charaSlotOn{ display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; } /* V169_SHOP2: 명찰(absolute) 좌표계 보장 */
   .charaSlotOn img.mkCharaTileImg{ width:100% !important; height:100% !important; object-fit:contain !important; display:block; }
   /* V169_MOVE: 움직이기 오버레이 — 타일(.tile은 position:relative + overflow:hidden) 또는 내 손캠 박스 경계 안에서만 이동 */
   .mkCharaMoveWrap{ position:absolute; left:0; top:0; z-index:6; pointer-events:none; will-change:transform; }
@@ -28562,6 +28735,44 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     for(var i = 0; i < PART_KEYS.length; i++){ if(parts && parts[PART_KEYS[i]]) return true; }
     return false;
   }
+  /* V169_SHOP2: 캐릭터 이름(≤5자) — charaV1.name/저장본 name 공용 정규화 (표시는 textContent만 사용) */
+  function sanitizeCharaName(v){
+    v = String(v == null ? '' : v).slice(0, 40).replace(/\s+/g, ' ').trim();
+    var a = Array.from(v);
+    return a.length > 5 ? a.slice(0, 5).join('') : v;
+  }
+  /* V169_SHOP2: 표출은 항상 보유분만 — 보유 리셋 등으로 저장본(mk_chara_state)에 미보유 파츠가 남아 있어도
+     타일/charaV1/대시보드에는 싣지 않는다(저장본 자체는 파괴하지 않음 — 꾸미기 모달이 미저장 변경으로 안내). */
+  var OWNED_KEY_V169 = 'mk_chara_owned_v2'; // {"04_look/파일명.png":true} — 꾸미기 모달과 같은 계약
+  function ownedShortSet(){
+    var set = {};
+    try{
+      var d = JSON.parse(localStorage.getItem(OWNED_KEY_V169) || 'null');
+      if(d && typeof d === 'object' && !Array.isArray(d)){
+        Object.keys(d).forEach(function(k){
+          if(!d[k]) return;
+          var i = k.indexOf('/'); if(i < 1) return;
+          var short = k.slice(0, i).replace(/^\d+_/, '').toLowerCase();
+          if(short === 'hair_front') short = 'hair';
+          set[short + '/' + k.slice(i + 1)] = 1;
+        });
+      }
+    }catch(e){}
+    return set;
+  }
+  function filterOwnedParts(parts){
+    var set = ownedShortSet(), out = {};
+    PART_KEYS.forEach(function(k){
+      var v = parts && parts[k];
+      if(k === 'acc'){
+        var arr = (Array.isArray(v) ? v : []).filter(function(n){ return set['acc/' + n]; });
+        if(arr.length) out[k] = arr;
+        return;
+      }
+      if(v && set[k + '/' + v]) out[k] = v;
+    });
+    return out;
+  }
   function sigOf(parts, hue){
     var p = [], h = [];
     PART_KEYS.forEach(function(k){
@@ -28574,7 +28785,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   function writeSigOf(payload){
     return normShow(payload && payload.show) + '@' + sigOf(payload && payload.parts, payload && payload.hue)
-      + '@' + normMode(payload && payload.mode); // V169_MOVE: 모드만 바뀌어도 재쓰기
+      + '@' + normMode(payload && payload.mode) // V169_MOVE: 모드만 바뀌어도 재쓰기
+      + '@' + sanitizeCharaName(payload && payload.name); // V169_SHOP2: 이름만 바뀌어도 재쓰기
   }
 
   /* ---------- 내 로컬 상태 (mk_chara_state + 표시 슬롯) ---------- */
@@ -28586,7 +28798,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     try{
       var d = JSON.parse(localStorage.getItem(LS_CHARA) || 'null');
       if(d && d.v === 1 && d.parts && typeof d.parts === 'object'){
-        localCache = { parts: sanitizeParts(d.parts), hue: sanitizeHue(d.hue) };
+        /* V169_SHOP2: 보유분 필터 + 이름 — 저장본에 미보유 파츠가 남아 있어도 표출/공유에는 싣지 않는다 */
+        localCache = { parts: filterOwnedParts(sanitizeParts(d.parts)), hue: sanitizeHue(d.hue), name: sanitizeCharaName(d.name) };
       }
     }catch(e){}
     return localCache;
@@ -28642,13 +28855,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var isMe = !!uid && uid === selfUid();
     if(isMe){
       var lc = readLocalChara();
-      if(lc && hasParts(lc.parts)) return { parts: lc.parts, hue: lc.hue, show: getMyShow(), mode: getMyMode() }; // V169_MOVE: mode 동봉
+      if(lc && hasParts(lc.parts)) return { parts: lc.parts, hue: lc.hue, name: lc.name, show: getMyShow(), mode: getMyMode() }; // V169_MOVE: mode / V169_SHOP2: name 동봉
       // 로컬이 비어 있으면 공개본으로 폴백(다른 사람이 보는 모습과 동일하게)
     }
     var cv = p && p.charaV1;
     if(cv && typeof cv === 'object'){
       var parts = sanitizeParts(cv.parts);
+      if(isMe) parts = filterOwnedParts(parts); // V169_SHOP2: 내 표출은 원격 폴백도 보유분만
       if(hasParts(parts)) return { parts: parts, hue: sanitizeHue(cv.hue),
+        name: sanitizeCharaName(cv.name), // V169_SHOP2: 타인 이름은 charaV1.name
         show: isMe ? getMyShow() : normShow(cv.show),
         mode: isMe ? getMyMode() : normMode(cv.mode) }; // V169_MOVE: 타인은 charaV1.mode
     }
@@ -28674,8 +28889,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function tileKeyOf(p){
     try{
       var c = charaOf(p);
-      // V169_MOVE: 유효 모드를 키에 포함 — 모드 전환/저사양 전환 시 해당 타일만 재렌더
-      return c ? (normShow(c.show) + '@' + sigOf(c.parts, c.hue) + '@' + moveModeOf(p)) : '';
+      // V169_MOVE: 유효 모드를 키에 포함 — 모드 전환/저사양 전환 시 해당 타일만 재렌더 (V169_SHOP2: 이름 포함 — 이름 변경 시 명찰 재렌더)
+      return c ? (normShow(c.show) + '@' + sigOf(c.parts, c.hue) + '@' + moveModeOf(p) + '@' + (c.name || '')) : '';
     }catch(e){ return ''; }
   }
 
@@ -29220,6 +29435,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       img.alt = '캐릭터';
       img.decoding = 'async';
       box.appendChild(img);
+      /* V169_SHOP2: 캐릭터 명찰 — 펫 명찰 UI(.petSlotNameTag) 재사용, 이름이 있을 때만(내 것은 저장본, 타인은 charaV1.name) */
+      if(c.name){
+        var tag = document.createElement('span');
+        tag.className = 'petSlotNameTag mkCharaNameTag';
+        tag.textContent = c.name;
+        box.appendChild(tag);
+      }
       bakeChara(c.parts, c.hue).then(function(res){
         try{
           img.src = res.url;
@@ -29244,6 +29466,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     PART_KEYS.forEach(function(k){ if(lc.parts[k]) payload.parts[k] = lc.parts[k]; });
     PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = { h: lc.hue[k].h, s: lc.hue[k].s, b: lc.hue[k].b }; });
     if(!Object.keys(payload.hue).length) delete payload.hue;
+    if(lc.name) payload.name = lc.name; // V169_SHOP2: 캐릭터 이름(≤5자) 공유 — 타인 타일 명찰용
     return payload;
   }
   var writeTimer = 0, lastWrittenSig = null;
@@ -29311,7 +29534,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         var sig = writeSigOf(payload);
         var b = bridge();
         var remote = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
-        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), mode: remote.mode }) === sig){ /* V169_MOVE: mode 포함 비교 */
+        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), mode: remote.mode, name: remote.name }) === sig){ /* V169_MOVE: mode / V169_SHOP2: name 포함 비교 */
           lastWrittenSig = sig; // 원격본과 동일 → 쓰기 생략
           return;
         }
