@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V172_GHOST_SWEEP: 관리자용 유령 세션 정리(작업중 아닌 상태 24시간 초과 → kicks에 mode:"session"으로 소프트 종료, 재입장 차단 없음) + presence.statusSinceMs 추가 + 출석부 사본 신선도 가드(attendSheetLooksLive_)로 휴가·병가 보호 무력화 방지. 빌드 16940 -->
+<!-- V171_HELPER_REMOVE: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. helperPairs 구독/폴링·헬퍼 모드(auto/manual)·무반응 자동 휴식/자리비움 전환·헬퍼 다운로드 버튼/관리자 링크 설정 전부 삭제(RTDB helperPairs 노드 데이터는 보존, 클라이언트가 더 이상 읽지 않음). 빌드 16930 -->
 <!-- V169.3_PRUNE_DUP_BYPASS: 같은 닉네임의 더 최신 presence가 존재하는 항목(교체된 중복)은 출석부 보호 없이 14일 규칙만으로 삭제 — 활동 중인 작가의 옛 uid 시체가 본인 출석 기록 덕에 영구 잔존하는 구멍 봉합. 후보 전원이 중복이면 출석부 읽기 생략. 빌드 16930 -->
 <!-- V169.2_PRUNE_ATTEND_GUARD: 자동 청소에 출석부 대조 추가 — 삭제 조건을 "presence 14일 미접속 + 최근 30일 중 출석도 휴가(leave)도 아닌 날 14일 이상"으로 강화. 장기 휴가·병가를 출석부에 남긴 작가는 보존(강퇴 예외 규칙 반영). 출석부 읽기는 후보가 있을 때만 월 2회분(~10KB). 빌드 16920 -->
 <!-- V169.1_NICK_PROFILE: 닉네임 기준 프로필 — ①프로필 저장 시 playground/profilesByNickV1/{닉키}에 덮어쓰기 미러(닉당 1개, 용량 고정) ②입장 시 profiles/{uid} 미등록이면 미러→예전 presence 순으로 이어받기 ③presence 자동 청소 30일→14일(강퇴 규칙 13일+1) + 프로필 시체 동반 정리. 실측: presence 전체 로드가 다운로드의 48%(146KB)였음. 빌드 16910 -->
@@ -145,24 +147,7 @@
   border-radius:12px;
 }
 
-#statusMenu .modeBtns{display:none;  gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;}
-#statusMenu .modeBtns button{min-height:38px; padding:9px 12px; font-size:13px; line-height:1; border-radius:12px;}
-#statusMenu .autoOpts{
-  display:flex; flex-direction:column; gap:8px;
-  padding:10px 10px 8px;
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:14px;
-  background: rgba(255,255,255,.04);
-  margin-bottom:10px;
-}
-#statusMenu .autoOpts .rowMini{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-#statusMenu .autoOpts input{
-  background: rgba(0,0,0,.22);
-  border:1px solid rgba(255,255,255,.14);
-  color:#fff;
-  border-radius:12px;
-  padding:10px 10px;
-}
+/* V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (#statusMenu .modeBtns / .autoOpts 스타일 삭제) */
 
 /* ✅ 레이아웃 토글 버튼도 동일 규격 */
 .gridHead .layoutToggle{
@@ -2181,14 +2166,7 @@
     #statusBtn, #statusMenu{ pointer-events:auto; }
 
     .statusBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
-    /* Helper toggle button (under Work) */
-    #btnHelperToggle{
-      margin-top:8px;
-      width:100%;
-      min-height:40px;
-      border-radius: 14px;
-      font-weight: 900;
-    }
+    /* V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (#btnHelperToggle 스타일 삭제) */
 
     .statusMenu button{min-width:106px;}
     .statusMenu button.tight{min-width:52px; padding:10px 10px; border-radius:12px;}
@@ -2551,20 +2529,7 @@ body.railFolded .railEdgeBtn{ display:flex !important; opacity:1; pointer-events
     #profileModal .modalBody .row textarea{width:100%;}
 
   
-/* ✅ 로컬 헬퍼 상태 표시 */
-.helperDot{
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  display: inline-block;
-  box-shadow: 0 0 0 2px rgba(255,255,255,.08) inset, 0 0 12px rgba(255,105,180,.18);
-}
-.helperDot.on{ background: #43d17a; }
-.helperDot.wait{ background: #ffd166; }
-.helperDot.off{ background: rgba(255,255,255,.22); }
-
-/* ✅ 프로필에서 헬퍼 설정 숨김 */
-.profileHelperHidden{ display:none !important; }
+/* V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (.helperDot / .profileHelperHidden 스타일 삭제) */
 
 
     .guidePre{
@@ -3996,8 +3961,7 @@ body.joined #preJoinCard{ display:none; }
     margin:0 !important;
     font-size:0 !important;
   }
-  body.joined #goMacHelper .btnLabel::before{content:"🍎"; font-size:14px;}
-  body.joined #goWinHelper .btnLabel::before{content:"🪟"; font-size:14px;}
+  /* V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. #goMacHelper/#goWinHelper 다운로드 버튼 삭제 */
   body.joined #goChool .btnLabel::before{content:"🔥"; font-size:14px;}
   body.joined #goSheet .btnLabel::before{content:"📎"; font-size:14px;}
 
@@ -5642,28 +5606,9 @@ body.joined #preJoinCard{ display:none; }
 <div aria-label="작업 상태" class="topCenter">
 <button class="primary" disabled="" id="statusBtn">☕ 휴식중 ▾</button>
 <div aria-label="상태 선택" class="statusMenu hidden" id="statusMenu" role="menu">
-<div class="modeBtns">
-<button class="primary tight" id="modeAutoBtn" title="헬퍼(자동)" type="button">🤖 헬퍼</button>
-<button class="ghost tight" id="modeManualBtn" title="수동" type="button">✋ 수동</button>
-</div>
-<div class="autoOpts" id="autoOpts">
-<div class="rowMini" style="align-items:center; gap:10px;">
-<span aria-hidden="true" class="helperDot off" id="helperTopDot"></span>
-<span class="tiny" id="helperTopText" style="font-weight:900; letter-spacing:.2px;">미연결</span>
-</div>
-<div class="rowMini">
-<span class="tiny">자동 휴식(분)</span>
-<input id="autoBreakMinTop" max="180" min="1" style="width:76px" type="number" value="10"/>
-</div>
-<div class="rowMini">
-<span class="tiny">자동 자리비움(분)</span>
-<input id="autoIdleMinTop" max="180" min="1" style="width:76px" type="number" value="15"/>
-</div>
-<div class="tiny" style="opacity:.82; margin-top:6px;">작업중일 때만 적용 · 헬퍼 움직임 재감지 시 자동 복귀</div>
-</div>
+<!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (헬퍼/수동 모드 버튼, 헬퍼 연결 표시, 자동 휴식/자리비움 분 입력, 🤖 헬퍼 켜기 토글 삭제) -->
 <div class="statusBtns" id="manualOpts">
 <button class="primary" disabled="" id="btnWork">✍️ 작업중</button>
-<button class="ghost" disabled="" id="btnHelperToggle">🤖 헬퍼 켜기</button>
 <button class="ghost" disabled="" id="btnBreak">☕ 휴식중</button>
 <button class="ghost" disabled="" id="btnIdle">🌙 자리비움</button>
 <button class="ghost" disabled="" id="btnTimerReset" title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
@@ -5783,8 +5728,7 @@ body.joined #preJoinCard{ display:none; }
 <div aria-label="펫 대시보드" class="dashBox petDashSlot"></div>
 </div>
 <div class="btnRow" id="dashShortcuts">
-<button class="ghost" id="goMacHelper" title="Mac 헬퍼"><span class="btnLabel">🍎Mac</span></button>
-<button class="ghost" id="goWinHelper" title="Win 헬퍼"><span class="btnLabel">🪟Win</span></button>
+<!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 Mac/Win 헬퍼 다운로드 바로가기 삭제. -->
 <button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근</span></button>
 <button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎시트</span></button>
 <button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제</span></button>
@@ -6046,39 +5990,7 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <span class="tiny"></span>
 </div>
-<div class="row profileHelperHidden">
-<label>헬퍼 상태</label>
-<div class="helperStatusLine" style="width:100%; display:flex; align-items:center; gap:10px;">
-<span aria-hidden="true" class="helperDot off" id="helperStatusDot"></span>
-<span class="tiny" id="helperStatusText" style="font-weight:900; letter-spacing:.2px;">미연결</span>
-</div>
-<span class="tiny">PC 활동 감지용 로컬 헬퍼가 켜져 있으면 ‘연결됨’으로 표시돼요.</span>
-</div>
-<div class="row profileHelperHidden">
-<label>헬퍼 모드</label>
-<div style="display:flex; gap:10px; width:100%; flex-wrap:wrap; align-items:center;">
-<select id="helperMode" style="width:170px; font-weight:1000;">
-<option value="manual">수동(안전)</option>
-<option value="auto">자동(연동)</option>
-</select>
-<span class="tiny" id="helperDebugText" style="font-weight:900; opacity:.9;"></span>
-</div>
-<span class="tiny">자동=무반응 시 휴식/자리비움 전환. 수동=버튼으로만 상태 변경(헬퍼는 표시/복귀만).</span>
-</div>
-<div aria-hidden="false" class="row autoSwitchRow profileHelperHidden" style="display:flex">
-<label>자동 전환</label>
-<div style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
-<div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
-<span class="tiny" style="min-width:86px; opacity:.9;">휴식(분)</span>
-<input disabled="" id="autoBreakMin" max="180" min="1" style="width:76px" type="number" value="10"/>
-</div>
-<div style="display:flex; align-items:center; justify-content:center; text-align:center; gap:8px;">
-<span class="tiny" style="min-width:86px; opacity:.9;">자리비움(분)</span>
-<input disabled="" id="autoIdleMin" max="180" min="1" style="width:76px" type="number" value="15"/>
-</div>
-</div>
-<span class="tiny">작업중일 때만 적용돼요. (기본: 10/15분)</span>
-</div>
+<!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (헬퍼 상태 / 헬퍼 모드 / 자동 전환(분) 행 삭제) -->
 <div class="row">
 <button class="ghost" id="applyProfile">저장</button>
 </div>
@@ -6279,10 +6191,7 @@ body.joined #preJoinCard{ display:none; }
 <div class="row">
 <input id="homeworkUrl" placeholder="📚 숙제장 링크"/>
 </div>
-<div class="row">
-<input id="macHelperUrl" placeholder="🍎 Mac 헬퍼 다운로드 링크 (비우면 기본값)"/>
-<input id="winHelperUrl" placeholder="🪟 Win 헬퍼 다운로드 링크 (비우면 기본값)"/>
-</div>
+<!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 Mac/Win 헬퍼 다운로드 링크 설정 삭제. -->
 <div class="row">
 <input id="pomoApiUrl" placeholder="⏰ 뽀모 인원 API (선택: Apps Script .../exec?api=active)"/>
 <input id="dashApiUrl" placeholder="📡 통합 인원 API (선택: pomo+suda counts)"/>
@@ -6419,6 +6328,15 @@ body.joined #preJoinCard{ display:none; }
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="ghost" id="worldTreeReloadAll" type="button">전원 새로고침 요청 보내기</button>
 </div>
+<!-- ✅ V172: 관리자 유령 세션 정리 -->
+<div class="hr"></div>
+<div class="hint">🧹 유령 세션 정리</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">작업중이 아닌 상태로 24시간이 넘은 접속을 찾아 연결을 끊습니다. 끊긴 분은 다시 입장할 수 있고 재입장 차단은 걸리지 않아요. 작업중인 분은 대상에서 제외됩니다.</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="ghostSweepScan" type="button">대상 찾기</button>
+<button class="danger" id="ghostSweepRun" type="button">정리 실행</button>
+</div>
+<div id="ghostSweepStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">[대상 찾기]를 누르면 24시간 넘게 방치된 접속을 보여줘요.</div>
 <!-- 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급 (코인 구매 불가 · 코드 1개당 1명) -->
 <div class="hr"></div>
 <div class="hint">🎖️ 특수 아이템 코드 발급</div>
@@ -6971,8 +6889,8 @@ const PASS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     // - 설정에서 비워도 이 값으로 자동 사용
     const DEFAULT_DASH_API_URL = ""; // (기본값 비움) 통합 counts API를 쓰려면 설정에서 입력
 
-    // ✅ 로컬 헬퍼(PC 전역 활동)용 Realtime Database
-    const RTDB_BASE_URL = "https://magamm00-5baee-default-rtdb.asia-southeast1.firebasedatabase.app";
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+    // (helperPairs REST 폴링 전용이던 RTDB_BASE_URL 상수 삭제)
 
 
     let els = {};
@@ -7549,8 +7467,7 @@ const auth = getAuth(app);
       goChool: $("goChool"),
       goSheet: $("goSheet"),
       goHomework: $("goHomework"),
-      goMacHelper: $("goMacHelper"),
-      goWinHelper: $("goWinHelper"),
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. goMacHelper/goWinHelper 매핑 삭제.
 
       chatList: $("chatList"),
       chatNewBar: $("chatNewBar"),
@@ -7606,13 +7523,8 @@ const auth = getAuth(app);
       checkInBtn: $("checkInBtn"),
       statusBtn: $("statusBtn"),
       statusMenu: $("statusMenu"),
-      btnHelperToggle: $("btnHelperToggle"),
-      modeAutoBtn: $("modeAutoBtn"),
-      modeManualBtn: $("modeManualBtn"),
-      autoOpts: $("autoOpts"),
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. btnHelperToggle/modeAutoBtn/modeManualBtn/autoOpts/autoBreakMinTop/autoIdleMinTop 매핑 삭제.
       manualOpts: $("manualOpts"),
-      autoBreakMinTop: $("autoBreakMinTop"),
-      autoIdleMinTop: $("autoIdleMinTop"),
       profileBtn: $("profileBtn"),
       guideBtn: $("guideBtn"),
       
@@ -7650,12 +7562,7 @@ onlineBtn: $("onlineBtn"),
       statusTextColor: $("statusTextColor"),
       bubbleTextColorPicker: $("bubbleTextColorPicker"),
       bubbleTextColor: $("bubbleTextColor"),
-      helperStatusDot: $("helperStatusDot"),
-      helperStatusText: $("helperStatusText"),
-      helperTopDot: $("helperTopDot"),
-      helperTopText: $("helperTopText"),
-      helperMode: $("helperMode"),
-      helperDebugText: $("helperDebugText"),
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. helperStatusDot/helperStatusText/helperTopDot/helperTopText/helperMode(select)/helperDebugText 매핑 삭제.
       photoEnabled: $("photoEnabled"),
       showPetInPhotoSlot: $("showPetInPhotoSlot"),
       petDisplaySlot: $("petDisplaySlot"),
@@ -7672,8 +7579,7 @@ onlineBtn: $("onlineBtn"),
       photoFile: $("photoFile"),
       uploadPhotoBtn: $("uploadPhotoBtn"),
       profileNick: $("profileNick"),
-      autoBreakMin: $("autoBreakMin"),
-      autoIdleMin: $("autoIdleMin"),
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. autoBreakMin/autoIdleMin 입력 매핑 삭제(자동 전환 자체가 사라짐).
       applyProfile: $("applyProfile"),
 
       dashboardCard: $("dashboardCard"),
@@ -7717,8 +7623,7 @@ onlineBtn: $("onlineBtn"),
       choolUrl: $("choolUrl"),
       sheetUrl: $("sheetUrl"),
       homeworkUrl: $("homeworkUrl"),
-      macHelperUrl: $("macHelperUrl"),
-      winHelperUrl: $("winHelperUrl"),
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. macHelperUrl/winHelperUrl 관리자 입력 매핑 삭제.
       dashApiUrl: $("dashApiUrl"),
       saveDash: $("saveDash"),
       sudaOpenRoom: $("sudaOpenRoom"),
@@ -7855,7 +7760,7 @@ chatUnseen: 0,
       adminProfilePresence: new Map(),
       adminProfileLoading: false,
       roomSettings: {
-        dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+        dashboard: {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
         dashCounts: {pomoCount:null, sudaCount:null, updatedAtMs:null},
         adminHash: null,
         ownerUid: null
@@ -7870,16 +7775,7 @@ chatUnseen: 0,
       dashLastGoodPomoAt: 0,
       lastRendered: new Map(),
       lastActivityMs: Date.now(),
-      helperWatchTimer: null,
-      helperActive: false,
-      _prevHelperActive: false,
-      helperLastTs: 0,
-      helperLastSeenMs: 0,
-      helperMode: 'manual',
-      helperIdleSec: null,
-      helperIdleSecPresent: false,
-      helperIdleZeroStreak: 0,
-      _helperInactiveSinceMs: 0,
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (helper* 상태 필드 전부 삭제)
       activityWatchTimer: null,
       activityThrottleMs: 0,
       joined: false,
@@ -8865,6 +8761,44 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       }
     }
 
+    // ✅ V172: 유령 세션 소프트 종료 — 새 RTDB 노드를 만들지 않고 기존 kicks 구독에 얹는다.
+    // mode:"session"이면 받는 쪽은 leaveRoom()만 하고, joinRoom의 재입장 차단은 건너뛴다.
+    // expiresAtMs는 반드시 기존 KICK_BLOCK_MS(2시간)를 그대로 쓴다 — 짧게 잡으면 절전 중인 탭이
+    // 깨어났을 때 이미 만료돼 무시되어(=유령이 그대로 남아) 목적을 못 이룬다.
+    async function requestSessionReset_(targetUid, targetName){
+      if(!state.roomId || !state.uid || !targetUid) return false;
+      const isOwner = !!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid);
+      if(!(isOwner || state.adminOk)){
+        showToast("🚫 세션 정리는 관리자만 가능해");
+        return false;
+      }
+      try{
+        const now = Date.now();
+        await rSet(rKickRef(state.roomId, targetUid), {
+          kickedAtMs: now,
+          expiresAtMs: now + KICK_BLOCK_MS,
+          byUid: state.uid,
+          byName: (els.meHint?.textContent || "익명"),
+          targetName: targetName || "",
+          mode: "session"
+        });
+        // 관리자 권한으로 상대 presence를 즉시 내려 타일이 바로 정리되게 한다(규칙상 ownerUid는 허용).
+        // lastSeenAtMs는 건드리지 않는다 — 0으로 만들면 14일 자동 청소의 판단 근거가 사라진다.
+        // 실패해도 진행한다. 진짜 종료는 상대 탭이 kick을 받아 leaveRoom()하는 것이다.
+        try{
+          await rUpdate(rMePresenceRef(state.roomId, targetUid), {
+            status: "off",
+            statusSource: "adminSessionReset",
+            updatedAt: Date.now()
+          });
+        }catch(_e){}
+        return true;
+      }catch(e){
+        console.warn("[ghostSweep] session reset failed", e);
+        return false;
+      }
+    }
+
     function subscribeKicks(){
   // ✅ kick listener (RTDB): /rooms/{roomId}/kicks/{uid}
   if(state.unsubKick) state.unsubKick();
@@ -8881,7 +8815,12 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       if(exp && exp < now) return; // 만료
       const by = k.byName || "누군가";
       if(state.joined){
-        showToast(`🚫 ${by}님이 강퇴했어`);
+        // ✅ V172: mode:"session"은 강퇴가 아니라 오래된 유령 접속 정리 — 재입장을 권한다.
+        if(String(k.mode || "") === "session"){
+          showToast("🌸 관리자가 오래된 접속을 정리했어요 · 출근부에서 다시 들어와 주세요", 6000);
+        }else{
+          showToast(`🚫 ${by}님이 강퇴했어`);
+        }
         setTimeout(()=>{ if(state.joined) leaveRoom(); }, 350);
       }
     }catch(e){}
@@ -9467,8 +9406,7 @@ function hasValidNick(n){
 function isDisplayablePresence(p){
   return !!(p && isOnlinePresence(p) && hasValidNick(p.name));
 }
-    const MAC_HELPER_URL = "https://drive.google.com/file/d/1tvpH2bOoAhAthgMyCzWDMX4d4JbpdY83/view?usp=sharing";
-    const WIN_HELPER_URL = "https://drive.google.com/file/d/1dvBW2Y5e6yg3IMPOpcULXee63sPkxr86/view?usp=sharing";
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 MAC_HELPER_URL/WIN_HELPER_URL 기본 다운로드 상수 삭제.
 
 function openUrl(url){
       if(!url){ showToast("설정된 링크가 없어! (☰에서 저장)"); return; }
@@ -10829,7 +10767,7 @@ function setControlsEnabled(joined){
       try{ if(els.btnTimerReset) els.btnTimerReset.disabled = !joined; }catch(e){}
       /* 출근 버튼 제거됨 */
       els.statusBtn.disabled = !joined;
-      if(els.btnHelperToggle) els.btnHelperToggle.disabled = !joined;
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. btnHelperToggle 활성화 처리 삭제.
       try{ if(els.guideBtn) els.guideBtn.style.display = joined ? "" : "none"; }catch(e){}
       try{ if(els.updateBtn) els.updateBtn.style.display = joined ? "" : "none"; }catch(e){}
       // ✅ 입장 전에는 아무 것도 열지 못하게 잠금
@@ -10846,9 +10784,8 @@ function setControlsEnabled(joined){
       els.chatInput.disabled = !joined;
       els.sendBtn.disabled = !joined;
 
-      // ✅ 대시보드 바로가기(헬퍼/출근부/시트): 입장 후에만 클릭 가능
-      if(els.goMacHelper) els.goMacHelper.disabled = !joined;
-      if(els.goWinHelper) els.goWinHelper.disabled = !joined;
+      // ✅ 대시보드 바로가기(출근부/시트): 입장 후에만 클릭 가능
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. goMacHelper/goWinHelper 처리 삭제.
       if(els.goChool) els.goChool.disabled = !joined;
       if(els.goSheet) els.goSheet.disabled = !joined;
       if(els.goHomework) els.goHomework.disabled = !joined;
@@ -10876,44 +10813,21 @@ function setControlsEnabled(joined){
       const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
       const st = (me && me.status) ? me.status : (state.myStatus || "idle");
       const label = (st==="work") ? "✍️ 작업중" : (st==="break") ? "☕ 휴식중" : "🌙 자리비움";
-      const hm = getHelperMode();
-      const modeLabel = (hm==="manual") ? "✋ 수동" : "🤖 헬퍼";
 
       if(els.statusBtn){
         els.statusBtn.textContent = `${label} ▾`;
       }
 
-      // (UI) 헬퍼 토글 버튼 상태
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환,
+      // 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+      // (헬퍼 토글 버튼 상태 / 헬퍼·수동 모드 버튼 / 자동 전환 분 입력 동기화 삭제)
       try{
-        if(els.btnHelperToggle){
-          const joined = !!state.joined;
-          const canUse = joined && (st==="work");
-          els.btnHelperToggle.disabled = !canUse;
-          els.btnHelperToggle.className = (hm==="auto" && canUse) ? "primary" : "ghost";
-          els.btnHelperToggle.textContent = (hm==="auto") ? "🤖 헬퍼 사용중" : "🤖 헬퍼 켜기";
-        }
-      }catch(e){}
-
-      // 모드 버튼(내부 유지) + 옵션 표시(헬퍼일 때만)
-      try{
-        if(els.modeAutoBtn) els.modeAutoBtn.className = (hm==="auto") ? "primary tight" : "ghost tight";
-        if(els.modeManualBtn) els.modeManualBtn.className = (hm==="manual") ? "primary tight" : "ghost tight";
-        if(els.autoOpts) els.autoOpts.style.display = (hm==="auto") ? "" : "none";
         if(els.manualOpts) els.manualOpts.style.display = "";
       }catch(e){}
 
       if(els.btnWork) els.btnWork.className = (st==="work") ? "primary" : "ghost";
       if(els.btnBreak) els.btnBreak.className = (st==="break") ? "primary" : "ghost";
       if(els.btnIdle) els.btnIdle.className = (st==="idle") ? "primary" : "ghost";
-
-      // 상단 자동분 입력 동기화
-      try{
-        const lp = loadLocalProfile() || {};
-        const ab = Number(lp.autoBreakMin || 10);
-        const ai = Number(lp.autoIdleMin || 15);
-        if(els.autoBreakMinTop) els.autoBreakMinTop.value = String(ab);
-        if(els.autoIdleMinTop)  els.autoIdleMinTop.value  = String(ai);
-      }catch(e){}
     }
 
 function showModal(el){
@@ -11614,7 +11528,9 @@ function rPlaygroundWhiteboardRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoo
 // ✅ V160 Rules 호환: 새 선택 필드를 엄격한 기존 Rules가 거부해도
 // heartbeat/상태/프로필의 기존 필드 쓰기는 한 번 더 보장한다.
 const V160_OPTIONAL_PRESENCE_FIELDS_ = new Set([
-  "presenceSessionId", "disconnectedSessionId", "disconnectedAtMs", "appearanceUpdatedAtMs"
+  "presenceSessionId", "disconnectedSessionId", "disconnectedAtMs", "appearanceUpdatedAtMs",
+  // ✅ V172: 상태가 실제로 바뀐 시각(transitionTo에서만 기록). 옛 Rules가 거부해도 나머지 쓰기는 살린다.
+  "statusSinceMs"
 ]);
 async function updatePresenceCompat_(ref, patch){
   try{
@@ -11660,7 +11576,7 @@ async function armPresenceOnDisconnect_(){
           createdAt: serverTimestamp(),
           title: roomId,
           adminHash: null,
-          dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
+          dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
           dashCounts: { pomoCount:null, sudaCount:null, updatedAtMs: null }
         });
       }
@@ -12033,7 +11949,7 @@ async function ensureMeDoc(){
         // ✅ V138: 날짜가 바뀌면 예전 동작처럼 전원 휴식중 + 오늘 타이머 0초로 시작
         const now = Date.now();
         focusSaveSeconds(0);
-        try{ setHelperMode("manual", true); }catch(_e){}
+        // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. setHelperMode("manual") 강제 호출 삭제(모드 개념 자체가 없어짐).
 
         state.myStatus = "break";
         state.myStatusSource = "midnightRollover:ensureMeDoc";
@@ -12407,7 +12323,7 @@ function startRtdbConnectionWatch(){
         const resetAt = Math.max(0, Number(p?.timerResetAtMs || Date.now()));
         focusSaveSeconds(0);
         writeTimerResetAck_(resetAt);
-        try{ setHelperMode("manual", true); }catch(_e){}
+        // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. setHelperMode("manual") 강제 호출 삭제.
 
         state.myStatus = "break";
         state.myStatusSource = `adminTimerReset:${source}`;
@@ -12502,7 +12418,7 @@ function startRtdbConnectionWatch(){
           const timerEpoch = currentTimerEpoch_(current);
 
           focusSaveSeconds(0);
-          try{ setHelperMode("manual", true); }catch(_e){}
+          // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. setHelperMode("manual") 강제 호출 삭제.
           state._lastDayKey = today;
           state.myStatus = "break";
           state.myStatusSource = `midnightRollover:${reason}`;
@@ -12621,444 +12537,25 @@ function startRtdbConnectionWatch(){
         clearInterval(state.activityWatchTimer);
         state.activityWatchTimer = null;
       }
-      if(state.helperWatchTimer){
-        clearInterval(state.helperWatchTimer);
-        state.helperWatchTimer = null;
-      }
-      // ✅ helperPairs 실시간 구독 정리(버퍼링/네트워크 낭비 방지)
-      try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-      state._helperPairUnsub = null;
-      state._helperPairKey = null;
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+      // (helperWatchTimer / helperPairs 실시간 구독 정리 삭제 — dayWatchTimer 정리는 그대로 유지)
       if(state.dayWatchTimer){
         clearInterval(state.dayWatchTimer);
         state.dayWatchTimer = null;
       }
     }
 
-    // ✅ 로컬 헬퍼(PC 전역 마우스 활동) heartbeat 폴링
-    // - 헬퍼가 active=true 를 보내면, 작업방 탭이 백그라운드여도 lastActivityMs를 갱신해서
-    //   자동 휴식/자리비움 전환을 막습니다(=웹 밖 작업도 작업중 유지).
-    // - 상태를 자동으로 '작업중'으로 올리진 않습니다(수동/기존 규칙 유지).
-    
-        const HELPER_HEARTBEAT_FRESH_MS = 15000; // 헬퍼 heartbeat 신호 유효시간(ms) (기본 15초)
-function helperPairKey(){
-      const nick = (state.nickname || "").trim();
-      state.helperKeyInvalid = false;
-      if(!nick) return "";
-      // RTDB key 제한: . # $ [ ] / 는 불가 ('.'가 있으면 헬퍼 경로가 깨져요)
-      if(nick.includes(".")){
-        state.helperKeyInvalid = true;
-        return "";
-      }
-      return nick;
-    }
-
-    // ✅ 로컬 헬퍼 연결 상태 UI
-    function updateHelperStatusUI(){
-      try{
-        const targets = [];
-        if(els.helperStatusDot && els.helperStatusText) targets.push([els.helperStatusDot, els.helperStatusText]);
-        if(els.helperTopDot && els.helperTopText) targets.push([els.helperTopDot, els.helperTopText]);
-        if(!targets.length) return;
-
-        const now = Date.now();
-        const lastFresh = Number(state.helperLastFreshMs || 0);
-        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
-        const active = !!(state.helperActive && connected);
-
-        let cls = "helperDot off";
-        let text = "미연결";
-
-        if(state.helperKeyInvalid){
-          cls = "helperDot off";
-          text = "닉네임에 '.' 포함 → 헬퍼연동 불가";
-        }else if(state.helperAuthError){
-          cls = "helperDot off";
-          text = "읽기권한 없음 (rules)";
-        }else if(connected && active){
-          cls = "helperDot on";
-          text = "헬퍼 감지! 🚨▪️▪️▪️🔥";
-        }else if(connected && !active){
-          cls = "helperDot wait";
-          text = "연결됨 (대기) 💤";
-        }
-
-        if(state._helperUiCls !== cls || state._helperUiText !== text){
-          for(const [dotEl, textEl] of targets){
-            dotEl.className = cls;
-            textEl.textContent = text;
-          }
-          state._helperUiCls = cls;
-          state._helperUiText = text;
-        }
-
-        // ✅ 디버그(문제 진단용): active/idleSec/mode 표시
-        try{
-          if(els.helperDebugText){
-            const mode = getHelperMode();
-            const idleSec = (state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec)) ? state.helperIdleSec : null;
-            const z = Number(state.helperIdleZeroStreak || 0);
-            let extra = `mode:${mode}`;
-            if(state.helperAuthError) extra += " | rules";
-            if(state.helperKeyInvalid) extra += " | key";
-            if(state.helperConnected){
-              extra += ` | active:${state.helperActive ? "Y" : "N"}`;
-              if(idleSec !== null){
-                extra += ` | idleSec:${idleSec}`;
-                if(!state.helperActive && idleSec === 0 && z >= 6) extra += " ⚠️idle0";
-              }else{
-                // idleSec 미제공이면 웹이 자체 누적
-                if(state._helperInactiveSinceMs){
-                  const s = Math.floor((Date.now() - state._helperInactiveSinceMs)/1000);
-                  extra += ` | idle~${s}s`;
-                }
-              }
-            }
-            if(els.helperDebugText.textContent !== extra) els.helperDebugText.textContent = extra;
-          }
-        }catch(e){}
-
-      }catch(e){}
-    }
-
-
-    // ✅ 헬퍼 모드: manual(수동/안전) / auto(자동전환)
-    function getHelperMode(){
-      try{
-        const lp = loadLocalProfile() || {};
-        const m = String(lp.helperMode || state.helperMode || "manual");
-        return (m === "manual" || m === "auto") ? m : "auto";
-      }catch(e){ return (state.helperMode || "manual"); }
-    }
-    function setHelperMode(mode, save=true){
-      const m = (mode === "manual") ? "manual" : "auto";
-      state.helperMode = m;
-      try{
-        if(els.helperMode) els.helperMode.value = m;
-        // 자동일 때만 자동전환 분 입력 활성화
-        const en = (m === "auto");
-        if(els.autoBreakMin) els.autoBreakMin.disabled = !en;
-        if(els.autoIdleMin)  els.autoIdleMin.disabled  = !en;
-      }catch(e){}
-      if(save){
-        try{
-          const lp = loadLocalProfile() || {};
-          lp.helperMode = m;
-          saveLocalProfile(lp);
-        }catch(e){}
-      }
-      // ✅ V100 경량화: 헬퍼를 쓰지 않는 manual 모드에서는 helperPairs 실시간 구독/폴링을 끊음
-      try{
-        if(state.joined){
-          if(m === "auto") startHelperWatch();
-          else{
-            try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-            state._helperPairUnsub = null;
-            state._helperPairKey = null;
-            if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
-            state.helperConnected = false;
-            state.helperActive = false;
-            updateHelperStatusUI();
-          }
-        }
-      }catch(e){}
-    }
-
-
-function applyHelperRaw(raw){
-      try{
-        if(!state.joined) return;
-
-        // raw가 없으면: 최근 fresh 신호 기준으로만 연결 여부 판단
-        if(!raw){
-          const now = Date.now();
-          const lastFresh = Number(state.helperLastFreshMs || 0);
-          const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
-          state.helperConnected = connected;
-          if(!connected) state.helperActive = false;
-          updateHelperStatusUI();
-          return;
-        }
-
-        // ✅ 스키마 호환: hb는 raw.heartbeat가 있으면 그걸 우선
-        const hb = (raw && typeof raw === "object" && raw.heartbeat && typeof raw.heartbeat === "object")
-          ? raw.heartbeat
-          : raw;
-
-        // ✅ active 호환
-        const activeRaw = (hb.active ?? raw.active ?? hb.isActive ?? hb.is_active ?? hb.moving ?? hb.isMoving ?? hb.activity ?? hb.state ?? hb.status);
-        let activeBool = false;
-        if(typeof activeRaw === "boolean") activeBool = activeRaw;
-        else if(typeof activeRaw === "number") activeBool = activeRaw > 0;
-        else if(typeof activeRaw === "string"){
-          const s = activeRaw.toLowerCase();
-          activeBool = (s === "active" || s === "work" || s === "working" || s === "moving" || s === "move" || s === "on" || s === "true" || s === "1");
-        }
-
-        // ✅ ts 호환(heartbeat 내부/루트/cfg 등)
-        const tsRaw = (
-          hb.ts ?? raw.ts ??
-          hb.timestamp ?? raw.timestamp ??
-          hb.time ?? raw.time ??
-          hb.t ?? raw.t ??
-          hb.serverTs ?? raw.serverTs ??
-          hb.server_ts ?? raw.server_ts ??
-          hb.lastSeenAtMs ?? raw.lastSeenAtMs ?? raw.lastSeenAt ?? raw.last_seen_at_ms ??
-          raw.cfg?.ts ?? raw.cfg?.timestamp ?? raw.cfg?.serverTs ?? raw.cfg?.server_ts ??
-          hb.cfg?.ts ?? hb.cfg?.timestamp ?? hb.cfg?.serverTs ?? hb.cfg?.server_ts
-        );
-        const ts = Number(tsRaw || 0);
-
-        // ✅ idleSec 호환(있으면 더 정확하게 상태 동기화)
-        const idleSecRaw = (
-          hb.idleSec ?? raw.idleSec ??
-          raw.cfg?.idleSec ?? raw.cfg?.idle_sec ??
-          hb.cfg?.idleSec ?? hb.cfg?.idle_sec
-        );
-        const idleSec = Number(idleSecRaw || 0);
-
-        const now = Date.now();
-        const fresh = ts && Math.abs(now - ts) <= HELPER_HEARTBEAT_FRESH_MS;
-
-        // ✅ fresh 신호일 때만 '마지막 정상 신호' 시각을 갱신
-        if(fresh) state.helperLastFreshMs = now;
-
-        const lastFresh = Number(state.helperLastFreshMs || 0);
-        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
-
-        state.helperConnected = connected;
-        state.helperActive = !!(activeBool && connected);
-        state.helperLastTs = ts || 0;
-
-        updateHelperStatusUI();
-
-        // ✅ idleSec/무반응 누적 처리(헬퍼가 idleSec를 못 올리거나 0으로 고정되는 케이스 방어)
-        state.helperIdleSecPresent = (idleSecRaw !== undefined && idleSecRaw !== null && idleSecRaw !== "");
-        state.helperIdleSec = (Number.isFinite(idleSec) ? idleSec : null);
-
-        if(connected){
-          if(state.helperActive){
-            state.lastActivityMs = now;
-            state._helperInactiveSinceMs = 0;
-            state.helperIdleZeroStreak = 0;
-          }else{
-            if(!state._helperInactiveSinceMs) state._helperInactiveSinceMs = now;
-
-            if(state.helperIdleSecPresent && state.helperIdleSec === 0){
-              state.helperIdleZeroStreak = Number(state.helperIdleZeroStreak || 0) + 1;
-            }else{
-              state.helperIdleZeroStreak = 0;
-            }
-
-            if(state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec) && state.helperIdleSec > 0){
-              const impliedLast = now - (state.helperIdleSec * 1000);
-              state.lastActivityMs = Math.max(Number(state.lastActivityMs || 0), impliedLast);
-              state._helperInactiveSinceMs = Math.min(state._helperInactiveSinceMs || now, impliedLast);
-            }
-          }
-        }
-
-        // ✅ helperActive가 '꺼졌다가 켜질 때' 자동 복귀 규칙
-        const prevActive = !!state._prevHelperActive;
-        state._prevHelperActive = !!state.helperActive;
-
-        const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
-        const status = (state.myStatus || me?.status || "idle");
-        const src = String(state.myStatusSource || me?.statusSource || "");
-
-        if(status === "work" && state.helperActive){
-          state.lastActivityMs = now;
-          return;
-        }
-
-        if(state.helperActive && !prevActive && (status === "break" || status === "idle") && src.startsWith("auto")){
-          transitionTo("work","helperResume");
-          state.lastActivityMs = now;
-          showToast("헬퍼 감지! 🚨▪️▪️▪️🔥", 1800);
-        }
-      }catch(e){
-        const now = Date.now();
-        const lastFresh = Number(state.helperLastFreshMs || 0);
-        const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
-        state.helperConnected = connected;
-        if(!connected) state.helperActive = false;
-        updateHelperStatusUI();
-      }
-    }
-
-async function pollHelperHeartbeat(){
-      if(!state.joined) return;
-      if(state._helperPollInFlight) return;
-      state._helperPollInFlight = true;
-      try{
-        const key = helperPairKey();
-        if(!key){
-          state.helperConnected = false;
-          state.helperActive = false;
-          updateHelperStatusUI();
-          return;
-        }
-
-        const url = `${RTDB_BASE_URL}/helperPairs/${encodeURIComponent(key)}.json?_=${Date.now()}`;
-        const res = await fetch(url, { cache: "no-store" });
-
-        if(!res.ok){
-          const now = Date.now();
-
-          if(res.status === 401 || res.status === 403){
-            state.helperConnected = false;
-            state.helperActive = false;
-            state.helperAuthError = true;
-            updateHelperStatusUI();
-
-            if(!state._helperAuthWarned){
-              showToast("헬퍼 상태 읽기 권한이 없어요(401/403). RTDB rules에서 helperPairs 읽기 허용이 필요해요.");
-              state._helperAuthWarned = true;
-            }
-            return;
-          }
-
-          const lastFresh = Number(state.helperLastFreshMs || 0);
-          const connected = !!(lastFresh && (now - lastFresh) <= HELPER_HEARTBEAT_FRESH_MS);
-          state.helperConnected = connected;
-          if(!connected) state.helperActive = false;
-          updateHelperStatusUI();
-          return;
-        }
-
-        state.helperAuthError = false;
-
-        const raw = await res.json();
-        applyHelperRaw(raw);
-      }catch(e){
-        applyHelperRaw(null);
-      }
-      finally{ state._helperPollInFlight = false; }
-    }
-
-function startHelperWatch(){
-      // ✅ V100 경량화: 하트헬퍼를 쓰는(auto) 사람만 helperPairs를 읽음
-      // 사용자가 적은 기능이라 기본/수동 모드에서는 실시간 구독과 REST 폴링을 모두 중단해 다운로드를 줄인다.
-      try{
-        if(getHelperMode && getHelperMode() !== "auto"){
-          try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-          state._helperPairUnsub = null;
-          state._helperPairKey = null;
-          if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
-          state.helperConnected = false;
-          state.helperActive = false;
-          updateHelperStatusUI();
-          return;
-        }
-      }catch(e){}
-      // ✅ 가능하면 RTDB SDK onValue로 한 키만 실시간 구독(1초 REST 폴링으로 인한 버퍼링/트래픽 감소)
-      try{
-        const key = helperPairKey();
-
-        // key 없음 → 구독/폴링 모두 정리
-        if(!key){
-          try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-          state._helperPairUnsub = null;
-          state._helperPairKey = null;
-          if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
-          state.helperConnected = false;
-          state.helperActive = false;
-          updateHelperStatusUI();
-          return;
-        }
-
-        // 이미 같은 키를 구독 중이면 그대로 사용
-        if(state._helperPairUnsub && state._helperPairKey === key){
-          return;
-        }
-
-        // 기존 구독/폴링 정리
-        try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-        state._helperPairUnsub = null;
-        state._helperPairKey = key;
-        if(state.helperWatchTimer){ clearInterval(state.helperWatchTimer); state.helperWatchTimer = null; }
-
-        const ref = rRef(rtdb, `helperPairs/${key}`);
-        const onV = (snap)=>{
-          try{
-            const v = (snap && snap.val) ? snap.val() : null;
-            applyHelperRaw(v);
-          }catch(e){}
-        };
-        const onErr = (err)=>{
-          // permission denied 등 → 안전하게 폴링으로 fallback
-          try{ console.warn("helperPairs onValue failed, fallback to polling:", err?.code || err); }catch(e){}
-          try{ if(state._helperPairUnsub){ state._helperPairUnsub(); } }catch(e){}
-          state._helperPairUnsub = null;
-          // 폴링 fallback (기존 동작 유지)
-          if(state.helperWatchTimer) clearInterval(state.helperWatchTimer);
-          state.helperWatchTimer = setInterval(pollHelperHeartbeat, 15000);
-          pollHelperHeartbeat();
-        };
-
-        rOnValue(ref, onV, onErr);
-        state._helperPairUnsub = ()=>{
-          try{ rOff(ref, "value", onV); }catch(e){}
-          state._helperPairUnsub = null;
-        };
-
-        // 즉시 1회(첫 UI 반영 체감)
-        pollHelperHeartbeat();
-      }catch(e){
-        // 완전 fallback
-        if(state.helperWatchTimer) clearInterval(state.helperWatchTimer);
-        state.helperWatchTimer = setInterval(pollHelperHeartbeat, 15000);
-        pollHelperHeartbeat();
-      }
-    }
-
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+    // 제거 대상: HELPER_HEARTBEAT_FRESH_MS / helperPairKey() / updateHelperStatusUI() / getHelperMode() /
+    //            setHelperMode() / applyHelperRaw() / pollHelperHeartbeat() / startHelperWatch()
+    //            — RTDB helperPairs 구독·REST 폴링과 헬퍼 기반 자동 복귀 규칙 전부.
+    // RTDB의 helperPairs 노드 데이터는 그대로 두고, 클라이언트가 더 이상 읽지 않는다.
 
     function startActivityWatch(){
       stopActivityWatch();
-      startHelperWatch();
-      state.activityWatchTimer = setInterval(()=>{
-        if(!state.joined || !state.roomId || !state.uid) return;
-
-        const me = state.currentParticipants ? state.currentParticipants.get(state.uid) : null;
-        const status = me?.status || "idle";
-        if(status !== "work") return;
-
-                // ✅ 자동/수동 모드
-        const mode = getHelperMode();
-        if(mode !== "auto") return;
-
-        // ✅ 무반응 시간 계산(헬퍼 idleSec가 고장나도, inactive 시작 시각으로 누적)
-        let idleMs = Date.now() - (state.lastActivityMs || Date.now());
-        if(state.helperConnected){
-          if(state.helperActive){
-            idleMs = 0;
-          }else{
-            // 1) 헬퍼가 idleSec를 정확히 올려주면 그 값을 우선 사용
-            if(state.helperIdleSecPresent && Number.isFinite(state.helperIdleSec) && state.helperIdleSec > 0){
-              idleMs = state.helperIdleSec * 1000;
-            }else if(state._helperInactiveSinceMs){
-              // 2) idleSec가 없거나 0으로 고정되면, inactiveSince로 누적(헬퍼 이벤트 기반)
-              idleMs = Date.now() - state._helperInactiveSinceMs;
-            }
-          }
-        }
-
-        // ✅ 로컬(내 프로필)에서 자동 전환 시간(분)을 읽어 적용
-        let ab = 10, ai = 15;
-        try{
-          const lp = loadLocalProfile() || {};
-          ab = Math.min(180, Math.max(1, Number(lp.autoBreakMin ?? 10)));
-          ai = Math.min(180, Math.max(1, Number(lp.autoIdleMin ?? 15)));
-          if(ai < ab) ai = Math.min(180, ab + 5);
-        }catch(e){}
-        if(idleMs >= ai*60*1000){
-          transitionTo("idle","autoIdle");
-          showToast(`${ai}분 무반응 → 자리비움`);
-        }else if(idleMs >= ab*60*1000){
-          transitionTo("break","autoBreak");
-          showToast(`${ab}분 무반응 → 휴식중`);
-        }
-      }, 15000);
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+      // (startHelperWatch() 호출과 15초 무반응 자동 휴식/자리비움 전환 인터벌 삭제.
+      //  아래 자정 롤오버 감시는 그대로 유지한다.)
 
       // ✅ V138: 자정(KST) 롤오버 — 전원 휴식중 + 0초, 전날 누적 재저장 방지
       if(state.dayWatchTimer) clearInterval(state.dayWatchTimer);
@@ -13106,6 +12603,12 @@ async function transitionTo(nextStatus, source="manual"){
     patch.sessionStartedAtMs = null;
     state._workSessionStartedAtMs = 0;
   }
+
+  // ✅ V172: 상태가 "실제로 바뀐" 시각. updatedAt은 heartbeat가 3분마다 덮고
+  // sessionStartedAtMs는 work가 아니면 null이라 "휴식이 언제 시작됐는지"를 알 수 없었다.
+  // 같은 상태로의 재기록(heartbeat 보정·중복 클릭)에서는 키를 넣지 않는다 —
+  // RTDB update는 누락된 키를 보존하므로 최초 전환 시각이 그대로 남는다.
+  if(!meNow || String(meNow.status || "") !== String(nextStatus)) patch.statusSinceMs = now;
 
   try{
     patch.totalSecondsToday = Math.floor(Number(focusLoadSeconds()||0));
@@ -13175,18 +12678,11 @@ async function transitionTo(nextStatus, source="manual"){
       }
 
 
-      // ✅ 자동 전환(분) — 작업중일 때만 적용
-      const autoBreakMin = Math.min(180, Math.max(1, Number(els.autoBreakMin?.value || 10)));
-      const autoIdleMin  = Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15)));
-      if(autoIdleMin < autoBreakMin){ /* 안전장치 */
-        // 자리비움이 휴식보다 빨라지면 휴식+5로 보정
-        const fixed = Math.min(180, autoBreakMin + 5);
-        if(els.autoIdleMin) els.autoIdleMin.value = String(fixed);
-      }
-
-
-      // ✅ 헬퍼 모드 반영
-      try{ setHelperMode((els.helperMode && els.helperMode.value==='manual')?'manual':'auto', true); }catch(e){}
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환,
+      // 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+      // (자동 전환 분 입력/헬퍼 모드 저장 삭제. presence/profiles 스키마 호환을 위해 기본값만 그대로 기록한다.)
+      const autoBreakMin = 10;
+      const autoIdleMin  = 15;
 
       // ✅ 브라우저에 프리셋 저장(로그인/입장 전에도 유지)
       try{
@@ -13194,10 +12690,6 @@ async function transitionTo(nextStatus, source="manual"){
         lp.theme = theme;
         lp.bubbleText = bubbleText;
         if(state.nickname) lp.nickname = state.nickname;
-        lp.autoBreakMin = Math.min(180, Math.max(1, Number(els.autoBreakMin?.value || lp.autoBreakMin || 10)));
-        lp.helperMode = (els.helperMode && els.helperMode.value==='manual') ? 'manual' : 'auto';
-        lp.autoIdleMin  = Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || lp.autoIdleMin || 15)));
-        if(lp.autoIdleMin < lp.autoBreakMin) lp.autoIdleMin = Math.min(180, lp.autoBreakMin + 5);
         saveLocalProfile(lp);
       }catch(e){}
 
@@ -13209,7 +12701,7 @@ async function transitionTo(nextStatus, source="manual"){
       }
 
       const pref = rMePresenceRef(state.roomId, state.uid);
-      await updatePresenceCompat_(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))), appearanceUpdatedAtMs, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
+      await updatePresenceCompat_(pref, { theme, bubbleText, name: (state.nickname || undefined), autoBreakMin, autoIdleMin, appearanceUpdatedAtMs, updatedAt: Date.now(), lastSeenAtMs: Date.now() });
 
       // ✅ V103_SAFE_PROFILE_COST_PATCH
       // 최신 프로필은 profiles/{uid}에 덮어쓰기 저장합니다.
@@ -13221,7 +12713,7 @@ async function transitionTo(nextStatus, source="manual"){
           theme,
           bubbleText,
           autoBreakMin,
-          autoIdleMin: Math.min(180, Math.max(1, Number(els.autoIdleMin?.value || 15))),
+          autoIdleMin,
           source: 'apply_profile_v103'
         });
         payload.appearanceUpdatedAtMs = appearanceUpdatedAtMs;
@@ -13425,9 +12917,7 @@ async function transitionTo(nextStatus, source="manual"){
       els.goHomework.disabled = !d.homeworkUrl;
       els.goHomework.onclick = d.homeworkUrl ? ()=>openUrlJoined(d.homeworkUrl) : null;
     }
-    // ✅ 헬퍼 다운로드 링크: 관리자가 비워두면 기본 상수를 사용
-    if(els.goMacHelper) els.goMacHelper.onclick = ()=>openUrlJoined(d.macHelperUrl || MAC_HELPER_URL);
-    if(els.goWinHelper) els.goWinHelper.onclick = ()=>openUrlJoined(d.winHelperUrl || WIN_HELPER_URL);
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. Mac/Win 헬퍼 다운로드 버튼 핸들러 삭제.
 
     if(els.pomoUrl) els.pomoUrl.value = d.pomoUrl || "";
     if(els.pomoApiUrl) els.pomoApiUrl.value = d.pomoApiUrl || "";
@@ -13435,8 +12925,7 @@ async function transitionTo(nextStatus, source="manual"){
     if(els.choolUrl) els.choolUrl.value = d.choolUrl || "";
     if(els.sheetUrl) els.sheetUrl.value = d.sheetUrl || "";
     if(els.homeworkUrl) els.homeworkUrl.value = d.homeworkUrl || "";
-    if(els.macHelperUrl) els.macHelperUrl.value = d.macHelperUrl || "";
-    if(els.winHelperUrl) els.winHelperUrl.value = d.winHelperUrl || "";
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. macHelperUrl/winHelperUrl 설정 로드 삭제.
     if(els.dashApiUrl) els.dashApiUrl.value = d.dashApiUrl || "";
   }catch(e){}
 }
@@ -13455,7 +12944,7 @@ function subscribeRoom(){
   const onSettings = (snap)=>{
     const r = (snap && snap.exists && snap.exists()) ? (snap.val()||{}) : (snap?.val?.()||{});
     const dash = Object.assign(
-      {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", macHelperUrl:"", winHelperUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
+      {pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL},
       (r.dashboard || {})
     );
     state.roomSettings.dashboard = dash;
@@ -14067,8 +13556,7 @@ async function saveDashboard(){
     choolUrl: (els.choolUrl.value || "").trim(),
     sheetUrl: (els.sheetUrl.value || "").trim(),
     homeworkUrl: (els.homeworkUrl && els.homeworkUrl.value ? els.homeworkUrl.value : "").trim(),
-    macHelperUrl: (els.macHelperUrl && els.macHelperUrl.value ? els.macHelperUrl.value : "").trim(),
-    winHelperUrl: (els.winHelperUrl && els.winHelperUrl.value ? els.winHelperUrl.value : "").trim(),
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. macHelperUrl/winHelperUrl 저장 삭제.
     dashApiUrl: (dashApiInput && dashApiInput.value ? dashApiInput.value : "").trim(),
   };
   try{
@@ -17522,6 +17010,9 @@ t.appendChild(bg);
       return { ym: iso.slice(0,7), dd: iso.slice(8,10) };
     }
     // 최근 30일 창이 걸치는 달(이번 달+지난 달, 각 ~5KB)의 출석부를 읽는다. 후보가 있을 때만 호출된다.
+    // ⚠️ 2026-08-09 확인: 출근부 데이터 본체는 2026-08-06부터 chat-chat-d7739로 이전됐고,
+    // 이 경로(magamm00-5baee)의 attend는 얼어붙은 사본이다. attendSheetLooksLive_가 그 상태를
+    // 감지해 삭제를 보류한다. 근본 해결은 출근부와 작업방의 프로젝트 정리다.
     async function loadAttendWindow_(){
       const months = {};
       const need = new Set();
@@ -17544,7 +17035,31 @@ t.appendChild(bg);
       }
       return "";
     }
+    // ✅ V172: 출석부가 아직 살아 있는지 — 최근 3일(어제·그저께·그끄저께) 중 하루라도
+    // "누군가" 출근한 기록이 있으면 살아 있다고 본다. 38명이 쓰는 방이라 3일 내내
+    // 전원 무출근은 사실상 사본이 멈춘 경우뿐이다.
+    // 판단 근거(출석부)가 죽었으면 지우지 않는다 — 이 파일의 기존 안전 우선 철학과 같다.
+    function attendSheetLooksLive_(months){
+      try{
+        if(!months || typeof months !== "object") return false;
+        for(let i=1;i<=3;i++){
+          const { ym, dd } = seoulYmd_(i);
+          const days = months[ym]?.days;
+          if(!days || typeof days !== "object") continue;
+          for(const member of Object.keys(days)){
+            const rec = days[member];
+            if(rec && typeof rec === "object" && rec[dd]) return true;
+          }
+        }
+        return false;
+      }catch(e){ return false; } // 판단 실패 시 "죽었다"로 보고 삭제를 보류(안전 우선)
+    }
     // ✅ V169.2: 삭제 허용 판정 — 최근 30일 중 "출석도 휴가도 아닌 날"이 14일 이상일 때만 true.
+    // ⚠️ 2026-08-09 확인: 출근부 데이터 본체는 2026-08-06부터 chat-chat-d7739로 이전됐고,
+    // 이 경로(magamm00-5baee)의 attend는 얼어붙은 사본이다. 사본이 멈춘 채로 두면 08-07 이후가
+    // 전부 "미출근"으로 계산돼 미출근 14일 조건이 저절로 충족되고(2026-08-20경) 휴가·병가 보호가
+    // 조용히 무력화된다. attendSheetLooksLive_가 그 상태를 감지해 삭제를 보류한다.
+    // 근본 해결은 출근부와 작업방의 프로젝트 정리다.
     // 장기 휴가/병가를 출석부(leave)에 남긴 작가는 presence가 오래돼도 보존된다(강퇴 예외 규칙 반영).
     // 출석부 어디에도 흔적이 없는 닉은 관리 대상 밖(옛 시체)이므로 기존 규칙대로 삭제를 허용한다.
     function attendAllowsPrune_(months, nick){
@@ -17566,6 +17081,51 @@ t.appendChild(bg);
         return missed >= 14;
       }catch(e){ return false; } // 판단 실패 시 보존(안전 우선)
     }
+    // ✅ V172: 유령 세션 — 탭을 며칠씩 열어둔 채 방치된 접속.
+    // 실사례(2026-08-01~08-08): 한 작가의 탭이 8일간 열려 있어 ①출근 도장이 안 찍히고
+    // ②입장 알람(emitSys/emitSfx는 joinRoom 안에서만 실행)이 안 울리고 ③절전/네트워크 끊김마다
+    // 타일이 조용히 사라졌다 나타났다. 관리자가 이런 세션을 끊을 수단이 필요하다.
+    // 이미 구독으로 받아 둔 state.currentParticipants만 훑으므로 추가 다운로드가 0이다.
+    const GHOST_SESSION_AFTER_MS = 24 * 60 * 60 * 1000;
+    function findGhostSessions_(){
+      const out = [];
+      try{
+        if(!(state.currentParticipants instanceof Map)) return out;
+        const now = Date.now();
+        const myUid = String(state.uid || "");
+        state.currentParticipants.forEach((p, uid)=>{
+          if(!p) return;
+          if(String(uid) === myUid) return;              // 자기 자신 제외
+          if(!isDisplayablePresence(p)) return;          // 지금 화면에 보이는 사람만
+          if(String(p.status) === "work") return;        // 작업중인 사람은 절대 건드리지 않는다
+          const joinedAtMs = Number(p.petMotionSeedMs) || 0; // joinRoom에서만 쓰는 값 = 마지막 실제 입장
+          const ss = Number(p.statusSinceMs);
+          let since = 0;
+          if(Number.isFinite(ss) && ss > 0){
+            since = ss;
+          }else if(Number(p.totalSecondsToday || 0) === 0){
+            // statusSinceMs가 아직 없는 기존 세션 — 오늘 작업 기록이 0일 때만 입장 시각으로 대신한다.
+            since = joinedAtMs;
+          }else{
+            return; // 오늘 조금이라도 작업했으면 판단 불가 → 보수적으로 보존
+          }
+          if(!(since > 0)) return;
+          const idleMs = now - since;
+          if(idleMs <= GHOST_SESSION_AFTER_MS) return;
+          out.push({
+            uid: String(uid),
+            name: String(p.name || ""),
+            status: String(p.status || ""),
+            since,
+            idleMs,
+            joinedAtMs
+          });
+        });
+        out.sort((a,b)=> b.idleMs - a.idleMs);
+      }catch(e){ console.warn("[ghostSweep] scan failed", e); }
+      return out;
+    }
+
     async function prunePresenceOnce_(){
       try{
         if(!state.roomId || !state.uid || !state.joined) return;
@@ -17607,10 +17167,18 @@ t.appendChild(bg);
         if(candidates.some(c=>!c.superseded)){
           try{ attendMonths = await loadAttendWindow_(); }catch(e){ return; }
         }
+        // ✅ V172: 출석부 사본이 멈춰 있으면 출석 기반 보호 판단이 불가능하다.
+        // 이때는 출석부와 무관한 "교체된 중복 시체"만 정리하고 나머지는 전부 보류한다.
+        let attendLive = true;
+        if(attendMonths && !attendSheetLooksLive_(attendMonths)){
+          attendLive = false;
+          console.warn("[presence] 출석부 사본이 최근 3일간 갱신되지 않아 출석 기반 보호 판단을 보류합니다(자동 청소는 중복 시체만 처리).");
+        }
         const updates = {};
         let n = 0;
         for(const c of candidates){
           if(n >= PRESENCE_PRUNE_MAX_PER_RUN) break;
+          if(!attendLive && !c.superseded) continue; // 판단 근거(출석부)가 죽었으면 지우지 않는다
           if(!c.superseded && !attendAllowsPrune_(attendMonths, c.nick)) continue; // 휴가·병가 등 보호 대상
           updates[`${rRoomBase(state.roomId)}/presence/${c.uid}`] = null;
           updates[`${rRoomBase(state.roomId)}/profiles/${c.uid}`] = null; // ✅ V169.1: 프로필 시체도 함께 정리
@@ -18034,7 +17602,10 @@ async function joinRoom(){
         if(ks.exists()){
           const k = ks.val() || {};
           const exp = Number(k.expiresAtMs || 0);
-          if(exp && exp > Date.now()){
+          // ✅ V172: mode:"session"(유령 세션 정리)은 목적이 "다시 들어오게 하는 것"이라 차단하지 않는다.
+          // 기존 강퇴(mode 없음/다른 값)는 지금처럼 2시간 차단을 유지한다.
+          const isSessionReset = String(k.mode || "") === "session";
+          if(!isSessionReset && exp && exp > Date.now()){
             showToast("🚫 강퇴 상태라 잠시 입장할 수 없어");
             setControlsEnabled(false);
             return;
@@ -18184,8 +17755,8 @@ try{
       setControlsEnabled(true);
       try{ els.chatInput.disabled = true; els.sendBtn.disabled = true; }catch(e){}
 
-      // ✅ 입장 시 시작 상태: 무조건 "휴식중" + 헬퍼 OFF
-      try{ setHelperMode("manual", true); }catch(e){}
+      // ✅ 입장 시 시작 상태: 무조건 "휴식중"
+      // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
       try{ await transitionTo("break","manualInit"); }catch(e){}
 
       subscribeRoom();
@@ -18998,20 +18569,10 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       if(ev.key === "Escape") closeViewMenu();
     });
     els.btnWork.addEventListener("click", ()=>{ transitionTo("work","manual"); });
-    if(els.btnHelperToggle) els.btnHelperToggle.addEventListener("click", ()=>{
-      if(!state.joined) return;
-      const me = (state.currentParticipants && state.currentParticipants.get) ? state.currentParticipants.get(state.uid) : null;
-      const st = (me && me.status) ? me.status : (state.myStatus || "idle");
-      if(st !== "work"){ showToast("✍️ 작업중에서만 헬퍼를 켤 수 있어요"); return; }
-      const hm = getHelperMode();
-      const next = (hm === "auto") ? "manual" : "auto";
-      setHelperMode(next, true);
-      try{ syncMyStatusUI(); }catch(e){}
-      try{ updateHelperStatusUI(); }catch(e){}
-    });
-
-    els.btnBreak.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("break","manual"); });
-    els.btnIdle.addEventListener("click", ()=>{ try{ setHelperMode("manual", true); }catch(e){} transitionTo("idle","manual"); });
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환,
+    // 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만. (🤖 헬퍼 켜기 토글 핸들러 삭제)
+    els.btnBreak.addEventListener("click", ()=>{ transitionTo("break","manual"); });
+    els.btnIdle.addEventListener("click", ()=>{ transitionTo("idle","manual"); });
 // ✅ V140 관리자: 작가 선택 목록 + 개별 타이머 초기화
 function adminTimerStatusLabel_(p){
   try{
@@ -19338,14 +18899,7 @@ els.statusBtn.addEventListener("click", (ev)=>{
         if(els.bubbleTextColor) els.bubbleTextColor.value = clampHexColor(theme.bubbleTextColor || "#ffffff");
         if(els.bubbleTextColorPicker) els.bubbleTextColorPicker.value = els.bubbleTextColor.value;
 
-        // ✅ 자동전환(분)
-        const ab = Number(lp.autoBreakMin ?? 10);
-        const ai = Number(lp.autoIdleMin ?? 15);
-        if(els.autoBreakMin) els.autoBreakMin.value = String(Math.min(180, Math.max(1, isFinite(ab)?ab:10)));
-        if(els.autoIdleMin) els.autoIdleMin.value = String(Math.min(180, Math.max(1, isFinite(ai)?ai:15)));
-        // ✅ 헬퍼 모드
-        const hm = String(lp.helperMode || state.helperMode || 'auto');
-        setHelperMode((hm==='manual')?'manual':'auto', false);
+        // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 프로필 모달의 자동전환(분)/헬퍼 모드 복원 삭제.
       }catch(e){}
       try{ updatePhotoEnabledUI(); }catch(e){}
       showModal(els.profileModal);
@@ -19674,50 +19228,12 @@ try{
 
     els.applyProfile.addEventListener("click", applyProfile);
 
-    // ✅ 상단 상태 메뉴: 헬퍼/수동 토글 + 자동 전환 시간(분)
-    function __setAutoMinutes(ab, ai){
-      ab = Math.min(180, Math.max(1, Number(ab||10)));
-      ai = Math.min(180, Math.max(1, Number(ai||15)));
-      if(ai < ab) ai = Math.min(180, ab + 5);
-      try{
-        const lp = loadLocalProfile() || {};
-        lp.autoBreakMin = ab;
-        lp.autoIdleMin = ai;
-        saveLocalProfile(lp);
-      }catch(e){}
-      // 프로필 모달 입력도 동기화
-      try{ if(els.autoBreakMin) els.autoBreakMin.value = String(ab); }catch(e){}
-      try{ if(els.autoIdleMin)  els.autoIdleMin.value  = String(ai); }catch(e){}
-      try{ if(els.autoBreakMinTop) els.autoBreakMinTop.value = String(ab); }catch(e){}
-      try{ if(els.autoIdleMinTop)  els.autoIdleMinTop.value  = String(ai); }catch(e){}
-      try{ updateHelperStatusUI(); }catch(e){}
-      try{ syncMyStatusUI(); }catch(e){}
-    }
+    // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환,
+    // 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
+    // (상단 상태 메뉴의 헬퍼/수동 모드 토글, 자동 전환 시간(분) 입력 핸들러, __setAutoMinutes(),
+    //  프로필 모달의 헬퍼 모드 select change 핸들러 삭제)
 
     try{
-      if(els.modeAutoBtn) els.modeAutoBtn.addEventListener("click", async ()=>{
-        // (내부 유지) 헬퍼 ON: 작업중에서만 허용
-        if(!state.joined) return;
-        const me = state.currentParticipants?.get?.(state.uid);
-        const st = me?.status || state.myStatus || "idle";
-        if(st !== "work"){ showToast("✍️ 작업중에서만 헬퍼를 켤 수 있어요"); return; }
-        setHelperMode("auto", true);
-        try{ syncMyStatusUI(); }catch(e){}
-        try{ updateHelperStatusUI(); }catch(e){}
-      });
-      if(els.modeManualBtn) els.modeManualBtn.addEventListener("click", ()=>{
-        // 수동 모드: 화면 즉시 전환
-        setHelperMode("manual", true);
-        try{ syncMyStatusUI(); }catch(e){}
-        try{ updateHelperStatusUI(); }catch(e){}
-      });
-      if(els.autoBreakMinTop) els.autoBreakMinTop.addEventListener("change", ()=>{ __setAutoMinutes(els.autoBreakMinTop.value, els.autoIdleMinTop?.value); });
-      if(els.autoIdleMinTop)  els.autoIdleMinTop.addEventListener("change", ()=>{ __setAutoMinutes(els.autoBreakMinTop?.value, els.autoIdleMinTop.value); });
-    }catch(e){}
-
-    // ✅ 헬퍼 모드 즉시 반영
-    try{
-      if(els.helperMode) els.helperMode.addEventListener('change', ()=>{ setHelperMode(els.helperMode.value, true); try{ syncMyStatusUI(); }catch(e){} updateHelperStatusUI(); });
       if(els.photoEnabled) els.photoEnabled.addEventListener("change", ()=>{ try{ updatePhotoEnabledUI(); }catch(e){} });
       if(els.petDisplaySlot) els.petDisplaySlot.addEventListener("change", ()=>{ try{ updatePhotoEnabledUI(); }catch(e){} try{ window.__MK_REFRESH_MY_PET_SLOT__ && window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){} });
       if(els.petSlotMotion) els.petSlotMotion.addEventListener("change", ()=>{ try{ window.__MK_REFRESH_MY_PET_SLOT__ && window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){} });
@@ -23786,6 +23302,56 @@ joinRoom();
       showToast("전원 새로고침 요청을 보냈어요 · 최대 2분 안에 퍼져요 🔄",3400);
     }catch(e){ showToast("요청 전송에 실패했어요 · 연결을 확인해 주세요",3000); }
   }
+  // ===== ✅ V172: 관리자 유령 세션 정리 =====
+  // 스캔은 이미 구독으로 받아 둔 state.currentParticipants만 읽으므로 추가 다운로드가 0이다.
+  function ghostSweepStatusLabel_(s){
+    const v=String(s||"");
+    if(v==="break") return "휴식중";
+    if(v==="idle") return "자리비움";
+    if(v==="work") return "작업중";
+    if(v==="off") return "오프라인";
+    return v||"알 수 없음";
+  }
+  function ghostSweepFmtAt_(ms){
+    const t=Number(ms)||0;
+    if(!(t>0)) return "기록 없음";
+    try{
+      const parts=new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date(t));
+      const g=(k)=>(parts.find(x=>x.type===k)?.value||"");
+      return `${g("month")}/${g("day")} ${g("hour")}:${g("minute")}`;
+    }catch(e){ return "기록 없음"; }
+  }
+  function renderGhostSweepStatus_(list){
+    const el=document.getElementById("ghostSweepStatus");
+    if(!el) return;
+    el.style.whiteSpace="pre-line";
+    if(!list || !list.length){ el.textContent="정리할 유령 세션이 없어요."; return; }
+    const lines=list.map(g=>{
+      const hours=Math.floor(g.idleMs/3600000);
+      return `${g.name||g.uid} · 마지막 입장 ${ghostSweepFmtAt_(g.joinedAtMs)} · ${ghostSweepStatusLabel_(g.status)} · ${hours}시간째`;
+    });
+    el.textContent=`대상 ${list.length}명\n${lines.join("\n")}`;
+  }
+  function ghostSweepScan_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    renderGhostSweepStatus_(findGhostSessions_());
+  }
+  async function ghostSweepRun_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.joined || !state.roomId){ showToast("작업방 입장 후 사용할 수 있어요"); return; }
+    const list=findGhostSessions_();
+    renderGhostSweepStatus_(list);
+    if(!list.length){ showToast("정리할 유령 세션이 없어요",2600); return; }
+    const names=list.map(g=>`· ${g.name||g.uid} (${ghostSweepStatusLabel_(g.status)} ${Math.floor(g.idleMs/3600000)}시간째)`).join("\n");
+    if(!confirm(`다음 ${list.length}명의 오래된 접속을 끊을까요?\n\n${names}\n\n끊긴 분은 바로 다시 입장할 수 있어요(재입장 차단 없음).`)) return;
+    let ok=0;
+    for(const g of list){
+      try{ if(await requestSessionReset_(g.uid,g.name)) ok++; }catch(e){}
+    }
+    const el=document.getElementById("ghostSweepStatus");
+    if(el) el.textContent = ok ? `${ok}명의 오래된 접속을 정리했어요. 상대 탭이 깨어나는 즉시 연결이 끊기고, 출근부에서 다시 입장할 수 있어요.` : "정리에 실패했어요 · 권한과 연결을 확인해 주세요.";
+    showToast(ok?`${ok}명의 오래된 접속을 정리했어요`:"정리에 실패했어요 · 권한/연결을 확인해 주세요",3200);
+  }
   function renderWorldTreeGuerrillaStatus_(){
     const el=document.getElementById("worldTreeGuerrillaStatus");
     if(!el) return;
@@ -24408,6 +23974,9 @@ joinRoom();
     document.getElementById("worldTreeGuerrillaCancel")?.addEventListener("click",()=>cancelWorldTreeGuerrilla_());
     // ✅ V168.9: 관리자 전원 새로고침
     document.getElementById("worldTreeReloadAll")?.addEventListener("click",()=>requestWorldTreeReloadAll_());
+    // ✅ V172: 관리자 유령 세션 정리
+    document.getElementById("ghostSweepScan")?.addEventListener("click",()=>ghostSweepScan_());
+    document.getElementById("ghostSweepRun")?.addEventListener("click",()=>{ ghostSweepRun_().catch(()=>{}); });
     // ✅ V168: 물방울 클릭 이벤트 오브 + 가방 더블탭 사용
     document.getElementById("worldTreeDewOrb")?.addEventListener("click",()=>{ try{ moveWorldTreeDewOrb_(); }catch(e){} clickWorldTreeDew_().catch(()=>{}); });
     document.getElementById("worldTreeBagList")?.addEventListener("click",onWorldTreeBagClick_);
