@@ -27606,6 +27606,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   #mkAwardMsg{ margin-top:7px; line-height:1.6; color:rgba(255,255,255,.55); }
   #mkAwardMsg.mkAwardOk{ color:#ffe9b8; }
   #mkAwardMsg.mkAwardErr{ color:#ffb9cd; }
+  /* V170_AWARD2: 장바구니 안내 행 — 결제 대상이 아니라 체크박스가 없고, 누르면 코드칸으로 간다 */
+  .mkCartSpecial{ border-color:rgba(255,216,92,.34) !important; background:rgba(255,216,92,.07) !important; cursor:pointer; }
+  .mkCartSpecial:hover{ border-color:rgba(255,216,92,.62) !important; background:rgba(255,216,92,.12) !important; }
+  .mkCartSpecial:focus-visible{ outline:2px solid rgba(255,216,92,.55); outline-offset:2px; }
+  .mkCartCodeNeed{ color:#ffd85c; white-space:nowrap; }
+
   /* 접기/펴기 — 접힌 기본 상태에서는 제목 줄만 남기고(아래 여백까지 회수) 남는 높이를 미리보기에 돌려준다 */
   #mkAwardToggle{ cursor:pointer; user-select:none; -webkit-user-select:none; }
   #mkAwardToggle:hover{ color:#ffe9b8; }
@@ -27980,18 +27986,45 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     });
     return items;
   }
+  /* V170_AWARD2: 표시 전용 — 미리보기 중인 미보유 특수 파츠 목록.
+     tryOnItems()(결제 후보)와 절대 섞지 않는다. 가격이 없으므로 합계·결제에도 들어가지 않는다. */
+  function specialTryOnItems(){
+    var items = [];
+    if(chara.phase !== 'ready') return items;
+    var owned = getOwned();
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return;
+      selArr(c.key).forEach(function(nm){
+        if(owned[ownedKeyFor(c.key, nm)]) return;
+        if(!isSpecial(c.key, nm)) return;
+        var part = c.parts.find(function(p){ return p.name === nm; });
+        items.push({ catKey: c.key, name: nm, label: c.label, url: part ? part.url : '' });
+      });
+    });
+    return items;
+  }
   function renderCart(){
     var box = $id('mkCharaCartBox'); if(!box) return;
     var items = tryOnItems();
+    var sp = specialTryOnItems(); // V170_AWARD2: 결제되지 않는 안내 행
+    var spTail = sp.length ? ' · 🎖️ ' + sp.length + '개는 코드로 받아요' : '';
+    var spHtml = sp.map(function(it){
+      return '<div class="mkCartItem mkCartSpecial" data-award="1" role="button" tabindex="0" title="개근상 파츠라 코인으로는 살 수 없어요 — 눌러서 코드 등록칸으로 가기">'
+        + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
+        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
+        + '<span class="mkCartPrice mkCartCodeNeed">🎖️ 코드 필요</span>'
+        + '</div>';
+    }).join('');
     var keep = {};
     items.forEach(function(it){ keep[ownedKeyFor(it.catKey, it.name)] = 1; });
     Object.keys(cartUnchecked).forEach(function(k){ if(!keep[k]) delete cartUnchecked[k]; });
     var list = $id('mkCartList');
     box.style.display = ''; // V169_SHOP2: 항상 표시 — 자리 고정으로 미리보기 크기 유지
     if(!items.length){
-      if(list) list.innerHTML = '<div class="mkCartEmpty"><span class="ic">👗</span><span>파츠를 누르면 여기에 담겨요<br>결제 전엔 나만 보여요</span></div>';
+      // V170_AWARD2: 결제 후보가 0개여도 특수 미리보기 중이면 그 행은 보여준다(빈 안내로 덮지 않는다)
+      if(list) list.innerHTML = spHtml || '<div class="mkCartEmpty"><span class="ic">👗</span><span>파츠를 누르면 여기에 담겨요<br>결제 전엔 나만 보여요</span></div>';
       var tot0 = $id('mkCartTotal');
-      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>🪙0</b> · 보유 🪙' + fmtCoins(readCoins());
+      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>🪙0</b> · 보유 🪙' + fmtCoins(readCoins()) + spTail;
       var pay0 = $id('mkCartPay');
       if(pay0){ pay0.disabled = true; pay0.textContent = '🪙 결제'; }
       return;
@@ -28007,9 +28040,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
         + '<span class="mkCartPrice">🪙' + fmtCoins(it.price) + '</span>'
         + '</label>';
-    }).join('');
+    }).join('') + spHtml; // 결제 후보 뒤에 안내 행
     var tot = $id('mkCartTotal');
-    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>🪙' + fmtCoins(total) + '</b> · 보유 🪙' + fmtCoins(readCoins());
+    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>🪙' + fmtCoins(total) + '</b> · 보유 🪙' + fmtCoins(readCoins()) + spTail;
     var pay = $id('mkCartPay');
     if(pay){ pay.disabled = !checkedN; pay.textContent = '🪙 ' + fmtCoins(total) + ' 결제'; }
   }
@@ -28240,13 +28273,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var has = !!owned[ownedKeyFor(cat.key, p.name)];
       var isOn = isAccCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name;
       var tryOn = isOn && !has; // V169_SHOP: 입어보는 중(미결제) — 가격 배지 유지 + 금색 톤
-      /* V170_AWARD: 특수 파츠는 가격이 없다 — 코인 배지 대신 개근상 배지, 미보유면 입어보기도 막는다(장바구니가 값을 매길 수 없어서) */
+      /* V170_AWARD: 특수 파츠는 가격이 없다 — 코인 배지 대신 개근상 배지.
+         V170_AWARD2: 미보유도 일반 파츠처럼 입어보기 가능 — 결제 후보에서만 빠진다. 배지는 보유/미리보기/잠금 3단계. */
       if(isSpecial(cat.key, p.name)){
         var tag = specialTag(cat.key, p.name);
-        var sTitle = esc(p.name)+' — '+esc(tag.label)+(has?' · 보유 중':' · 개근상 코드로 받을 수 있어요');
-        return '<div class="mkCharaThumb'+(isOn?' on':'')+(has?'':' mkLocked')+'" data-name="'+esc(p.name)+'" data-special="1" title="'+sTitle+'">'
+        var sTry = isOn && !has; // 미보유인데 착장 중 = 미리보기
+        var sTitle = esc(p.name)+' — '+esc(tag.label)+(has
+          ? ' · 보유 중'
+          : (sTry ? ' · 미리보기 중 — 개근상 코드를 등록하면 내 것이 돼요' : ' · 눌러서 미리보기 · 개근상 코드로 받을 수 있어요'));
+        return '<div class="mkCharaThumb'+(isOn?' on':'')+(sTry?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" data-special="1" title="'+sTitle+'">'
           + thumbImgHtml(cat.key, p.name, p.url, '')
-          + '<span class="mkCharaPrice mkSpecialBadge">'+esc(tag.emoji)+' '+(has?'보유 ✓':'개근상')+'</span>'
+          + '<span class="mkCharaPrice mkSpecialBadge">'+esc(tag.emoji)+' '+(has?'보유 ✓':(sTry?'미리보기':'개근상'))+'</span>'
           + '</div>';
       }
       var price = partPrice(cat.key, p.name);
@@ -28261,13 +28298,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     el.querySelectorAll('.mkCharaThumb').forEach(function(tile){
       tile.addEventListener('click', function(){
         var nm = tile.dataset.name || null;
-        /* V170_AWARD: 미보유 특수 파츠 — 입어보기 대신 코드 입력칸으로 안내 (보유했으면 일반 파츠와 똑같이 동작) */
-        if(nm && tile.dataset.special === '1' && !getOwned()[ownedKeyFor(cat.key, nm)]){
-          toast('🎖️ 개근상 파츠예요 — 관리자님께 받은 개근상 코드를 입력하면 받을 수 있어요!', 3400);
-          focusAwardInput();
-          return;
-        }
+        /* V170_AWARD2: 미보유 특수 파츠도 일반 파츠와 똑같이 착장 토글 — 결제 후보에서만 빠진다.
+           "켤 때만" 미리보기라고 한 번 알려 주고, 벗을 때는 조용히 넘어간다. */
+        var isSp = !!(nm && tile.dataset.special === '1' && !getOwned()[ownedKeyFor(cat.key, nm)]);
+        var onNow = function(){ return isAccCat(cat.key) ? selArr(cat.key).indexOf(nm)>=0 : chara.sel[cat.key]===nm; };
+        var wasOn = isSp && onNow();
         selectPart(cat.key, nm); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
+        if(isSp && !wasOn && onNow()) toast('🎖️ 미리보기예요 — 개근상 코드를 등록하면 내 것이 돼요', 2600);
       });
     });
   }
@@ -28500,6 +28537,18 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(t.checked) delete cartUnchecked[t.dataset.key]; else cartUnchecked[t.dataset.key]=true;
       renderCart(); // 합계/결제 버튼 실시간 갱신
     });
+    /* V170_AWARD2: 장바구니의 "🎖️ 코드 필요" 안내 행 — 누르면 개근상 칸을 펼치고 입력칸으로 데려간다 */
+    if(cartList){
+      cartList.addEventListener('click', function(e){
+        var row = e.target && e.target.closest ? e.target.closest('.mkCartSpecial') : null;
+        if(row) focusAwardInput();
+      });
+      cartList.addEventListener('keydown', function(e){
+        var row = e.target && e.target.closest ? e.target.closest('.mkCartSpecial') : null;
+        if(!row) return;
+        if(e.key==='Enter' || e.key===' ' || e.key==='Spacebar' || e.keyCode===13 || e.keyCode===32){ e.preventDefault(); focusAwardInput(); }
+      });
+    }
     /* V170_AWARD: 개근상 칸 접기/펴기 토글 바인딩(1회) — 마우스 클릭 + 키보드 Enter/Space */
     var awardTg=body.querySelector('#mkAwardToggle');
     if(awardTg){
