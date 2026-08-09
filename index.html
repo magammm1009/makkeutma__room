@@ -24401,6 +24401,9 @@ if(!window.__MK_BOOT_OK__){
   }
   /* V169_DASH: 캐릭터 모드 이미지 — petStageArt(하트·통통 모션 CSS 대상)를 쓰지 않아 펫 모션 무적용 */
   #petHeroArt img.mkCharaDashImg{width:98px; height:98px; max-width:100%; object-fit:contain; display:block;}
+  /* V169_DASH: 카드 여백 재배분 (2026-08-09 사용자) — 아트↔이름 간격 축소, 상단(세계수 버튼↔머리) 여백 확대.
+     좁은 화면 패치들(26590행대)이 gap에 !important+동률 특이도를 걸어서, id 이중 지정으로 확실히 이겨야 한다. 펫/캐릭터 모드 공통. */
+  body #dashboardCard #petDashInner.petDashOnlyCurrent{ gap:2px !important; padding-top:20px !important; }
   .petDashBox[data-dash-mode="tree"]{
     border-color:rgba(196,170,255,.48) !important;
     background:
@@ -29131,7 +29134,20 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   function moverFace(m, dir, tiltDeg){
     m.dir = (dir === -1) ? -1 : 1;
+    if(m.rot){ m.rot = 0; m.flip.style.transformOrigin = ''; } // V169_PEEK: 어떤 경로로든 걷기/정립 진입 시 빼꼼 회전 잔류 제거(원점도 CSS 기본 50% 85%로 원복)
     m.flip.style.transform = 'scaleX(' + m.dir + ')' + (tiltDeg ? (' rotate(' + tiltDeg + 'deg)') : '');
+  }
+  function moverPose(m, rot){ // V169_PEEK: 경계 밖 빼꼼 자세 — 회전은 정사각 flip의 "중심" 기준(돌출 좌표 계산과 일치).
+    // .mkCharaMoveFlip의 transition:transform .45s가 진입/복귀를 부드럽게 처리한다.
+    // rot 적용 시점의 현재 자세는 항상 정립(scaleX만)이라 origin 변경(50% 85%→50% 50%)이 시각 점프를 만들지 않는다.
+    m.rot = rot || 0;
+    if(m.rot){
+      m.dir = 1; // 회전 자세는 반전 없이 고정(rotate와 scaleX(-1) 합성 시 머리 방향이 뒤집히는 것 방지)
+      m.flip.style.transformOrigin = '50% 50%';
+      m.flip.style.transform = 'scaleX(1) rotate(' + m.rot + 'deg)';
+    }else{
+      m.flip.style.transform = 'scaleX(' + m.dir + ')'; // origin 원복은 복귀 transition 종료 후 호출측(또는 moverFace)이 수행
+    }
   }
   function moverFreeze(m){ // hidden/저사양: 현재 렌더 위치에 그대로 고정 + 타이머 전부 해제
     m.t.forEach(clearTimeout); m.t.length = 0;
@@ -29193,27 +29209,49 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){}
     return f;
   }
+  /* V169_PEEK(방향별 자세): top/left/right는 몸을 회전시켜 "머리(정수리~눈)만" 경계 밖에서 안으로 들이민다.
+     - top: rotate(180deg) — 천장에 거꾸로 매달려 머리가 아래로 쏙. 보이는 부분 = 정수리~눈 아래 경계.
+     - left: rotate(90deg) — 정수리가 오른쪽(타일 안쪽)을 향해 눕는다.
+     - right: rotate(-90deg) — 정수리가 왼쪽(타일 안쪽)을 향해 눕는다.
+     - bottom: 현행 유지 — 서 있는 자세로 가라앉아 정수리~눈만 보임.
+     좌표 보정: flip은 정사각이고 회전은 중심 기준(moverPose) → wrap의 [x, x+s]×[y, y+s] 박스는 회전과 무관.
+     원본 이미지의 세로 비율 f는 180°에서 (1-f), ±90°에서는 가로축의 (1-f)/f로 사상되므로,
+     세 방향 모두 "정수리~눈 아래(E.bot)"만 보이게 하는 돌출 좌표는 경계에서 (1-E.bot)*s 만큼 밖이다.
+     눈의 직교축(원본 x) 범위는 wrap 자체가 그 축에서 경계 안(clamp)이라 항상 가시. */
+  var PEEK_POSE_MS = 450; // .mkCharaMoveFlip transition:transform .45s와 동기
   function moverPeekOut(m, b, forceEdge, dwellMs){ // 경계 밖 빼꼼: 나가서 머문 뒤 들어온다 (forceEdge 검증용 / dwellMs 지정 시 장기 눌러앉기)
     var E = m.eyes || EYE_FRAC_FALLBACK;
     var e = forceEdge || ['left', 'right', 'bottom', 'top'][Math.floor(Math.random() * 4)];
-    var tx, ty, dir = m.dir;
-    if(e === 'left'){ // 왼쪽을 보며 내밀기 → 좌우 반전 상태의 눈 x 경계는 (1 - xmax)
-      dir = -1;
-      tx = -(1 - E.xmax) * b.s; ty = Math.random() * b.my;
-    }else if(e === 'right'){
-      dir = 1;
-      tx = b.W - E.xmax * b.s; ty = Math.random() * b.my;
-    }else if(e === 'bottom'){ // 몸이 가라앉아 눈 밑 경계가 타일 아래변에 닿는 지점까지
-      tx = Math.random() * b.mx; ty = b.H - E.bot * b.s;
-    }else{ // top: 머리 일부만 위로 — 눈 위 경계가 윗변에 닿는 지점까지
-      tx = Math.random() * b.mx; ty = -E.top * b.s;
-    }
-    var walk = moverWalkTo(m, tx, ty);
-    if(e === 'left' || e === 'right') m.t.push(setTimeout(function(){ moverFace(m, dir, 0); }, walk + 30)); // 눈 경계 계산과 실제 반전 일치 보장
     var dwell = (dwellMs > 0) ? dwellMs : (1000 + Math.random() * 2000); // 기본 1~3초, 장기 눌러앉기는 호출측 지정
     var backX = Math.random() * b.mx, backY = Math.random() * b.my;
-    m.t.push(setTimeout(function(){ moverWalkTo(m, backX, backY); }, walk + dwell));
-    return walk + dwell + MOVE_WALK_MIN_MS + MOVE_WALK_RANGE_MS; // 복귀 걷기 최대치까지 점유
+    if(e === 'bottom'){ // 현행 유지: 몸이 가라앉아 눈 밑 경계가 타일 아래변에 닿는 지점까지
+      var tx = Math.random() * b.mx, ty = b.H - E.bot * b.s;
+      var walkB = moverWalkTo(m, tx, ty);
+      m.t.push(setTimeout(function(){ moverWalkTo(m, backX, backY); }, walkB + dwell));
+      return walkB + dwell + MOVE_WALK_MIN_MS + MOVE_WALK_RANGE_MS; // 복귀 걷기 최대치까지 점유
+    }
+    var rot, px, py, sx, sy; // (px,py)=돌출 좌표, (sx,sy)=경계 안 대기 좌표(회전 시작/복귀 지점)
+    if(e === 'top'){
+      rot = 180; px = Math.random() * b.mx; py = -(1 - E.bot) * b.s; sx = px; sy = 0;
+    }else if(e === 'left'){
+      rot = 90; px = -(1 - E.bot) * b.s; py = Math.random() * b.my; sx = 0; sy = py;
+    }else{ // right
+      rot = -90; px = b.W - E.bot * b.s; py = Math.random() * b.my; sx = b.mx; sy = py;
+    }
+    var walk = moverWalkTo(m, sx, sy);          // 1) 해당 변까지 정립 자세로 걸어간다
+    m.t.push(setTimeout(function(){             // 2) 회전(flip transition)과 밖으로 밀기(wrap transition)를 동시에
+      moverPose(m, rot);
+      moverSetPos(m, px, py, PEEK_POSE_MS, 'ease-in-out');
+    }, walk + 80));
+    m.t.push(setTimeout(function(){             // 3) 안으로 당기며 정립 복원
+      moverPose(m, 0);
+      moverSetPos(m, sx, sy, PEEK_POSE_MS, 'ease-in-out');
+    }, walk + 80 + PEEK_POSE_MS + dwell));
+    m.t.push(setTimeout(function(){             // 4) transform-origin 원복 후 일반 걷기 재개
+      m.flip.style.transformOrigin = '';
+      moverWalkTo(m, backX, backY);
+    }, walk + 80 + PEEK_POSE_MS + dwell + PEEK_POSE_MS + 80));
+    return walk + 160 + PEEK_POSE_MS * 2 + dwell + MOVE_WALK_MIN_MS + MOVE_WALK_RANGE_MS; // 복귀 걷기 최대치까지 점유
   }
   function moverStep(m){
     m.t.forEach(clearTimeout); m.t.length = 0; // 이번 스텝 기준으로 리셋(이전 걷기/빼꼼 보조 타이머는 이미 완료)
@@ -29234,6 +29272,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       busy = 400; // 아직 레이아웃 전 — 잠시 후 재시도
     }else{
       moverSizeSync(m, b);
+      if(m.rot) moverFace(m, m.dir, 0); // V169_PEEK: 중단된 빼꼼(스텝 강제 리셋/복귀 경로)의 회전 잔류를 정립으로 복원
+      if(m.x < -0.5 || m.y < -0.5 || m.x > b.mx + 0.5 || m.y > b.my + 0.5){ // V169_PEEK: 동결 등으로 경계 밖에 남았으면 우선 안으로 복귀
+        busy = moverWalkTo(m, Math.random() * b.mx, Math.random() * b.my);
+        m.t.push(setTimeout(function(){ moverStep(m); }, busy + MOVE_IDLE_MIN_MS + Math.random() * MOVE_IDLE_RANGE_MS));
+        return;
+      }
       var r = Math.random();
       if(r < 0.30) busy = moverWalkTo(m, Math.random() * b.mx, Math.random() * b.my); // 목적지 랜덤 걷기
       else if(r < 0.42) busy = 300 + Math.random() * 900;                             // 잠깐 멈춰 서기
@@ -29254,7 +29298,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var flip = document.createElement('div'); flip.className = 'mkCharaMoveFlip';
       var img = document.createElement('img'); img.className = 'mkCharaMoveImg'; img.alt = '캐릭터'; img.decoding = 'async';
       flip.appendChild(img); wrap.appendChild(flip); tileEl.appendChild(wrap);
-      var m = { root: tileEl, host: tileEl, wrap: wrap, flip: flip, img: img, t: [], x: 0, y: 0, dir: 1 };
+      var m = { root: tileEl, host: tileEl, wrap: wrap, flip: flip, img: img, t: [], x: 0, y: 0, dir: 1, rot: 0 }; // V169_PEEK: rot=빼꼼 회전 상태
       moverReg.add(m);
       stats.moverAttachCount++;
       bakeChara(c.parts, c.hue).then(function(res){
@@ -29328,18 +29372,19 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       timers += m.t.length;
       list.push({ connected: m.root.isConnected, inHandcam: m.host !== m.root, x: m.x, y: m.y,
                   w: m.host.clientWidth || 0, h: m.host.clientHeight || 0,
-                  s: parseFloat(m.wrap.style.width) || 0, eyes: m.eyes || null }); // V169_FIX: 경계 밖 빼꼼 검증용
+                  s: parseFloat(m.wrap.style.width) || 0, eyes: m.eyes || null,
+                  rot: m.rot || 0, flipTransform: m.flip.style.transform || '' }); // V169_FIX+V169_PEEK: 경계 밖 빼꼼/회전 자세 검증용
     });
     return { movers: moverReg.size, pendingTimers: timers, attach: stats.moverAttachCount, list: list };
   }
   function moveStepNow(){ // 검증용: 대기 없이 즉시 다음 행동
     moverReg.forEach(function(m){ m.t.forEach(clearTimeout); m.t.length = 0; moverStep(m); });
   }
-  function movePeekOutNow(edge){ // V169_FIX 검증용: 모든 mover가 즉시 지정 변으로 경계 밖 빼꼼
+  function movePeekOutNow(edge, dwellMs){ // V169_FIX 검증용: 모든 mover가 즉시 지정 변으로 경계 밖 빼꼼 (V169_PEEK: dwellMs로 유지 시간 고정 가능)
     moverReg.forEach(function(m){
       m.t.forEach(clearTimeout); m.t.length = 0;
       var b = moverBounds(m);
-      var busy = moverPeekOut(m, b, edge);
+      var busy = moverPeekOut(m, b, edge, dwellMs);
       m.t.push(setTimeout(function(){ moverStep(m); }, busy + MOVE_IDLE_MIN_MS));
     });
   }
