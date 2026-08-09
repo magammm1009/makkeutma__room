@@ -5729,9 +5729,9 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="btnRow" id="dashShortcuts">
 <!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 Mac/Win 헬퍼 다운로드 바로가기 삭제. -->
-<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근</span></button>
-<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎시트</span></button>
-<button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제</span></button>
+<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근도장</span></button>
+<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모도로</span></button>
+<button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
 </div>
 </div>
 </div>
@@ -24064,34 +24064,17 @@ if(!window.__MK_BOOT_OK__){
 <div class="modalBody" style="max-height:72vh; overflow:auto;">
 <pre class="guidePre" id="guidePre">
 
-📍 새로운 작업방 오픈 📌
 
 🟥사용 안내서🟥
 
-➊ /출근 링크로 접속
+🔥 /출근 링크로 접속
 
-➋ 닉네임 넣고 비밀번호 입력: mkm1919 
+🔥 닉네임 넣고 비밀번호 입력: mkm1919 
 ✅영구 패스키라 브라우저 별로 처음만 입력하시면 돼요.
 ✅캐시 삭제 시 재입력 필요.
+✅상단바에서 직접 현재 상황을 자유롭게 선택하면서 작업하시면 됩니다.
 
-➌ 상단바에서 헬퍼 사용 선택(자율)
-👉헬퍼 사용 시
-✅자동으로 전환될 시간 설정 가능(타이트한 작업 원할 시 짧게 세팅)
-🟥헬퍼를 설치하지 않아도 헬퍼 모드에서 자동 휴식을 설정하시면 그 시간에 맞춰 넘어갑니다만!
-🟥브라우저 기준으로 활동을 감지하므로, 타이핑만 하시게 되면 혼자 휴식으로 넘어갑니다ㅜㅜ
-🟥그러니 헬퍼를 사용하실 때만 헬퍼 모드를 켜기!
-🟥맥 버전은 감지와 반영 사이에 3-5초 정도의 딜레가 있습니다.
-✅사용하시는 운영체제에 맞는 로컬 헬퍼 다운 후 실행(대시보드 밑에 다운 버튼이 있어요)
-✅작업방에 입장할 닉네임과 동일하게 설정
-✅초기 설정후 재입력 불필요, 작업할 때 실행만 하면 됩니다
-✅But 언제나 수정이 가능하므로 오늘은 임티 잔뜩 붙은 닉넴으로 일할까 싶으시다면!
-✅입장 닉넴과 헬퍼 닉넴을 동일하게 설정하시면 됩니당!
-
-👉수동 사용 시
-✅자동 감지가 싫으신 분들은 수동 선택
-✅직접 현재 상황을 자유롭게 선택하면서 작업하시면 됩니다.
-
-➍ 그외 기능
+🔥 그외 기능
 👉퇴장 버튼 옆 톱니바퀴에서 입장 소리 온오프 선택 가능
 👉내 프로필에서 자유롭게 프로필 타일을 꾸미기(⚡​플꾸타임~~~!!)
 👉대시 보드 화면 위로 접기, 대시보드/채팅창 사이드 접기 가능
@@ -26207,15 +26190,23 @@ if(!window.__MK_BOOT_OK__){
   - 관리자 설정창의 버튼·섹션 간격만 다듬음 (Firebase/RTDB/채팅/타이머 로직은 건드리지 않음)
 */
 
-/* 대시보드 바로가기: 다섯 칸 균등 정렬 */
+/* 대시보드 바로가기: 버튼 개수에 맞춰 한 줄을 균등하게 채운다.
+   V173(2026-08-09): V171에서 Mac/Win 헬퍼 버튼이 빠지면서 5칸 그리드에 버튼이 3개만 남아
+   오른쪽이 컨테이너 폭의 40%(실측 158px)만큼 비어 있었다. 칸 수를 고정하지 않고
+   grid-auto-flow로 깔면 앞으로 바로가기가 늘거나 줄어도 균형이 유지된다.
+   칸이 넓어진 만큼 버튼 높이와 글자도 키워 하단 바가 허전해 보이지 않게 했다.
+   ※ 760px 이하 모바일은 display:flex + 아이콘 전용 36px 압축 바(V107/V120)가
+     더 높은 우선순위로 이기므로 이 블록의 영향을 받지 않는다. */
 #dashShortcuts{
-  grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+  grid-template-columns:none !important;
+  grid-auto-flow:column !important;
+  grid-auto-columns:minmax(0, 1fr) !important;
   align-items:stretch;
 }
 #dashShortcuts > button{
   min-width:0 !important;
-  min-height:38px !important;
-  padding:6px 2px !important;
+  min-height:46px !important;
+  padding:8px 10px !important;
   white-space:normal !important;
   overflow:hidden;
   text-align:center !important;
@@ -26228,9 +26219,9 @@ if(!window.__MK_BOOT_OK__){
   overflow-wrap:anywhere;
   word-break:keep-all;
   text-align:center !important;
-  font-size:9px !important;
-  line-height:1.12 !important;
-  letter-spacing:-.7px !important;
+  font-size:13px !important;
+  line-height:1.25 !important;
+  letter-spacing:-.2px !important;
 }
 
 /* 축소 헤더: 설정 버튼을 퇴장 바로 왼쪽에 고정 */
