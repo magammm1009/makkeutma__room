@@ -4406,7 +4406,9 @@ body.joined #preJoinCard{ display:none; }
     display:none !important;
   }
   @media (max-width:760px){
-    #lowSpecBtn{ padding:10px 9px !important; }
+    /* V172_UI: 이 버튼이 상단바 .actions에 있던 시절의 여백 보정 — 지금은 타일 헤더로 옮겨서
+       .gridHead .right > button 규칙을 따라야 하므로 옛 위치로만 한정합니다(규칙은 보존). */
+    .actions #lowSpecBtn{ padding:10px 9px !important; }
   }
 </style>
 
@@ -4467,8 +4469,11 @@ body.joined #preJoinCard{ display:none; }
       padding:0 !important;
       font-size:0 !important;
     }
-    body.joined #lightModeBtn::before{ content:"🍃"; font-size:15px; }
-    body.joined #lowSpecBtn::before{ content:"🪶"; font-size:15px; }
+    /* V172_UI: 아이콘만 남기는 축약은 위의 .actions .perfModeBtn{font-size:0}과 한 쌍입니다.
+       버튼이 타일 헤더로 옮겨 간 뒤에도 이 ::before가 살아 있으면 "🍃🍃 경량"처럼 이모지가 두 번 찍히므로
+       짝과 같은 .actions 범위로 한정합니다(규칙 자체는 보존). */
+    body.joined .actions #lightModeBtn::before{ content:"🍃"; font-size:15px; }
+    body.joined .actions #lowSpecBtn::before{ content:"🪶"; font-size:15px; }
   }
   #lightModeSettingsBtn.lightModeOn{
     border-color:rgba(170,236,190,.56) !important;
@@ -4485,7 +4490,8 @@ body.joined #preJoinCard{ display:none; }
   @media (max-width:760px){
     /* 기존 모바일 한 줄 헤더를 지키고, 성능 모드는 설정창에서 변경합니다. */
     body.joined .actions .perfModeBtn{ display:none !important; }
-    #lightModeBtn, #lowSpecBtn{ padding:10px 9px !important; }
+    /* V172_UI: 위와 같은 이유로 옛 위치(.actions)로만 한정 — 타일 헤더에서는 형제 버튼과 같은 여백을 씁니다. */
+    .actions #lightModeBtn, .actions #lowSpecBtn{ padding:10px 9px !important; }
   }
 </style>
 
@@ -5615,13 +5621,15 @@ body.joined #preJoinCard{ display:none; }
 <button class="ghost" disabled="" id="btnTimerReset" title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
 </div>
 </div>
-<div class="topPills">
+<!-- V172_UI: 상단 가운데는 손캠·손캠보기·작업중·쪽지함·내프로필 5개만 노출.
+     동기화 pill과 앱설치는 요소·id·바인딩을 유지한 채 legacyHide로 화면에서만 뺀다.
+     접속 인원(#onlineBtn)은 대시보드 헤더로 이사했다(아래 .dashHeadRight). -->
+<div class="topPills legacyHide">
 <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
 </div>
-<button class="ghost miniOnline" disabled="" id="onlineBtn" title="접속 인원">👥 <span id="countOnline">0</span>명</button>
 <button class="ghost" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button class="ghost" id="profileBtn">🪪 내 프로필</button>
-<button class="ghost" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
+<button class="ghost legacyHide" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
 <div class="actions">
 <input id="name" maxlength="7" placeholder="닉네임" style="width:180px"/>
@@ -5633,8 +5641,7 @@ body.joined #preJoinCard{ display:none; }
 <!-- V169: 절약 모드는 더 이상 사용하지 않음 (캐릭터 키우기 개편으로 은퇴). 로직은 보존 —
      파일 끝 V169 블록 CSS(#dataSaverBtn{display:none})로만 숨긴다. 추후 점검 시 이 기능 점검 포함할 것. -->
 <button class="ghost" disabled="" id="dataSaverBtn" title="데이터 절약 모드(채팅만 실시간)">🔋 절약</button>
-<button aria-pressed="false" class="ghost perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃 경량</button>
-<button aria-pressed="false" class="ghost perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶 저사양</button>
+<!-- V172_UI: 🍃경량 / 🪶저사양 버튼은 타일 위 헤더(.gridHead .right)로 이동했습니다. -->
 <button class="ghost" disabled="" id="menuBtn" title="작업방 설정">⚙️</button>
 </div>
 </div>
@@ -5652,9 +5659,13 @@ body.joined #preJoinCard{ display:none; }
 <div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker">
 <div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div>
 </div>
-<div class="right"><button aria-label="업데이트 안내" class="ghost layoutToggle" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
+<div class="right"><!-- V172_UI: 💖Update / 👩‍❤️‍👩가이드는 헤더가 붐벼 UI에서만 숨김 — 요소·id·모달 바인딩은 그대로 두어 기능은 살아 있습니다. -->
+<button aria-label="업데이트 안내" class="ghost layoutToggle legacyHide" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
 <button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="현재 방을 안전하게 다시 불러옵니다(기록 삭제 없음)" type="button">🔄새로고침</button>
-<button aria-label="가이드 보기" class="ghost layoutToggle" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
+<button aria-label="가이드 보기" class="ghost layoutToggle legacyHide" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
+<!-- V172_UI: 상단바 .actions에서 옮겨 온 성능 모드 버튼 — 새로고침 옆, 보기 앞 -->
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃 경량</button>
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶 저사양</button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
 <!-- 보기/정렬 메뉴 -->
 <div aria-label="보기/정렬 메뉴" class="viewMenu hidden" id="viewMenu" role="menu">
@@ -5688,6 +5699,9 @@ body.joined #preJoinCard{ display:none; }
 <h3>💗 대시보드</h3>
 <div class="dashHeadRight">
 <div class="dashSuccess" title="오늘 미션 성공 인원">👑 <span id="missionSuccessCount">0</span></div>
+<!-- V172_UI: 상단바 .topCenter에서 옮겨 온 접속 인원 — id·#countOnline span 유지(클릭 시 접속자 모달, 카운트 갱신 그대로).
+     상단바용 크기 규칙(!important)이 여기서도 걸리므로 v172UiRelocate 스타일이 작게 되돌립니다. -->
+<button class="ghost miniOnline dashOnlineBtn" disabled="" id="onlineBtn" title="접속 인원">👥 <span id="countOnline">0</span>명</button>
 <button class="dashFoldBtn dashFoldBtnSmall" id="dashFoldBtn" title="현황/바로가기 접기/펼치기" type="button">
 <span id="dashFoldIcon">▴</span>
 <span class="dashFoldTxt" id="dashFoldTxt">접기</span>
@@ -21499,8 +21513,9 @@ joinRoom();
           btn = document.createElement("button");
           btn.className = "hcBtn ghost"; btn.type = "button"; btn.id = "handcamBtn";
           btn.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(hc.my) stopMyCam(false); else startMyCam(); });
+          // V172_UI: 손캠 버튼을 작업중(statusBtn) "앞"에 둡니다 — 상단 가운데 순서를 📹손캠 → 💗손캠보기 → ✍️작업중으로 통일.
           const statusBtn = els && els.statusBtn;
-          if(statusBtn && statusBtn.parentElement === host) statusBtn.insertAdjacentElement("afterend", btn);
+          if(statusBtn && statusBtn.parentElement === host) host.insertBefore(btn, statusBtn);
           else host.insertBefore(btn, host.firstChild || null);
         }
 
@@ -26646,6 +26661,71 @@ if(!window.__MK_BOOT_OK__){
 }
 </style>
 
+<!-- V172_UI: 버튼 재배치(2026-08-10) 뒤처리 — 접속 인원은 대시보드 헤더로, 🍃경량/🪶저사양은 타일 헤더로 옮겼습니다.
+     옮긴 요소에 "예전 위치(상단바) 기준"의 !important 크기 규칙이 그대로 걸리므로,
+     여기서 새 위치 기준으로만 되돌립니다. 이 파일에서 가장 늦은 정의 + 더 높은 특이도라 항상 이깁니다.
+     ※ 요소와 id는 절대 지우지 않았습니다 — 클릭 바인딩(#onlineBtn 접속자 모달, #countOnline 갱신)은 그대로입니다. -->
+<style id="v172UiRelocate">
+/* 접속 인원: 상단바 3칸 그리드용 규칙(grid-column / width:100% / height:40px)을 풀고 대시보드 헤더에 맞는 작은 pill로 */
+#dashboardCard .dashHeadRight #onlineBtn{
+  grid-column:auto !important;
+  grid-row:auto !important;
+  order:0 !important;
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  height:auto !important;
+  min-height:0 !important;
+  padding:6px 10px !important;
+  font-size:12px !important;
+  font-weight:1000 !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  border-radius:999px !important;
+}
+/* 성능 모드 버튼(🍃경량·🪶저사양)은 여기서 따로 크기를 잡지 않습니다 —
+   옛 상단바 전용 규칙(아이콘 축약 ::before, 모바일 숨김/여백)을 전부 `.actions` 범위로 한정해 두었으므로
+   새 위치에서는 `.gridHead .right > button` 규칙을 형제 버튼(🔄새로고침·👓보기)과 그대로 공유합니다. */
+</style>
+<script>
+/* V172_UI: 접속 인원 버튼의 모바일 대피 — 2026-08-10.
+   대시보드 헤더(.dashHead)는 모바일(≤760px)에서 통째로 display:none 이라
+   (#dashboardCard를 64px 미니바로 접는 레이아웃), 그 안에 넣은 #onlineBtn이
+   모바일에서 아예 사라집니다. 부모가 display:none이면 자식은 CSS로 되살릴 수
+   없으므로, 폭에 따라 버튼의 부모를 바꿔 줍니다.
+     - 데스크톱: 대시보드 헤더의 접기 버튼 앞 (사용자가 요청한 위치)
+     - 모바일  : 원래 자리였던 상단바 .topCenter (쪽지함 앞)
+   요소를 옮기기만 하므로 id·이벤트 바인딩·카운트 갱신은 그대로 유지됩니다. */
+(function(){
+  try{
+    var mq = window.matchMedia('(max-width: 760px)');
+    function place(){
+      var btn = document.getElementById('onlineBtn');
+      if(!btn) return;
+      if(mq.matches){
+        var top = document.querySelector('.topCenter');
+        var before = document.getElementById('directInboxBtn');
+        if(top && btn.parentElement !== top){
+          if(before && before.parentElement === top) top.insertBefore(btn, before);
+          else top.appendChild(btn);
+        }
+      }else{
+        var head = document.querySelector('.dashHeadRight');
+        var fold = document.getElementById('dashFoldBtn');
+        if(head && btn.parentElement !== head){
+          if(fold && fold.parentElement === head) head.insertBefore(btn, fold);
+          else head.appendChild(btn);
+        }
+      }
+    }
+    place();
+    if(mq.addEventListener) mq.addEventListener('change', place);
+    else if(mq.addListener) mq.addListener(place);
+    document.addEventListener('DOMContentLoaded', place);
+  }catch(e){}
+})();
+</script>
 
 
 <!-- V130_REACTION_FIT_AND_PET_DETAIL_STATIC: 리액션 7개 한 줄 표시 + 펫 상세 모달 본체 둥둥 효과 제거 -->
@@ -27256,10 +27336,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var ASSET_DIR = 'assets_배포';
   var LS_KEY = 'mk_chara_state';
   /* 알려진 카테고리 라벨 — manifest에 새 폴더가 늘어나면 라벨이 없어도 폴더명 그대로 자동 노출 */
-  var KNOWN_LABELS = { body:'몸통', hair:'헤어', face:'얼굴', look:'룩', acc:'액세서리', facedeco:'얼굴 꾸미기', background:'배경', hair_back:'뒷머리' };
-  /* 레이어 z순서 (폴더 번호와 분리): 뒷머리10 → 몸통20 → 룩35 → 얼굴50 → 앞머리60 → 액세서리71 */
-  var Z_RANK = { background:0, hair_back:10, body:20, look:35, face:50, facedeco:55, hair:60, acc:71 };
+  var KNOWN_LABELS = { body:'몸통', hair:'헤어', face:'얼굴', look:'룩', acc:'액세서리', facedeco:'얼굴 꾸미기', background:'배경', hair_back:'뒷머리', gear:'장비' /* V172_GEAR */ };
+  /* 레이어 z순서 (폴더 번호와 분리): 뒷머리10 → 몸통20 → 룩35 → 얼굴50 → 앞머리60 → 액세서리71 → 장비72 */
+  var Z_RANK = { background:0, hair_back:10, body:20, look:35, face:50, facedeco:55, hair:60, acc:71, gear:72 /* V172_GEAR: 액세서리 바로 위 */ };
   var UNKNOWN_Z_BASE = 1000;
+  /* V172_SPECIAL: 특수 파츠(개근상·파왕/핑왕 오브 등) 전용 z — 어떤 카테고리든 맨 위.
+     코드로만 받는 기념 아이템이 장비·액세서리에 가려지지 않게 합니다. */
+  var Z_SPECIAL = 90;
 
   var chara = {
     phase:'idle',   // idle | loading | ready | error
@@ -27313,8 +27396,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     chara.cats.forEach(function(c){
       if(isHairBackCat(c.key)) return;
       var n = catName(c.key);
-      if(isAccCat(c.key)){
-        var arr = selArr(c.key).filter(function(nm){ return !!owned[ownedKeyFor(c.key, nm)]; }).slice(0,3);
+      if(isMultiCat(c.key)){
+        /* V172_GEAR: 저장도 정원 3은 일반 파츠만 — 특수 파츠까지 slice(0,3)로 자르면 개근상이 저장에서 사라진다 */
+        var arr = limitNormalTo3(c.key, selArr(c.key).filter(function(nm){ return !!owned[ownedKeyFor(c.key, nm)]; }));
         parts[n] = arr.length ? arr : null;
       }else{
         var s = chara.sel[c.key];
@@ -27413,6 +27497,22 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
 
   /* ---------- V169_SHOP: 다중 착장 헬퍼 (acc = 배열, 그 외 = 단일 문자열) ---------- */
   function isAccCat(key){ return catName(key) === 'acc'; }
+  /* V172_GEAR: "다중 슬롯" 판정을 acc 전용에서 일반화 — 장비(06_gear)도 액세서리와 똑같이 배열로 최대 3개 착용.
+     isAccCat은 순수 액세서리 판정이 필요할 때를 위해 남겨 둔다(지금은 호출처 없음). */
+  function isMultiCat(key){ var n = catName(key); return n === 'acc' || n === 'gear'; }
+  /* V172_GEAR: 다중 슬롯 정원은 3 — 단, 관리자 코드로만 받는 특수 파츠(manifest _special)는 "덤"이라 정원에서 뺀다.
+     → 일반 파츠 3개를 다 채웠어도 개근상 같은 특수 파츠는 추가로 계속 달 수 있다. */
+  var MULTI_SLOT_MAX = 3;
+  function normalCountOf(catKey, arr){ // 정원 계산용 — 특수 파츠는 세지 않는다
+    return arr.filter(function(nm){ return !isSpecial(catKey, nm); }).length;
+  }
+  function limitNormalTo3(catKey, arr){ // 일반 파츠만 앞에서 3개까지, 특수 파츠는 순서 유지한 채 전부 통과
+    var n = 0;
+    return arr.filter(function(nm){
+      if(isSpecial(catKey, nm)) return true;
+      n++; return n <= MULTI_SLOT_MAX;
+    });
+  }
   function selArr(catKey){ // 카테고리의 현재 착장을 항상 배열로 (acc 외에는 0~1개)
     var v = chara.sel[catKey];
     if(Array.isArray(v)) return v;
@@ -27422,7 +27522,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function stripUnownedSel(){
     var owned = getOwned(), changed = false;
     chara.cats.forEach(function(c){
-      if(isAccCat(c.key)){
+      if(isMultiCat(c.key)){ // V172_GEAR: 장비도 배열
         var arr = selArr(c.key);
         var kept = arr.filter(function(n){ return !!owned[ownedKeyFor(c.key, n)]; });
         if(kept.length !== arr.length){ chara.sel[c.key] = kept; changed = true; }
@@ -27448,7 +27548,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     chara.cats.forEach(function(c){
       if(isHairBackCat(c.key)) return;
       var k = catName(c.key), v = src[k];
-      if(isAccCat(c.key)){
+      if(isMultiCat(c.key)){ // V172_GEAR: 장비도 배열
         var arr = Array.isArray(v) ? v : (typeof v==='string' && v ? [v] : []);
         np[k] = arr.length ? arr : null;
       }else{
@@ -27468,17 +27568,20 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function applySavedToSel(){
     var saved = loadSaved();
     chara.adj = {};
-    chara.cats.forEach(function(c){ chara.sel[c.key] = isAccCat(c.key) ? [] : null; });
+    chara.cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); // V172_GEAR: 장비도 배열
     chara.name = sanitizeName(saved && saved.name);
     if(saved){
       chara.cats.forEach(function(c){
         var want = saved.parts[catName(c.key)];
-        if(isAccCat(c.key)){
+        if(isMultiCat(c.key)){ // V172_GEAR: 액세서리·장비 공통
           // acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만 최대 3개
           var arr = Array.isArray(want) ? want : (typeof want==='string' ? [want] : []);
-          var kept = [];
+          var kept = [], normalKept = 0;
           arr.forEach(function(nm){
-            if(typeof nm==='string' && kept.indexOf(nm)<0 && kept.length<3 && c.parts.some(function(p){ return p.name===nm; })) kept.push(nm);
+            if(typeof nm!=='string' || kept.indexOf(nm)>=0 || !c.parts.some(function(p){ return p.name===nm; })) return;
+            /* V172_GEAR: 정원 3개는 일반 파츠만 센다 — 코드로 받은 특수 파츠는 개수와 무관하게 전부 복원 */
+            if(isSpecial(c.key, nm)){ kept.push(nm); return; }
+            if(normalKept < MULTI_SLOT_MAX){ normalKept++; kept.push(nm); }
           });
           chara.sel[c.key]=kept;
           return;
@@ -27632,7 +27735,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var items = tryOnItems().filter(function(it){ return !cartUnchecked[ownedKeyFor(it.catKey, it.name)]; });
     if(!items.length) return;
     var total = items.reduce(function(s, it){ return s + it.price; }, 0);
-    if(!spendCoins(total)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 10초당 1코인!'); renderCart(); return; }
+    if(!spendCoins(total)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 5초당 1코인!'); renderCart(); return; } // V172_COIN: 환율 상향
     items.forEach(function(it){ grantOwned(it.catKey, it.name); });
     refreshWalletPill();
     /* V169_SHOP2: 결제는 소유권 구매만 — 착장 확정은 [💾 저장] 버튼. 자동 persist 없음.
@@ -27777,7 +27880,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         cats.forEach(splitBackParts);
 
         chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={};
-        cats.forEach(function(c){ chara.sel[c.key] = isAccCat(c.key) ? [] : null; }); // V169_SHOP: acc는 다중(배열, 최대 3)
+        cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); // V169_SHOP: acc는 다중(배열, 최대 3) / V172_GEAR: 장비도 동일
 
         /* V169_SHOP2: 저장본 → 선택 복원(미보유는 표시에서만 벗김, 저장본은 절대 덮어쓰지 않음 — 미저장 변경으로 취급) */
         applySavedToSel();
@@ -27818,7 +27921,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         var part=null;
         for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
         if(!part) return;
-        layers.push({ catKey:cat.key, part:part, z:zRankFor(cat) });
+        /* V172_SPECIAL: 관리자 코드로만 받는 특수 파츠는 항상 맨 위.
+           장비(z72)가 액세서리(z71)보다 위라, 날개를 착용하면 어깨 오브 같은
+           특수 파츠가 가려졌습니다 (2026-08-10 사용자 확정: 특수템이 위). */
+        layers.push({ catKey:cat.key, part:part,
+                      z: isSpecial(cat.key, sel) ? Z_SPECIAL : zRankFor(cat) });
         var back = cat.backParts && cat.backParts.get(sel);
         if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); // 뒷머리 자동 동반, 색 필터는 헤어와 공유
       });
@@ -27849,11 +27956,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }
     var cat=activeCat(); if(!cat){ el.innerHTML=''; return; }
     var owned = getOwned(); // V169_SHOP: 미보유는 가격 배지+잠금 톤, 클릭 = 즉시 입어보기(장바구니 결제)
-    var noneOn = isAccCat(cat.key) ? selArr(cat.key).length===0 : chara.sel[cat.key]===null;
+    var noneOn = isMultiCat(cat.key) ? selArr(cat.key).length===0 : chara.sel[cat.key]===null; // V172_GEAR
     var html = '<div class="mkCharaThumb noneTile'+(noneOn?' on':'')+'" data-name="" title="이 레이어 벗기기 (무료)"><span class="mkNoneInner"><span class="ic">🚫</span>없음</span></div>'; /* V169_SHOP2: 내용은 absolute 오버레이 — 스페이서(::before)와 공존 */
     html += cat.parts.map(function(p){
       var has = !!owned[ownedKeyFor(cat.key, p.name)];
-      var isOn = isAccCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name;
+      var isOn = isMultiCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name; // V172_GEAR
       var tryOn = isOn && !has; // V169_SHOP: 입어보는 중(미결제) — 가격 배지 유지 + 금색 톤
       /* V170_AWARD: 특수 파츠는 가격이 없다 — 코인 배지 대신 개근상 배지.
          V170_AWARD2: 미보유도 일반 파츠처럼 입어보기 가능 — 결제 후보에서만 빠진다. 배지는 보유/미리보기/잠금 3단계. */
@@ -27883,7 +27990,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         /* V170_AWARD2: 미보유 특수 파츠도 일반 파츠와 똑같이 착장 토글 — 결제 후보에서만 빠진다.
            "켤 때만" 미리보기라고 한 번 알려 주고, 벗을 때는 조용히 넘어간다. */
         var isSp = !!(nm && tile.dataset.special === '1' && !getOwned()[ownedKeyFor(cat.key, nm)]);
-        var onNow = function(){ return isAccCat(cat.key) ? selArr(cat.key).indexOf(nm)>=0 : chara.sel[cat.key]===nm; };
+        var onNow = function(){ return isMultiCat(cat.key) ? selArr(cat.key).indexOf(nm)>=0 : chara.sel[cat.key]===nm; }; // V172_GEAR
         var wasOn = isSp && onNow();
         selectPart(cat.key, nm); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
         if(isSp && !wasOn && onNow()) toast('🎖️ 미리보기예요 — 개근상 코드를 등록하면 내 것이 돼요', 2600);
@@ -27895,7 +28002,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(chara.phase!=='ready'){ el.innerHTML=''; return; }
     el.innerHTML = visibleCats().map(function(c){
       var th;
-      if(isAccCat(c.key)){
+      if(isMultiCat(c.key)){ // V172_GEAR: 장비도 미니 썸네일 나열
         // V169_SHOP: acc 다중(최대 3) — 착용 순서대로 미니 썸네일, hue 필터는 카테고리 단위로 동일 적용
         var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ return p.name===nm; }); }).filter(Boolean);
         var fAcc = accParts.length ? filterFor(c.key) : '';
@@ -27964,7 +28071,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function renderColorPanel(){
     var panel=$id('mkCharaColorPanel'); if(!panel) return;
     var cat=activeCat();
-    var on = !!(chara.phase==='ready' && cat && (isAccCat(cat.key) ? selArr(cat.key).length : chara.sel[cat.key])); // V169_SHOP: acc는 배열 기준
+    var on = !!(chara.phase==='ready' && cat && (isMultiCat(cat.key) ? selArr(cat.key).length : chara.sel[cat.key])); // V169_SHOP: acc는 배열 기준 / V172_GEAR: 장비도 동일
     panel.classList.toggle('off', !on);
     ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
     var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
@@ -28001,15 +28108,18 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     renderColorPanel(); applyStageFilters(); renderCombo(); renderSaveBar();
   }
   function selectPart(catKey, name){
-    if(isAccCat(catKey)){
+    if(isMultiCat(catKey)){
       // V169_SHOP: 액세서리 다중 선택 — 클릭 = 착용/해제 토글, 최대 3개(착용 순서 유지)
+      // V172_GEAR: 장비도 같은 규칙. 정원 3개는 "일반 파츠"만 세고, 코드로 받은 특수 파츠는 정원 밖에서 자유롭게 추가된다.
       var arr = selArr(catKey).slice();
       if(!name){ arr = []; }
       else{
         var i = arr.indexOf(name);
         if(i >= 0) arr.splice(i, 1);
         else{
-          if(arr.length >= 3){ toast('액세서리는 최대 3개까지!'); return; }
+          if(!isSpecial(catKey, name) && normalCountOf(catKey, arr) >= MULTI_SLOT_MAX){
+            toast((catName(catKey)==='gear' ? '장비는' : '액세서리는') + ' 최대 3개까지!'); return;
+          }
           arr.push(name);
         }
       }
@@ -28227,7 +28337,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
 </script>
 
 <!-- V169_PET_PICKS_AND_WALLET: 자동 동기화 성장(코인+선택 펫 3마리) · 펫 3마리 선택 피커 · 지갑 표시 · 구기능 3종 숨김
-  - 타이머 적립: 10초당 코인 +1(mk_chara_stats, 나머지 초는 coinCarrySec 이월, 소모 없는 독립 지갑) + 선택 펫 3마리(mk_pet_picks) 각각 초당 +1초 성장(만렙 스킵).
+  - 타이머 적립: 5초당 코인 +1(V172_COIN, mk_chara_stats, 나머지 초는 coinCarrySec 이월, 소모 없는 독립 지갑) + 선택 펫 3마리(mk_pet_picks) 각각 초당 +1초 성장(만렙 스킵).
   - growthTick의 addGrowth 한 줄을 accrueV169 호출로 교체(인라인, V169 마커). 이 블록이 __MK_PET_V24__에 accrueV169를 붙인다.
   - mk_chara_stats = {"totalSec":누적초,"coins":코인} — 독립 꾸미기앱(캐릭터꾸미기앱.html)도 읽는 계약. 형태 변경 금지.
   - mk_pet_picks = ["id","id","id"] — 항상 정확히 3마리. petCloud 백업 payload에 mkPetPicks로 실려 복구된다.
@@ -28351,7 +28461,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       return {
         totalSec: Math.max(0, Math.floor(Number(d.totalSec) || 0)),
         coins: Math.max(0, Math.floor(Number(d.coins) || 0)),
-        coinCarrySec: Math.max(0, Math.floor(Number(d.coinCarrySec) || 0)) // V169: 10초=1코인 이월분
+        coinCarrySec: Math.max(0, Math.floor(Number(d.coinCarrySec) || 0)) // V172_COIN: 5초=1코인 이월분(옛 10초 기준 값도 그대로 흡수)
       };
     }catch(e){ return { totalSec:0, coins:0, coinCarrySec:0 }; }
   }
@@ -28428,11 +28538,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     return picks;
   }
 
-  /* ---------- 자동 동기화 성장: 타이머 적립 10초 = 코인 +1 + 선택 펫 3마리 각각 +1초/초 ---------- */
+  /* ---------- 자동 동기화 성장: 타이머 적립 5초 = 코인 +1 + 선택 펫 3마리 각각 +1초/초 ---------- */
   // V169: 코인 환율 1초=1코인 → 10초=1코인으로 하향 (2026-08-09 사용자 확정 — 적립이 너무 빨랐음).
-  // 10으로 나눈 나머지 초는 coinCarrySec에 이월 저장해 세션이 끊겨도 유실되지 않는다.
-  // 누적 작업 시간(totalSec)·펫 성장(1초=1초, 만렙 100시간)은 기존 속도 그대로.
-  var COIN_SEC_PER_COIN = 10;
+  // V172_COIN: 10초=1코인 → 5초=1코인으로 상향 (2026-08-10 사용자 확정 — 파츠 값에 비해 적립이 너무 느렸음).
+  // 5로 나눈 나머지 초는 coinCarrySec에 이월 저장해 세션이 끊겨도 유실되지 않는다.
+  //   ※ 옛 10초 기준으로 저장된 이월분(최대 9초)도 그대로 안전하다 — 다음 적립 때 floor(carry/5)로 즉시 코인이 되고
+  //      나머지만 다시 이월되므로 유실도 폭증도 없다(예: carry 9 + 1초 = 코인 +2, 이월 0).
+  var COIN_SEC_PER_COIN = 5;
   function accrueV169(delta){
     delta = Math.max(0, Math.floor(Number(delta) || 0));
     var out = { added:delta, pets:{}, skippedMax:[] };
@@ -28726,8 +28838,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var ASSET_DIR = 'assets_배포';
   var LS_CHARA = 'mk_chara_state';      // 꾸미기 모달(v169CharaDressupScript)과의 계약 — 형태 변경 금지
   var LS_PROFILE = 'mk_profile_pref_v1'; // 메인 모듈 loadLocalProfile()과 같은 키 (표시 슬롯은 최상위 charaDisplaySlot에 저장)
-  var PART_KEYS = ['body','hair','face','look','acc']; // charaV1 스키마 고정 5종
-  var Z_ORDER = ['hair_back','body','look','face','hair','acc']; // 뒷머리10→몸통20→룩35→얼굴50→앞머리60→액세서리71
+  /* V172_GEAR: 'gear'(장비) 추가 — 5종 → 6종.
+     이걸 빼면 장비를 착용해도 꾸미기 모달 미리보기에서만 보이고, 프로필 타일과
+     남의 화면(charaV1 공유)에는 안 나옵니다.
+     호환: profiles/$uid에는 .validate 규칙이 없어 키가 하나 늘어도 RTDB가 거부하지
+     않습니다. 옛 버전 클라이언트는 모르는 키(gear)를 그냥 무시하고, 새 클라이언트가
+     옛 페이로드를 읽으면 gear가 없을 뿐이라 양방향 안전합니다. */
+  var PART_KEYS = ['body','hair','face','look','acc','gear']; // charaV1 스키마 6종
+  var Z_ORDER = ['hair_back','body','look','face','hair','acc','gear']; // 뒷머리10→몸통20→룩35→얼굴50→앞머리60→액세서리71→장비72
   var BAKE_SIZE = 256;                  // 타일 슬롯(82px)보다 넉넉한 1장 — 레티나에서도 선명
   var WRITE_DEBOUNCE_MS = 1500;
 
@@ -28771,15 +28889,21 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(!src || typeof src !== 'object') return out;
     PART_KEYS.forEach(function(k){
       var v = src[k];
-      if(k === 'acc'){
+      if(k === 'acc' || k === 'gear'){   // V172_GEAR: 장비도 액세서리와 같은 다중 슬롯
         /* V169_SHOP: acc 다중(최대 3) — 배열이 정본, 구버전 단일 문자열은 [문자열]로 정규화.
            RTDB가 배열을 숫자 키 객체로 돌려주는 경우도 흡수. 빈 배열이면 키 자체를 뺀다(hasParts 호환). */
         if(v && typeof v === 'object' && !Array.isArray(v)){
           v = Object.keys(v).sort(function(a, b){ return a - b; }).map(function(kk){ return v[kk]; });
         }
         var arr = Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
-        var kept = [];
-        arr.forEach(function(n){ if(validPartName(n) && kept.indexOf(n) < 0 && kept.length < 3) kept.push(n); });
+        /* V172_GEAR: 정원 3개는 "일반 파츠"만 센다 — 관리자 코드로만 받는 특수 파츠는 개수와 무관하게 전부 유지.
+           이 IIFE는 manifest _special을 읽지 않으므로 파일명 규칙(05_acc_special_xxx.png)의 _special_로 판정한다. */
+        var kept = [], normalKept = 0;
+        arr.forEach(function(n){
+          if(!validPartName(n) || kept.indexOf(n) >= 0) return;
+          if(/_special_/i.test(n)){ kept.push(n); return; }
+          if(normalKept < 3){ normalKept++; kept.push(n); }
+        });
         if(kept.length) out[k] = kept;
         return;
       }
@@ -28978,7 +29102,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
           if(!Array.isArray(arr)) return;
           var short = String(key).replace(/^\d+_/, '').toLowerCase();
           if(short === 'hair_front') short = 'hair';
-          if(PART_KEYS.indexOf(short) === -1) return; // charaV1 스키마 5종 외 폴더는 무시
+          if(PART_KEYS.indexOf(short) === -1) return; // charaV1 스키마(6종) 외 폴더는 무시
           folders[short] = key;
           var set = files[short] || (files[short] = {});
           arr.forEach(function(f){ if(typeof f === 'string' && /\.png$/i.test(f)) set[f] = 1; });
@@ -29148,9 +29272,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
      document.hidden → 전부 동결(복귀 재개), 저사양 → 동결(+tileKey 변경으로 곧 stand 재렌더).
      타일 재렌더/모드 전환 시 attachMover의 sweep이 이전 컨트롤러(타이머·DOM)를 정리한다. */
   // V169_MOVE: 크기 재조정 (2026-08-09 사용자) — 비율(55%)이 타일에서 너무 컸음.
-  // 타일에서는 서 있기(사진칸) 캐릭터와 같은 82px, 손캠 위에서는 더 작게 60px. host보다 크면 clamp.
+  // V172_UI: 손캠 위에서만 작던 60px을 타일과 같은 82px로 통일 (2026-08-10 사용자 — 손캠 캐릭터가 너무 작아 잘 안 보였음).
+  // 타일·손캠 모두 서 있기(사진칸) 캐릭터와 같은 82px. host보다 크면 clamp.
   var MOVE_SIZE_TILE_PX = 82;           // 프로필 타일 위 캐릭터 높이
-  var MOVE_SIZE_HANDCAM_PX = 60;        // 손캠 화면 위 캐릭터 높이
+  var MOVE_SIZE_HANDCAM_PX = 82;        // 손캠 화면 위 캐릭터 높이 (V172_UI: 60 → 82, 타일과 동일)
   var MOVE_IDLE_MIN_MS = 2000, MOVE_IDLE_RANGE_MS = 3000;   // 행동 간격 2~5초
   var MOVE_WALK_MIN_MS = 1000, MOVE_WALK_RANGE_MS = 1500;   // 걷기 1~2.5초
   var MOVE_STAY_MIN_MS = 60000, MOVE_STAY_RANGE_MS = 120000; // V169_FIX: 장기 머무름 60~180초 (행동 선택의 약 35%)
@@ -29461,12 +29586,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var pr = ensureManifest().then(function(mani){
       var layers = [];
       Z_ORDER.forEach(function(cat){
-        if(cat === 'acc'){
+        if(cat === 'acc' || cat === 'gear'){   // V172_GEAR: 장비도 같은 다중 처리
           /* V169_SHOP: acc 다중(최대 3) — 착용 순서대로 같은 z에 겹침(Z_ORDER 순회 순서가 곧 안정 순서) */
-          var accs = Array.isArray(parts.acc) ? parts.acc : (parts.acc ? [parts.acc] : []);
-          if(!mani.folders.acc) return;
-          accs.forEach(function(n){
-            if(mani.files.acc && mani.files.acc[n]) layers.push({ cat: 'acc', name: n, adjKey: 'acc', url: urlFor(mani, 'acc', n) });
+          var multi = parts[cat];
+          var arr = Array.isArray(multi) ? multi : (multi ? [multi] : []);
+          if(!mani.folders[cat]) return;
+          arr.forEach(function(n){
+            if(mani.files[cat] && mani.files[cat][n]) layers.push({ cat: cat, name: n, adjKey: cat, url: urlFor(mani, cat, n) });
           });
           return;
         }
@@ -29482,6 +29608,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         if(!name || !mani.folders[srcCat]) return;
         layers.push({ cat: cat, name: name, adjKey: adjKey, url: urlFor(mani, srcCat, name) });
       });
+      /* V172_SPECIAL: 특수 파츠(개근상·파왕/핑왕 오브 등)를 맨 뒤로 보내 항상 위에 그린다.
+         레이어는 배열 순서대로 그려지므로, 뒤로 보내는 것이 곧 "맨 위"다.
+         이 IIFE는 manifest _special을 읽지 않으므로 파일명 규칙(_special_)으로 판정한다.
+         (꾸미기 모달 쪽은 Z_SPECIAL 랭크로 같은 결과를 낸다) */
+      if(layers.length > 1){
+        var _isSp = function(L){ return /_special_/i.test(String(L.name || '')); };
+        layers = layers.filter(function(L){ return !_isSp(L); })
+                       .concat(layers.filter(_isSp));
+      }
       if(!layers.length) throw new Error('no layers');
       return Promise.all(layers.map(function(L){
         return loadImg(L.url).then(function(img){ L.img = img; return L; }, function(){ L.img = null; return L; });
