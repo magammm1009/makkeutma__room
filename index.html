@@ -6419,6 +6419,27 @@ body.joined #preJoinCard{ display:none; }
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="ghost" id="worldTreeReloadAll" type="button">전원 새로고침 요청 보내기</button>
 </div>
+<!-- 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급 (코인 구매 불가 · 코드 1개당 1명) -->
+<div class="hr"></div>
+<div class="hint">🎖️ 특수 아이템 코드 발급</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">개근하신 작가님께 드리는 코드예요. 이 파츠는 코인으로는 살 수 없고 코드로만 받을 수 있어요. 코드 1개당 한 분만 쓸 수 있으니, 인원수만큼 발급해서 한 줄씩 나눠 주세요. 작가님이 기기나 브라우저를 바꿔서 파츠가 사라졌다면, 새 코드를 하나 더 발급해 드리면 돼요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<select aria-label="발급할 특수 아이템" id="awardItemSelect" style="flex:1 1 220px; min-width:180px; border-radius:12px; padding:10px 12px;">
+<option value="">관리자 인증 후 목록을 불러와요</option>
+</select>
+<label for="awardCount" style="min-width:60px;">개수</label>
+<input id="awardCount" type="number" min="1" max="20" step="1" value="1" style="flex:0 1 90px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<input id="awardNote" maxlength="30" placeholder="메모 (예: 2026년 8월 개근)" style="flex:1 1 210px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="awardIssue" type="button">🎁 코드 발급</button>
+<button class="ghost" id="awardRefresh" type="button">🔄 내역 새로고침</button>
+<button class="ghost" id="awardCopy" type="button">📋 발급 코드 복사</button>
+</div>
+<textarea id="awardCodeOut" readonly aria-label="방금 발급한 코드 목록" placeholder="발급한 코드가 여기에 한 줄씩 나와요" rows="4" style="width:100%; margin-top:8px; border-radius:12px; padding:9px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.5px; resize:vertical;"></textarea>
+<div class="tiny" id="awardListBox" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">발급 내역은 [🔄 내역 새로고침]을 누르면 보여요.</div>
 
 <div class="hr"></div>
 <div class="adminProfileManager">
@@ -7713,6 +7734,15 @@ onlineBtn: $("onlineBtn"),
       adminProfileConnect: $("adminProfileConnect"),
       adminProfileDelete: $("adminProfileDelete"),
       adminProfileStatus: $("adminProfileStatus"),
+      // 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급
+      awardItemSelect: $("awardItemSelect"),
+      awardCount: $("awardCount"),
+      awardNote: $("awardNote"),
+      awardIssue: $("awardIssue"),
+      awardRefresh: $("awardRefresh"),
+      awardCopy: $("awardCopy"),
+      awardCodeOut: $("awardCodeOut"),
+      awardListBox: $("awardListBox"),
 
       toast: $("toast"),
     };
@@ -13813,6 +13843,7 @@ async function unlockAdmin(){
       }catch(_e){}
       try{ refreshAdminTimerTargetOptions(); }catch(_e){}
       try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
+      try{ loadAwardItemOptions_(); }catch(_e){} // 🎖️ V170_AWARD: 발급 가능한 특수 아이템 목록 1회 로드
       return;
     }catch(e){
       console.warn(e);
@@ -13861,12 +13892,166 @@ async function unlockAdmin(){
     els.adminArea.style.display = "block";
     try{ refreshAdminTimerTargetOptions(); }catch(_e){}
     try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
+    try{ loadAwardItemOptions_(); }catch(_e){} // 🎖️ V170_AWARD: 발급 가능한 특수 아이템 목록 1회 로드
     showToast("확인 완료!");
   }else{
     state.adminOk = false;
     __sudaAdminProofHash = "";
     els.adminArea.style.display = "none";
     showToast("비번이 달라…");
+  }
+}
+
+/* ---------- 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급 (관리자 전용) ----------
+   - 발급할 아이템 목록은 assets_배포/manifest.json 의 _special 메타에서 읽는다(없으면 발급 비활성).
+   - 코드는 헷갈리는 글자를 뺀 알파벳 12자. 저장 키는 하이픈 없는 12자, 화면 표시만 XXXX-XXXX-XXXX.
+   - rooms/{roomId}/awardCodes 는 규칙상 owner(관리자 인증자)만 통째로 읽을 수 있다. */
+const AWARD_ASSET_DIR = "assets_배포";
+const AWARD_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 0/O/1/I/L 등 헷갈리는 글자 제외
+let __awardSpecialLabels = {}; // { "05_acc/xxx.png": "개근상 꽃 머리핀" } — 내역 표시용
+
+function fmtAwardCode_(code){ return String(code || "").replace(/(.{4})(?=.)/g, "$1-"); }
+function genAwardCode_(len = 12){
+  const n = Math.max(4, Math.floor(len));
+  const out = [];
+  try{
+    const buf = new Uint32Array(n);
+    crypto.getRandomValues(buf);
+    for(let i = 0; i < n; i++) out.push(AWARD_CODE_ALPHABET[buf[i] % AWARD_CODE_ALPHABET.length]);
+  }catch(_e){ // crypto가 막힌 환경 폴백
+    for(let i = 0; i < n; i++) out.push(AWARD_CODE_ALPHABET[Math.floor(Math.random() * AWARD_CODE_ALPHABET.length)]);
+  }
+  return out.join("");
+}
+function awardMD_(ms){ // "8/9" 같은 짧은 날짜
+  const t = Number(ms);
+  if(!Number.isFinite(t) || t <= 0) return "";
+  try{ const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; }catch(_e){ return ""; }
+}
+async function loadAwardItemOptions_(){
+  const sel = els.awardItemSelect;
+  if(!sel) return;
+  try{
+    const res = await fetch(`${AWARD_ASSET_DIR}/manifest.json?t=${Date.now()}`, { cache:"no-store" });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const mf = await res.json();
+    const sp = (mf && mf._special && typeof mf._special === "object") ? mf._special : {};
+    const keys = Object.keys(sp);
+    __awardSpecialLabels = {};
+    keys.forEach((k)=>{
+      const info = sp[k] || {};
+      __awardSpecialLabels[k] = (typeof info.label === "string" && info.label) ? info.label : k;
+    });
+    if(!keys.length){
+      sel.innerHTML = `<option value="">아직 특수 아이템이 배포되지 않았어요</option>`;
+      if(els.awardIssue) els.awardIssue.disabled = true;
+      return;
+    }
+    sel.innerHTML = keys.map((k)=>{
+      const info = sp[k] || {};
+      const emoji = (typeof info.emoji === "string" && info.emoji) ? info.emoji : "🎖️";
+      return `<option value="${escapeHtml(k)}">${escapeHtml(`${emoji} ${__awardSpecialLabels[k]}`)}</option>`;
+    }).join("");
+    if(els.awardIssue) els.awardIssue.disabled = false;
+  }catch(e){
+    console.warn("[award v170] 특수 아이템 목록을 불러오지 못했어요", e);
+    sel.innerHTML = `<option value="">아이템 목록을 불러오지 못했어요</option>`;
+    if(els.awardIssue) els.awardIssue.disabled = true;
+  }
+}
+async function issueAwardCodes_(){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  if(!state.roomId){ showToast("방 정보를 확인하지 못했어요"); return; }
+  const item = String(els.awardItemSelect?.value || "").trim();
+  if(!item){ showToast("발급할 특수 아이템을 먼저 골라 주세요"); return; }
+  let count = Math.floor(Number(els.awardCount?.value || 1));
+  if(!Number.isFinite(count)) count = 1;
+  count = Math.max(1, Math.min(20, count));
+  if(els.awardCount) els.awardCount.value = String(count);
+  const note = String(els.awardNote?.value || "").trim().slice(0, 30);
+  const label = String(__awardSpecialLabels[item] || "").slice(0, 60);
+
+  if(els.awardIssue) els.awardIssue.disabled = true;
+  const made = [];
+  try{
+    for(let i = 0; i < count; i++){
+      let code = "";
+      for(let tries = 0; tries < 5; tries++){ // 키 충돌 방지 — 이미 있으면 다시 뽑는다
+        const cand = genAwardCode_(12);
+        const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+        if(!(snap && snap.exists())){ code = cand; break; }
+      }
+      if(!code) throw new Error("코드 생성 실패(중복)");
+      const payload = { item, createdAtMs: Date.now(), createdBy: String(state.uid || "") };
+      if(label) payload.label = label;
+      if(note) payload.note = note;
+      await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+      made.push(code);
+    }
+    if(els.awardCodeOut) els.awardCodeOut.value = made.map(fmtAwardCode_).join("\n");
+    showToast(`🎖️ 코드 ${made.length}개 발급 완료! 아래에서 복사해 주세요`, 3600);
+    refreshAwardCodeList_().catch(()=>{});
+  }catch(e){
+    console.warn("[award v170] 코드 발급 실패", e);
+    if(els.awardCodeOut && made.length) els.awardCodeOut.value = made.map(fmtAwardCode_).join("\n");
+    showToast(made.length
+      ? `일부만 발급됐어요(${made.length}개) · 권한/네트워크를 확인해 주세요`
+      : "코드 발급에 실패했어요 · 관리자 인증과 네트워크를 확인해 주세요", 4200);
+  }finally{
+    if(els.awardIssue) els.awardIssue.disabled = false;
+  }
+}
+async function refreshAwardCodeList_(){
+  const box = els.awardListBox;
+  if(!box) return;
+  if(!state.adminOk){ box.textContent = "관리자 확인부터 해 주세요."; return; }
+  if(!state.roomId){ box.textContent = "방 정보를 확인하지 못했어요."; return; }
+  box.textContent = "발급 내역을 불러오는 중이에요…";
+  try{
+    const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes`));
+    const val = (snap && snap.exists()) ? (snap.val() || {}) : {};
+    const rows = Object.keys(val).map((code)=>{
+      const v = val[code] || {};
+      return {
+        code,
+        label: String(v.label || __awardSpecialLabels[String(v.item || "")] || v.item || ""),
+        note: String(v.note || ""),
+        usedName: String(v.usedName || ""),
+        usedBy: String(v.usedBy || ""),
+        usedAtMs: Number(v.usedAtMs) || 0,
+        createdAtMs: Number(v.createdAtMs) || 0
+      };
+    }).sort((a, b)=> b.createdAtMs - a.createdAtMs);
+    if(!rows.length){ box.textContent = "아직 발급한 코드가 없어요."; return; }
+    const usedN = rows.filter(r=> !!r.usedBy).length;
+    const head = `총 ${rows.length}개 · 사용 ${usedN}개 · 미사용 ${rows.length - usedN}개`;
+    const list = rows.slice(0, 30).map((r)=>{
+      const used = r.usedBy
+        ? `[사용: ${escapeHtml(r.usedName || "알 수 없음")}${r.usedAtMs ? ` ${escapeHtml(awardMD_(r.usedAtMs))}` : ""}]`
+        : "[미사용]";
+      const parts = [`<b>${escapeHtml(fmtAwardCode_(r.code))}</b>`];
+      if(r.label) parts.push(escapeHtml(r.label));
+      if(r.note) parts.push(escapeHtml(r.note));
+      parts.push(used);
+      return `<div style="padding:2px 0;">${parts.join(" · ")}</div>`;
+    }).join("");
+    const more = rows.length > 30 ? `<div style="opacity:.7; padding-top:4px;">…최근 30개만 보여요</div>` : "";
+    box.innerHTML = `<div style="opacity:.75; margin-bottom:5px;">${escapeHtml(head)}</div>${list}${more}`;
+  }catch(e){
+    console.warn("[award v170] 발급 내역 조회 실패", e);
+    box.textContent = "관리자 인증(ownerUid) 재확인이 필요해요 — 관리자 비번을 다시 확인해 주세요";
+  }
+}
+async function copyAwardCodes_(){
+  const ta = els.awardCodeOut;
+  const text = String(ta?.value || "").trim();
+  if(!text){ showToast("복사할 코드가 없어요 · 먼저 발급해 주세요"); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast("📋 발급 코드를 복사했어요!");
+  }catch(_e){
+    try{ ta.focus(); ta.select(); showToast("코드를 선택했어요 · Ctrl+C로 복사해 주세요", 3600); }
+    catch(_e2){ showToast("복사에 실패했어요 · 직접 선택해 주세요"); }
   }
 }
 
@@ -17199,6 +17384,48 @@ t.appendChild(bg);
           return p ? mergePublicProfileIntoParticipant(p) : null;
         }catch(e){ return null; }
       },
+      // 🎖️ V170_AWARD: 개근상 코드 등록 — 꾸미기 IIFE에서 호출하는 유일한 통로.
+      // 반환: { ok:true, item, label, again:bool } | { ok:false, reason:'notJoined|format|notFound|used|race|error', usedName? }
+      async redeemAwardCode(code){
+        try{
+          if(!state.uid || !state.roomId || !state.joined) return { ok:false, reason:'notJoined' };
+          const key = String(code == null ? "" : code).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+          if(key.length < 4 || key.length > 24) return { ok:false, reason:'format' };
+          const path = `${rRoomBase(state.roomId)}/awardCodes/${key}`;
+          const snap = await rGet(rRef(rtdb, path));
+          const val = (snap && snap.exists()) ? snap.val() : null;
+          if(!val || typeof val !== "object" || !val.item) return { ok:false, reason:'notFound' };
+          const createdAtMs = Number(val.createdAtMs);
+          if(!Number.isFinite(createdAtMs)) return { ok:false, reason:'notFound' }; // 규칙상 createdAtMs는 기존 값 그대로여야 한다
+          const usedBy = String(val.usedBy || "");
+          if(usedBy && usedBy !== String(state.uid)){
+            return { ok:false, reason:'used', usedName: String(val.usedName || "") };
+          }
+          // 이미 내가 쓴 코드 → RTDB 쓰기 없이 보유만 복구(브라우저 초기화 후 되찾기 경로)
+          if(usedBy === String(state.uid)){
+            return { ok:true, item:String(val.item), label:String(val.label || ""), again:true };
+          }
+          // 규칙상 부분 갱신보다 "기존 값 + usedBy/usedName/usedAtMs" 전체 쓰기가 안전하다(스키마 밖 키는 거부됨)
+          const next = { item:String(val.item), createdAtMs };
+          if(val.label != null) next.label = String(val.label);
+          if(val.note != null) next.note = String(val.note);
+          if(val.createdBy != null) next.createdBy = String(val.createdBy);
+          next.usedBy = String(state.uid);
+          next.usedAtMs = Date.now();
+          const myName = String(state.nickname || els.name?.value || "").trim().slice(0, 40);
+          if(myName) next.usedName = myName;
+          try{
+            await rSet(rRef(rtdb, path), next);
+          }catch(e){
+            console.warn("[award v170] 코드 사용 처리 실패(권한/경합)", e);
+            return { ok:false, reason:'race' };
+          }
+          return { ok:true, item:next.item, label:String(val.label || ""), again:false };
+        }catch(e){
+          console.warn("[award v170] 코드 등록 중 오류", e);
+          return { ok:false, reason:'error' };
+        }
+      },
       // 검증 훅: Firebase 없이 가짜 로스터 레코드로 렌더 경로(renderTile)를 직접 호출
       renderTileForTest(p){ try{ return renderTile(p); }catch(e){ return null; } }
     };
@@ -19780,6 +20007,10 @@ try{
     if(els.sudaCopyOwnerUid) els.sudaCopyOwnerUid.addEventListener("click", copySudaOwnerUid_);
     if(els.adminResetOneTimer) els.adminResetOneTimer.addEventListener("click", ()=>{ adminResetOneTimer().catch(()=>{}); });
     if(els.adminResetAllTimers) els.adminResetAllTimers.addEventListener("click", ()=>{ adminResetAllTimers().catch(()=>{}); });
+    // 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급
+    if(els.awardIssue) els.awardIssue.addEventListener("click", ()=>{ issueAwardCodes_().catch(()=>{}); });
+    if(els.awardRefresh) els.awardRefresh.addEventListener("click", ()=>{ refreshAwardCodeList_().catch(()=>{}); });
+    if(els.awardCopy) els.awardCopy.addEventListener("click", ()=>{ copyAwardCodes_().catch(()=>{}); });
     if(els.adminProfileRefresh) els.adminProfileRefresh.addEventListener("click",()=>{ loadAdminProfileCatalog_().catch(()=>{}); });
     if(els.adminProfileSearch) els.adminProfileSearch.addEventListener("input",renderAdminProfileCatalog_);
     if(els.adminProfileSavedSelect) els.adminProfileSavedSelect.addEventListener("change",renderAdminProfileSelection_);
@@ -27306,6 +27537,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaPrice.mkOwnedBadge{
     color:#c9f3dd; background:rgba(8,24,16,.62); border-color:rgba(120,220,170,.4);
   }
+  /* V170_AWARD: 특수 파츠(개근상) 배지 — 코인으로는 못 사고 관리자 코드로만 열려요 */
+  .mkCharaPrice.mkSpecialBadge{
+    color:#fff2cd; background:rgba(58,34,4,.78); border-color:rgba(255,199,74,.7);
+    box-shadow:0 0 0 1px rgba(255,199,74,.16);
+  }
   /* ── V169_SHOP: 입어보는 중(미결제 착장) — 선택 핑크와 구분되는 금색 톤, 가격 배지 유지 ── */
   .mkCharaThumb.mkTryOn{ border-color:#ffd85c; }
   .mkCharaThumb.mkTryOn.on{ box-shadow:0 0 0 2px rgba(255,216,92,.28); }
@@ -27358,6 +27594,27 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   #mkCharaSaveBtn:hover{ background:rgba(255,141,194,.24); }
   #mkCharaSaveBtn.mkDirty{ border-color:#ffd85c; color:#ffe9b8; background:rgba(255,216,92,.16); animation:mkSavePulseV169 1.5s ease-in-out infinite; }
   @keyframes mkSavePulseV169{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,216,92,.5); } 50%{ box-shadow:0 0 0 7px rgba(255,216,92,0); } }
+
+  /* ── V170_AWARD: 개근상 코드 등록 칸 — 저장 바와 같은 구조, 색만 금색 톤 ── */
+  .mkAwardBox{ margin-top:10px; }
+  .mkAwardRow{ display:flex; align-items:center; gap:8px; }
+  #mkAwardCodeInput{ flex:1 1 auto; min-width:0; border:1px solid rgba(255,216,92,.28); background:rgba(0,0,0,.25); color:rgba(255,255,255,.92); border-radius:10px; padding:9px 10px; font-size:13px; font-weight:800; letter-spacing:.5px; outline:none; }
+  #mkAwardCodeInput:focus{ border-color:#ffd85c; box-shadow:0 0 0 2px rgba(255,216,92,.18); }
+  #mkAwardBtn{ flex:0 0 auto; border:1px solid rgba(255,216,92,.55); background:rgba(255,216,92,.14); color:#ffe9b8; border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:1000; cursor:pointer; min-width:auto !important; white-space:nowrap; }
+  #mkAwardBtn:hover{ background:rgba(255,216,92,.22); }
+  #mkAwardBtn:disabled{ opacity:.45; cursor:default; }
+  #mkAwardMsg{ margin-top:7px; line-height:1.6; color:rgba(255,255,255,.55); }
+  #mkAwardMsg.mkAwardOk{ color:#ffe9b8; }
+  #mkAwardMsg.mkAwardErr{ color:#ffb9cd; }
+  /* 접기/펴기 — 접힌 기본 상태에서는 제목 줄만 남기고(아래 여백까지 회수) 남는 높이를 미리보기에 돌려준다 */
+  #mkAwardToggle{ cursor:pointer; user-select:none; -webkit-user-select:none; }
+  #mkAwardToggle:hover{ color:#ffe9b8; }
+  #mkAwardToggle:focus-visible{ outline:2px solid rgba(255,216,92,.55); outline-offset:3px; border-radius:8px; }
+  .mkAwardCaret{ flex:0 0 auto; font-weight:1100; color:rgba(255,216,92,.85); }
+  #mkAwardBox .petSectionTitle > span:first-child{ flex:0 0 auto; white-space:nowrap; } /* 캐럿이 끼어도 "개근상 코드"는 안 쪼개지게 */
+  /* 접힌 상태: 제목 한 줄만 남긴다 — 아래 여백을 걷고 안내문은 한 줄로 잘라 높이를 40px대로 붙든다 */
+  #mkAwardBox.mkAwardCollapsed .petSectionTitle{ margin-bottom:0; }
+  #mkAwardBox.mkAwardCollapsed .mkAwardHint{ min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:right; }
 
   .mkCharaMsg{ grid-column:1 / -1; padding:22px 8px; text-align:center; color:rgba(255,255,255,.55); font-size:12.5px; line-height:1.7; }
   .mkCharaRetryBtn{ margin-top:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:900; cursor:pointer; min-width:auto !important; }
@@ -27520,6 +27777,16 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function partPrice(catKey, name){
     var p = Number((chara.prices || {})[catKey + '/' + name]);
     return (isFinite(p) && p > 0) ? Math.floor(p) : V169_PART_PRICE_DEFAULT;
+  }
+  /* V170_AWARD: 특수 파츠(개근상 등) — manifest _special에 실린 파츠는 코인으로 살 수 없고 관리자 코드로만 열려요.
+     _special이 아직 배포되지 않았으면 전부 빈 객체 → 기존 동작 그대로. */
+  function specialInfo(catKey, name){ return (chara.special || {})[catKey + '/' + name] || null; }
+  function isSpecial(catKey, name){ return !!specialInfo(catKey, name); }
+  function specialTag(catKey, name){ // 배지/토스트에 쓰는 짧은 라벨 — 정보가 부실하면 "특별 파츠"
+    var info = specialInfo(catKey, name) || {};
+    var emo = (typeof info.emoji === 'string' && info.emoji) ? info.emoji : '🎖️';
+    var lb = (typeof info.label === 'string' && info.label) ? info.label : '특별 파츠';
+    return { emoji: emo, label: lb };
   }
   function fmtCoins(n){ try{ return Number(n).toLocaleString('ko-KR'); }catch(e){ return String(n); } }
   function ownedKeyFor(catKey, name){ return catKey + '/' + name; }
@@ -27706,6 +27973,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(isHairBackCat(c.key)) return;
       selArr(c.key).forEach(function(nm){
         if(owned[ownedKeyFor(c.key, nm)]) return;
+        if(isSpecial(c.key, nm)) return; // V170_AWARD: 특수 파츠는 가격이 없으니 결제 후보에 절대 넣지 않는다
         var part = c.parts.find(function(p){ return p.name === nm; });
         items.push({ catKey: c.key, name: nm, label: c.label, price: partPrice(c.key, nm), url: part ? part.url : '' });
       });
@@ -27764,6 +28032,109 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     renderChara();
   }
 
+  /* ---------- V170_AWARD: 개근상 코드 등록 (특수 파츠 해금) ----------
+     코드 조회·사용 처리는 전부 브리지(__MK_CHARA_TILE_BRIDGE__.redeemAwardCode)가 맡는다.
+     이 IIFE는 state/rtdb에 직접 손댈 수 없으니 반드시 브리지를 거친다. */
+  var awardBusy = false; // 중복 클릭 방지
+  function normAwardCode(v){ return String(v == null ? '' : v).replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
+  function prettyAwardCode(v){ return normAwardCode(v).replace(/(.{4})(?=.)/g, '$1-'); } // 보기용 4자 하이픈 — 전송은 하이픈 없는 대문자
+  var AWARD_FAIL = {
+    notJoined:'먼저 작업방에 입장한 뒤에 등록해 주세요 🙏',
+    format:'코드 형식을 다시 확인해 주세요 — 영문·숫자 4~24자예요',
+    notFound:'그런 코드를 찾을 수 없어요 · 오타가 없는지 확인해 주세요 🥺',
+    used:'이미 다른 작가님이 사용한 코드예요',
+    race:'같은 순간에 다른 분이 등록했어요 — 잠시 후 다시 시도해 주세요',
+    error:'네트워크 문제로 등록하지 못했어요 · 잠시 후 다시 시도해 주세요'
+  };
+  function setAwardMsg(text, kind){
+    var el = $id('mkAwardMsg'); if(!el) return;
+    el.textContent = text;
+    el.classList.remove('mkAwardOk', 'mkAwardErr');
+    if(kind === 'ok') el.classList.add('mkAwardOk');
+    else if(kind === 'err') el.classList.add('mkAwardErr');
+  }
+  /* 접기/펴기 — 세션 한정(저장 안 함). 접히면 제목 줄만 남아 오른쪽 컬럼 높이를 미리보기에 돌려준다. */
+  function isAwardOpen(){ var p = $id('mkAwardPanel'); return !!(p && p.style.display !== 'none'); }
+  function setAwardOpen(open){
+    var box = $id('mkAwardBox'), panel = $id('mkAwardPanel'), tg = $id('mkAwardToggle');
+    if(!box || !panel) return;
+    open = !!open;
+    panel.style.display = open ? '' : 'none';
+    if(open) box.classList.remove('mkAwardCollapsed'); else box.classList.add('mkAwardCollapsed');
+    if(tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var caret = box.querySelector('.mkAwardCaret'); if(caret) caret.textContent = open ? '▴' : '▾';
+  }
+  function focusAwardInput(){ // 특수 파츠 타일을 눌렀을 때 코드 입력칸으로 데려다 준다
+    setAwardOpen(true); // 접혀 있으면 먼저 펼친다 — 숨어 있는 입력칸에는 포커스가 가지 않는다
+    var inp = $id('mkAwardCodeInput'); if(!inp) return;
+    try{ var box = $id('mkAwardBox'); if(box && box.scrollIntoView) box.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){}
+    try{ inp.focus({ preventScroll:true }); }catch(e){ try{ inp.focus(); }catch(e2){} }
+  }
+  /* 등록 성공 → 보유 부여(localStorage) + 해당 탭으로 이동 + 타일 재합성 트리거 */
+  function applyAwardItem(res){
+    var item = String((res && res.item) || '');
+    var i = item.indexOf('/');
+    if(i <= 0 || i >= item.length - 1){
+      setAwardMsg('코드는 확인했는데 파츠 정보가 이상해요 — 관리자님께 알려 주세요 🥺', 'err');
+      toast('🎖️ 파츠 정보가 이상해요 — 관리자님께 알려 주세요', 3400);
+      return;
+    }
+    var catKey = item.slice(0, i), name = item.slice(i + 1);
+    grantOwned(catKey, name); // mk_chara_owned_v2 — 저장 계약 형태 그대로
+    var cat = chara.cats.find(function(c){ return c.key === catKey; });
+    var exists = !!(cat && cat.parts.some(function(p){ return p.name === name; }));
+    if(cat) chara.active = catKey; // 새로 열린 파츠가 바로 보이도록 그 카테고리 탭으로
+    renderChara();
+    try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e){}
+    var label = String((res && res.label) || '') || (specialInfo(catKey, name) || {}).label || '특별 파츠';
+    var inp = $id('mkAwardCodeInput'); if(inp) inp.value = '';
+    if(!exists){ // 배포 순서가 꼬인 경우 — 보유는 부여하되 안내
+      setAwardMsg('🎖️ ' + label + ' 등록은 됐는데, 파츠 파일이 아직 배포되지 않았어요 — 관리자님께 알려 주세요', 'err');
+      toast('🎖️ 파츠 파일이 아직 배포되지 않았어요 — 관리자님께 알려 주세요', 3800);
+      return;
+    }
+    if(res && res.again){
+      setAwardMsg('🎖️ ' + label + ' — 이미 등록했던 코드예요. 파츠를 다시 찾아왔어요!', 'ok');
+      toast('🎖️ 이미 등록한 코드예요 — 파츠를 다시 찾아왔어요!', 3400);
+    }else{
+      setAwardMsg('🎖️ ' + label + ' 을(를) 받았어요! 착용하고 [💾 저장]을 눌러 주세요 ✨', 'ok');
+      toast('🎖️ 개근상 파츠를 받았어요! 착용하고 [💾 저장]을 눌러 주세요 ✨', 3800);
+    }
+  }
+  function redeemAward(){
+    if(awardBusy) return;
+    var inp = $id('mkAwardCodeInput'), btn = $id('mkAwardBtn');
+    var code = normAwardCode(inp && inp.value);
+    if(inp) inp.value = prettyAwardCode(code); // 입력칸은 보기 좋은 하이픈 표기로 정리
+    if(code.length < 4 || code.length > 24){
+      setAwardMsg(AWARD_FAIL.format, 'err'); toast('🎖️ ' + AWARD_FAIL.format, 3200); return;
+    }
+    var bridge = null;
+    try{ bridge = window.__MK_CHARA_TILE_BRIDGE__ || null; }catch(e){}
+    if(!bridge || typeof bridge.redeemAwardCode !== 'function'){
+      setAwardMsg(AWARD_FAIL.error, 'err'); toast('🎖️ ' + AWARD_FAIL.error, 3200); return;
+    }
+    awardBusy = true;
+    if(btn) btn.disabled = true;
+    setAwardMsg('코드를 확인하는 중이에요… ⏳');
+    Promise.resolve()
+      .then(function(){ return bridge.redeemAwardCode(code); })
+      .then(function(res){
+        if(res && res.ok){ applyAwardItem(res); return; }
+        var reason = (res && res.reason) || 'error';
+        var msg = AWARD_FAIL[reason] || AWARD_FAIL.error;
+        if(reason === 'used' && res && res.usedName) msg = '이미 ' + res.usedName + ' 작가님이 사용한 코드예요';
+        setAwardMsg(msg, 'err');
+        toast('🎖️ ' + msg, 3400);
+      })
+      .catch(function(err){
+        console.warn('[chara v170] 개근상 코드 등록 실패', err);
+        setAwardMsg(AWARD_FAIL.error, 'err');
+        toast('🎖️ ' + AWARD_FAIL.error, 3400);
+      })
+      .then(function(){ awardBusy = false; if(btn) btn.disabled = false; });
+  }
+
   /* ---------- 파츠 로딩: manifest는 항상 ?t 캐시 버스터, PNG는 _version 기반 ?v ---------- */
   function loadManifest(){
     if(chara.phase==='loading') return;
@@ -27774,6 +28145,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         var ver = (mf && mf._version!=null && typeof mf._version!=='object') ? String(mf._version) : '';
         chara.prices = (mf && mf._prices && typeof mf._prices==='object') ? mf._prices : {}; // V169: 파츠 가격표
         chara.rects = (mf && mf._rects && typeof mf._rects==='object') ? mf._rects : {}; // V169_SHOP: 썸네일 크롭 영역([x,y,w,h], 1024 좌표계)
+        chara.special = (mf && mf._special && typeof mf._special==='object') ? mf._special : {}; // V170_AWARD: 특수 파츠 정보("카테고리/파일명"→{label,desc,emoji}) — 없으면 빈 객체(기능만 조용히 비활성)
         var cats=[];
         Object.keys(mf||{}).forEach(function(key){
           if(key.charAt(0)==='_') return;             // _version 등 메타 키는 카테고리가 아니다
@@ -27868,6 +28240,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var has = !!owned[ownedKeyFor(cat.key, p.name)];
       var isOn = isAccCat(cat.key) ? selArr(cat.key).indexOf(p.name)>=0 : chara.sel[cat.key]===p.name;
       var tryOn = isOn && !has; // V169_SHOP: 입어보는 중(미결제) — 가격 배지 유지 + 금색 톤
+      /* V170_AWARD: 특수 파츠는 가격이 없다 — 코인 배지 대신 개근상 배지, 미보유면 입어보기도 막는다(장바구니가 값을 매길 수 없어서) */
+      if(isSpecial(cat.key, p.name)){
+        var tag = specialTag(cat.key, p.name);
+        var sTitle = esc(p.name)+' — '+esc(tag.label)+(has?' · 보유 중':' · 개근상 코드로 받을 수 있어요');
+        return '<div class="mkCharaThumb'+(isOn?' on':'')+(has?'':' mkLocked')+'" data-name="'+esc(p.name)+'" data-special="1" title="'+sTitle+'">'
+          + thumbImgHtml(cat.key, p.name, p.url, '')
+          + '<span class="mkCharaPrice mkSpecialBadge">'+esc(tag.emoji)+' '+(has?'보유 ✓':'개근상')+'</span>'
+          + '</div>';
+      }
       var price = partPrice(cat.key, p.name);
       var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 🪙'+fmtCoins(price)+' · 눌러서 입어보기'));
       return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" title="'+title+'">'
@@ -27879,7 +28260,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     el.innerHTML = html;
     el.querySelectorAll('.mkCharaThumb').forEach(function(tile){
       tile.addEventListener('click', function(){
-        selectPart(cat.key, tile.dataset.name || null); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
+        var nm = tile.dataset.name || null;
+        /* V170_AWARD: 미보유 특수 파츠 — 입어보기 대신 코드 입력칸으로 안내 (보유했으면 일반 파츠와 똑같이 동작) */
+        if(nm && tile.dataset.special === '1' && !getOwned()[ownedKeyFor(cat.key, nm)]){
+          toast('🎖️ 개근상 파츠예요 — 관리자님께 받은 개근상 코드를 입력하면 받을 수 있어요!', 3400);
+          focusAwardInput();
+          return;
+        }
+        selectPart(cat.key, nm); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
       });
     });
   }
@@ -28054,6 +28442,19 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +     '<div id="mkCartList" class="mkCartList"></div>'
     +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">🪙 결제</button></div>'
     +   '</div>'
+    /* V170_AWARD: 개근상 코드 등록 칸 — 코인으로는 못 사는 특수 파츠를 코드로 해금.
+       한 달에 한 번 몇 분만 쓰는 칸이라 기본은 접어 두고(제목 줄만) 남는 높이를 미리보기 무대에 양보한다.
+       접힘 상태는 저장하지 않는다 — 모달을 닫으면 다시 접힌다. */
+    +   '<div class="mkCharaSection mkAwardBox mkAwardCollapsed" id="mkAwardBox">'
+    +     '<div class="petSectionTitle" id="mkAwardToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mkAwardPanel"><span>🎖️ 개근상 코드</span><span class="tiny mkAwardHint">관리자님께 받은 코드를 입력하면 특별 파츠가 열려요</span><span class="mkAwardCaret" aria-hidden="true">▾</span></div>'
+    +     '<div id="mkAwardPanel" style="display:none">'
+    +       '<div class="mkAwardRow">'
+    +         '<input id="mkAwardCodeInput" type="text" placeholder="코드 입력 (예: ABCD-1234-EFGH)" autocomplete="off" spellcheck="false" maxlength="24">'
+    +         '<button type="button" id="mkAwardBtn">🎁 등록</button>'
+    +       '</div>'
+    +       '<div class="tiny" id="mkAwardMsg">코드 하나는 한 분만 쓸 수 있어요. 같은 브라우저에서라면 다시 등록해 파츠를 되찾을 수 있고, 기기나 브라우저를 바꿔서 파츠가 사라졌다면 관리자님께 새 코드를 요청해 주세요.</div>'
+    +     '</div>'
+    +   '</div>'
     /* V169_SHOP2: 저장 바 — 캐릭터 이름(≤5자) + 명시적 [💾 저장] (결제와 분리, 저장해야 확정) */
     +   '<div class="mkCharaSection mkSaveBox">'
     +     '<div class="petSectionTitle"><span>💾 내 캐릭터 저장</span><span class="tiny" id="mkCharaSaveTiny">이름은 최대 5글자 · 저장하면 타일에도 반영</span></div>'
@@ -28099,6 +28500,26 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(t.checked) delete cartUnchecked[t.dataset.key]; else cartUnchecked[t.dataset.key]=true;
       renderCart(); // 합계/결제 버튼 실시간 갱신
     });
+    /* V170_AWARD: 개근상 칸 접기/펴기 토글 바인딩(1회) — 마우스 클릭 + 키보드 Enter/Space */
+    var awardTg=body.querySelector('#mkAwardToggle');
+    if(awardTg){
+      awardTg.addEventListener('click', function(){ setAwardOpen(!isAwardOpen()); });
+      awardTg.addEventListener('keydown', function(e){
+        if(e.key==='Enter' || e.key===' ' || e.key==='Spacebar' || e.keyCode===13 || e.keyCode===32){
+          e.preventDefault(); // Space로 모달이 스크롤되지 않게
+          setAwardOpen(!isAwardOpen());
+        }
+      });
+    }
+    /* V170_AWARD: 개근상 코드 등록 버튼 + Enter(한글 IME 조합 가드) 바인딩(1회) */
+    var awardBtn=body.querySelector('#mkAwardBtn'); if(awardBtn) awardBtn.addEventListener('click', redeemAward);
+    var awardInp=body.querySelector('#mkAwardCodeInput');
+    if(awardInp){
+      awardInp.addEventListener('keydown', function(e){
+        if(e.isComposing || e.keyCode===229) return; // 한글 IME 조합 확정 Enter는 등록으로 치지 않는다
+        if(e.key==='Enter' || e.keyCode===13){ e.preventDefault(); redeemAward(); }
+      });
+    }
     /* V169_SHOP2: 저장 버튼 + 이름 입력(5자 컷+토스트, 한글 IME 조합 가드 — #mkPetNameEditOv 선례) 바인딩(1회) */
     var saveBtn=body.querySelector('#mkCharaSaveBtn'); if(saveBtn) saveBtn.addEventListener('click', saveOutfit);
     var nameInp=body.querySelector('#mkCharaNameInput');
@@ -28134,7 +28555,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var mo = (typeof MutationObserver!=='undefined') ? new MutationObserver(function(){
     var ov=$id('petModal');
     if(ov && ov.classList.contains('show')) onShown();
-    else revertTryOn(); // V169_SHOP: 모달 닫힘 — 미결제 입어보기 착장을 보유 착장으로 되돌림
+    else { revertTryOn(); setAwardOpen(false); } // V169_SHOP: 모달 닫힘 — 미결제 입어보기 착장 되돌림 / V170_AWARD: 개근상 칸도 접어 둔다(다음 열림은 접힘으로 시작)
   }) : null;
   var tries=0;
   (function waitPetModal(){
@@ -28167,7 +28588,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       selArr:selArr, selectPart:selectPart, cartUnchecked:cartUnchecked,
       saveOutfit:saveOutfit, isDirty:isDirty, currentSavePayload:currentSavePayload,
       applySavedToSel:applySavedToSel, sanitizeName:sanitizeName, revertTryOn:revertTryOn
-    }
+    },
+    /* V170_AWARD: 검증용 훅 — 코드 정규화/표기 + 등록 경로 */
+    award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo }
   };
 })();
 </script>

@@ -1,5 +1,5 @@
 {
-  "_version": "20260809020020",
+  "_version": "20260809120832",
   "01_body": [
     "01_body_auto_01.png",
     "01_body_auto_02.png",
@@ -56,7 +56,8 @@
     "03_face_auto_15.png",
     "03_face_auto_16.png",
     "03_face_auto_17.png",
-    "03_face_auto_18.png"
+    "03_face_auto_18.png",
+    "03_face_auto_19.png"
   ],
   "04_look": [
     "04_look_auto_01.png",
@@ -77,7 +78,8 @@
     "04_look_auto_19.png",
     "04_look_auto_20.png",
     "04_look_auto_21.png",
-    "04_look_auto_22.png"
+    "04_look_auto_22.png",
+    "04_look_auto_23.png"
   ],
   "05_acc": [
     "05_acc_auto_01.png",
@@ -101,7 +103,9 @@
     "05_acc_auto_20.png",
     "05_acc_auto_21.png",
     "05_acc_auto_22.png",
-    "05_acc_auto_23.png"
+    "05_acc_auto_23.png",
+    "05_acc_auto_24.png",
+    "05_acc_special_gaegeun.png"
   ],
   "_eyes": {
     "03_face_auto_01.png": {
@@ -341,6 +345,30 @@
         66,
         44
       ]
+    },
+    "03_face_auto_19.png": {
+      "l": [
+        406,
+        375,
+        63,
+        57
+      ],
+      "r": [
+        616,
+        376,
+        63,
+        57
+      ]
+    }
+  },
+  "_special": {
+    "05_acc/05_acc_special_gaegeun.png": {
+      "label": "개근상 꽃 머리핀",
+      "desc": "한 달 동안 하루도 빠짐없이 작업방에 온 개근 작가님께 드리는 상",
+      "emoji": "🎖️",
+      "shape": "flower",
+      "letters": "개근",
+      "updatedAt": "2026-08-09 12:05:11"
     }
   },
   "_prices": {
@@ -383,6 +411,7 @@
     "03_face/03_face_auto_16.png": 1500,
     "03_face/03_face_auto_17.png": 1500,
     "03_face/03_face_auto_18.png": 1500,
+    "03_face/03_face_auto_19.png": 1500,
     "04_look/04_look_auto_01.png": 2,
     "04_look/04_look_auto_05.png": 4000,
     "04_look/04_look_auto_06.png": 4000,
@@ -402,6 +431,7 @@
     "04_look/04_look_auto_20.png": 4000,
     "04_look/04_look_auto_21.png": 4000,
     "04_look/04_look_auto_22.png": 4000,
+    "04_look/04_look_auto_23.png": 4000,
     "05_acc/05_acc_auto_01.png": 2,
     "05_acc/05_acc_auto_02.png": 2200,
     "05_acc/05_acc_auto_04.png": 2200,
@@ -423,7 +453,8 @@
     "05_acc/05_acc_auto_20.png": 2200,
     "05_acc/05_acc_auto_21.png": 2200,
     "05_acc/05_acc_auto_22.png": 2200,
-    "05_acc/05_acc_auto_23.png": 2200
+    "05_acc/05_acc_auto_23.png": 2200,
+    "05_acc/05_acc_auto_24.png": 2200
   },
   "_rects": {
     "01_body/01_body_auto_01.png": [
@@ -660,6 +691,12 @@
       358,
       214
     ],
+    "03_face/03_face_auto_19.png": [
+      332,
+      251,
+      360,
+      262
+    ],
     "04_look/04_look_auto_01.png": [
       335,
       470,
@@ -773,6 +810,12 @@
       466,
       340,
       526
+    ],
+    "04_look/04_look_auto_23.png": [
+      325,
+      468,
+      375,
+      520
     ],
     "05_acc/05_acc_auto_01.png": [
       539,
@@ -905,6 +948,18 @@
       117,
       571,
       223
+    ],
+    "05_acc/05_acc_auto_24.png": [
+      382,
+      466,
+      258,
+      241
+    ],
+    "05_acc/05_acc_special_gaegeun.png": [
+      146,
+      121,
+      733,
+      319
     ]
   }
 }
