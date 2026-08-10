@@ -25282,7 +25282,7 @@ if(!window.__MK_BOOT_OK__){
     if(fullCountEl){
       /* V169_SHOP2: 캐릭터 모드에서는 만렙 줄 자리에 "보유 파츠 N/M" — 펫 모드 복귀 시 만렙 줄 원복 */
       const label = charaShown
-        ? ('👗 보유 파츠 ' + dashCharaOwnedCount() + (dashCharaPartsTotal() ? ('/' + dashCharaPartsTotal()) : ''))
+        ? ('👗 파츠 ' + dashCharaOwnedCount() + (dashCharaPartsTotal() ? ('/' + dashCharaPartsTotal()) : ''))
         : petFullLabel(st);
       if(fullCountEl.textContent !== label) fullCountEl.textContent = label;
       fullCountEl.title = charaShown
