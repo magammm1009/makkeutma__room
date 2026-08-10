@@ -25282,7 +25282,7 @@ if(!window.__MK_BOOT_OK__){
     if(fullCountEl){
       /* V169_SHOP2: 캐릭터 모드에서는 만렙 줄 자리에 "보유 파츠 N/M" — 펫 모드 복귀 시 만렙 줄 원복 */
       const label = charaShown
-        ? ('👗 파츠 ' + dashCharaOwnedCount() + (dashCharaPartsTotal() ? ('/' + dashCharaPartsTotal()) : ''))
+        ? ('👗 보유 파츠 ' + dashCharaOwnedCount() + (dashCharaPartsTotal() ? ('/' + dashCharaPartsTotal()) : ''))
         : petFullLabel(st);
       if(fullCountEl.textContent !== label) fullCountEl.textContent = label;
       fullCountEl.title = charaShown
@@ -27207,6 +27207,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkComboSlot .th.mkAccMulti{ display:flex; align-items:center; justify-content:center; gap:1px; overflow:hidden; }
   .mkComboSlot .mkAccMini{ position:relative; flex:0 0 auto; width:32%; aspect-ratio:1/1; border-radius:6px; overflow:hidden; background:rgba(0,0,0,.18); }
   .mkComboSlot .mkAccMini img{ width:100%; height:100%; object-fit:contain; display:block; }
+  /* ── V174_PARTHUE: 색상 조절 대상 파츠 칩 (액세서리·장비 2개 이상 착용 시에만 노출) ── */
+  .mkCharaColorParts{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .mkCharaColorParts:empty{ display:none; }
+  .mkColorPartChip{ position:relative; flex:0 0 auto; width:34px; height:34px; padding:0; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.18); cursor:pointer; }
+  .mkColorPartChip.on{ border-color:#ff8dc2; box-shadow:0 0 0 2px rgba(255,141,194,.30); }
+  .mkColorPartChip img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .mkColorPartChip img.mkRectCrop{ position:absolute; max-width:none; }
   /* ── V169_SHOP: 장바구니(입어보는 중 파츠 결제) 패널 ── */
   .mkCartBox{ margin-top:10px; }
   /* V169_SHOP2: 장바구니 자리는 항상 고정 높이로 예약 — 담긴 개수와 무관하게 미리보기 크기가 흔들리지 않는다 */
@@ -27343,6 +27350,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   /* V172_SPECIAL: 특수 파츠(개근상·파왕/핑왕 오브 등) 전용 z — 어떤 카테고리든 맨 위.
      코드로만 받는 기념 아이템이 장비·액세서리에 가려지지 않게 합니다. */
   var Z_SPECIAL = 90;
+  /* V173_WINGBACK: 어깨 날개 장비 전용 z — 뒷머리(10)보다도 아래, 즉 맨 뒤.
+     장비는 기본 z72(맨 위)라 어깨 날개가 어깨를 덮어 버립니다. manifest._gearBack에
+     실린 06_gear 파일만 이 랭크로 내립니다(헤드셋·가방·동반 오브젝트는 z72 그대로). */
+  var Z_GEAR_BACK = 5;
 
   var chara = {
     phase:'idle',   // idle | loading | ready | error
@@ -27350,6 +27361,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     cats:[],        // [{key,order,label,parts:[{name,url}],backParts:Map}]
     sel:{},         // { "01_body": "파일명" | null }
     adj:{},         // { body:{h,s,b} } — 짧은 카테고리명 키, 앞·뒷머리 공유
+                    // V174_PARTHUE: acc/gear는 파츠 단위 키 "acc/파일명.png" (조회는 파츠키 → 카테고리키 → 기본값 2단 폴백)
+    colorTarget:{}, // V174_PARTHUE: { "05_acc": "파일명.png" } — 다중 카테고리에서 색을 조절 중인 파츠
     name:'',        // V169_SHOP2: 캐릭터 이름(≤5자, 빈값 = 기본 "내 캐릭터")
     active:null
   };
@@ -27405,9 +27418,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         parts[n] = (s && owned[ownedKeyFor(c.key, s)]) ? s : null;
       }
     });
+    /* V174_PARTHUE: 파츠 단위 hue 키("acc/파일명")는 "지금 저장되는 착장"의 파츠만 남긴다 —
+       입어만 보고 벗은 파츠의 색이 무한히 쌓이는 걸 막는다. 카테고리 단위 키는 그대로 유지(구 폴백 포함). */
+    var liveHueKeys = {};
+    Object.keys(parts).forEach(function(n){
+      var v = parts[n];
+      if(Array.isArray(v)) v.forEach(function(nm){ liveHueKeys[n+'/'+nm]=1; });
+    });
     Object.keys(chara.adj).forEach(function(k){
       var a=chara.adj[k]; if(!a) return;
       if(a.h===0 && a.s===100 && a.b===100) return;
+      if(k.indexOf('/')>=0 && !liveHueKeys[k]) return; // V174_PARTHUE: 지금 안 입은 파츠 키는 저장하지 않음
       hue[k]={ h:a.h, s:a.s, b:a.b };
     });
     var out = { v:1, parts:parts, hue:hue };
@@ -27454,6 +27475,37 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
      _special이 아직 배포되지 않았으면 전부 빈 객체 → 기존 동작 그대로. */
   function specialInfo(catKey, name){ return (chara.special || {})[catKey + '/' + name] || null; }
   function isSpecial(catKey, name){ return !!specialInfo(catKey, name); }
+  /* V173_WINGBACK: manifest._gearBack = "몸통 뒤에 그릴 06_gear 파일명" 평평한 배열 → 조회용 맵.
+     파일명을 바꾸면 보유 기록·RTDB 착장이 깨지므로, 이름 규칙 대신 manifest 목록으로 판정합니다.
+     _gearBack이 아직 배포되지 않았으면 빈 객체 → 장비 전부 z72(기존 동작 그대로). */
+  function gearBackMapOf(mf){
+    var out = {}, arr = mf && mf._gearBack;
+    if(Array.isArray(arr)) arr.forEach(function(f){ if(typeof f === 'string') out[f] = 1; });
+    return out;
+  }
+  function isGearBack(catKey, name){ return catName(catKey) === 'gear' && !!(chara.gearBack || {})[name]; }
+  /* V173_COSTUME2: manifest._gearCostumeOk = "전신 인형탈과 함께 써도 되는 06_gear 파일명" 배열
+     (= 어깨 날개 + 옆에 서 있는 동반 오브젝트). 인형탈은 기본 몸통과 비율이 달라 헤드셋·가방이
+     엉뚱한 자리에 붙기 때문입니다.
+     키 자체가 없으면 null → 제한 없음(구 manifest 배포분에서 장비가 통째로 사라지는 사고 방지).
+     키가 있으면 빈 배열이어도 제한을 겁니다. */
+  function gearCostumeOkMapOf(mf){
+    var arr = mf && mf._gearCostumeOk;
+    if(!Array.isArray(arr)) return null;
+    var out = {};
+    arr.forEach(function(f){ if(typeof f === 'string') out[f] = 1; });
+    return out;
+  }
+  /* V173_COSTUME2: 인형탈 착용 중 "렌더에서만" 뺄 파츠인가 (선택 상태는 그대로 — 벗으면 원래 착장 복귀).
+     액세서리는 전부 빼되 특수 파츠(방장/부방장 신분 표시)는 예외로 남긴다 — "특수 파츠는 항상 맨 위"가 사용자 확정. */
+  function costumeHides(catKey, name){
+    var ok = chara.gearCostumeOk;
+    if(!ok) return false; // _gearCostumeOk 키가 없는 구 manifest → 제한 없음(기존 동작 유지)
+    var n = catName(catKey);
+    if(n === 'acc') return !isSpecial(catKey, name);
+    if(n === 'gear') return !ok[name];
+    return false;
+  }
   function specialTag(catKey, name){ // 배지/토스트에 쓰는 짧은 라벨 — 정보가 부실하면 "특별 파츠"
     var info = specialInfo(catKey, name) || {};
     var emo = (typeof info.emoji === 'string' && info.emoji) ? info.emoji : '🎖️';
@@ -27864,6 +27916,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         chara.prices = (mf && mf._prices && typeof mf._prices==='object') ? mf._prices : {}; // V169: 파츠 가격표
         chara.rects = (mf && mf._rects && typeof mf._rects==='object') ? mf._rects : {}; // V169_SHOP: 썸네일 크롭 영역([x,y,w,h], 1024 좌표계)
         chara.special = (mf && mf._special && typeof mf._special==='object') ? mf._special : {}; // V170_AWARD: 특수 파츠 정보("카테고리/파일명"→{label,desc,emoji}) — 없으면 빈 객체(기능만 조용히 비활성)
+        chara.gearBack = gearBackMapOf(mf); // V173_WINGBACK: 몸통 뒤에 그릴 장비(어깨 날개) 파일명 맵 — 없으면 빈 객체
+        chara.gearCostumeOk = gearCostumeOkMapOf(mf); // V173_COSTUME2: 인형탈과 함께 쓸 수 있는 장비 맵 — 키가 없으면 null(제한 없음)
         var cats=[];
         Object.keys(mf||{}).forEach(function(key){
           if(key.charAt(0)==='_') return;             // _version 등 메타 키는 카테고리가 아니다
@@ -27906,8 +27960,53 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }
     return catName(catKey);
   }
-  function filterFor(catKey){
-    var a = getAdj(adjShortFor(catKey));
+  /* ── V174_PARTHUE: 액세서리·장비는 최대 3개 동시 착용이라 카테고리 단위 색 조절이면 셋이 함께 바뀐다.
+        → 다중 카테고리는 "짧은카테고리/파일명" 키로 파츠별로 따로 저장한다.
+        조회는 항상 파츠키 → 카테고리키 → 기본값 2단 폴백 (구 저장본·구 charaV1의 카테고리 단위 hue 호환). ── */
+  function adjKeyFor(catKey, partName){
+    var short = adjShortFor(catKey);
+    return (isMultiCat(catKey) && partName) ? (short + '/' + partName) : short;
+  }
+  function getAdjFor(catKey, partName){
+    var short = adjShortFor(catKey);
+    if(isMultiCat(catKey) && partName && chara.adj[short + '/' + partName]) return chara.adj[short + '/' + partName];
+    return getAdj(short);
+  }
+  /* V174_PARTHUE: 구 저장본의 카테고리 단위 폴백을 현재 착장 파츠별 키로 펼친다.
+     이걸 안 하면 한 파츠만 되돌려도 카테고리 폴백이 되살아나 초기화가 먹지 않는다. */
+  function explodeCatAdj(catKey){
+    if(!isMultiCat(catKey)) return;
+    var short = adjShortFor(catKey);
+    var base = chara.adj[short]; if(!base) return;
+    selArr(catKey).forEach(function(nm){
+      var k = short + '/' + nm;
+      if(!chara.adj[k]) chara.adj[k] = { h:base.h, s:base.s, b:base.b };
+    });
+    delete chara.adj[short];
+  }
+  /* V174_PARTHUE: 색을 조절할 대상 파츠 — 읽을 때마다 착장과 정합성을 맞춘다
+     (대상이 벗겨졌으면 남은 것 중 첫 번째, 아무것도 없으면 비움). */
+  function colorTargetFor(catKey){
+    if(!isMultiCat(catKey)) return null;
+    var arr = selArr(catKey);
+    if(!arr.length){ delete chara.colorTarget[catKey]; return null; }
+    var cur = chara.colorTarget[catKey];
+    if(cur && arr.indexOf(cur) >= 0) return cur;
+    chara.colorTarget[catKey] = arr[0];
+    return arr[0];
+  }
+  function setColorTarget(name){
+    var cat=activeCat(); if(!cat || !isMultiCat(cat.key)) return;
+    if(selArr(cat.key).indexOf(name) < 0) return;
+    chara.colorTarget[cat.key] = name;
+    renderColorPanel();
+  }
+  function partShortLabel(name){ // V174_PARTHUE: 칩/라벨용 짧은 파츠 이름 (05_acc_auto_01.png → auto_01)
+    var s = String(name||'').replace(/\.png$/i,'').replace(/^\d+_[a-z]+_/i,'');
+    return (s.length > 18 ? s.slice(0,18)+'…' : s) || String(name||'');
+  }
+  function filterFor(catKey, partName){ // V174_PARTHUE: partName은 다중 카테고리에서만 의미 있음(없으면 카테고리 폴백)
+    var a = getAdjFor(catKey, partName);
     if(a.h===0 && a.s===100 && a.b===100) return '';
     return 'hue-rotate('+a.h+'deg) saturate('+a.s+'%) brightness('+a.b+'%)';
   }
@@ -27915,17 +28014,31 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   /* ---------- 레이어 합성: z랭크 오름차순 (뒷머리→몸통→룩→얼굴→앞머리→액세서리) ---------- */
   function stageLayers(){
     var layers=[];
+    /* V173_COSTUME: 전신 동물 인형탈(04_look_..._full.png)은 머리끝~발끝을 덮고 얼굴까지 동물 얼굴로 대체한다.
+       앞머리(z60)·사람 얼굴(z50)이 룩(z35) 위에 그려지므로 그냥 두면 인형탈 머리 위로 머리카락이
+       튀어나오고 사람 얼굴이 동물 얼굴 위에 겹친다 → 헤어(뒷머리 동반분 포함)·얼굴을 통째로 건너뛴다.
+       몸통(z20)은 완전히 가려지지만 안전망으로 유지하고, 액세서리·장비·특수템은 의도대로 위에 올린다. */
+    var lookCat = chara.cats.find(function(c){ return catName(c.key)==='look'; });
+    var isFullCostume = !!lookCat && selArr(lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
     chara.cats.forEach(function(cat){
+      /* V173_COSTUME3: 'body'(스킨톤 몸통)도 함께 숨긴다 — 인형탈은 몸통 길이를 줄여
+         머리가 아래로 내려간 형태라, 밑에 01_body를 깔면 살구색 머리가 인형탈 위로
+         튀어나온다. 인형탈이 머리끝~발끝을 다 덮으므로 몸통은 어차피 안 보인다. */
+      if(isFullCostume && (isHairCat(cat.key) || isHairBackCat(cat.key) || catName(cat.key)==='face' || catName(cat.key)==='body')) return; // V173_COSTUME
       // V169_SHOP: acc 다중 착장 — selArr가 항상 배열로 정규화(그 외 카테고리는 0~1개), 착용 순서대로 같은 z에 겹침(안정 정렬)
       selArr(cat.key).forEach(function(sel){
         var part=null;
         for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
         if(!part) return;
+        if(isFullCostume && costumeHides(cat.key, sel)) return; // V173_COSTUME2: 인형탈 비율에 안 맞는 액세서리·장비는 렌더에서만 제외
         /* V172_SPECIAL: 관리자 코드로만 받는 특수 파츠는 항상 맨 위.
            장비(z72)가 액세서리(z71)보다 위라, 날개를 착용하면 어깨 오브 같은
            특수 파츠가 가려졌습니다 (2026-08-10 사용자 확정: 특수템이 위). */
+        /* V173_WINGBACK: 어깨 날개 장비만 맨 뒤(Z_GEAR_BACK). 특수템 판정이 항상 우선 —
+           특수템은 어떤 카테고리든 맨 위(2026-08-10 사용자 확정). */
         layers.push({ catKey:cat.key, part:part,
-                      z: isSpecial(cat.key, sel) ? Z_SPECIAL : zRankFor(cat) });
+                      z: isSpecial(cat.key, sel) ? Z_SPECIAL
+                         : (isGearBack(cat.key, sel) ? Z_GEAR_BACK : zRankFor(cat)) });
         var back = cat.backParts && cat.backParts.get(sel);
         if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); // 뒷머리 자동 동반, 색 필터는 헤어와 공유
       });
@@ -28003,11 +28116,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     el.innerHTML = visibleCats().map(function(c){
       var th;
       if(isMultiCat(c.key)){ // V172_GEAR: 장비도 미니 썸네일 나열
-        // V169_SHOP: acc 다중(최대 3) — 착용 순서대로 미니 썸네일, hue 필터는 카테고리 단위로 동일 적용
+        // V169_SHOP: acc 다중(최대 3) — 착용 순서대로 미니 썸네일 (V174_PARTHUE: hue 필터는 파츠마다 따로)
         var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ return p.name===nm; }); }).filter(Boolean);
-        var fAcc = accParts.length ? filterFor(c.key) : '';
         th = accParts.length
           ? '<span class="th mkAccMulti">'+accParts.map(function(p){
+              var fAcc = filterFor(c.key, p.name); // V174_PARTHUE: 파츠별 색 — 카테고리 일괄 적용에서 변경
               return '<span class="mkAccMini">'+thumbImgHtml(c.key, p.name, p.url, (fAcc?('filter:'+fAcc+';'):''))+'</span>';
             }).join('')+'</span>'
           : '<span class="th">없음</span>';
@@ -28042,7 +28155,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var img=document.createElement('img');
       img.src=L.part.url; img.alt=L.part.name;
       img.dataset.cat=L.catKey;
-      var f=filterFor(L.catKey); if(f) img.style.filter=f;
+      img.dataset.part=L.part.name; // V174_PARTHUE: 파츠 단위 색 조회용(뒷머리는 헤어 키를 공유하므로 영향 없음)
+      var f=filterFor(L.catKey, L.part.name); if(f) img.style.filter=f;
       el.appendChild(img);
     });
     try{ setupStageBlink(el); }catch(e){} // V169_BLINK: 얼굴 레이어 눈 깜빡임
@@ -28066,21 +28180,48 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   function applyStageFilters(){
     var el=$id('mkCharaStage'); if(!el) return;
-    el.querySelectorAll('img[data-cat]').forEach(function(img){ img.style.filter=filterFor(img.dataset.cat); });
+    el.querySelectorAll('img[data-cat]').forEach(function(img){ img.style.filter=filterFor(img.dataset.cat, img.dataset.part||''); }); // V174_PARTHUE: 파츠 단위 2단 폴백
   }
   function renderColorPanel(){
     var panel=$id('mkCharaColorPanel'); if(!panel) return;
     var cat=activeCat();
-    var on = !!(chara.phase==='ready' && cat && (isMultiCat(cat.key) ? selArr(cat.key).length : chara.sel[cat.key])); // V169_SHOP: acc는 배열 기준 / V172_GEAR: 장비도 동일
+    var multi = !!(cat && isMultiCat(cat.key));                        // V174_PARTHUE
+    var tgt = multi ? colorTargetFor(cat.key) : null;                  // V174_PARTHUE: 조절 대상 파츠(착장과 자동 정합)
+    var on = !!(chara.phase==='ready' && cat && (multi ? tgt : chara.sel[cat.key])); // V169_SHOP: acc는 배열 기준 / V172_GEAR: 장비도 동일
     panel.classList.toggle('off', !on);
     ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
     var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
-    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? cat.label : '-';
-    var a = cat ? getAdj(adjShortFor(cat.key)) : { h:0, s:100, b:100 };
+    // V174_PARTHUE: 다중 착장은 지금 어떤 파츠를 조절 중인지 라벨에 함께 표시
+    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? (cat.label + ((multi && tgt) ? (' · '+partShortLabel(tgt)) : '')) : '-';
+    renderColorParts(cat, tgt);                                        // V174_PARTHUE
+    var a = cat ? getAdjFor(cat.key, tgt) : { h:0, s:100, b:100 };
     var sh=$id('mkCharaHue'); if(sh) sh.value=a.h;
     var ss=$id('mkCharaSat'); if(ss) ss.value=a.s;
     var sb=$id('mkCharaBri'); if(sb) sb.value=a.b;
     syncSliderVals(a);
+  }
+  /* V174_PARTHUE: 조절 대상 파츠 칩 — 2개 이상 착용했을 때만 노출(1개면 그 파츠가 자동 대상, 조작감 기존과 동일) */
+  function renderColorParts(cat, tgt){
+    var wrap=$id('mkCharaColorParts'); if(!wrap) return;
+    if(chara.phase!=='ready' || !cat || !isMultiCat(cat.key)){ wrap.innerHTML=''; return; }
+    var arr = selArr(cat.key);
+    if(arr.length < 2){ wrap.innerHTML=''; return; }
+    wrap.innerHTML = arr.map(function(nm){
+      var p = cat.parts.find(function(x){ return x.name===nm; });
+      if(!p) return '';
+      var f = filterFor(cat.key, nm);
+      return '<button type="button" class="mkColorPartChip'+(nm===tgt?' on':'')+'" data-name="'+esc(nm)+'" title="'+esc(partShortLabel(nm))+' 색 조절">'
+        + thumbImgHtml(cat.key, p.name, p.url, (f?('filter:'+f+';'):''))
+        + '</button>';
+    }).join('');
+  }
+  /* V174_PARTHUE: 슬라이더 드래그 중에는 칩 innerHTML을 다시 만들지 않고 필터만 갱신(이미지 깜빡임 방지) */
+  function paintColorChips(){
+    var wrap=$id('mkCharaColorParts'); if(!wrap) return;
+    var cat=activeCat(); if(!cat) return;
+    wrap.querySelectorAll('.mkColorPartChip').forEach(function(b){
+      var im=b.querySelector('img'); if(im) im.style.filter=filterFor(cat.key, b.dataset.name||'');
+    });
   }
   function syncSliderVals(a){
     var h=$id('mkCharaHueVal'); if(h) h.textContent=a.h+'°';
@@ -28088,22 +28229,38 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var b=$id('mkCharaBriVal'); if(b) b.textContent=a.b+'%';
   }
   function onColorInput(){
-    var cat=activeCat(); if(!cat || !chara.sel[cat.key]) return;
+    var cat=activeCat(); if(!cat) return;
+    /* V174_PARTHUE: 다중 카테고리에서 chara.sel[key]는 배열이고 빈 배열 []도 truthy라,
+       예전 가드(!chara.sel[cat.key])는 아무것도 안 낀 상태에서도 통과해 chara.adj에 쓰레기 키를 만들었다.
+       → 다중은 "조절 대상 파츠가 있는가"로 판정한다. */
+    var multi = isMultiCat(cat.key);
+    var tgt = multi ? colorTargetFor(cat.key) : null;
+    if(multi ? !tgt : !chara.sel[cat.key]) return;
     var a={
       h:clampNum(($id('mkCharaHue')||{}).value,-180,180,0),
       s:clampNum(($id('mkCharaSat')||{}).value,0,200,100),
       b:clampNum(($id('mkCharaBri')||{}).value,50,150,100)
     };
-    chara.adj[adjShortFor(cat.key)]=a;
+    if(multi) explodeCatAdj(cat.key); // V174_PARTHUE: 구 카테고리 폴백을 파츠별로 펼친 뒤 대상만 갱신
+    chara.adj[adjKeyFor(cat.key, tgt)]=a; // V174_PARTHUE: 다중은 "acc/파일명" 파츠 단위 키
     /* V169_SHOP2: 자동 저장 제거 — 미리보기만 갱신, 확정은 [💾 저장] */
     syncSliderVals(a);
     applyStageFilters();   // 미리보기: 앞·뒷머리 레이어에 동시 반영
+    paintColorChips();     // V174_PARTHUE: 대상 파츠 칩 썸네일에도 즉시 반영
     renderCombo();         // 조합칸 썸네일에도 같은 필터 반영
     renderSaveBar();       // V169_SHOP2: 미저장 변경 강조
   }
   function resetColor(){
     var cat=activeCat(); if(!cat) return;
-    delete chara.adj[adjShortFor(cat.key)];
+    /* V174_PARTHUE: 다중 카테고리는 "지금 조절 중인 파츠"만 초기화한다(카테고리 전체를 날리지 않는다).
+       구 저장본의 카테고리 폴백이 남아 있으면 먼저 파츠별로 펼쳐야 지운 자리에 폴백이 되살아나지 않는다. */
+    if(isMultiCat(cat.key)){
+      var tgt = colorTargetFor(cat.key); if(!tgt) return;
+      explodeCatAdj(cat.key);
+      delete chara.adj[adjKeyFor(cat.key, tgt)];
+    }else{
+      delete chara.adj[adjShortFor(cat.key)];
+    }
     /* V169_SHOP2: 자동 저장 제거 */
     renderColorPanel(); applyStageFilters(); renderCombo(); renderSaveBar();
   }
@@ -28153,6 +28310,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +     '<div id="mkCharaCombo" class="mkCharaCombo"></div>'
     +     '<div id="mkCharaColorPanel" class="mkCharaColorPanel">'
     +       '<div class="mkCharaColorHead"><span>🎨 색상 조절 · <b id="mkCharaColorCat">-</b></span><button id="mkCharaColorReset" type="button">원래 색으로</button></div>'
+    +       '<div id="mkCharaColorParts" class="mkCharaColorParts"></div>' /* V174_PARTHUE: 액세서리·장비 2개 이상 착용 시 조절 대상 파츠 칩 */
     +       '<div class="mkCharaSliderRow"><label for="mkCharaHue">색조</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
     +       '<div class="mkCharaSliderRow"><label for="mkCharaSat">채도</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
     +       '<div class="mkCharaSliderRow"><label for="mkCharaBri">명도</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
@@ -28220,6 +28378,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var s=body.querySelector('#'+id); if(s) s.addEventListener('input', onColorInput);
     });
     var reset=body.querySelector('#mkCharaColorReset'); if(reset) reset.addEventListener('click', resetColor);
+    /* V174_PARTHUE: 색 조절 대상 파츠 칩 — 위임 바인딩(1회) */
+    var colorParts=body.querySelector('#mkCharaColorParts');
+    if(colorParts) colorParts.addEventListener('click', function(e){
+      var b = e.target && e.target.closest ? e.target.closest('.mkColorPartChip') : null;
+      if(b && b.dataset.name) setColorTarget(b.dataset.name);
+    });
     /* V169_SHOP: 장바구니 결제 버튼 + 체크박스 위임 바인딩(1회) */
     var payBtn=body.querySelector('#mkCartPay'); if(payBtn) payBtn.addEventListener('click', payCart);
     var cartList=body.querySelector('#mkCartList');
@@ -28331,7 +28495,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       applySavedToSel:applySavedToSel, sanitizeName:sanitizeName, revertTryOn:revertTryOn
     },
     /* V170_AWARD: 검증용 훅 — 코드 정규화/표기 + 등록 경로 */
-    award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo }
+    award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo },
+    /* V173_WINGBACK: 검증용 훅 — 레이어 z랭크 관측 (날개 장비 z5 / 특수템 z90) */
+    stageLayers:stageLayers, isGearBack:isGearBack,
+    /* V174_PARTHUE: 검증용 훅 — 파츠 단위 색 조절 (다중 착장 acc/gear) */
+    parthue:{ adjKeyFor:adjKeyFor, getAdjFor:getAdjFor, filterFor:filterFor,
+              colorTargetFor:colorTargetFor, setColorTarget:setColorTarget,
+              onColorInput:onColorInput, resetColor:resetColor, renderColorPanel:renderColorPanel }
   };
 })();
 </script>
@@ -28914,12 +29084,27 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function sanitizeHue(src){
     var out = {};
     if(!src || typeof src !== 'object') return out;
-    PART_KEYS.forEach(function(k){
-      var a = src[k];
-      if(!a || typeof a !== 'object') return;
+    function put(k, a){
+      if(!a || typeof a !== 'object') return false;
       var h = clampNum(a.h, -180, 180, 0), s = clampNum(a.s, 0, 200, 100), b = clampNum(a.b, 50, 150, 100);
-      if(h === 0 && s === 100 && b === 100) return;
+      if(h === 0 && s === 100 && b === 100) return false;
       out[k] = { h:h, s:s, b:b };
+      return true;
+    }
+    PART_KEYS.forEach(function(k){ put(k, src[k]); });
+    /* V174_PARTHUE: 액세서리·장비는 파츠 단위 색을 따로 쓴다.
+       내부/저장본 표기는 'acc/파일명.png', charaV1 전송 표기는 'acc:파일명'(확장자 없음) —
+       RTDB 키에는 '.'과 '/'를 쓸 수 없어서 전송만 따로 인코딩한다. 두 표기 모두 내부 표기로 정규화.
+       카테고리당 최대 8개까지만 통과시켜 페이로드 폭주를 막는다. */
+    var partCnt = { acc:0, gear:0 };
+    Object.keys(src).forEach(function(k){
+      var m = /^(acc|gear)[\/:](.+)$/.exec(k);
+      if(!m) return;
+      var nm = m[2];
+      if(!/\.png$/i.test(nm)) nm += '.png';
+      if(!validPartName(nm)) return;
+      if(partCnt[m[1]] >= 8) return;
+      if(put(m[1] + '/' + nm, src[k])) partCnt[m[1]]++;
     });
     return out;
   }
@@ -28956,8 +29141,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var set = ownedShortSet(), out = {};
     PART_KEYS.forEach(function(k){
       var v = parts && parts[k];
-      if(k === 'acc'){
-        var arr = (Array.isArray(v) ? v : []).filter(function(n){ return set['acc/' + n]; });
+      /* V173_GEARFIX: 'gear'가 빠져 있어서 장비 2개 이상이 저장에서 통째로 사라졌다.
+         gear는 acc와 같은 배열인데 아래 단일 경로로 떨어지면 set['gear/' + 배열]로
+         조회하게 된다 — 1개짜리 배열은 문자열화가 우연히 'gear/a.png'가 되어 통과하고,
+         2개부터는 'gear/a.png,b.png'가 되어 항상 미보유로 판정돼 둘 다 벗겨졌다.
+         (V172_GEAR 패치가 놓친 네 번째 지점) */
+      if(k === 'acc' || k === 'gear'){
+        var arr = (Array.isArray(v) ? v : []).filter(function(n){ return set[k + '/' + n]; });
         if(arr.length) out[k] = arr;
         return;
       }
@@ -28973,7 +29163,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var a = hue && hue[k];
       h.push(a ? (a.h + ',' + a.s + ',' + a.b) : '');
     });
-    return p.join('|') + '#' + h.join('|');
+    /* V174_PARTHUE: 파츠 단위 hue도 시그니처에 넣는다 — 한 파츠만 색을 바꿔도 bake 캐시가 갱신되고 charaV1이 다시 쓰인다.
+       내부 표기('acc/파일명.png')와 전송 표기('acc:파일명')가 같은 문자열이 되도록 정규화해서 비교한다.
+       파츠 색이 하나도 없으면 꼬리를 붙이지 않아 기존 시그니처와 완전히 동일하다(구 캐시/쓰기 무효화 없음). */
+    var ph = [];
+    if(hue) Object.keys(hue).forEach(function(k){
+      var m = /^(acc|gear)[\/:](.+)$/.exec(k); if(!m) return;
+      var a = hue[k]; if(!a) return;
+      ph.push(m[1] + ':' + m[2].replace(/\.png$/i, '') + '=' + a.h + ',' + a.s + ',' + a.b);
+    });
+    ph.sort();
+    return p.join('|') + '#' + h.join('|') + (ph.length ? ('#' + ph.join('|')) : '');
   }
   function writeSigOf(payload){
     return normShow(payload && payload.show) + '@' + sigOf(payload && payload.parts, payload && payload.hue)
@@ -29095,6 +29295,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       .then(function(mf){
         var ver = (mf && mf._version != null && typeof mf._version !== 'object') ? String(mf._version) : '';
         var eyes = (mf && mf._eyes && typeof mf._eyes === 'object') ? mf._eyes : {}; // V169_BLINK: 얼굴별 눈 타원 좌표(1024 기준, +12% 패딩)
+        /* V173_WINGBACK: _gearBack = "몸통 뒤에 그릴 06_gear 파일명" 평평한 배열 → 조회용 맵.
+           키가 없으면 빈 객체 = 장비 전부 기존 순서(맨 위) → 하위 호환. */
+        var gearBack = {};
+        if(mf && Array.isArray(mf._gearBack)) mf._gearBack.forEach(function(f){ if(typeof f === 'string') gearBack[f] = 1; });
+        /* V173_COSTUME2: _gearCostumeOk = "전신 인형탈과 함께 써도 되는 06_gear 파일명" 배열.
+           키가 아예 없으면 null = 제한 없음(구 manifest 하위 호환), 있으면 빈 배열이어도 제한 적용. */
+        var gearCostumeOk = null;
+        if(mf && Array.isArray(mf._gearCostumeOk)){
+          gearCostumeOk = {};
+          mf._gearCostumeOk.forEach(function(f){ if(typeof f === 'string') gearCostumeOk[f] = 1; });
+        }
         var folders = {}, files = {}, hairBackOf = {};
         Object.keys(mf || {}).forEach(function(key){
           if(key.charAt(0) === '_') return; // _version/_eyes 등 메타 키
@@ -29116,7 +29327,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
             if(files.hair[back]) hairBackOf[f] = back;
           });
         }
-        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes };
+        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack, gearCostumeOk: gearCostumeOk };
       })
       .catch(function(err){ maniPromise = null; throw err; });
     return maniPromise;
@@ -29574,6 +29785,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var bakeCache = new Map(); // sig -> Promise<bakeResult>
   function filterOf(hue, key){
     var a = hue && hue[key];
+    /* V174_PARTHUE: 파츠 단위 키('acc/파일명')가 없으면 카테고리 키로 폴백 — 구 페이로드(카테고리 일괄 색) 호환 */
+    if(!a && key){
+      var i = key.indexOf('/');
+      if(i > 0) a = hue && hue[key.slice(0, i)];
+    }
     if(!a) return '';
     return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
   }
@@ -29585,14 +29801,34 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(hit){ stats.bakeCacheHit++; return hit; }
     var pr = ensureManifest().then(function(mani){
       var layers = [];
+      /* V173_COSTUME: 전신 동물 인형탈(04_look_..._full.png)은 얼굴까지 동물 얼굴로 대체하므로
+         사람 머리카락(hair/hair_back)과 얼굴(face)을 그리지 않는다 — 앞머리·얼굴이 룩 위 z라
+         그냥 두면 인형탈 머리 위로 튀어나온다. 이 IIFE는 꾸미기 모달과 스코프가 달라 헬퍼를
+         공유할 수 없으니 특수템(_special_)과 같이 파일명 규칙으로 각자 판정한다.
+         (face가 빠지면 meta.facePart도 null이라 깜빡임 프레임 생성도 자동으로 꺼진다) */
+      var isFullCostume = /_full/i.test(String(parts.look || ''));
+      /* V173_COSTUME2: 인형탈은 기본 몸통과 비율이 달라 헤드셋·가방·액세서리가 엉뚱한 자리에 붙는다
+         → 인형탈 착용 중에는 액세서리를 빼고(특수 파츠는 신분 표시라 예외), 장비는 _gearCostumeOk
+         (어깨 날개 + 동반 오브젝트)만 그린다. 선택/저장 데이터는 건드리지 않고 렌더에서만 뺀다.
+         이 IIFE는 모달과 스코프가 달라 특수 파츠를 파일명 규칙(_special_)으로 판정한다. */
+      function costumeHidesLayer(cat, name){
+        if(!mani.gearCostumeOk) return false; // _gearCostumeOk 키가 없는 구 manifest → 제한 없음
+        if(cat === 'acc') return !/_special_/i.test(String(name));
+        if(cat === 'gear') return !mani.gearCostumeOk[name];
+        return false;
+      }
       Z_ORDER.forEach(function(cat){
+        // V173_COSTUME3: 'body'도 숨김 — 인형탈은 머리가 내려간 형태라 밑에 깔면 살구색 머리가 튀어나온다
+        if(isFullCostume && (cat === 'hair' || cat === 'hair_back' || cat === 'face' || cat === 'body')) return; // V173_COSTUME
         if(cat === 'acc' || cat === 'gear'){   // V172_GEAR: 장비도 같은 다중 처리
           /* V169_SHOP: acc 다중(최대 3) — 착용 순서대로 같은 z에 겹침(Z_ORDER 순회 순서가 곧 안정 순서) */
           var multi = parts[cat];
           var arr = Array.isArray(multi) ? multi : (multi ? [multi] : []);
           if(!mani.folders[cat]) return;
           arr.forEach(function(n){
-            if(mani.files[cat] && mani.files[cat][n]) layers.push({ cat: cat, name: n, adjKey: cat, url: urlFor(mani, cat, n) });
+            if(isFullCostume && costumeHidesLayer(cat, n)) return; // V173_COSTUME2
+            // V174_PARTHUE: adjKey를 파츠 단위로 — filterOf가 'acc/파일명' → 'acc' 순으로 폴백한다
+            if(mani.files[cat] && mani.files[cat][n]) layers.push({ cat: cat, name: n, adjKey: cat + '/' + n, url: urlFor(mani, cat, n) });
           });
           return;
         }
@@ -29608,6 +29844,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         if(!name || !mani.folders[srcCat]) return;
         layers.push({ cat: cat, name: name, adjKey: adjKey, url: urlFor(mani, srcCat, name) });
       });
+      /* V173_WINGBACK: 어깨 날개 장비(manifest._gearBack)를 배열 맨 앞으로 보내 몸통 뒤에 그린다.
+         레이어는 배열 순서대로 그려지므로, 앞으로 보내는 것이 곧 "맨 뒤"다(뒷머리보다도 아래).
+         아래 특수템 재정렬(맨 뒤로 = 맨 위)보다 반드시 먼저 실행해야 두 규칙이 함께 성립한다.
+         _gearBack이 비어 있으면(구 manifest) 아무것도 옮기지 않아 기존 동작 그대로. */
+      if(layers.length > 1){
+        var _isWingBack = function(L){ return L.cat === 'gear' && !!mani.gearBack[L.name]; };
+        layers = layers.filter(_isWingBack)
+                       .concat(layers.filter(function(L){ return !_isWingBack(L); }));
+      }
       /* V172_SPECIAL: 특수 파츠(개근상·파왕/핑왕 오브 등)를 맨 뒤로 보내 항상 위에 그린다.
          레이어는 배열 순서대로 그려지므로, 뒤로 보내는 것이 곧 "맨 위"다.
          이 IIFE는 manifest _special을 읽지 않으므로 파일명 규칙(_special_)으로 판정한다.
@@ -29710,6 +29955,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var payload = { v: 1, parts: {}, hue: {}, show: getMyShow(), mode: getMyMode(), updatedAtMs: Date.now() }; // V169_MOVE: mode 공유
     PART_KEYS.forEach(function(k){ if(lc.parts[k]) payload.parts[k] = lc.parts[k]; });
     PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = { h: lc.hue[k].h, s: lc.hue[k].s, b: lc.hue[k].b }; });
+    /* V174_PARTHUE: 파츠 단위 hue도 함께 공유. RTDB 키에는 '.'과 '/'를 못 쓰므로
+       'acc/파일명.png' → 'acc:파일명'으로 인코딩한다(sanitizeHue가 읽을 때 되돌린다).
+       구버전 클라이언트는 PART_KEYS만 보므로 이 키들을 그냥 무시한다. */
+    Object.keys(lc.hue).forEach(function(k){
+      var m = /^(acc|gear)\/(.+)$/.exec(k); if(!m) return;
+      var a = lc.hue[k]; if(!a) return;
+      payload.hue[m[1] + ':' + m[2].replace(/\.png$/i, '')] = { h: a.h, s: a.s, b: a.b };
+    });
     if(!Object.keys(payload.hue).length) delete payload.hue;
     if(lc.name) payload.name = lc.name; // V169_SHOP2: 캐릭터 이름(≤5자) 공유 — 타인 타일 명찰용
     return payload;

@@ -1,5 +1,5 @@
 {
-  "_version": "20260810043412",
+  "_version": "20260811002918",
   "01_body": [
     "01_body_auto_01.png",
     "01_body_auto_02.png",
@@ -45,7 +45,28 @@
     "02_hair_auto_19.png",
     "02_hair_auto_19_back.png",
     "02_hair_auto_21.png",
-    "02_hair_auto_21_back.png"
+    "02_hair_auto_21_back.png",
+    "02_hair_auto_22.png",
+    "02_hair_auto_22_back.png",
+    "02_hair_auto_24.png",
+    "02_hair_auto_24_back.png",
+    "02_hair_auto_25.png",
+    "02_hair_auto_25_back.png",
+    "02_hair_auto_26.png",
+    "02_hair_auto_26_back.png",
+    "02_hair_auto_27.png",
+    "02_hair_auto_27_back.png",
+    "02_hair_auto_28.png",
+    "02_hair_auto_28_back.png",
+    "02_hair_auto_29.png",
+    "02_hair_auto_29_back.png",
+    "02_hair_auto_30.png",
+    "02_hair_auto_30_back.png",
+    "02_hair_auto_31.png",
+    "02_hair_auto_31_back.png",
+    "02_hair_auto_32.png",
+    "02_hair_auto_33.png",
+    "02_hair_auto_33_back.png"
   ],
   "03_face": [
     "03_face_auto_01.png",
@@ -68,7 +89,10 @@
     "03_face_auto_18.png",
     "03_face_auto_19.png",
     "03_face_auto_20.png",
-    "03_face_auto_21.png"
+    "03_face_auto_21.png",
+    "03_face_auto_22.png",
+    "03_face_auto_23.png",
+    "03_face_auto_24.png"
   ],
   "04_look": [
     "04_look_auto_01.png",
@@ -97,7 +121,21 @@
     "04_look_auto_28.png",
     "04_look_auto_29.png",
     "04_look_auto_30.png",
-    "04_look_auto_31.png"
+    "04_look_auto_31.png",
+    "04_look_auto_32_full.png",
+    "04_look_auto_33_full.png",
+    "04_look_auto_34_full.png",
+    "04_look_auto_35.png",
+    "04_look_auto_36.png",
+    "04_look_auto_37.png",
+    "04_look_auto_38.png",
+    "04_look_auto_40.png",
+    "04_look_auto_41.png",
+    "04_look_auto_44.png",
+    "04_look_auto_45.png",
+    "04_look_auto_46.png",
+    "04_look_auto_47.png",
+    "04_look_auto_48.png"
   ],
   "05_acc": [
     "05_acc_auto_01.png",
@@ -126,6 +164,19 @@
     "05_acc_auto_27.png",
     "05_acc_auto_28.png",
     "05_acc_auto_29.png",
+    "05_acc_auto_31.png",
+    "05_acc_auto_32.png",
+    "05_acc_auto_33.png",
+    "05_acc_auto_35.png",
+    "05_acc_auto_36.png",
+    "05_acc_auto_37.png",
+    "05_acc_auto_38.png",
+    "05_acc_auto_39.png",
+    "05_acc_auto_40.png",
+    "05_acc_auto_41.png",
+    "05_acc_auto_42.png",
+    "05_acc_auto_43.png",
+    "05_acc_auto_44.png",
     "05_acc_special_bangjang.png",
     "05_acc_special_bubangjang.png",
     "05_acc_special_gaegeun.png"
@@ -143,7 +194,25 @@
     "06_gear_auto_10.png",
     "06_gear_auto_11.png",
     "06_gear_auto_12.png",
-    "06_gear_auto_13.png"
+    "06_gear_auto_13.png",
+    "06_gear_auto_14.png",
+    "06_gear_auto_15.png",
+    "06_gear_auto_16.png",
+    "06_gear_auto_17.png",
+    "06_gear_auto_18.png",
+    "06_gear_auto_19.png",
+    "06_gear_auto_20.png",
+    "06_gear_auto_21.png",
+    "06_gear_auto_22.png",
+    "06_gear_auto_23.png",
+    "06_gear_auto_24.png",
+    "06_gear_auto_25.png",
+    "06_gear_auto_26.png",
+    "06_gear_auto_27.png",
+    "06_gear_auto_28.png",
+    "06_gear_auto_29.png",
+    "06_gear_auto_30.png",
+    "06_gear_auto_31.png"
   ],
   "_eyes": {
     "03_face_auto_01.png": {
@@ -425,6 +494,48 @@
         62,
         48
       ]
+    },
+    "03_face_auto_22.png": {
+      "l": [
+        409,
+        368,
+        61,
+        58
+      ],
+      "r": [
+        612,
+        366,
+        63,
+        57
+      ]
+    },
+    "03_face_auto_23.png": {
+      "l": [
+        424,
+        378,
+        43,
+        49
+      ],
+      "r": [
+        600,
+        377,
+        43,
+        49
+      ]
+    },
+    "03_face_auto_24.png": {
+      "l": [
+        405,
+        386,
+        76,
+        39
+      ],
+      "r": [
+        618,
+        384,
+        76,
+        40
+      ]
     }
   },
   "_special": {
@@ -481,6 +592,17 @@
     "02_hair/02_hair_auto_18.png": 3000,
     "02_hair/02_hair_auto_19.png": 3000,
     "02_hair/02_hair_auto_21.png": 3000,
+    "02_hair/02_hair_auto_22.png": 3000,
+    "02_hair/02_hair_auto_24.png": 3000,
+    "02_hair/02_hair_auto_25.png": 3000,
+    "02_hair/02_hair_auto_26.png": 3000,
+    "02_hair/02_hair_auto_27.png": 3000,
+    "02_hair/02_hair_auto_28.png": 3000,
+    "02_hair/02_hair_auto_29.png": 3000,
+    "02_hair/02_hair_auto_30.png": 3000,
+    "02_hair/02_hair_auto_31.png": 3000,
+    "02_hair/02_hair_auto_32.png": 3000,
+    "02_hair/02_hair_auto_33.png": 3000,
     "03_face/03_face_auto_01.png": 2,
     "03_face/03_face_auto_02.png": 1500,
     "03_face/03_face_auto_03.png": 1500,
@@ -502,6 +624,9 @@
     "03_face/03_face_auto_19.png": 1500,
     "03_face/03_face_auto_20.png": 1500,
     "03_face/03_face_auto_21.png": 1500,
+    "03_face/03_face_auto_22.png": 1500,
+    "03_face/03_face_auto_23.png": 1500,
+    "03_face/03_face_auto_24.png": 1500,
     "04_look/04_look_auto_01.png": 2,
     "04_look/04_look_auto_05.png": 4000,
     "04_look/04_look_auto_06.png": 4000,
@@ -529,6 +654,20 @@
     "04_look/04_look_auto_29.png": 4000,
     "04_look/04_look_auto_30.png": 4000,
     "04_look/04_look_auto_31.png": 4000,
+    "04_look/04_look_auto_32_full.png": 4000,
+    "04_look/04_look_auto_33_full.png": 4000,
+    "04_look/04_look_auto_34_full.png": 4000,
+    "04_look/04_look_auto_35.png": 4000,
+    "04_look/04_look_auto_36.png": 4000,
+    "04_look/04_look_auto_37.png": 4000,
+    "04_look/04_look_auto_38.png": 4000,
+    "04_look/04_look_auto_40.png": 4000,
+    "04_look/04_look_auto_41.png": 4000,
+    "04_look/04_look_auto_44.png": 4000,
+    "04_look/04_look_auto_45.png": 4000,
+    "04_look/04_look_auto_46.png": 4000,
+    "04_look/04_look_auto_47.png": 4000,
+    "04_look/04_look_auto_48.png": 4000,
     "05_acc/05_acc_auto_01.png": 2,
     "05_acc/05_acc_auto_02.png": 2200,
     "05_acc/05_acc_auto_04.png": 2200,
@@ -555,6 +694,19 @@
     "05_acc/05_acc_auto_27.png": 2200,
     "05_acc/05_acc_auto_28.png": 2200,
     "05_acc/05_acc_auto_29.png": 2200,
+    "05_acc/05_acc_auto_31.png": 2200,
+    "05_acc/05_acc_auto_32.png": 2200,
+    "05_acc/05_acc_auto_33.png": 2200,
+    "05_acc/05_acc_auto_35.png": 2200,
+    "05_acc/05_acc_auto_36.png": 2200,
+    "05_acc/05_acc_auto_37.png": 2200,
+    "05_acc/05_acc_auto_38.png": 2200,
+    "05_acc/05_acc_auto_39.png": 2200,
+    "05_acc/05_acc_auto_40.png": 2200,
+    "05_acc/05_acc_auto_41.png": 2200,
+    "05_acc/05_acc_auto_42.png": 2200,
+    "05_acc/05_acc_auto_43.png": 2200,
+    "05_acc/05_acc_auto_44.png": 2200,
     "06_gear/06_gear_auto_01.png": 2,
     "06_gear/06_gear_auto_02.png": 2200,
     "06_gear/06_gear_auto_03.png": 2200,
@@ -567,7 +719,25 @@
     "06_gear/06_gear_auto_10.png": 2200,
     "06_gear/06_gear_auto_11.png": 2200,
     "06_gear/06_gear_auto_12.png": 2200,
-    "06_gear/06_gear_auto_13.png": 2200
+    "06_gear/06_gear_auto_13.png": 2200,
+    "06_gear/06_gear_auto_14.png": 2200,
+    "06_gear/06_gear_auto_15.png": 2200,
+    "06_gear/06_gear_auto_16.png": 2200,
+    "06_gear/06_gear_auto_17.png": 2200,
+    "06_gear/06_gear_auto_18.png": 2200,
+    "06_gear/06_gear_auto_19.png": 2200,
+    "06_gear/06_gear_auto_20.png": 2200,
+    "06_gear/06_gear_auto_21.png": 2200,
+    "06_gear/06_gear_auto_22.png": 2200,
+    "06_gear/06_gear_auto_23.png": 2200,
+    "06_gear/06_gear_auto_24.png": 2200,
+    "06_gear/06_gear_auto_25.png": 2200,
+    "06_gear/06_gear_auto_26.png": 2200,
+    "06_gear/06_gear_auto_27.png": 2200,
+    "06_gear/06_gear_auto_28.png": 2200,
+    "06_gear/06_gear_auto_29.png": 2200,
+    "06_gear/06_gear_auto_30.png": 2200,
+    "06_gear/06_gear_auto_31.png": 2200
   },
   "_rects": {
     "01_body/01_body_auto_01.png": [
@@ -732,6 +902,72 @@
       542,
       544
     ],
+    "02_hair/02_hair_auto_22.png": [
+      247,
+      40,
+      533,
+      574
+    ],
+    "02_hair/02_hair_auto_24.png": [
+      234,
+      47,
+      559,
+      567
+    ],
+    "02_hair/02_hair_auto_25.png": [
+      234,
+      47,
+      564,
+      520
+    ],
+    "02_hair/02_hair_auto_26.png": [
+      255,
+      48,
+      514,
+      566
+    ],
+    "02_hair/02_hair_auto_27.png": [
+      236,
+      51,
+      555,
+      473
+    ],
+    "02_hair/02_hair_auto_28.png": [
+      243,
+      23,
+      542,
+      398
+    ],
+    "02_hair/02_hair_auto_29.png": [
+      244,
+      24,
+      539,
+      518
+    ],
+    "02_hair/02_hair_auto_30.png": [
+      247,
+      39,
+      530,
+      575
+    ],
+    "02_hair/02_hair_auto_31.png": [
+      263,
+      40,
+      504,
+      574
+    ],
+    "02_hair/02_hair_auto_32.png": [
+      244,
+      35,
+      520,
+      381
+    ],
+    "02_hair/02_hair_auto_33.png": [
+      237,
+      48,
+      560,
+      485
+    ],
     "03_face/03_face_auto_01.png": [
       347,
       270,
@@ -857,6 +1093,24 @@
       274,
       355,
       206
+    ],
+    "03_face/03_face_auto_22.png": [
+      333,
+      242,
+      358,
+      242
+    ],
+    "03_face/03_face_auto_23.png": [
+      332,
+      225,
+      364,
+      264
+    ],
+    "03_face/03_face_auto_24.png": [
+      318,
+      283,
+      388,
+      212
     ],
     "04_look/04_look_auto_01.png": [
       335,
@@ -1009,9 +1263,9 @@
       538
     ],
     "04_look/04_look_auto_30.png": [
-      329,
+      337,
       452,
-      364,
+      356,
       545
     ],
     "04_look/04_look_auto_31.png": [
@@ -1019,6 +1273,90 @@
       450,
       356,
       544
+    ],
+    "04_look/04_look_auto_32_full.png": [
+      160,
+      0,
+      750,
+      1005
+    ],
+    "04_look/04_look_auto_33_full.png": [
+      190,
+      0,
+      665,
+      989
+    ],
+    "04_look/04_look_auto_34_full.png": [
+      183,
+      28,
+      657,
+      968
+    ],
+    "04_look/04_look_auto_35.png": [
+      327,
+      466,
+      374,
+      532
+    ],
+    "04_look/04_look_auto_36.png": [
+      318,
+      483,
+      393,
+      513
+    ],
+    "04_look/04_look_auto_37.png": [
+      367,
+      475,
+      292,
+      514
+    ],
+    "04_look/04_look_auto_38.png": [
+      363,
+      475,
+      303,
+      520
+    ],
+    "04_look/04_look_auto_40.png": [
+      323,
+      475,
+      378,
+      512
+    ],
+    "04_look/04_look_auto_41.png": [
+      363,
+      475,
+      304,
+      514
+    ],
+    "04_look/04_look_auto_44.png": [
+      329,
+      467,
+      364,
+      517
+    ],
+    "04_look/04_look_auto_45.png": [
+      320,
+      466,
+      386,
+      524
+    ],
+    "04_look/04_look_auto_46.png": [
+      333,
+      458,
+      358,
+      524
+    ],
+    "04_look/04_look_auto_47.png": [
+      377,
+      475,
+      278,
+      514
+    ],
+    "04_look/04_look_auto_48.png": [
+      325,
+      460,
+      384,
+      535
     ],
     "05_acc/05_acc_auto_01.png": [
       539,
@@ -1176,6 +1514,84 @@
       243,
       220
     ],
+    "05_acc/05_acc_auto_31.png": [
+      553,
+      73,
+      251,
+      227
+    ],
+    "05_acc/05_acc_auto_32.png": [
+      528,
+      95,
+      272,
+      200
+    ],
+    "05_acc/05_acc_auto_33.png": [
+      278,
+      254,
+      473,
+      210
+    ],
+    "05_acc/05_acc_auto_35.png": [
+      567,
+      90,
+      250,
+      220
+    ],
+    "05_acc/05_acc_auto_36.png": [
+      287,
+      260,
+      455,
+      201
+    ],
+    "05_acc/05_acc_auto_37.png": [
+      518,
+      77,
+      268,
+      200
+    ],
+    "05_acc/05_acc_auto_38.png": [
+      305,
+      280,
+      421,
+      200
+    ],
+    "05_acc/05_acc_auto_39.png": [
+      500,
+      357,
+      200,
+      200
+    ],
+    "05_acc/05_acc_auto_40.png": [
+      555,
+      120,
+      200,
+      200
+    ],
+    "05_acc/05_acc_auto_41.png": [
+      540,
+      72,
+      294,
+      289
+    ],
+    "05_acc/05_acc_auto_42.png": [
+      526,
+      108,
+      293,
+      200
+    ],
+    "05_acc/05_acc_auto_43.png": [
+      256,
+      127,
+      213,
+      200
+    ],
+    "05_acc/05_acc_auto_44.png": [
+      560,
+      92,
+      256,
+      203
+    ],
     "05_acc/05_acc_special_bangjang.png": [
       15,
       379,
@@ -1271,6 +1687,145 @@
       473,
       292,
       337
+    ],
+    "06_gear/06_gear_auto_14.png": [
+      63,
+      247,
+      899,
+      450
+    ],
+    "06_gear/06_gear_auto_15.png": [
+      211,
+      394,
+      605,
+      246
+    ],
+    "06_gear/06_gear_auto_16.png": [
+      52,
+      604,
+      384,
+      375
+    ],
+    "06_gear/06_gear_auto_17.png": [
+      188,
+      45,
+      650,
+      450
+    ],
+    "06_gear/06_gear_auto_18.png": [
+      76,
+      226,
+      871,
+      461
+    ],
+    "06_gear/06_gear_auto_19.png": [
+      60,
+      296,
+      901,
+      407
+    ],
+    "06_gear/06_gear_auto_20.png": [
+      228,
+      46,
+      568,
+      413
+    ],
+    "06_gear/06_gear_auto_21.png": [
+      217,
+      45,
+      592,
+      445
+    ],
+    "06_gear/06_gear_auto_22.png": [
+      87,
+      347,
+      849,
+      331
+    ],
+    "06_gear/06_gear_auto_23.png": [
+      400,
+      485,
+      250,
+      288
+    ],
+    "06_gear/06_gear_auto_24.png": [
+      637,
+      459,
+      287,
+      516
+    ],
+    "06_gear/06_gear_auto_25.png": [
+      380,
+      478,
+      317,
+      340
+    ],
+    "06_gear/06_gear_auto_26.png": [
+      41,
+      213,
+      943,
+      496
+    ],
+    "06_gear/06_gear_auto_27.png": [
+      217,
+      41,
+      590,
+      440
+    ],
+    "06_gear/06_gear_auto_28.png": [
+      657,
+      485,
+      282,
+      495
+    ],
+    "06_gear/06_gear_auto_29.png": [
+      631,
+      693,
+      349,
+      290
+    ],
+    "06_gear/06_gear_auto_30.png": [
+      210,
+      47,
+      606,
+      453
+    ],
+    "06_gear/06_gear_auto_31.png": [
+      39,
+      590,
+      401,
+      367
     ]
-  }
+  },
+  "_gearBack": [
+    "06_gear_auto_04.png",
+    "06_gear_auto_05.png",
+    "06_gear_auto_06.png",
+    "06_gear_auto_07.png",
+    "06_gear_auto_11.png",
+    "06_gear_auto_14.png",
+    "06_gear_auto_15.png",
+    "06_gear_auto_18.png",
+    "06_gear_auto_19.png",
+    "06_gear_auto_22.png",
+    "06_gear_auto_26.png"
+  ],
+  "_gearCostumeOk": [
+    "06_gear_auto_04.png",
+    "06_gear_auto_05.png",
+    "06_gear_auto_06.png",
+    "06_gear_auto_07.png",
+    "06_gear_auto_11.png",
+    "06_gear_auto_14.png",
+    "06_gear_auto_15.png",
+    "06_gear_auto_16.png",
+    "06_gear_auto_18.png",
+    "06_gear_auto_19.png",
+    "06_gear_auto_22.png",
+    "06_gear_auto_24.png",
+    "06_gear_auto_26.png",
+    "06_gear_auto_28.png",
+    "06_gear_auto_29.png",
+    "06_gear_auto_31.png"
+  ]
 }
