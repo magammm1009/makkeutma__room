@@ -2854,6 +2854,20 @@ body.joined #preJoinCard{ display:none; }
     max-width:none !important;
     margin:0 !important;
   }
+
+  /* V179_UI(2026-08-11): 헤더 우측 한 줄 유지용 글자 접기.
+     💌쪽지함이 상단바에서 이 줄로 오면서 필요 폭이 368→489px가 됐고,
+     이 구간(761~920px)에서 헤더가 2줄로 밀렸다. 아이콘은 남기고 글자만 접어 한 줄을 지킨다.
+     ⚠ 760px 이하는 건드리지 않는다 — 거기는 이미 가로 스크롤 한 줄(3121행)로 처리된다.
+     title 속성은 그대로라 마우스를 올리면 무슨 버튼인지 보인다. */
+  .gridHead .right #directInboxBtn .directInboxLabel,
+  .gridHead .right .perfModeBtn .perfLabel{
+    display:none;
+  }
+  .gridHead .right #directInboxBtn,
+  .gridHead .right .perfModeBtn{
+    padding-inline:10px;
+  }
 }
 
 /* 상단 관리자 비번/절약 버튼은 UI에서 제거: 기능 참조 안전을 위해 DOM은 유지 */
@@ -3964,7 +3978,8 @@ body.joined #preJoinCard{ display:none; }
   }
   /* V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. #goMacHelper/#goWinHelper 다운로드 버튼 삭제 */
   body.joined #goChool .btnLabel::before{content:"🔥"; font-size:14px;}
-  body.joined #goSheet .btnLabel::before{content:"📎"; font-size:14px;}
+  /* V179_UI: 📎뽀모도로 삭제, 그 자리에 상단바에서 온 ✨캐꾸✨ — 아이콘 압축 규칙을 형제와 공유한다. */
+  body.joined #charaBinderBtn .btnLabel::before{content:"✨"; font-size:14px;}
 
   /* 채팅은 sidebar/flex/grid 높이 계산에서 분리한다.
      대시보드의 실제 하단 좌표는 V107 스크립트가 --mk-mobile-chat-top에 넣는다. */
@@ -5702,16 +5717,15 @@ body.joined #preJoinCard{ display:none; }
 <button class="ghost" disabled="" id="btnTimerReset" title="오늘 작업 타이머 초기화">⏱️ 초기화</button>
 </div>
 </div>
-<!-- V172_UI: 상단 가운데는 손캠·손캠보기·작업중·쪽지함·내프로필 5개만 노출.
+<!-- V172_UI: 상단 가운데는 손캠·손캠보기·작업중·내프로필만 노출.
      동기화 pill과 앱설치는 요소·id·바인딩을 유지한 채 legacyHide로 화면에서만 뺀다.
-     접속 인원(#onlineBtn)은 대시보드 헤더로 이사했다(아래 .dashHeadRight). -->
+     접속 인원(#onlineBtn)은 대시보드 헤더로 이사했다(아래 .dashHeadRight).
+     V179_UI(2026-08-11): 💌쪽지함은 타일 위 헤더(.gridHead .right)로, ✨캐꾸✨는 대시보드
+     바로가기(#dashShortcuts)로 이사했다 — 요소·id·바인딩은 그대로 두고 자리만 옮겼다. -->
 <div class="topPills legacyHide">
 <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
 </div>
-<button class="ghost" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button class="ghost" id="profileBtn">🪪 내 프로필</button>
-<!-- V176_BINDER: 캐릭터 도감(포토카드 바인더). 페이지 로드 때는 아무것도 읽지 않고, 모달을 열 때만 동작한다. -->
-<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button">✨<span class="charaBinderLabel">캐꾸✨</span></button>
 <button class="ghost legacyHide" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
 <div class="actions">
@@ -5746,9 +5760,16 @@ body.joined #preJoinCard{ display:none; }
 <button aria-label="업데이트 안내" class="ghost layoutToggle legacyHide" id="updateBtn" title="업데이트 안내" type="button">💖Update</button>
 <button aria-label="브라우저 강력 새로고침" class="ghost layoutToggle" id="hardRefreshBtn" title="현재 방을 안전하게 다시 불러옵니다(기록 삭제 없음)" type="button">🔄새로고침</button>
 <button aria-label="가이드 보기" class="ghost layoutToggle legacyHide" id="guideBtn" title="가이드 보기" type="button">👩‍❤️‍👩가이드</button>
+<!-- V179_UI: 상단바 .topCenter에서 옮겨 온 쪽지함 — 보이는 순서로 🔄새로고침과 🍃경량 사이.
+     (#guideBtn은 legacyHide라 화면에 없다.) id·뱃지 span·클릭 바인딩은 그대로, 형제 버튼과
+     같은 크기가 되도록 layoutToggle 클래스만 더했다. -->
+<button class="ghost layoutToggle" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <!-- V172_UI: 상단바 .actions에서 옮겨 온 성능 모드 버튼 — 새로고침 옆, 보기 앞 -->
-<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃 경량</button>
-<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶 저사양</button>
+<!-- V179_UI(2026-08-11): 글자를 <span class="perfLabel">로 감쌌다.
+     쪽지함이 헤더로 오면서 761~920px 구간에서 헤더가 2줄로 밀렸는데, 그 구간에서만
+     글자를 접어 한 줄을 유지하기 위해서다(아이콘은 남긴다). 표시 문구는 그대로. -->
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃<span class="perfLabel"> 경량</span></button>
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶<span class="perfLabel"> 저사양</span></button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
 <!-- 보기/정렬 메뉴 -->
 <div aria-label="보기/정렬 메뉴" class="viewMenu hidden" id="viewMenu" role="menu">
@@ -5827,8 +5848,11 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <div class="btnRow" id="dashShortcuts">
 <!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 Mac/Win 헬퍼 다운로드 바로가기 삭제. -->
+<!-- V179_UI(2026-08-11): 상단바에서 옮겨 온 ✨캐꾸✨(V176_BINDER 캐릭터 도감). id·클릭 바인딩은 그대로 두고,
+     라벨만 형제 버튼과 같은 <span class="btnLabel"> 구조로 맞췄다(모바일 아이콘 압축 바 규칙을 함께 타야 하므로).
+     📎뽀모도로는 먼슬리가 공용 뽀모 앱 안으로 들어가면서 삭제 — 시트 주소(d.sheetUrl) 설정값은 남겨 둔다. -->
+<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">✨캐꾸✨</span></button>
 <button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근도장</span></button>
-<button class="ghost" id="goSheet" title="뽀모 시트"><span class="btnLabel">📎뽀모도로</span></button>
 <button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
 </div>
 </div>
@@ -7593,7 +7617,7 @@ const auth = getAuth(app);
       statusRosterList: $("statusRosterList"),
       goSuda: $("goSuda"),
       goChool: $("goChool"),
-      goSheet: $("goSheet"),
+      // V179_UI: 📎뽀모도로(#goSheet) 버튼 삭제 — 먼슬리가 공용 뽀모 앱 안으로 들어감. 매핑도 함께 정리.
       goHomework: $("goHomework"),
       // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. goMacHelper/goWinHelper 매핑 삭제.
 
@@ -11066,10 +11090,10 @@ function setControlsEnabled(joined){
       els.chatInput.disabled = !joined;
       els.sendBtn.disabled = !joined;
 
-      // ✅ 대시보드 바로가기(출근부/시트): 입장 후에만 클릭 가능
+      // ✅ 대시보드 바로가기(출근부/숙제장): 입장 후에만 클릭 가능
       // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. goMacHelper/goWinHelper 처리 삭제.
+      // V179_UI: 📎뽀모도로(#goSheet) 삭제 — 처리도 함께 정리. 캐꾸는 위 V176_BINDER 줄에서 계속 담당한다.
       if(els.goChool) els.goChool.disabled = !joined;
-      if(els.goSheet) els.goSheet.disabled = !joined;
       if(els.goHomework) els.goHomework.disabled = !joined;
 
       // lamp
@@ -13191,7 +13215,7 @@ async function transitionTo(nextStatus, source="manual"){
     }
     // ✅ 출근부 버튼: 공지 팝업을 열어 공지 확인 + 출석하러 가기
     if(els.goChool) els.goChool.onclick = ()=>{ try{ openAttendModal(true); }catch(e){} };
-    if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
+    // V179_UI: 📎뽀모도로(#goSheet) 버튼 삭제 — 핸들러도 함께 정리. 설정값 d.sheetUrl(#sheetUrl 입력칸)은 그대로 둔다.
     // ✅ V182_HOMEWORK_MODAL: 숙제장은 새 탭 대신 같은 오리진(./homework/) 모달로 연다.
     //    클릭 처리는 아래 MKM_HOMEWORK_MODAL_V1 이 addEventListener로 직접 붙이므로 여기선 안 건다.
     //    설정값 homeworkUrl 은 남겨 두지만(다른 곳에서 참조) 모달은 쓰지 않으므로,
@@ -27269,8 +27293,12 @@ if(!window.__MK_BOOT_OK__){
    모바일에서 아예 사라집니다. 부모가 display:none이면 자식은 CSS로 되살릴 수
    없으므로, 폭에 따라 버튼의 부모를 바꿔 줍니다.
      - 데스크톱: 대시보드 헤더의 접기 버튼 앞 (사용자가 요청한 위치)
-     - 모바일  : 원래 자리였던 상단바 .topCenter (쪽지함 앞)
-   요소를 옮기기만 하므로 id·이벤트 바인딩·카운트 갱신은 그대로 유지됩니다. */
+     - 모바일  : 원래 자리였던 상단바 .topCenter
+   요소를 옮기기만 하므로 id·이벤트 바인딩·카운트 갱신은 그대로 유지됩니다.
+   V179_UI(2026-08-11): 기준으로 삼던 💌쪽지함이 .gridHead로 이사해서 insertBefore 기준을 없애고
+   그냥 .topCenter 끝에 붙입니다. ≤760px에서는 .topCenter가 display:contents라 이 버튼도 .topbar
+   그리드 아이템이 되고, 위치는 CSS(body.joined #onlineBtn{grid-column:2; grid-row:1})가 못 박으므로
+   DOM 순서는 화면 위치에 영향을 주지 않습니다. */
 (function(){
   try{
     var mq = window.matchMedia('(max-width: 760px)');
@@ -27279,11 +27307,7 @@ if(!window.__MK_BOOT_OK__){
       if(!btn) return;
       if(mq.matches){
         var top = document.querySelector('.topCenter');
-        var before = document.getElementById('directInboxBtn');
-        if(top && btn.parentElement !== top){
-          if(before && before.parentElement === top) top.insertBefore(btn, before);
-          else top.appendChild(btn);
-        }
+        if(top && btn.parentElement !== top) top.appendChild(btn);
       }else{
         var head = document.querySelector('.dashHeadRight');
         var fold = document.getElementById('dashFoldBtn');
@@ -30975,24 +30999,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   @media (prefers-reduced-motion:reduce){ .binderArt img{ transition:none; } }
 
-  /* 상단바(모바일 ≤760px): .topCenter가 display:contents라 이 버튼도 .topbar 그리드의 아이템이 된다.
-     자동 배치에 맡기면 줄이 하나 더 생기므로, 실제로 비어 있는 칸(2행 3열 = ⚙️ 아래, 💌 왼쪽)에 앉힌다.
-     좁은 화면에서는 💌쪽지함이 라벨을 숨기는 것과 같은 방식으로 글자를 접고 아이콘만 남긴다.
-     761~1100px는 상단바가 flex라 그리드 규칙이 필요 없다 — 형제 버튼과 같은 크기로 흘러간다. */
-  @media (max-width:760px){
-    body.joined #charaBinderBtn{
-      grid-column:3 !important; grid-row:2 !important;
-      justify-self:stretch !important; align-self:center !important;
-      width:100% !important; min-width:0 !important;
-      height:40px !important; min-height:40px !important;
-      padding:0 !important; font-size:15px !important; line-height:1 !important;
-      white-space:nowrap !important; overflow:hidden !important;
-    }
-    body.joined #charaBinderBtn .charaBinderLabel{ display:none; }
-  }
-  @media (max-width:420px){
-    body.joined #charaBinderBtn{ height:37px !important; min-height:37px !important; font-size:14px !important; }
-  }
+  /* V179_UI(2026-08-11): 캐꾸 버튼이 상단바에서 대시보드 바로가기(#dashShortcuts)로 이사하면서
+     여기 있던 상단바 전용 배치 규칙(≤760px 그리드 칸 고정 + .charaBinderLabel 접기)은 삭제했다.
+     이제 크기·간격·모바일 아이콘 압축은 형제 바로가기(🔥출근도장·📚숙제장)와 같은 규칙을 탄다. */
 </style>
 
 <div aria-hidden="true" class="modalOverlay" id="charaBinderModal">
