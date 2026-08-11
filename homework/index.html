@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#d9657d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="숙제장" />
+  <meta name="description" content="작가의 오늘의 숙제와 칭찬 도장을 모으는 PWA" />
+  <!-- 2026-08-11: manifest 링크를 뺐습니다. 작업방(/makkeutma__room/) PWA와 같은
+       오리진이라 매니페스트가 둘이면 설치 대상이 경합합니다. 서비스워커 등록도 함께 제거. -->
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>숙제장</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" id="brandHome" type="button" aria-label="숙제장 처음으로">
+        <span class="brand-mark">🌱</span>
+        <span>
+          <strong>숙제장</strong>
+          
+        </span>
+      </button>
+      <div class="top-actions" id="topActions"></div>
+    </header>
+
+    <main>
+      <section class="screen active" id="loadingScreen">
+        <div class="loading-card card">
+          <div class="loader-seed">🌱</div>
+          <h1>숙제장을 준비하고 있어요</h1>
+          
+        </div>
+      </section>
+
+      <section class="screen" id="loginScreen">
+        <div class="login-wrap">
+          <article class="login-card card">
+            <div class="login-seed">🌷</div>
+            <h1>오늘의 숙제를 꺼내 볼까요?</h1>
+            
+            <form id="nicknameForm" class="login-form">
+              <label for="nicknameInput">작가 닉네임</label>
+              <input id="nicknameInput" maxlength="20" autocomplete="nickname" placeholder="예: 다온" required />
+
+              <div class="login-emoji-field">
+                <label for="emojiInput">내 이모지 <span>(선택)</span></label>
+                <div class="emoji-input-row">
+                  <span class="emoji-preview" id="emojiPreview" aria-hidden="true">🌷</span>
+                  <input id="emojiInput" maxlength="16" autocomplete="off" inputmode="text" placeholder="이모지 복사·붙여넣기 가능" aria-describedby="emojiHelp" />
+                </div>
+                <div class="emoji-preset-grid" id="emojiPresetGrid" aria-label="추천 이모지 선택"></div>
+                <span class="emoji-help" id="emojiHelp">목록에서 고르거나 원하는 이모지를 붙여넣어 주세요.</span>
+              </div>
+
+              <button type="submit" class="primary-btn">숙제장 들어가기 ✦</button>
+            </form>
+            
+            <div class="manager-entry">
+              <div>
+                <strong>관리자이신가요?</strong>
+                
+              </div>
+              <button id="openAdminLogin" type="button" class="soft-btn">관리자 관리함</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" id="writerScreen">
+        <article class="card king-card writer-king-card writer-king-top">
+          <div class="king-card-head">
+            <div class="king-title-block">
+              <h2>지난달의 숙제왕</h2>
+              <span class="king-period" id="writerKingMonth">지난달 정산</span>
+            </div>
+            <span class="king-crown">👑</span>
+          </div>
+          <div class="king-winner" id="writerKingCard">정산 전</div>
+        </article>
+
+        <div class="welcome">
+          <div>
+            <h1>안녕하세요, <b id="writerName">작가</b> 작가님 <span id="writerEmoji">🌷</span></h1>
+            
+          </div>
+          <span class="progress-mini" id="streakText">🌱 내 숙제장</span>
+        </div>
+
+        <article class="card writer-stamp-total-card">
+          <div class="writer-stamp-total-head">
+            <h2>이번 달 칭찬 도장</h2>
+            <span aria-hidden="true">🌸</span>
+          </div>
+          <div class="writer-stamp-total-body">
+            <strong id="writerStampMonth">0 / 20개</strong>
+            <span id="writerStampTotal">내가 모은 도장 총 0개</span>
+          </div>
+          <div class="writer-stamp-progress" aria-label="이번 달 칭찬 도장 진행률">
+            <span id="writerStampProgress"></span>
+          </div>
+        </article>
+
+        <div class="writer-layout">
+          <div class="writer-main">
+            <article class="card today-card">
+              
+              <h2>HOMEWORK</h2>
+              
+              <div class="task-list" id="taskList"></div>
+              <div class="today-bottom">
+                
+                <button id="openSubmit" type="button" class="primary-btn">숙제 인증하기 ✦</button>
+              </div>
+            </article>
+          </div>
+
+          <aside class="side-stack">
+            <article class="card stamp-card schedule-calendar-card">
+              <div class="monthly-stamp-head">
+                <h2>칭찬 달력</h2>
+                <div class="calendar-head-actions">
+                  <div class="calendar-nav" aria-label="달력 월 이동">
+                    <button id="prevCalendarMonth" type="button" class="calendar-nav-btn" aria-label="이전 달">‹</button>
+                    <span class="month-badge" id="monthBadge"></span>
+                    <button id="nextCalendarMonth" type="button" class="calendar-nav-btn" aria-label="다음 달">›</button>
+                  </div>
+                  <button id="openSchedule" type="button" class="calendar-add-btn">＋ 일정</button>
+                </div>
+              </div>
+              <div class="schedule-dday" id="scheduleDday" aria-live="polite"></div>
+              <p class="calendar-note"><span id="stampSummary">0 / 20개</span></p>
+              <div class="calendar-shell">
+                <div class="calendar-weekdays" aria-hidden="true">
+                  <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                </div>
+                <div class="calendar-grid" id="stampBoard" aria-label="칭찬 도장과 개인 일정 달력"></div>
+              </div>
+              <div class="schedule-list-head">
+                <strong id="scheduleListTitle">이번 달 일정</strong>
+                <span id="scheduleCount">0개</span>
+              </div>
+              <div class="schedule-list" id="scheduleList"></div>
+            </article>
+
+            <article class="card record-card">
+              <div class="section-head">
+                <h2>내가 남긴 완료 기록</h2>
+                <span id="historyCount">최근 0개</span>
+              </div>
+              <div class="history" id="historyList"></div>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section class="screen" id="adminScreen">
+        <div class="admin-head">
+          <div>
+            <h1>관리자 칭찬 관리함 🪄</h1>
+            
+          </div>
+          <div class="admin-head-actions">
+            <span class="admin-state" id="adminState">관리자 인증됨</span>
+            <button id="openDailyHomework" type="button" class="soft-btn">매일 숙제 설정</button>
+            <button id="openAssignment" type="button" class="primary-btn">새 숙제 내기 ＋</button>
+          </div>
+        </div>
+
+        <div class="admin-grid">
+          <article class="card submission-card">
+            <div class="submission-top">
+              <h2>확인할 인증</h2>
+              <span class="badge" id="pendingBadge">미확인 0건</span>
+            </div>
+            <div class="submission-list" id="submissionList"></div>
+          </article>
+
+          <aside class="admin-side">
+            <article class="card king-card admin-king-card">
+              <div class="king-card-head">
+                <div class="king-title-block">
+                  <h2>지난달의 숙제왕</h2>
+                  <span class="king-period" id="adminKingMonth">지난달 정산</span>
+                </div>
+                <span class="king-crown">👑</span>
+              </div>
+              <div class="king-admin-status" id="adminKingStatus">정산 전</div>
+              <div class="king-top-three admin-king-top-three" id="adminKingTop3"></div>
+              <select id="monthlyKingSelect" class="king-select" aria-label="지난달 숙제왕 작가님 선택"></select>
+              <div class="king-actions">
+                <button id="saveMonthlyKing" type="button" class="primary-btn">왕관 씌우기</button>
+                <button id="clearMonthlyKing" type="button" class="soft-btn">선정 취소</button>
+              </div>
+            </article>
+
+            <article class="card daily-homework-card">
+              <div class="daily-homework-head">
+                <h2>매일 자동 숙제</h2>
+                <span>🔁</span>
+              </div>
+              <div class="daily-homework-status" id="dailyHomeworkStatus">설정 안 함</div>
+              <button id="openDailyHomeworkFromCard" type="button" class="soft-btn daily-homework-edit">설정하기</button>
+            </article>
+
+            <article class="card quick-card">
+              <h2>이번 달 작은 성장</h2>
+              <div class="quick-list">
+                <div class="quick-row"><span>이번 달 완료한 작가님</span><b id="completedWriters">0명</b></div>
+                <div class="quick-row"><span>이번 달 칭찬 도장</span><b id="monthlyStamps">0개</b></div>
+                <div class="quick-row"><span>가장 많이 나온 숙제</span><b id="popularTask">오늘의 숙제</b></div>
+              </div>
+              
+            </article>
+
+            <article class="card monthly-report-card">
+              <div class="monthly-report-head">
+                <h2>월별 숙제 현황</h2>
+                <div class="report-month-nav" aria-label="월별 숙제 현황 월 이동">
+                  <button id="prevAdminReportMonth" type="button" class="report-nav-btn" aria-label="이전 달">‹</button>
+                  <span id="adminReportMonth" class="report-month-label"></span>
+                  <button id="nextAdminReportMonth" type="button" class="report-nav-btn" aria-label="다음 달">›</button>
+                </div>
+              </div>
+              <div class="monthly-report-summary" id="monthlyReportSummary"></div>
+              <div class="monthly-report-list" id="monthlyReportList"></div>
+            </article>
+
+            <article class="card quick-card">
+              <h2>지금 배정된 숙제</h2>
+              <div class="assignment-list" id="assignmentList"></div>
+            </article>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="submitModal" role="dialog" aria-modal="true" aria-labelledby="submitTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="submitTitle">숙제 인증하기 🌱</h2>
+          
+        </div>
+        <button type="button" class="close" data-close="submitModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="submitTask">어떤 숙제를 했나요?</label>
+        <select id="submitTask"></select>
+      </div>
+      <div class="field">
+        <label for="submitText">오늘의 완료 기록</label>
+        <textarea id="submitText" placeholder="예: 628자 썼어요. 주인공이 처음 거짓말하는 장면까지 밀고 갔습니다!" required></textarea>
+      </div>
+      <div class="field">
+        <label for="proofFile">인증 사진 <span>(선택 · 자동으로 용량을 줄여 저장해요)</span></label>
+        <div class="upload-box">
+          <input id="proofFile" type="file" accept="image/*" />
+          <img id="proofPreview" class="preview" alt="인증 사진 미리보기" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="blockerText">막힌 곳이 있다면 한 줄만 <span>(선택)</span></label>
+        <input id="blockerText" maxlength="160" placeholder="예: 다음 장면의 갈등을 어떻게 밀어야 할지 고민돼요." />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="soft-btn" data-close="submitModal">나중에 할래요</button>
+        <button id="submitHomework" type="button" class="primary-btn">인증 남기기 ✦</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="selfTaskModal" role="dialog" aria-modal="true" aria-labelledby="selfTaskTitleLabel">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="selfTaskTitleLabel">내가 정하는 오늘의 숙제 ✍️</h2>
+          
+        </div>
+        <button type="button" class="close" data-close="selfTaskModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="selfTaskInput">오늘 내가 해볼 숙제</label>
+        <input id="selfTaskInput" maxlength="120" placeholder="예: 3화 첫 장면의 대사를 10줄만 써 보기" />
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" class="soft-btn" data-close="selfTaskModal">취소</button>
+        <button id="saveSelfTask" type="button" class="primary-btn">내 숙제로 정하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="scheduleModal" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
+    <div class="modal schedule-modal">
+      <div class="modal-head">
+        <div><h2 id="scheduleModalTitle">일정 등록</h2></div>
+        <button type="button" class="close" data-close="scheduleModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="scheduleDate">날짜</label>
+        <input id="scheduleDate" type="date" required />
+      </div>
+      <div class="field">
+        <label for="scheduleTitle">일정</label>
+        <input id="scheduleTitle" maxlength="80" placeholder="예: 공모전 원고 마감" required />
+      </div>
+      <div class="field">
+        <label>색상</label>
+        <div class="schedule-colors" id="scheduleColors" role="group" aria-label="일정 색상 선택">
+          <button type="button" class="schedule-color coral selected" data-schedule-color="coral" aria-label="코랄"></button>
+          <button type="button" class="schedule-color peach" data-schedule-color="peach" aria-label="피치"></button>
+          <button type="button" class="schedule-color mint" data-schedule-color="mint" aria-label="민트"></button>
+          <button type="button" class="schedule-color sky" data-schedule-color="sky" aria-label="하늘"></button>
+          <button type="button" class="schedule-color lavender" data-schedule-color="lavender" aria-label="라벤더"></button>
+          <button type="button" class="schedule-color lemon" data-schedule-color="lemon" aria-label="레몬"></button>
+        </div>
+      </div>
+      <label class="schedule-complete-field">
+        <input id="scheduleCompleted" type="checkbox" />
+        <span>이 일정 완료했어요</span>
+      </label>
+      <div class="modal-actions split-actions">
+        <button id="deleteSchedule" type="button" class="danger-btn schedule-delete-btn">삭제</button>
+        <div class="schedule-save-actions">
+          <button type="button" class="soft-btn" data-close="scheduleModal">취소</button>
+          <button id="saveSchedule" type="button" class="primary-btn">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="adminAuthModal" role="dialog" aria-modal="true" aria-labelledby="adminAuthTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="adminAuthTitle">관리자 로그인 🔐</h2>
+          
+        </div>
+        <button type="button" class="close" data-close="adminAuthModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="adminEmail">관리자 이메일</label>
+        <input id="adminEmail" type="email" autocomplete="email" placeholder="관리자 이메일" />
+      </div>
+      <div class="field">
+        <label for="adminPassword">비밀번호</label>
+        <input id="adminPassword" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상" />
+      </div>
+      
+      <div class="modal-actions split-actions">
+        <button id="createAdmin" type="button" class="soft-btn">최초 계정 만들기</button>
+        <button id="signInAdmin" type="button" class="primary-btn">관리자 로그인</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="dailyHomeworkModal" role="dialog" aria-modal="true" aria-labelledby="dailyHomeworkTitleLabel">
+    <div class="modal daily-homework-modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="dailyHomeworkTitleLabel">매일 자동 숙제 설정 🔁</h2>
+        </div>
+        <button type="button" class="close" data-close="dailyHomeworkModal" aria-label="닫기">×</button>
+      </div>
+      <div class="daily-homework-fields">
+        <div class="field">
+          <label for="dailyHomeworkTask1">매일 숙제 1 <span>(필수 · 최대 3개)</span></label>
+          <input id="dailyHomeworkTask1" maxlength="120" placeholder="예: 원고 30분 열어 보기" />
+        </div>
+        <div class="field">
+          <label for="dailyHomeworkTask2">매일 숙제 2 <span>(선택)</span></label>
+          <input id="dailyHomeworkTask2" maxlength="120" placeholder="예: 오늘 쓴 문장 하나 마음에 드는 이유 적기" />
+        </div>
+        <div class="field">
+          <label for="dailyHomeworkTask3">매일 숙제 3 <span>(선택)</span></label>
+          <input id="dailyHomeworkTask3" maxlength="120" placeholder="예: 내일 쓸 장면 한 줄 메모하기" />
+        </div>
+      </div>
+      <label class="daily-homework-toggle">
+        <input id="dailyHomeworkActive" type="checkbox" checked />
+        <span class="daily-homework-switch" aria-hidden="true"></span>
+        <span>작가님 숙제장에 매일 자동으로 표시</span>
+      </label>
+      <div class="modal-actions split-actions">
+        <button id="clearDailyHomework" type="button" class="danger-btn">설정 해제</button>
+        <div class="daily-homework-modal-actions">
+          <button type="button" class="soft-btn" data-close="dailyHomeworkModal">취소</button>
+          <button id="saveDailyHomework" type="button" class="primary-btn">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="assignmentModal" role="dialog" aria-modal="true" aria-labelledby="assignmentTitleLabel">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="assignmentTitleLabel">새 숙제 내기 📝</h2>
+          
+        </div>
+        <button type="button" class="close" data-close="assignmentModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field assignment-target-field">
+        <label>숙제 대상</label>
+        <div class="assignment-target-grid" id="assignmentTargetButtons" aria-label="숙제 대상 작가님 선택"></div>
+      </div>
+      <div class="field">
+        <label for="assignmentTask">숙제 내용</label>
+        <input id="assignmentTask" maxlength="120" placeholder="예: 주인공이 처음 거짓말하는 장면 500자 쓰기" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="soft-btn" data-close="assignmentModal">취소</button>
+        <button id="saveAssignment" type="button" class="primary-btn">숙제 배정하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="stampModal" role="dialog" aria-modal="true" aria-labelledby="stampTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="stampTitle">칭찬 도장 찍기</h2>
+          <p id="stampTaskText"></p>
+        </div>
+        <button type="button" class="close" data-close="stampModal" aria-label="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="stampType">칭찬 도장</label>
+        <select id="stampType">
+          <option value="참잘했어요">참잘했어요</option>
+          <option value="해냈어요">해냈어요</option>
+          <option value="꾸준해요">꾸준해요</option>
+          <option value="아주잘했어요">아주잘했어요</option>
+          <option value="오늘도충분해요">오늘도충분해요</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="feedbackText">짧은 답장 <span>(선택)</span></label>
+        <textarea id="feedbackText" placeholder="예: 시작 장면을 끝까지 붙들고 간 게 특히 좋았어요."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="soft-btn" data-close="stampModal">취소</button>
+        <button id="saveStamp" type="button" class="primary-btn">도장 찍기 ✦</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop proof-backdrop" id="proofModal" role="dialog" aria-modal="true" aria-labelledby="proofTitle">
+    <div class="modal proof-modal">
+      <div class="modal-head">
+        <div><h2 id="proofTitle">인증 사진</h2><p id="proofCaption"></p></div>
+        <button type="button" class="close" data-close="proofModal" aria-label="닫기">×</button>
+      </div>
+      <div class="proof-frame"><img id="proofImage" alt="숙제 인증 사진" /></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -5602,6 +5602,44 @@ body.joined #preJoinCard{ display:none; }
   }
   @media (prefers-reduced-motion:reduce){.worldTreeGauge > i{transition:none;}.worldTreePodium li,.worldTreeRosterList li{transition:none;}.worldTreeSparkles i,.worldTreeButterfly,.worldTreeButterfly::before,.worldTreeButterfly::after,.worldTreeCompletionAura{animation:none!important;}}
 </style>
+<!-- ✅ V182_HOMEWORK_MODAL: 📚숙제장 모달 전용 스타일 (hw 네임스페이스만 사용, 기존 룰은 건드리지 않음)
+     프레임(오버레이/카드/헤더)만 작업방 톤이고, 카드 안 iframe은 숙제장 자체 색(종이 톤)이 그대로 보인다. -->
+<style id="homeworkModalStyle">
+  #homeworkOverlay{
+    position:fixed; inset:0; z-index:10200; display:none; align-items:center; justify-content:center;
+    padding:14px; background:rgba(0,0,0,.72);
+  }
+  #homeworkOverlay.on{ display:flex; }
+  #homeworkOverlay .hwCard{
+    /* 숙제장은 세로로 긴 앱이라 폭보다 높이를 넉넉히 준다 */
+    width:min(760px,96vw); height:min(90vh,980px); height:min(90dvh,980px);
+    background:#000; border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #homeworkOverlay .hwHead{
+    display:flex; align-items:center; gap:8px; flex:0 0 auto;
+    padding:12px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  #homeworkOverlay .hwTitle{
+    font-size:15px; font-weight:900; letter-spacing:-.3px; color:var(--pink2);
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #homeworkOverlay .hwCloseBtn{
+    margin-left:auto; flex:0 0 auto; width:30px; height:30px; padding:0; min-width:0;
+    border:1px solid var(--line); border-radius:10px;
+    background:rgba(255,119,184,.14); color:var(--pink2);
+    font-size:14px; font-weight:900; line-height:1;
+  }
+  #homeworkOverlay .hwCloseBtn:hover{ background:rgba(255,119,184,.26); color:#fff; }
+  #homeworkOverlay .hwBody{ flex:1 1 auto; min-height:0; }
+  #homeworkOverlay #homeworkFrame{ display:block; width:100%; height:100%; border:0; background:#000; }
+  /* 모바일: 거의 전체화면 */
+  @media (max-width:619px){
+    #homeworkOverlay{ padding:0; }
+    #homeworkOverlay .hwCard{ width:100%; height:100%; max-width:none; border-radius:0; border:none; }
+  }
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -6507,6 +6545,19 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <!-- FX layer for fireworks -->
 <div aria-hidden="true" id="fxLayer"></div>
+<!-- ✅ V182_HOMEWORK_MODAL: 숙제장은 같은 오리진(./homework/)이라 iframe으로 그대로 띄운다 -->
+<div aria-hidden="true" id="homeworkOverlay">
+<div aria-label="숙제장" aria-modal="true" class="hwCard" role="dialog">
+<div class="hwHead">
+<span class="hwTitle">📚 숙제장</span>
+<button class="hwCloseBtn" id="homeworkClose" title="닫기" type="button">✕</button>
+</div>
+<div class="hwBody">
+<!-- src는 열 때 JS에서 넣고, 닫을 때 about:blank로 비운다(숙제장 Firestore 구독 정리) -->
+<iframe id="homeworkFrame" title="숙제장"></iframe>
+</div>
+</div>
+</div>
 <script type="module">
     // BOOT FLAG (module ok)
     window.__MK_BOOT_OK__ = true;
@@ -12950,10 +13001,11 @@ async function transitionTo(nextStatus, source="manual"){
     // ✅ 출근부 버튼: 공지 팝업을 열어 공지 확인 + 출석하러 가기
     if(els.goChool) els.goChool.onclick = ()=>{ try{ openAttendModal(true); }catch(e){} };
     if(els.goSheet) els.goSheet.onclick = ()=>openUrlJoined(d.sheetUrl);
-    if(els.goHomework){
-      els.goHomework.disabled = !d.homeworkUrl;
-      els.goHomework.onclick = d.homeworkUrl ? ()=>openUrlJoined(d.homeworkUrl) : null;
-    }
+    // ✅ V182_HOMEWORK_MODAL: 숙제장은 새 탭 대신 같은 오리진(./homework/) 모달로 연다.
+    //    클릭 처리는 아래 MKM_HOMEWORK_MODAL_V1 이 addEventListener로 직접 붙이므로 여기선 안 건다.
+    //    설정값 homeworkUrl 은 남겨 두지만(다른 곳에서 참조) 모달은 쓰지 않으므로,
+    //    버튼 활성 여부는 출근부/시트와 같은 기준(입장 여부)만 본다.
+    if(els.goHomework) els.goHomework.disabled = !state.joined;
     // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. Mac/Win 헬퍼 다운로드 버튼 핸들러 삭제.
 
     if(els.pomoUrl) els.pomoUrl.value = d.pomoUrl || "";
@@ -19316,6 +19368,87 @@ function maybeAutoOpenAttendModal(){
     openAttendModal(false);
   }catch(e){}
 }
+
+/* ✅ V182_HOMEWORK_MODAL — 📚숙제장을 새 탭이 아니라 모달(iframe)로 연다.
+   - 숙제장은 magammm1009.github.io/makkeutma__room/homework/ 로 배포된다. 작업방과 같은 오리진이라
+     iframe 제약이 없다. 그래서 대시보드 설정 homeworkUrl(외부 주소)을 쓰지 않고 ./homework/ 를 직접 연다.
+     설정값 자체는 다른 곳에서 참조할 수 있어 그대로 둔다.
+   - ⚠ 닫을 때 iframe.src를 about:blank로 반드시 비운다 —
+     숙제장은 Firestore를 구독하므로 살려두면 닫아도 계속 읽는다.
+   - Escape는 이 모달 자체의 open 플래그로만 판단해 다른 모달(뽀모/수다/챌린지/프로필)과 간섭하지 않는다.
+   - 구조는 뽀모 먼슬리(POMO_MONTHLY_MODAL_V1)와 같다. */
+(function MKM_HOMEWORK_MODAL_V1(){
+  'use strict';
+
+  const HOMEWORK_URL = './homework/';
+  let hwOpen = false;
+
+  function byId(id){ return document.getElementById(id); }
+
+  function openHomework(){
+    if(!state.joined){ try{ showToast("입장하고 열어줘! 💗"); }catch(e){} return; }
+    const ov = byId('homeworkOverlay');
+    const fr = byId('homeworkFrame');
+    if(!ov || !fr) return;
+    hwOpen = true;
+    ov.classList.add('on');
+    ov.setAttribute('aria-hidden', 'false');
+    fr.src = HOMEWORK_URL;   // 열 때 그제야 로드
+  }
+
+  function closeHomework(){
+    const ov = byId('homeworkOverlay');
+    const fr = byId('homeworkFrame');
+    if(!ov) return;
+    hwOpen = false;
+    try{ const a = document.activeElement; if(a && ov.contains(a) && a.blur) a.blur(); }catch(e){}
+    ov.classList.remove('on');
+    ov.setAttribute('aria-hidden', 'true');
+    if(fr) fr.src = 'about:blank';   // 구독 정리(숙제장 Firestore 읽기 절약)
+  }
+
+  /* 숙제장에 넘길 신원. 닉네임이 비면 null → 응답을 보내지 않고 숙제장 자체 입력 화면에 맡긴다. */
+  function identityPayload(){
+    let nickname = "";
+    try{ nickname = String(state.nickname || els.name?.value || "").trim(); }catch(e){}
+    if(!nickname) return null;
+    let emoji = "";
+    try{
+      const me = state.currentParticipants?.get?.(state.uid);
+      emoji = String(me?.theme?.emoji || els.emoji?.value || "").trim().slice(0,4);
+    }catch(e){}
+    return { type:'MKM_HW_IDENTITY', v:1, nickname: nickname.slice(0,40), emoji: emoji };
+  }
+
+  /* 숙제장(iframe)이 로드되면 { type:'MKM_HW_READY', v:1 } 을 보낸다 → 신원으로 답한다. */
+  function onHomeworkMessage(ev){
+    if(!hwOpen) return;                                  // 모달이 열려 있을 때만 반응
+    if(ev.origin !== location.origin) return;            // 다른 오리진은 즉시 무시
+    const fr = byId('homeworkFrame');
+    if(!fr || !fr.contentWindow || ev.source !== fr.contentWindow) return;   // 우리 iframe이 맞는지
+    const data = ev.data;
+    if(!data || data.type !== 'MKM_HW_READY') return;
+    const payload = identityPayload();
+    if(!payload) return;
+    try{ fr.contentWindow.postMessage(payload, location.origin); }catch(e){}
+  }
+
+  const btn = byId('goHomework');
+  if(btn) btn.addEventListener('click', openHomework);
+  const closeBtn = byId('homeworkClose');
+  if(closeBtn) closeBtn.addEventListener('click', closeHomework);
+  const ovEl = byId('homeworkOverlay');
+  if(ovEl) ovEl.addEventListener('click', (e)=>{ if(e.target === ovEl) closeHomework(); });   // 배경 클릭
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && hwOpen) closeHomework(); });
+  window.addEventListener('message', onHomeworkMessage);
+
+  /* 검증 훅 */
+  window.__MK_HOMEWORK_MODAL_V1__ = {
+    open: openHomework,
+    close: closeHomework,
+    isOpen: ()=>hwOpen
+  };
+})();
 
 // Button wiring
 try{

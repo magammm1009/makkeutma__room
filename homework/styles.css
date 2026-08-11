@@ -1,0 +1,750 @@
+:root{
+  --ink:#3d3935;--soft-ink:#766f68;--paper:#fffdf9;--cream:#f8f1e7;--coral:#ef8f72;--rose:#d9657d;--leaf:#578a68;--line:#eadfd4;--shadow:0 16px 42px rgba(98,69,48,.12);--radius:24px;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--ink);font-family:ui-rounded,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:radial-gradient(circle at 4% 4%,rgba(255,207,189,.42),transparent 23rem),radial-gradient(circle at 95% 12%,rgba(207,233,219,.55),transparent 25rem),linear-gradient(180deg,#fffaf4 0%,#f8f1e7 100%)}
+button,input,textarea,select{font:inherit}button{cursor:pointer}.app-shell{max-width:1360px;margin:0 auto;padding:28px 24px 48px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:6px 0 26px}.brand{display:flex;align-items:center;gap:13px;border:0;background:transparent;text-align:left;color:var(--ink);padding:0}.brand-mark{width:48px;height:48px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,#f6aebd,#ffcbb4);font-size:25px;box-shadow:0 8px 20px rgba(217,101,125,.24)}.brand strong{display:block;font-size:22px;letter-spacing:-.8px}.brand small{display:block;font-size:12px;color:var(--soft-ink);margin-top:3px}.top-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.pill,.ghost-btn,.primary-btn,.soft-btn,.danger-btn,.install-btn,.stamp-btn{border:0;border-radius:999px;padding:10px 14px;font-weight:750;transition:.18s transform,.18s box-shadow,.18s background}.pill{background:#fff;border:1px solid var(--line);color:var(--soft-ink);font-size:12px}.ghost-btn{background:#fff;border:1px solid var(--line);color:var(--soft-ink)}.primary-btn{color:#fff;background:linear-gradient(135deg,#e88170,#d9657d);box-shadow:0 10px 22px rgba(217,101,125,.22)}.soft-btn{background:var(--cream);color:var(--ink);border:1px solid var(--line)}.danger-btn{color:#a96357;background:#fff4f1;border:1px solid #f0d7d0}.install-btn{background:#edf8f0;color:var(--leaf);border:1px solid #d5eddb}.primary-btn:hover,.ghost-btn:hover,.soft-btn:hover,.danger-btn:hover,.install-btn:hover,.stamp-btn:hover{transform:translateY(-2px)}.screen{display:none}.screen.active{display:block;animation:rise .28s ease}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.card{background:rgba(255,255,255,.88);border:1px solid rgba(234,223,212,.95);border-radius:var(--radius);box-shadow:var(--shadow)}
+.loading-card{width:min(520px,100%);margin:13vh auto 0;padding:42px;text-align:center}.loader-seed{font-size:44px;animation:float 1.8s ease-in-out infinite}.loading-card h1{font-size:23px;letter-spacing:-1px;margin:14px 0 8px}.loading-card p{margin:0;color:var(--soft-ink);font-size:14px}@keyframes float{50%{transform:translateY(-7px) rotate(5deg)}}
+.login-wrap{min-height:calc(100vh - 168px);display:grid;place-items:center;padding:16px 0 44px}.login-card{width:min(580px,100%);padding:36px;border-radius:32px;text-align:center;position:relative;overflow:hidden}.login-card:before{content:"";position:absolute;width:230px;height:230px;border-radius:50%;background:rgba(255,207,189,.35);left:-112px;top:-115px}.login-card:after{content:"";position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(207,233,219,.42);right:-92px;bottom:-95px}.login-card>*{position:relative;z-index:1}.login-seed{font-size:48px;margin:0 0 9px}.login-card h1{font-size:29px;letter-spacing:-1.5px;margin:0}.lead{font-size:14px;line-height:1.65;color:var(--soft-ink);margin:10px auto 25px;max-width:390px}.login-form{display:grid;gap:10px;text-align:left}.login-form label,.field label{font-size:13px;font-weight:850}.login-form input,.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 13px;color:var(--ink);outline:none}.login-form input{border-radius:16px;padding:14px 15px}.login-form input:focus,.field input:focus,.field textarea:focus,.field select:focus{border-color:#df9a84;box-shadow:0 0 0 3px rgba(239,143,114,.13)}.login-form .primary-btn{width:100%;padding:14px;margin-top:3px}.login-hint{font-size:12px;color:var(--soft-ink);line-height:1.65;margin:15px 0 0}.manager-entry{margin-top:22px;padding-top:18px;border-top:1px dashed #e2d5ca;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.manager-entry strong{display:block;font-size:13px}.manager-entry span{display:block;margin-top:3px;font-size:11px;color:var(--soft-ink)}
+.welcome{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:0 0 18px}.welcome h1,.admin-head h1{font-size:31px;line-height:1.15;letter-spacing:-1.7px;margin:0}.welcome h1 b{color:var(--rose)}.welcome p,.admin-head p{margin:9px 0 0;color:var(--soft-ink);font-size:15px}.progress-mini{font-size:13px;color:var(--leaf);font-weight:800;background:#eff9f2;border:1px solid #d5eddb;border-radius:999px;padding:9px 12px;white-space:nowrap}.writer-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.7fr);gap:18px}.today-card{padding:26px}.eyebrow{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:850;color:var(--rose);letter-spacing:.02em;margin-bottom:8px}.today-card h2,.stamp-card h2,.record-card h2,.submission-card h2,.quick-card h2{font-size:19px;letter-spacing:-.8px;margin:0}.today-card h2{font-size:24px;letter-spacing:-1px;margin:0 0 8px}.subcopy{font-size:14px;color:var(--soft-ink);margin:0 0 22px}.task-list{display:grid;gap:15px}.task-group{display:grid;gap:9px}.task-group+.task-group{padding-top:16px;border-top:1px dashed #e5d9cf}.task-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.task-group-title{display:grid;gap:3px}.task-group-title strong{font-size:13px;letter-spacing:-.2px}.task-group-title span{font-size:11px;color:var(--soft-ink)}.self-task-add{border:1px solid #f0d7cd;background:#fff6f1;color:#bd725c;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:850;white-space:nowrap}.task-stack{display:grid;gap:10px}.task{position:relative;display:flex;gap:14px;align-items:flex-start;padding:15px 16px;border:1px solid var(--line);border-radius:18px;background:#fffdfa;transition:.18s transform,.18s border}.task:hover{transform:translateY(-1px);border-color:#e7bba9}.task-check{width:25px;height:25px;border:2px solid #e6d7cd;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;color:#fff;font-size:14px;margin-top:2px}.task.done .task-check{background:var(--leaf);border-color:var(--leaf)}.task-copy{min-width:0;flex:1}.task-title{font-weight:850;font-size:15px}.task-meta{margin-top:5px;font-size:12px;color:var(--soft-ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}.task-source,.source-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:850;line-height:1}.task-source.admin,.source-badge.admin{background:#edf8f0;color:var(--leaf)}.task-source.self,.source-badge.self{background:#fff0ed;color:#c46d59}.task-side{display:flex;align-items:center;gap:6px;flex:0 0 auto}.task-label{font-size:11px;font-weight:800;padding:5px 8px;background:#fff3ec;color:#bd725c;border-radius:999px;white-space:nowrap}.self-task-remove{width:26px;height:26px;border:1px solid #efd8cf;background:#fff8f4;border-radius:9px;color:#bd725c;font-size:17px;line-height:1}.task.done{background:#f8fdf9}.task.done .task-title{text-decoration:line-through;color:#8d988f}.today-bottom{margin-top:18px;padding-top:18px;border-top:1px dashed #ded2c7;display:flex;justify-content:space-between;align-items:center;gap:14px}.today-bottom p{font-size:12px;color:var(--soft-ink);line-height:1.55;margin:0}.side-stack{display:grid;gap:18px;align-content:start}.stamp-card{padding:24px;overflow:hidden;position:relative}.stamp-card:after{content:"";position:absolute;width:155px;height:155px;border-radius:50%;background:rgba(255,207,189,.37);right:-52px;top:-48px}.stamp-card>*{position:relative;z-index:1}.monthly-stamp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px}.month-badge{font-size:11px;font-weight:850;color:var(--leaf);background:#edf8f0;padding:6px 8px;border-radius:9px}.calendar-note{font-size:12px;color:var(--soft-ink);line-height:1.55;margin:0 0 14px}.calendar-shell{padding:10px 8px 8px;border-radius:18px;background:#fffaf6;border:1px solid #efe4da}.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.calendar-weekdays{margin-bottom:5px}.calendar-weekdays span{text-align:center;font-size:10px;font-weight:850;color:#9a8f87}.calendar-weekdays span:first-child{color:#d77a79}.calendar-weekdays span:last-child{color:#7197c5}.calendar-empty{min-height:58px}.calendar-day{min-height:70px;border-radius:14px;padding:6px 4px 5px;background:#fff;border:1px solid #f1e8e0;display:flex;flex-direction:column;gap:5px;align-items:stretch;overflow:hidden}.calendar-day.has-stamp{border-color:#efc5b6;background:#fffdfa}.calendar-day.today{box-shadow:inset 0 0 0 1.5px var(--rose)}.day-number{font-size:10px;font-weight:850;color:#746961;line-height:1}.calendar-day.sunday .day-number{color:#cf7075}.calendar-day.saturday .day-number{color:#6e94c1}.day-stamps{display:flex;gap:4px;flex-wrap:wrap;align-content:flex-start;min-height:42px}.stamp-dot{font-size:12px;line-height:1.15}.stamp-more{font-size:9px;font-weight:850;color:var(--rose);line-height:1.4}.reward{margin-top:13px;font-size:12px;font-weight:780;color:var(--leaf);background:#edf8f0;border-radius:15px;padding:11px 12px;line-height:1.5}.record-card{padding:20px;min-height:0;max-height:360px;display:flex;flex-direction:column}.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:13px;flex:0 0 auto}.section-head span{font-size:12px;color:var(--soft-ink)}.history{display:grid;gap:10px;overflow-y:auto;padding-right:4px;min-height:0}.history::-webkit-scrollbar{width:6px}.history::-webkit-scrollbar-thumb{background:transparent;border-radius:999px}.history-item{display:flex;gap:13px;align-items:center;padding:12px 13px;border-radius:16px;background:#fffdfb;border:1px solid #f0e6de}.history-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:transparent;font-size:10px}.history-copy{flex:1;min-width:0}.history-copy strong{display:block;font-size:13px}.history-copy span{display:block;margin-top:2px;font-size:11px;color:var(--soft-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.history-date{font-size:11px;color:var(--soft-ink);white-space:nowrap}
+.admin-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-bottom:18px}.admin-head-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.admin-state{font-size:12px;font-weight:800;color:var(--leaf);background:#edf8f0;border:1px solid #d5eddb;border-radius:999px;padding:8px 10px}.admin-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.65fr);gap:18px}.submission-card{padding:23px}.submission-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.badge{font-size:11px;background:#fff0ed;color:#c16655;font-weight:850;border-radius:999px;padding:6px 9px}.submission-list{display:grid;gap:12px}.submission{border:1px solid var(--line);border-radius:19px;padding:16px;background:#fffdfb}.submission.is-done{opacity:.68;background:#fafdfb}.submission-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}.writer{display:flex;align-items:center;gap:9px;font-weight:850;font-size:14px}.avatar{width:31px;height:31px;border-radius:12px;display:grid;place-items:center;background:#fff0e9;font-size:16px}.time{font-size:11px;color:var(--soft-ink)}.submission-task{font-size:13px;color:#6a5147;margin:12px 0 7px;font-weight:800}.submission-text{font-size:13px;line-height:1.6;margin:0;color:var(--ink)}.submission-proof{margin-top:11px;display:flex;align-items:center;gap:8px;color:var(--soft-ink);font-size:12px;line-height:1.5}.submission-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}.stamp-btn{padding:8px 11px;background:#fff1ed;color:#c46d59;font-size:12px;border:1px solid #f1d7cd}.mini-btn{border:0;border-radius:10px;padding:8px 10px;font-weight:800;font-size:12px;background:#f5f2ee;color:#756c65}.proof-btn{border:1px solid #d5eddb;border-radius:10px;padding:7px 9px;font-size:12px;font-weight:800;color:var(--leaf);background:#f2faf4}.admin-side{display:grid;gap:18px;align-content:start}.quick-card{padding:22px}.quick-card h2{margin:0 0 12px}.quick-list{display:grid;gap:10px}.quick-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:14px;background:#fffaf5;border:1px solid #f0e6de}.quick-row span{font-size:13px;font-weight:760}.quick-row b{font-size:12px;color:var(--leaf);background:#eaf7ee;padding:5px 7px;border-radius:8px;max-width:145px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.small-divider{height:1px;background:var(--line);margin:18px 0}.tip,.auth-note{font-size:12px;color:var(--soft-ink);line-height:1.6;padding:14px;background:#f8f5f1;border-radius:15px}.assignment-list{display:grid;gap:9px;max-height:340px;overflow:auto;padding-right:3px}.assignment-line{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:#fffdfb}.assignment-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.assignment-line button{border:0;background:transparent;color:#c27b69;font-weight:850}.empty{padding:24px;text-align:center;color:var(--soft-ink);font-size:13px;background:#fffaf5;border:1px dashed var(--line);border-radius:17px}.empty small{display:block;margin-top:7px;line-height:1.5}.modal-backdrop{position:fixed;inset:0;background:rgba(47,37,29,.35);display:none;align-items:center;justify-content:center;padding:20px;z-index:20;backdrop-filter:blur(3px)}.modal-backdrop.show{display:flex}.modal{width:min(610px,100%);max-height:min(740px,calc(100vh - 40px));overflow:auto;background:var(--paper);border-radius:28px;box-shadow:0 30px 80px rgba(35,24,18,.25);padding:25px}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:19px}.modal h2{margin:0;font-size:22px;letter-spacing:-1px}.modal-head p{font-size:13px;color:var(--soft-ink);margin:7px 0 0;line-height:1.55}.close{width:36px;height:36px;border:1px solid var(--line);border-radius:13px;background:#fff;font-size:19px;color:var(--soft-ink)}.field{display:grid;gap:7px;margin:14px 0}.field label span{font-weight:500;color:#8d8178}.field textarea{min-height:106px;resize:vertical;line-height:1.55}.upload-box{display:flex;align-items:center;gap:12px;border:1px dashed #dfcfc3;background:#fffaf5;border-radius:15px;padding:11px 13px}.upload-box input{padding:0;border:0;background:transparent;font-size:12px}.preview{display:none;width:54px;height:54px;object-fit:cover;border-radius:14px;border:1px solid var(--line)}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}.split-actions{justify-content:space-between}.proof-modal{width:min(820px,100%)}.proof-frame{display:grid;place-items:center;background:#f8f5f1;border-radius:18px;overflow:hidden;min-height:200px}.proof-frame img{display:block;max-width:100%;max-height:68vh;object-fit:contain}.toast{position:fixed;right:22px;bottom:22px;z-index:50;background:#3e3b36;color:#fff;border-radius:15px;padding:12px 15px;font-size:13px;font-weight:750;box-shadow:0 12px 24px rgba(0,0,0,.2);opacity:0;transform:translateY(15px);pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:translateY(0)}
+@media (max-width:950px){.writer-layout,.admin-grid{grid-template-columns:1fr}.welcome,.admin-head{align-items:flex-start;flex-direction:column}.admin-head-actions{justify-content:flex-start}}@media (max-width:650px){.app-shell{padding:18px 14px 34px}.topbar{align-items:flex-start;flex-direction:column;padding-bottom:18px}.top-actions{justify-content:flex-start}.welcome h1,.admin-head h1{font-size:27px}.today-card,.submission-card,.quick-card,.stamp-card,.record-card{padding:19px}.today-bottom{align-items:flex-start;flex-direction:column}.modal{padding:20px}.login-card{padding:28px 21px}.manager-entry{align-items:flex-start;flex-direction:column}.calendar-day{min-height:47px}.stamp-dot{font-size:11px}.task{padding:13px}.task-side{gap:4px}.task-label{font-size:10px;padding:4px 6px}.submission-meta{align-items:flex-start;flex-direction:column}.toast{right:14px;left:14px;bottom:14px;text-align:center}}
+
+/* 스크롤은 유지하되, 색상은 투명하게 처리합니다. */
+*{scrollbar-width:thin;scrollbar-color:transparent transparent}
+*::-webkit-scrollbar{width:7px;height:7px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:transparent;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-corner{background:transparent}
+
+.stamp-seal{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid #d9657d;color:#d9657d;font-weight:900;line-height:1;transform:rotate(-10deg);box-shadow:0 1px 0 rgba(217,101,125,.12) inset}
+.stamp-seal.alt{transform:rotate(8deg)}
+.stamp-seal small{display:block;font-size:8px;line-height:1.05;letter-spacing:-.45px;text-align:center}
+.stamp-seal.red{border-color:#d9657d;color:#d9657d}
+.stamp-seal.orange{border-color:#e88170;color:#e88170}
+.stamp-seal.green{border-color:#578a68;color:#578a68}
+.stamp-seal.purple{border-color:#8767b9;color:#8767b9}
+
+.brand small,.lead,.login-hint,.manager-entry span,.welcome p,.subcopy,.today-bottom p,.reward,.tip,.auth-note,.admin-head p,.eyebrow,.task-group-title span,.small-divider{display:none !important;}
+.calendar-note{margin:0 0 10px;}
+.today-bottom{justify-content:flex-end;}
+.manager-entry{justify-content:flex-end;}
+.modal-head{margin-bottom:14px;}
+.stamp-seal{width:30px;height:30px;border-width:2px;}
+.stamp-seal small{font-size:16px;line-height:1;letter-spacing:0;transform:translateY(1px);}
+.history-icon .stamp-seal{width:38px;height:38px;}
+.history-icon .stamp-seal small{font-size:18px;}
+
+.task-label{display:none !important;}
+.task-side:empty{display:none;}
+
+/* 이달의 숙제왕 */
+.king-card{padding:20px;background:linear-gradient(145deg,#fff8e9 0%,#fffdf8 72%);border-color:#f0dfb8}
+.king-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.king-card-head h2{margin:0;font-size:18px;letter-spacing:-.7px}
+.king-crown{font-size:24px;line-height:1}
+.king-winner{display:flex;align-items:center;gap:10px;min-height:46px;padding:10px 12px;border-radius:15px;background:#fffdf8;border:1px solid #f0e4c7;font-size:14px;font-weight:850;color:#715b30}
+.king-winner.is-me{background:#fff2bf;border-color:#e9ca74;color:#8a5d12}
+.king-avatar{width:31px;height:31px;display:grid;place-items:center;border-radius:11px;background:#fff2bf;font-size:18px}
+.king-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.king-empty{font-size:12px;font-weight:800;color:#9b8d70}
+.king-admin-status{display:flex;align-items:center;gap:7px;min-height:38px;margin-bottom:10px;padding:9px 10px;border:1px solid #f0e4c7;border-radius:13px;background:#fffdf8;color:#725b30;font-size:12px}
+.king-admin-status strong{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.king-admin-status span:last-child{margin-left:auto;font-weight:850;color:#a7781d;white-space:nowrap}
+.king-status-crown{font-size:17px}
+.king-select{width:100%;border:1px solid var(--line);border-radius:13px;background:#fff;padding:11px 12px;color:var(--ink);outline:none}
+.king-select:focus{border-color:#df9a84;box-shadow:0 0 0 3px rgba(239,143,114,.13)}
+.king-actions{display:flex;gap:8px;margin-top:10px}
+.king-actions .primary-btn,.king-actions .soft-btn{flex:1;padding:10px 11px;font-size:12px}
+
+/* v12: PC에서도 모바일 앱 폭으로 고정 */
+html,body{min-height:100%;background:#f8f1e7}
+body{display:flex;justify-content:center}
+.app-shell{width:100%;max-width:500px;min-height:100vh;padding:16px 14px 28px}
+.writer-layout,.admin-grid{grid-template-columns:1fr}
+.side-stack,.admin-side{grid-template-columns:1fr}
+.topbar{padding:2px 0 18px;align-items:flex-start;flex-direction:column}
+.top-actions{justify-content:flex-start;width:100%}
+.welcome,.admin-head{align-items:flex-start;flex-direction:column}
+.admin-head-actions{justify-content:flex-start}
+.writer-main,.side-stack,.admin-side{min-width:0}
+@media (min-width:620px){
+  body{padding:18px 0;background:linear-gradient(135deg,#f7eee5 0%,#edf6ef 100%)}
+  .app-shell{border-radius:28px;background:#fffaf4;box-shadow:0 18px 50px rgba(91,65,45,.14);min-height:calc(100vh - 36px)}
+}
+@media (max-width:430px){
+  .app-shell{padding:13px 11px 24px}
+  .brand strong{font-size:20px}
+  .welcome h1,.admin-head h1{font-size:26px}
+  .today-card,.stamp-card,.record-card,.submission-card,.quick-card,.king-card{padding:17px}
+}
+
+/* 개인 일정 */
+.calendar-head-actions{display:flex;align-items:center;gap:7px}
+.calendar-add-btn{border:1px solid #efcfc4;border-radius:10px;background:#fff7f2;color:#c46d59;font-size:11px;font-weight:850;padding:6px 8px;white-space:nowrap}
+.schedule-dday{display:flex;align-items:center;gap:7px;margin:0 0 9px;padding:8px 9px;border-radius:12px;background:#fffaf6;border:1px solid #f0e4da}
+.dday-badge{padding:4px 6px;border-radius:7px;background:var(--schedule-accent,#e88170);color:#fff;font-size:10px;font-weight:900;white-space:nowrap}
+.dday-title{border:0;background:transparent;padding:0;color:#5a4d45;font-size:12px;font-weight:800;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calendar-day{cursor:pointer;position:relative}
+.calendar-day:focus{outline:2px solid #df9a84;outline-offset:2px}
+.calendar-day.has-schedule{background:var(--calendar-schedule-soft,#fffdf8);border-color:var(--calendar-schedule-color,#efc5b6)}
+.calendar-schedules{display:flex;align-items:center;gap:3px;min-height:10px;overflow:hidden}
+.calendar-schedule-dot{width:9px;height:9px;flex:0 0 auto;border:0;border-radius:50%;padding:0;background:var(--schedule-color,#e88170);box-shadow:0 0 0 1px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.16)}
+.schedule-more{font-size:9px;line-height:1;color:#907b72;font-weight:850}
+.schedule-list-head{display:flex;align-items:center;justify-content:space-between;margin:14px 1px 8px}
+.schedule-list-head strong{font-size:13px}.schedule-list-head span{font-size:11px;color:var(--soft-ink)}
+.schedule-list{display:grid;gap:7px;max-height:180px;overflow:auto;padding-right:2px}
+.schedule-list::-webkit-scrollbar{width:5px}.schedule-list::-webkit-scrollbar-thumb{background:transparent}.schedule-list::-webkit-scrollbar-track{background:transparent}
+.schedule-list-item{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--schedule-color,#e88170);border-radius:12px;padding:9px 10px;background:var(--schedule-soft,#fff0eb);color:#4e453f;text-align:left}
+.schedule-list-date{width:29px;flex:0 0 auto;color:var(--schedule-color,#e88170);font-weight:900;font-size:11px}
+.schedule-list-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;font-size:12px}
+.schedule-list-dday{font-size:10px;font-weight:900;color:var(--schedule-color,#e88170);white-space:nowrap}
+.schedule-empty{padding:13px 10px;border:1px dashed #eadfd4;border-radius:12px;color:var(--soft-ink);font-size:12px;text-align:center}
+.schedule-colors{display:flex;gap:9px;flex-wrap:wrap;padding:4px 1px}
+.schedule-color{width:28px;height:28px;border:2px solid transparent;border-radius:50%;padding:0;transition:.16s transform,.16s box-shadow}
+.schedule-color:hover{transform:translateY(-2px)}
+.schedule-color.selected{box-shadow:0 0 0 3px #fff,0 0 0 5px #c88573}
+.schedule-color.coral{background:#e88170}.schedule-color.peach{background:#d98755}.schedule-color.mint{background:#5f9a73}.schedule-color.sky{background:#6c9fc6}.schedule-color.lavender{background:#8d73bd}.schedule-color.lemon{background:#c3a33a}
+.schedule-save-actions{display:flex;gap:8px;margin-left:auto}
+.schedule-delete-btn{display:none}
+
+/* v13: 월간 숙제왕을 작가님 화면 맨 위로 */
+.writer-king-top{margin:0 0 16px;padding:17px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.writer-king-top .king-card-head{margin:0;gap:8px;flex:0 0 auto}
+.writer-king-top .king-card-head h2{font-size:16px}
+.writer-king-top .king-crown{font-size:22px}
+.writer-king-top .king-winner{flex:1;justify-content:flex-end;min-height:auto;padding:0;border:0;background:transparent;text-align:right}
+.writer-king-top .king-avatar{width:28px;height:28px;font-size:16px}
+.writer-king-top .king-name{font-size:13px}
+
+/* 칭찬 도장: 하루에 꽃 하나 + 승인 도장 수 */
+.day-stamps{align-items:center;gap:5px}
+.day-stamps .stamp-seal{width:29px;height:29px}
+.day-stamps .stamp-seal small{font-size:16px}
+.stamp-count{min-width:17px;height:17px;display:grid;place-items:center;border-radius:999px;padding:0 4px;background:#fff1ed;color:#c75b71;border:1px solid #efc5cf;font-size:10px;font-weight:900;line-height:1}
+@media (max-width:430px){
+  .writer-king-top{margin-bottom:13px;padding:14px 15px}
+  .writer-king-top .king-card-head h2{font-size:15px}
+  .day-stamps .stamp-seal{width:26px;height:26px}
+  .day-stamps .stamp-seal small{font-size:14px}
+  .stamp-count{min-width:16px;height:16px;font-size:9px}
+}
+
+/* v14: 작가님 버튼 나열형 숙제 배정 */
+.assignment-target-field{gap:9px}
+.assignment-target-grid{display:flex;flex-wrap:wrap;gap:8px}
+.assignment-target-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;border:1px solid #eadbd1;border-radius:12px;padding:8px 11px;background:#fffdfb;color:#6d5d54;font-size:12px;font-weight:850;transition:.16s transform,.16s border,.16s background}
+.assignment-target-button:hover{transform:translateY(-1px);border-color:#df9a84}
+.assignment-target-button.selected{background:#fff0ed;border-color:#df9a84;color:#b95f55;box-shadow:0 2px 0 rgba(217,101,125,.08)}
+.assignment-target-button.all{background:#f7fbf8;border-color:#d9e9dc;color:#4f8462}
+.assignment-target-button.all.selected{background:#eaf7ee;border-color:#77a87e;color:#3f7550}
+.assignment-target-button small{font-size:10px;font-weight:850;opacity:.8}
+.writer-target-chip{display:flex;align-items:stretch;overflow:hidden;border-radius:12px}
+.writer-target-chip .assignment-target-button{border-radius:12px 0 0 12px}
+.writer-target-chip.selected .assignment-target-button{background:#fff0ed;border-color:#df9a84;color:#b95f55;box-shadow:0 2px 0 rgba(217,101,125,.08)}
+.writer-target-delete{width:30px;min-height:36px;border:1px solid #eadbd1;border-left:0;border-radius:0 12px 12px 0;background:#fff8f5;color:#c5796c;font-size:18px;line-height:1;font-weight:800}
+.writer-target-delete:hover{background:#fff0ed;color:#b75e59}
+.writer-target-delete:disabled{opacity:.55;cursor:wait}
+.writer-roster-empty{width:100%;padding:12px;border:1px dashed #eadbd1;border-radius:12px;color:var(--soft-ink);font-size:12px;text-align:center}
+
+/* v15: 확인할 인증 4개 높이 고정 + 투명 스크롤 */
+.submission-list{max-height:570px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:transparent transparent;overscroll-behavior:contain}
+.submission-list::-webkit-scrollbar{width:6px}.submission-list::-webkit-scrollbar-track{background:transparent}.submission-list::-webkit-scrollbar-thumb{background:transparent;border-radius:999px}
+.submission-list .submission{padding:14px}.submission-list .submission-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.submission-list .submission-proof{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* v15: 작가님 이모지 직접 선택 / 붙여넣기 */
+.login-emoji-field{display:grid;gap:8px;margin-top:4px}
+.login-emoji-field>label{font-size:13px;font-weight:850}.login-emoji-field>label span{font-weight:500;color:#8d8178}
+.emoji-input-row{display:flex;align-items:center;gap:9px}
+.emoji-preview{width:42px;height:42px;display:grid;place-items:center;flex:0 0 auto;border-radius:14px;background:#fff2ed;border:1px solid #efd9cf;font-size:22px}
+.emoji-input-row input{min-width:0;flex:1}
+.emoji-preset-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;max-height:144px;overflow-y:auto;padding:2px 2px 2px 0;scrollbar-width:thin;scrollbar-color:transparent transparent}
+.emoji-preset-grid::-webkit-scrollbar{width:5px}.emoji-preset-grid::-webkit-scrollbar-track{background:transparent}.emoji-preset-grid::-webkit-scrollbar-thumb{background:transparent;border-radius:999px}
+.emoji-choice{aspect-ratio:1;border:1px solid #f0dfd5;border-radius:10px;background:#fffdfb;font-size:18px;line-height:1;display:grid;place-items:center;padding:0;transition:.14s transform,.14s border,.14s background}
+.emoji-choice:hover{transform:translateY(-1px);border-color:#df9a84}.emoji-choice.selected{background:#fff0ed;border-color:#df9a84;box-shadow:0 0 0 2px rgba(223,154,132,.2)}
+.emoji-help{font-size:11px;line-height:1.4;color:var(--soft-ink)}
+@media (max-width:430px){.submission-list{max-height:540px}.emoji-preset-grid{grid-template-columns:repeat(9,minmax(0,1fr));max-height:136px}.emoji-choice{font-size:17px}.emoji-preview{width:40px;height:40px}}
+
+
+/* v16: 관리자 인증 카드 가로 넘침 차단
+   긴 인증 글·제목이 있어도 모바일 폭 안에서만 줄바꿈/스크롤됩니다. */
+html,body{max-width:100%;overflow-x:hidden}
+.app-shell,.screen,#adminScreen{min-width:0;max-width:100%}
+.admin-grid{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-columns:minmax(0,1fr);
+}
+.admin-grid>*,
+.submission-card,
+.submission-top,
+.submission-list,
+.submission-list>.submission{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+.submission-card{overflow:hidden}
+.submission-list{
+  grid-template-columns:minmax(0,1fr);
+  max-height:min(500px,56dvh);
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+.submission-list>.submission{overflow:hidden}
+.submission-meta{min-width:0}
+.submission-meta .writer{
+  min-width:0;
+  flex:1 1 auto;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.submission-meta .avatar{flex:0 0 auto}
+.submission-meta .time{
+  min-width:0;
+  flex:0 1 auto;
+  max-width:42%;
+  text-align:right;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.submission-task,
+.submission-text,
+.submission-proof,
+.submission-actions{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.submission-task{white-space:normal}
+.submission-list .submission-text{
+  -webkit-line-clamp:3;
+  white-space:normal;
+}
+.submission-list .submission-proof{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media (max-width:430px){
+  .submission-list{max-height:min(470px,55dvh)}
+  .submission-list .submission{padding:13px}
+  .submission-meta{align-items:flex-start}
+  .submission-meta .time{font-size:10px}
+}
+
+
+/* v17: 작가님 완료 기록 안에서 관리자 답장 바로 보기 */
+.history-item{align-items:flex-start}
+.history-icon{flex:0 0 auto;margin-top:1px}
+.history-copy{min-width:0}
+.history-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}
+.history-title-row strong{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.history-title-row .history-date{flex:0 0 auto;margin:0;font-size:10px}
+.history-text{display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.writer-feedback{margin-top:8px;padding:9px 10px;border:1px solid #f1d9d2;border-radius:12px;background:#fff7f4;color:#785a50}
+.writer-feedback-label{display:block;margin-bottom:4px;color:#c56f60;font-size:10px;font-weight:900}
+.writer-feedback p{margin:0;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.history-item.has-feedback{background:#fffdfb}
+@media (max-width:430px){
+  .history-item{gap:10px;padding:11px}
+  .history-title-row{gap:6px}
+  .history-title-row .history-date{max-width:94px;text-align:right;white-space:normal;line-height:1.25}
+  .writer-feedback{padding:8px 9px}
+}
+
+
+/* v18: 일정 완료 체크 */
+.schedule-complete-field{display:flex;align-items:center;gap:9px;margin:16px 0 2px;color:#6d5d54;font-size:13px;font-weight:850;cursor:pointer}
+.schedule-complete-field input{width:18px;height:18px;margin:0;accent-color:#5f9a73}
+.calendar-day.schedules-completed{opacity:.68}
+.calendar-schedule-dot.completed{display:grid;place-items:center;color:#fff;font-size:7px;font-weight:950;opacity:.78}
+.schedule-list-item.completed{opacity:.7;background:#f6f7f5!important;border-color:#d8dfd8!important}
+.schedule-list-item.completed .schedule-list-title{text-decoration:line-through;color:#89938b}
+.schedule-list-item.completed .schedule-list-dday{color:#5f9a73}
+.schedule-complete-toggle{width:22px;height:22px;flex:0 0 auto;border:1.5px solid var(--schedule-color,#e88170);border-radius:8px;background:#fff;color:#fff;font-size:13px;font-weight:950;line-height:1}
+.schedule-complete-toggle.completed{background:#5f9a73;border-color:#5f9a73}
+.schedule-list-item{cursor:pointer}
+.schedule-list-item:focus{outline:2px solid #df9a84;outline-offset:2px}
+
+/* v18: 관리자 매일 자동 숙제 */
+.daily-homework-card{padding:20px;background:linear-gradient(145deg,#f4fbf5 0%,#fffdf9 75%);border-color:#dcebdc}
+.daily-homework-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.daily-homework-head h2{margin:0;font-size:18px;letter-spacing:-.7px}
+.daily-homework-head span{font-size:22px}
+.daily-homework-status{display:flex;align-items:center;gap:7px;min-height:40px;padding:10px 11px;border:1px solid #dbe8de;border-radius:13px;background:#fff;color:#8c938e;font-size:12px}
+.daily-homework-status.active{color:#51725c;background:#f8fcf8}
+.daily-homework-status strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.daily-homework-badge{flex:0 0 auto;border-radius:999px;padding:3px 6px;background:#e3f3e6;color:#4a8059;font-size:9px;font-weight:950}
+.daily-homework-edit{width:100%;margin-top:10px;padding:9px 11px;font-size:12px}
+.daily-homework-toggle{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid #e4e7e0;border-radius:14px;background:#fbfcfa;color:#5f665f;font-size:12px;font-weight:850;cursor:pointer}
+.daily-homework-toggle input{position:absolute;opacity:0;pointer-events:none}
+.daily-homework-switch{width:34px;height:20px;position:relative;flex:0 0 auto;border-radius:999px;background:#d8ddd8;transition:.18s background}
+.daily-homework-switch:after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s transform}
+.daily-homework-toggle input:checked + .daily-homework-switch{background:#74a47b}
+.daily-homework-toggle input:checked + .daily-homework-switch:after{transform:translateX(14px)}
+.daily-homework-modal-actions{display:flex;gap:8px;margin-left:auto}
+.task.daily-task{background:#f5fbf6;border-color:#d9eadb}
+.task-source.daily,.source-badge.daily{background:#e7f4e9;color:#4f8462}
+@media (max-width:430px){
+  .daily-homework-card{padding:17px}
+  .daily-homework-modal-actions{gap:6px}
+}
+
+
+/* v20: 칭찬 달력 월 이동 */
+.calendar-nav{display:flex;align-items:center;gap:3px}
+.calendar-nav-btn{width:25px;height:25px;display:grid;place-items:center;border:1px solid #eadbd1;border-radius:8px;background:#fff;color:#9a786d;font-size:20px;line-height:1;font-weight:700}
+.calendar-nav-btn:hover{border-color:#df9a84;background:#fff7f2}
+.calendar-nav-btn:disabled{opacity:.45;cursor:default}
+.calendar-head-actions{min-width:0}
+.month-badge{white-space:nowrap}
+@media (max-width:430px){
+  .calendar-nav-btn{width:23px;height:23px;font-size:18px}
+  .calendar-head-actions{gap:5px}
+}
+
+
+/* v21: 작가님·관리자 입력 내용은 말줄임 없이 카드 안에서 모두 줄바꿈 */
+.task-title,
+.history-copy strong,
+.history-text,
+.writer-feedback p,
+.dday-title,
+.schedule-list-title,
+.assignment-line span,
+.submission-task,
+.submission-text,
+.submission-proof,
+.daily-homework-status strong,
+.quick-row b,
+.king-name,
+.king-admin-status strong{
+  min-width:0;
+  max-width:100%;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  -webkit-line-clamp:unset !important;
+  line-clamp:unset !important;
+}
+
+/* 작가님 완료 기록: 한 줄 말줄임을 해제하고 실제 작성 내용을 전부 표시 */
+.history-copy span,
+.history-text{
+  white-space:pre-wrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+.history-item,
+.history-copy,
+.history-title-row{
+  min-width:0;
+  max-width:100%;
+}
+.history-date{
+  white-space:normal;
+}
+
+/* 관리자 확인할 인증: 카드 폭은 고정, 글은 전부 줄바꿈 */
+.submission-list .submission-text{
+  display:block !important;
+  overflow:visible !important;
+  white-space:pre-wrap !important;
+  text-overflow:clip !important;
+  -webkit-box-orient:initial !important;
+  -webkit-line-clamp:unset !important;
+}
+.submission-list .submission-proof{
+  display:block !important;
+  overflow:visible !important;
+  white-space:pre-wrap !important;
+  text-overflow:clip !important;
+}
+.submission-list .submission,
+.submission-meta,
+.submission-meta .writer,
+.submission-meta .time{
+  min-width:0;
+  max-width:100%;
+}
+.submission-meta .time{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* 일정·배정 카드도 제목을 접지 않고 줄바꿈 */
+.schedule-list-item{
+  align-items:flex-start;
+}
+.schedule-list-title{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.4;
+}
+.schedule-list-dday{
+  white-space:normal;
+  text-align:right;
+}
+.assignment-line{
+  align-items:flex-start;
+}
+.assignment-line span{
+  padding-top:1px;
+}
+
+/* 인증 목록의 바깥 고정 높이와 내부 투명 스크롤은 그대로 유지 */
+.submission-list{
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+
+
+/* v22: 날짜가 지난 숙제를 오늘 목록에서 분리 */
+.past-homework-group{margin-top:14px;border-top:1px dashed #eadfd4;padding-top:14px}
+.past-homework-summary{display:inline-flex;align-items:center;margin-left:7px;border-radius:999px;padding:3px 7px;background:#fff3ed;color:#bd6c5e;font-size:10px;font-weight:900}
+.past-homework-stack{display:grid;gap:7px;max-height:255px;overflow:auto;padding-right:2px}
+.past-homework-stack::-webkit-scrollbar{width:5px}
+.past-homework-stack::-webkit-scrollbar-thumb{background:transparent}
+.past-homework-stack::-webkit-scrollbar-track{background:transparent}
+.past-homework-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid #eadfd4;border-radius:12px;background:#fffdfb}
+.past-homework-item.missed{border-color:#f0d2c8;background:#fff9f6}
+.past-homework-item.completed{border-color:#dbe8dd;background:#f9fcf9}
+.past-homework-copy{display:grid;gap:3px;min-width:0;flex:1}
+.past-homework-copy strong{font-size:12px;line-height:1.45;overflow-wrap:anywhere;word-break:break-word}
+.past-homework-date{color:#987c70;font-size:10px;font-weight:850}
+.past-homework-source{color:var(--soft-ink);font-size:10px}
+.past-homework-status{flex:0 0 auto;border-radius:999px;padding:4px 6px;font-size:10px;font-weight:900}
+.past-homework-status.missed{background:#fff0ea;color:#c0665b}
+.past-homework-status.completed{background:#eaf5eb;color:#568160}
+.past-homework-more{padding:4px 2px;color:var(--soft-ink);font-size:10px;text-align:center}
+
+/* v22: 관리자 매일 자동 숙제 최대 3개 */
+.daily-homework-fields{display:grid;gap:3px}
+.daily-homework-status{align-items:flex-start}
+.daily-homework-status-copy{display:grid;gap:3px;min-width:0;flex:1}
+.daily-homework-status-copy strong{display:block;white-space:normal;overflow-wrap:anywhere;word-break:break-word;font-size:12px;line-height:1.4}
+.daily-homework-modal .field{margin-bottom:10px}
+@media (max-width:430px){
+  .past-homework-stack{max-height:230px}
+  .past-homework-item{padding:9px 10px}
+  .past-homework-status{padding:3px 5px}
+}
+
+
+/* v23: 완료한 일정이 있어도 칭찬 도장과 숫자는 항상 선명하게 유지 */
+.calendar-day.schedules-completed{
+  opacity:1 !important;
+}
+.calendar-day.schedules-completed .calendar-schedules{
+  opacity:.68;
+}
+.calendar-day.schedules-completed .calendar-schedule-dot{
+  opacity:.72;
+}
+.calendar-day.schedules-completed .day-stamps,
+.calendar-day.schedules-completed .day-stamps .stamp-seal,
+.calendar-day.schedules-completed .day-stamps .stamp-count{
+  opacity:1 !important;
+  filter:none !important;
+}
+
+
+/* v24: PC에서도 항상 모바일 앱 폭으로 고정 */
+html,
+body{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow-x:hidden;
+}
+body{
+  display:flex !important;
+  justify-content:center !important;
+  align-items:flex-start;
+}
+.app-shell{
+  width:min(100%, 500px) !important;
+  max-width:500px !important;
+  min-width:0 !important;
+  margin:0 auto !important;
+}
+@media (min-width:620px){
+  body{
+    padding:18px 0 !important;
+  }
+  .app-shell{
+    width:500px !important;
+    max-width:500px !important;
+    min-height:calc(100vh - 36px);
+  }
+}
+@media (max-width:500px){
+  .app-shell{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+
+
+/* v26: 관리자 월별 숙제 현황 */
+.monthly-report-card{padding:20px;background:linear-gradient(145deg,#fffaf4 0%,#f6fbf7 100%);border-color:#e5e5d9}
+.monthly-report-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.monthly-report-head h2{margin:0;font-size:17px;letter-spacing:-.65px}
+.report-month-nav{display:flex;align-items:center;gap:4px}
+.report-nav-btn{width:25px;height:25px;display:grid;place-items:center;border:1px solid #e3dbd1;border-radius:8px;background:#fff;color:#9b796d;font-size:19px;line-height:1;font-weight:800}
+.report-nav-btn:hover{border-color:#df9a84;background:#fff7f2}
+.report-month-label{min-width:76px;text-align:center;color:#5f7764;font-size:11px;font-weight:900}
+.monthly-report-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:11px}
+.report-summary-item{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid #ece6dc;border-radius:12px;background:rgba(255,255,255,.75)}
+.report-summary-item span{color:#887d75;font-size:10px;font-weight:760}
+.report-summary-item strong{color:#5b514b;font-size:13px}
+.report-summary-item.has-pending{border-color:#f0d2c8;background:#fff7f3}
+.report-summary-item.has-pending strong{color:#bf6959}
+.monthly-report-list{display:grid;gap:8px;max-height:360px;overflow:auto;padding-right:2px}
+.monthly-report-list::-webkit-scrollbar{width:5px}
+.monthly-report-list::-webkit-scrollbar-thumb{background:transparent}
+.monthly-report-list::-webkit-scrollbar-track{background:transparent}
+.monthly-report-row{padding:10px;border:1px solid #e9e2d8;border-radius:14px;background:#fffdfb}
+.monthly-report-row.idle{background:#fbfaf8;opacity:.76}
+.monthly-report-profile{display:flex;align-items:center;gap:7px;min-width:0}
+.monthly-report-rank{width:15px;flex:0 0 auto;color:#a28d80;font-size:10px;font-weight:900;text-align:center}
+.monthly-report-avatar{width:29px;height:29px;flex:0 0 auto;display:grid;place-items:center;border-radius:10px;background:#fff1eb;font-size:15px}
+.monthly-report-copy{min-width:0;flex:1;display:grid;gap:2px}
+.monthly-report-copy strong{font-size:12px;line-height:1.3;overflow-wrap:anywhere;word-break:break-word}
+.monthly-report-copy span{font-size:10px;color:#8c8179;line-height:1.3;overflow-wrap:anywhere;word-break:break-word}
+.monthly-report-profile>b{flex:0 0 auto;color:#558061;font-size:13px}
+.monthly-report-profile>b small{color:#958a82;font-size:9px;font-weight:750}
+.monthly-progress{height:6px;margin:9px 3px 0;border-radius:999px;background:#eef0eb;overflow:hidden}
+.monthly-progress span{display:block;width:var(--monthly-progress,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,#8fbea0,#5f9270)}
+@media (max-width:430px){
+  .monthly-report-card{padding:17px}
+  .monthly-report-list{max-height:315px}
+  .report-summary-item{padding:8px 9px}
+}
+
+
+/* v27: 작가님 개인 누적 칭찬 도장 */
+.writer-stamp-total-card{
+  margin:0 0 16px;
+  padding:17px 18px;
+  background:linear-gradient(145deg,#fff8f5 0%,#fffdf8 68%,#f3faf4 100%);
+  border-color:#efdcd4;
+}
+.writer-stamp-total-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.writer-stamp-total-head h2{
+  margin:0;
+  font-size:15px;
+  letter-spacing:-.55px;
+}
+.writer-stamp-total-head span{
+  font-size:20px;
+}
+.writer-stamp-total-body{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+}
+.writer-stamp-total-body strong{
+  color:#c46270;
+  font-size:27px;
+  line-height:1;
+  letter-spacing:-1px;
+}
+.writer-stamp-total-body span{
+  color:#6d7d6f;
+  font-size:11px;
+  font-weight:850;
+  padding-bottom:2px;
+}
+.writer-stamp-progress{
+  height:7px;
+  margin-top:12px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#f0e8e2;
+}
+.writer-stamp-progress span{
+  display:block;
+  width:0;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#f09aa7,#d86e87 62%,#76a886);
+  transition:width .25s ease;
+}
+@media (max-width:430px){
+  .writer-stamp-total-card{margin-bottom:13px;padding:15px}
+  .writer-stamp-total-body strong{font-size:25px}
+}
+
+
+/* v28: 이번 달 도장을 메인으로 강조 */
+.writer-stamp-total-head h2{
+  color:#a95768;
+}
+.writer-stamp-total-body strong{
+  color:#c85e75;
+  font-size:30px;
+}
+.writer-stamp-total-body span{
+  color:#7d857d;
+  font-size:11px;
+  font-weight:800;
+  padding-bottom:4px;
+}
+@media (max-width:430px){
+  .writer-stamp-total-body strong{font-size:28px}
+}
+
+
+/* v29: 지난달 정산 기준 숙제왕 TOP 3 */
+.king-title-block{display:grid;gap:2px;min-width:0}
+.king-period{color:#9c885f;font-size:10px;font-weight:850;line-height:1.2}
+.writer-king-top{display:block !important}
+.writer-king-top .king-card-head{margin-bottom:10px !important}
+.writer-king-top .king-winner{display:block!important;width:100%;padding:0!important;border:0!important;background:transparent!important;text-align:left!important}
+.king-rank-list{display:grid;gap:6px;width:100%}
+.king-rank-row{display:flex;align-items:center;gap:7px;min-width:0;padding:8px 9px;border:1px solid #f1e5c9;border-radius:11px;background:#fffdf8;color:#715b30}
+.king-rank-row.rank-1{background:#fff5cf;border-color:#ecd084}
+.king-rank-row.rank-2{background:#fbfaf5;border-color:#e6dfd0}
+.king-rank-row.rank-3{background:#fff9f2;border-color:#efdcc9}
+.king-rank-row.official{box-shadow:inset 3px 0 0 #d69b2f}
+.king-rank-row.is-me{border-color:#df9a84;background:#fff0ed}
+.king-rank-number{width:17px;flex:0 0 auto;color:#9d7a35;font-size:11px;font-weight:950;text-align:center}
+.king-rank-emoji{width:22px;flex:0 0 auto;text-align:center;font-size:15px}
+.king-rank-row strong{min-width:0;flex:1;font-size:12px;line-height:1.35;overflow-wrap:anywhere;word-break:break-word}
+.king-rank-score{flex:0 0 auto;color:#a7781d;font-size:11px;font-weight:900;white-space:nowrap}
+.king-official-crown{flex:0 0 auto;font-size:13px}
+.admin-king-top-three{margin:0 0 10px}
+.admin-king-top-three .king-rank-row{padding:7px 8px}
+.admin-king-top-three .king-rank-row strong{font-size:11px}
+.admin-king-top-three .king-rank-score{font-size:10px}
+.admin-king-card .king-admin-status strong{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
+@media (max-width:430px){
+  .king-rank-row{gap:6px;padding:7px 8px}
+  .king-rank-row strong{font-size:11px}
+}
+
+
+/* 화면에는 숨기고 보조기기에는 전달하는 안내 문구 */
+.sr-only{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
+
+/* v30: 작가님 화면의 공개된 지난달 TOP 3 정산 */
+.writer-king-top .king-empty{
+  display:block;
+  padding:10px;
+  border:1px dashed #eadcb9;
+  border-radius:11px;
+  color:#9d8658;
+  font-size:11px;
+  text-align:center;
+}
+
+
+/* v31: TOP 3 금관·은관·동관 스타일 */
+.king-rank-crown{
+  width:24px;
+  height:24px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  font-size:13px;
+  line-height:1;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);
+}
+.king-rank-crown.crown-1{
+  color:#9a6a00;
+  background:linear-gradient(145deg,#fff6ce 0%,#f5dd83 100%);
+  border:1px solid #e1bc4b;
+}
+.king-rank-crown.crown-2{
+  color:#6f7889;
+  background:linear-gradient(145deg,#fafbfd 0%,#dbe0e8 100%);
+  border:1px solid #bdc5d3;
+}
+.king-rank-crown.crown-3{
+  color:#9a5a28;
+  background:linear-gradient(145deg,#fff0e3 0%,#e2b082 100%);
+  border:1px solid #d19461;
+}
+.king-rank-crown.official{
+  transform:scale(1.05);
+  box-shadow:0 0 0 2px rgba(255,255,255,.85), 0 0 0 4px rgba(214,155,47,.24);
+}
+.king-rank-badge{
+  flex:0 0 auto;
+  border-radius:999px;
+  padding:4px 7px;
+  background:#fff1cd;
+  color:#a06e0d;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:-.2px;
+}
+.king-rank-row.rank-1 .king-rank-badge{
+  background:#ffe9a8;
+}
+.king-rank-row.rank-2 .king-rank-badge{
+  background:#eff2f7;
+  color:#71798b;
+}
+.king-rank-row.rank-3 .king-rank-badge{
+  background:#fff0e4;
+  color:#9b6031;
+}
+@media (max-width:430px){
+  .king-rank-crown{
+    width:22px;
+    height:22px;
+    font-size:12px;
+  }
+  .king-rank-badge{
+    padding:3px 6px;
+    font-size:8px;
+  }
+}
+
+
+/* v32: 이미 도장 처리된 동일 숙제 인증은 미확인 목록으로 다시 세지 않음 */
+.submission.is-duplicate{
+  border-style:dashed;
+  border-color:#d9d5ce;
+  background:#fbfaf8;
+  opacity:.82;
+}
+.submission .duplicate-badge{
+  background:#edf2ee;
+  color:#607969;
+}
+.duplicate-note{
+  color:#8a817a;
+  font-size:10px;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
