@@ -5768,8 +5768,18 @@ body.joined #preJoinCard{ display:none; }
 <!-- V179_UI(2026-08-11): 글자를 <span class="perfLabel">로 감쌌다.
      쪽지함이 헤더로 오면서 761~920px 구간에서 헤더가 2줄로 밀렸는데, 그 구간에서만
      글자를 접어 한 줄을 유지하기 위해서다(아이콘은 남긴다). 표시 문구는 그대로. -->
-<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃<span class="perfLabel"> 경량</span></button>
-<button aria-pressed="false" class="ghost layoutToggle perfModeBtn" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶<span class="perfLabel"> 저사양</span></button>
+<!-- V183_UI(2026-08-11): 🍃경량 / 🪶저사양 두 버튼을 "모드" 3칸 세그먼트 토글로 합쳤다.
+     아래 #lightModeBtn·#lowSpecBtn은 지우지 않고 legacyHide로 화면에서만 뺀다 —
+     syncLightModeBtnV146/syncLowSpecBtnV143이 이 id의 textContent·aria-pressed를 계속 만지고
+     설정 모달의 짝 버튼(#lightModeSettingsBtn·#lowSpecSettingsBtn)과 같은 코드를 공유하기 때문이다. -->
+<div aria-label="화면 모드" class="modeSeg" id="modeSeg" role="group">
+<span class="modeSegLabel">모드</span>
+<button aria-pressed="true" class="modeSegBtn" id="modeSegNormal" title="일반 · 모든 화면 효과를 그대로 사용" type="button">일반</button>
+<button aria-pressed="false" class="modeSegBtn" id="modeSegLight" title="경량 · 프로필·펫·손캠 기능은 유지하고 화면 효과만 가볍게" type="button">🍃<span class="modeSegText"> 경량</span></button>
+<button aria-pressed="false" class="modeSegBtn" id="modeSegLow" title="저사양 · 프로필 타일을 접속자 목록으로 바꾸고 손캠·장식 효과를 줄임" type="button">🪶<span class="modeSegText"> 저사양</span></button>
+</div>
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃<span class="perfLabel"> 경량</span></button>
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶<span class="perfLabel"> 저사양</span></button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
 <!-- 보기/정렬 메뉴 -->
 <div aria-label="보기/정렬 메뉴" class="viewMenu hidden" id="viewMenu" role="menu">
@@ -22289,6 +22299,25 @@ joinRoom();
   }
   window.__MK_IS_LOW_SPEC__ = isLowSpecModeV143;
 
+  // V183_UI(2026-08-11): 타일 헤더의 "모드" 3칸 세그먼트를 현재 모드에 맞춘다.
+  // 인자를 받지 않고 body 클래스에서 직접 읽으므로, 경량↔저사양 전환처럼
+  // sync 함수가 엇갈린 순서로 불려도 항상 실제 상태와 일치한다.
+  function syncModeSegV183(){
+    try{
+      const low = document.body.classList.contains("mkLowSpecMode");
+      const light = !low && document.body.classList.contains("mkLightMode");
+      const cur = low ? "low" : (light ? "light" : "normal");
+      const map = { normal:"modeSegNormal", light:"modeSegLight", low:"modeSegLow" };
+      for(const key of Object.keys(map)){
+        const b = document.getElementById(map[key]);
+        if(!b) continue;
+        const on = (key === cur);
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+    }catch(e){}
+  }
+
   function syncLowSpecBtnV143(on){
     try{
       const buttons = [
@@ -22303,6 +22332,7 @@ joinRoom();
           ? "저사양 모드 사용 중 · 클릭하면 일반 화면으로 복귀"
           : "프로필 타일·카메라·애니메이션을 줄인 경량 화면";
       }
+      syncModeSegV183();
     }catch(e){}
   }
 
@@ -22451,6 +22481,7 @@ joinRoom();
           ? "경량 모드 사용 중 · 기능은 유지하고 화면 효과와 갱신 부담을 줄였어요"
           : "프로필·펫·손캠 기능은 유지하고 화면 효과만 가볍게 사용";
       }
+      syncModeSegV183();
     }catch(e){}
   }
 
@@ -22547,6 +22578,36 @@ joinRoom();
   try{
     const initialLight = !isLowSpecModeV143() && readLightModeInitialV146();
     await applyLightModeV146(initialLight, {silent:true, syncQuery:false});
+  }catch(e){}
+
+  // V183_UI(2026-08-11): "모드" 3칸 세그먼트 클릭 바인딩.
+  // 이미 그 모드면 아무것도 하지 않아 같은 칸을 눌렀을 때 토스트가 중복되지 않는다.
+  try{
+    const segNormal = document.getElementById("modeSegNormal");
+    if(segNormal && !segNormal.dataset.boundV183){
+      segNormal.dataset.boundV183 = "1";
+      segNormal.addEventListener("click", async ()=>{
+        if(isLightModeV146()) await applyLightModeV146(false);
+        else if(isLowSpecModeV143()) await applyLowSpecModeV143(false);
+      });
+    }
+    const segLight = document.getElementById("modeSegLight");
+    if(segLight && !segLight.dataset.boundV183){
+      segLight.dataset.boundV183 = "1";
+      segLight.addEventListener("click", async ()=>{
+        if(isLightModeV146()) return;
+        await applyLightModeV146(true);
+      });
+    }
+    const segLow = document.getElementById("modeSegLow");
+    if(segLow && !segLow.dataset.boundV183){
+      segLow.dataset.boundV183 = "1";
+      segLow.addEventListener("click", async ()=>{
+        if(isLowSpecModeV143()) return;
+        await applyLowSpecModeV143(true);
+      });
+    }
+    syncModeSegV183();
   }catch(e){}
 
   // ===== V163 세계수 키우기 시즌 2 =====
@@ -31357,6 +31418,100 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   };
 })();
 </script>
+
+<!-- V183_UI(2026-08-11): 상단바 강조 정리 + 타일 헤더 "모드" 세그먼트.
+     이 파일에서 가장 늦은 <style>이라 head에 런타임 주입되는 손캠 CSS(21279행대)와
+     V125 블록(27170행대)의 !important 규칙을 모두 이깁니다. -->
+<style id="v183TopbarAndModeSeg">
+/* ===== 1) 작업 상태 버튼을 두 배로 — 상단 가운데의 시선을 여기로 모읍니다 ===== */
+#statusBtn{ min-width:210px; }
+@media (min-width:761px) and (max-width:1100px){
+  body.joined #statusBtn{ min-width:224px !important; }
+}
+@media (min-width:761px) and (max-width:880px){
+  body.joined #statusBtn{ min-width:200px !important; }
+}
+
+/* ===== 2) 상단바 색 정리 =====
+   강조색(핑크)은 작업 상태 버튼 하나만 쓰고, 손캠·손캠보기·내 프로필은 전부 같은 블랙으로 둡니다.
+   손캠 보기 ON의 연한 핑크 배경을 없앴고, ON 표시는 테두리와 글자색으로만 합니다. */
+.topCenter .hcBtn,
+.topCenter .hcBtn.on,
+.topCenter .hcViewBtn,
+.topCenter .hcViewBtn.on,
+.topCenter #profileBtn{
+  background:rgba(18,18,26,.88) !important;
+}
+.topCenter .hcViewBtn.on{
+  border-color:rgba(255,182,214,.72) !important;
+  color:#fff !important;
+}
+/* 송출 중은 "지금 내 카메라가 나가고 있다"는 신호라 배경 대신 테두리·글자로 또렷하게 남깁니다. */
+.topCenter .hcBtn.on{
+  border-color:rgba(255,64,129,.92) !important;
+  color:#ff9ec4 !important;
+}
+
+/* ===== 3) 타일 헤더 "모드" 3칸 세그먼트 ===== */
+.gridHead .right .modeSeg{
+  display:inline-flex; align-items:center; gap:2px;
+  flex:0 0 auto;
+  min-height:40px; padding:3px 4px;
+  border:1px solid var(--line); border-radius:12px;
+  background:rgba(255,255,255,.05);
+}
+.gridHead .right .modeSegLabel{
+  padding:0 7px 0 5px;
+  font-size:11px; font-weight:900; line-height:1;
+  opacity:.6; white-space:nowrap;
+}
+.gridHead .right .modeSegBtn{
+  flex:0 0 auto;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:32px; padding:0 10px;
+  border:1px solid transparent; border-radius:9px;
+  background:transparent; color:inherit; opacity:.58;
+  font-size:12px; font-weight:900; line-height:1; white-space:nowrap;
+}
+.gridHead .right .modeSegBtn:hover{ opacity:.92; background:rgba(255,255,255,.07); }
+.gridHead .right .modeSegBtn.on{ opacity:1; }
+.gridHead .right #modeSegNormal.on{
+  background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); color:#fff;
+}
+.gridHead .right #modeSegLight.on{
+  background:rgba(101,194,132,.2); border-color:rgba(170,236,190,.56); color:#ecfff1;
+}
+.gridHead .right #modeSegLow.on{
+  background:rgba(77,160,204,.22); border-color:rgba(174,231,255,.52); color:#effaff;
+}
+/* 761~1160px: 글자를 접어 헤더 한 줄을 지킵니다. "일반"은 아이콘이 없으므로 글자를 남깁니다.
+   형제 버튼(💌쪽지함·🍃경량)의 접기 구간은 761~920px인데, 여기만 1160px까지 넓힌 이유:
+   실측하면 「모드 · 일반 · 🍃경량 · 🪶저사양」 전체 글자를 펼칠 폭이 나오는 건 1101px부터고
+   그마저 여유가 0px이라, 쪽지함 뱃지가 두 자리만 돼도 다시 두 줄로 밀린다.
+   ⚠ 760px 이하는 건드리지 않는다 — 거기는 이미 가로 스크롤 한 줄이라 글자를 남기는 편이 낫다. */
+@media (min-width:761px) and (max-width:1160px){
+  .gridHead .right .modeSegLabel,
+  .gridHead .right .modeSegText{ display:none; }
+  .gridHead .right .modeSegBtn{ padding:0 8px; }
+  .gridHead .right .modeSeg{ padding:3px; }
+}
+/* 모바일: 헤더가 가로 스크롤 한 줄이라 형제 버튼 높이에만 맞춥니다.
+   (.gridHead .right > button 규칙은 직계 자식만 잡으므로 여기서 직접 지정) */
+@media (max-width:760px){
+  body.joined .gridHead .right .modeSeg{
+    flex:0 0 auto !important;
+    min-height:32px !important; padding:2px 3px !important; border-radius:10px !important;
+  }
+  body.joined .gridHead .right .modeSegLabel{ padding:0 5px 0 4px !important; font-size:10px !important; }
+  body.joined .gridHead .right .modeSegBtn{
+    min-height:26px !important; padding:0 8px !important; font-size:11px !important; border-radius:8px !important;
+  }
+}
+@media (max-height:480px){
+  body.joined .gridHead .right .modeSeg{ min-height:30px !important; padding:2px !important; }
+  body.joined .gridHead .right .modeSegBtn{ min-height:24px !important; padding:0 7px !important; }
+}
+</style>
 
 </body>
 </html>
