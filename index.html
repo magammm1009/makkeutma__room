@@ -7260,16 +7260,20 @@ function loadLocalProfile(){
   };
 
   // -----------------------------
-  // ✅ V167: 공용 뽀모(mmagampomoo) Firebase 설정 (분리) — 접속 인원 LIVE 조회용
+  // ✅ V167: 공용 뽀모 Firebase 설정 (분리) — 접속 인원 LIVE 조회용
+  // 📦 2026-08-11: mmagampomoo → mkm-pp-mm00 으로 프로젝트를 옮겼습니다(소유 계정 일원화).
+  //    ⚠️ 이 설정 변경은 '뽀모 앱 새 주소 배포'와 반드시 함께 나가야 합니다.
+  //       멤버가 아직 옛 뽀모(github.io)를 쓰는 동안 여기만 새 프로젝트를 보면
+  //       presence가 옛 프로젝트에 쌓이므로 대시보드 LIVE 인원이 0명으로 보입니다.
   // -----------------------------
   const pomoFirebaseConfig = {
-    apiKey: "AIzaSyBy09h77pCXYkU8JpriYihaGUrizGlvhe0",
-    authDomain: "mmagampomoo.firebaseapp.com",
-    databaseURL: "https://mmagampomoo-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "mmagampomoo",
-    storageBucket: "mmagampomoo.firebasestorage.app",
-    messagingSenderId: "730289089438",
-    appId: "1:730289089438:web:d1de0f7acefa602d29048f"
+    apiKey: "AIzaSyC0Obq5qDDcX0W-bLRuB7qpuegdVguZENs",
+    authDomain: "mkm-pp-mm00.firebaseapp.com",
+    databaseURL: "https://mkm-pp-mm00-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "mkm-pp-mm00",
+    storageBucket: "mkm-pp-mm00.firebasestorage.app",
+    messagingSenderId: "24232231965",
+    appId: "1:24232231965:web:d2ea7cacc663c9efca32f4"
   };
 
 
