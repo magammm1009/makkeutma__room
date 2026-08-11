@@ -5649,9 +5649,13 @@ body.joined #preJoinCard{ display:none; }
   }
   #attendOverlay.on{ display:flex; }
   #attendOverlay .atCard{
-    /* 출근부는 닉네임 카드(146px 고정)가 여러 열로 깔리는 가로로 넓은 앱이다.
-       숙제장(760px)보다 넓게 잡아야 카드가 한 줄로 뭉개지지 않는다. */
-    width:min(920px,96vw); height:min(88vh,940px); height:min(88dvh,940px);
+    /* 폭 720px 고정, 그 아래로는 화면과 함께 줄어든다(96vw).
+       ⚠️ 이 숫자를 767px 이상으로 올리지 말 것 — 출근부는 767px 미만에서
+       내부를 500px 셸로 세로 정렬하는데(app-shell max-width:500px),
+       그 레이아웃이 모달에 딱 맞아 사용자가 이 폭으로 고정을 요청했다.
+       767을 넘기면 데스크톱 레이아웃으로 튀면서 화면이 헐거워진다.
+       (iframe 이 카드 폭을 그대로 쓰므로 카드 폭 = 출근부 뷰포트 폭) */
+    width:min(720px,96vw); height:min(88vh,940px); height:min(88dvh,940px);
     background:#000; border:1px solid var(--line); border-radius:var(--radius);
     box-shadow:var(--shadow);
     display:flex; flex-direction:column; overflow:hidden;
