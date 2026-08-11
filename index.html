@@ -5629,6 +5629,8 @@ body.joined #preJoinCard{ display:none; }
 </div>
 <button class="ghost" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button class="ghost" id="profileBtn">🪪 내 프로필</button>
+<!-- V176_BINDER: 캐릭터 도감(포토카드 바인더). 페이지 로드 때는 아무것도 읽지 않고, 모달을 열 때만 동작한다. -->
+<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button">✨<span class="charaBinderLabel">캐꾸✨</span></button>
 <button class="ghost legacyHide" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
 <div class="actions">
@@ -10806,6 +10808,8 @@ function setControlsEnabled(joined){
       els.profileBtn.disabled = !joined;
       if(els.onlineBtn) els.onlineBtn.disabled = !joined;
       if(els.directInboxBtn) els.directInboxBtn.disabled = !joined;
+      // V176_BINDER: 캐릭터 도감도 입장 후에만 (els에 없는 append 블록 소유 버튼이라 직접 조회)
+      try{ const bb = document.getElementById("charaBinderBtn"); if(bb) bb.disabled = !joined; }catch(e){}
 
       // ✅ 대시보드 외부 링크(공용뽀모/폭파수다): 입장 후에만
       if(els.goPomo) els.goPomo.disabled = !joined;
@@ -12126,12 +12130,12 @@ async function heartbeat(){
         Number((patch.totalSecondsToday != null ? patch.totalSecondsToday : meRecord?.totalSecondsToday) || 0),
         patch.sessionStartedAtMs
       );
-      try{
-        const playOn = (getLayoutMode && getLayoutMode() === "playground");
-        patch["theme/petPlayActive"] = playOn;
-        patch["theme/petPlayMode"] = playOn ? "playground" : "default";
-        patch["theme/petPlayVersion"] = "v57";
-      }catch(e){}
+      /* V177_PLAYCLEAN: 펫 놀이터는 세계수 시즌2에서 은퇴했다(getLayoutMode가 "playground"를
+         무조건 "default"로 되돌리므로 playOn은 영구히 false). 그런데도 하트비트마다
+         theme/petPlayActive·petPlayMode·petPlayVersion 세 키를 계속 써서, presence에
+         죽은 값이 쌓이고 매 하트비트마다 업로드도 낭비됐다. 쓰기를 멈춘다.
+         (읽는 쪽은 isPetPlayActivePresence뿐이고 그 경로도 이미 도달 불가다.
+          값이 사라지면 undefined → falsy로 읽혀 "놀이터 아님"이 되므로 동작 동일.) */
       // ✅ V127: 만렙 펫 현황은 각 사용자 브라우저의 로컬 펫 성장 데이터에서 계산된다.
       // heartbeat에 함께 실어 보내야 다른 작가님들 타일에도 자연스럽게 표시된다.
       try{
@@ -16948,6 +16952,37 @@ t.appendChild(bg);
       },
       // 검증 훅: Firebase 없이 가짜 로스터 레코드로 렌더 경로(renderTile)를 직접 호출
       renderTileForTest(p){ try{ return renderTile(p); }catch(e){ return null; } }
+    };
+
+    /* V176_BINDER: 캐릭터 도감 브리지 — 파일 끝 append 블록(v176CharaBinderScript)이
+       모듈 내부(state/RTDB 1회 읽기)에 접근하는 최소 통로. 읽기 전용이라 쓰기 API는 두지 않는다.
+       ※ 다운로드 절약이 이 기능의 1순위 제약이다:
+         - onlineCharas()는 이미 구독 중인 profiles/{uid}(state.publicProfiles)를 재사용 → 추가 비용 0
+         - fetchCharasOnce()는 profiles 루트를 rGet으로 "1회만" 읽는다. onValue 구독은 절대 걸지 않는다.
+           (루트 92KB를 받아도 charaV1이 있는 항목만 남겨 11KB만 호출측에 넘긴다 — theme/bubbleText는 여기서 버림) */
+    window.__MK_BINDER_BRIDGE_V176__ = {
+      joined(){ try{ return !!state.joined; }catch(e){ return false; } },
+      selfUid(){ try{ return String(state.uid || ""); }catch(e){ return ""; } },
+      onlineCharas(){
+        const out = [];
+        try{
+          state.publicProfiles.forEach((v, uid)=>{
+            if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || v.nickname || ""), charaV1: v.charaV1 });
+          });
+        }catch(e){}
+        return out;
+      },
+      async fetchCharasOnce(){
+        if(!state.joined || !state.roomId) return null;
+        const snap = await rGet(rProfilesRootRef(state.roomId));
+        const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+        const out = [];
+        Object.keys(val).forEach((uid)=>{
+          const v = val[uid];
+          if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || v.nickname || ""), charaV1: v.charaV1 });
+        });
+        return out;
+      }
     };
 
     // ✅ V158: 구독 재연결 순간에도 내 타일/프로필이 사라지지 않게 로컬 그림자 레코드 유지
@@ -27196,6 +27231,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     color:#fff2cd; background:rgba(58,34,4,.78); border-color:rgba(255,199,74,.7);
     box-shadow:0 0 0 1px rgba(255,199,74,.16);
   }
+  /* V175_PARTSLOT: 세트 파츠 배지(manifest _partSets) — 같은 계열이어도 서로 함께 착용되는 낱개 묶음.
+     우상단은 선택 체크(.mkCharaThumb.on::after)가 쓰므로 좌상단에 놓는다. 나머지는 가격 배지 스타일 그대로. */
+  .mkCharaPrice.mkSetBadge{
+    left:4px; right:auto; top:4px; bottom:auto;
+    color:#dbe6ff; background:rgba(10,14,34,.74); border-color:rgba(140,170,255,.5);
+  }
   /* ── V169_SHOP: 입어보는 중(미결제 착장) — 선택 핑크와 구분되는 금색 톤, 가격 배지 유지 ── */
   .mkCharaThumb.mkTryOn{ border-color:#ffd85c; }
   .mkCharaThumb.mkTryOn.on{ box-shadow:0 0 0 2px rgba(255,216,92,.28); }
@@ -27554,16 +27595,87 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function isMultiCat(key){ var n = catName(key); return n === 'acc' || n === 'gear'; }
   /* V172_GEAR: 다중 슬롯 정원은 3 — 단, 관리자 코드로만 받는 특수 파츠(manifest _special)는 "덤"이라 정원에서 뺀다.
      → 일반 파츠 3개를 다 채웠어도 개근상 같은 특수 파츠는 추가로 계속 달 수 있다. */
-  var MULTI_SLOT_MAX = 3;
-  function normalCountOf(catKey, arr){ // 정원 계산용 — 특수 파츠는 세지 않는다
-    return arr.filter(function(nm){ return !isSpecial(catKey, nm); }).length;
+  var MULTI_SLOT_MAX = 3; // V175_PARTSLOT: 액세서리 정원 3 = 헤어핀1 + 안경1 + 목도리1
+  /* V175_PARTSLOT: 장비 정원은 5 = 헤드셋1 + 가방1 + 날개1 + 동반 오브젝트(왼)1 + 동반 오브젝트(오)1.
+     계열 배타(sameSlotAs)만으로도 5를 넘길 수 없지만, 계열을 모르는 구 manifest와 세트 파츠(예외 B)를
+     대비해 상한을 따로 둔다. */
+  var GEAR_SLOT_MAX = 5;
+  function slotMaxOf(catKey){ return catName(catKey) === 'gear' ? GEAR_SLOT_MAX : MULTI_SLOT_MAX; }
+  function normalCountOf(catKey, arr){ // 정원 계산용 — 정원 밖 파츠(V175_PARTSLOT 예외 A)는 세지 않는다
+    return arr.filter(function(nm){ return !isFreeExtra(catKey, nm); }).length;
   }
-  function limitNormalTo3(catKey, arr){ // 일반 파츠만 앞에서 3개까지, 특수 파츠는 순서 유지한 채 전부 통과
-    var n = 0;
-    return arr.filter(function(nm){
-      if(isSpecial(catKey, nm)) return true;
-      n++; return n <= MULTI_SLOT_MAX;
+  function limitNormalTo3(catKey, arr){ // V175_PARTSLOT: 이름·호출처는 유지, 판정은 새 슬롯 규칙에 위임
+    return normalizeMultiSel(catKey, arr);
+  }
+
+  /* ---------- V175_PARTSLOT: "같은 계열은 하나만" 착장 규칙 (입어보기·저장 공통) ----------
+     manifest 계약 — 세 키 중 무엇이든 없거나 해당 파츠가 목록에 없으면 "규칙 없음(자유 착용)".
+     배포 순서가 어긋나 착장이 통째로 막히는 사고를 막기 위한 하위 호환이다.
+       _partTypes : {"05_acc_auto_01.png":"hairpin", ...} 파일명 → 계열
+                    hairpin|glasses|scarf|bandage|gum|special|headset|bag|wing|companion
+       _partSets  : ["05_acc_auto_07.png", ...] 여러 개가 흩어져 한 벌을 이루는 "세트" 파츠 파일명 배열
+       _partSide  : {"06_gear_auto_16.png":"left", ...} companion 전용 좌/우
+     규칙:
+       - 같은 계열은 하나만 — 새로 고르면 앞의 것이 자동으로 벗겨진다(거부하지 않는다).
+       - 예외 A(gum/bandage/special): 계열 배타 없음 + 정원 밖 — 몇 개든 덤으로 붙는다.
+       - 예외 B(_partSets): 계열 배타만 면제 — 정원에는 포함된다.
+       - companion은 왼쪽1 + 오른쪽1. side를 모르면 안전하게 계열 전체를 한 슬롯으로 본다. */
+  var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리', bandage:'반창고', gum:'풍선껌',
+                          special:'특수 파츠', headset:'헤드셋', bag:'가방', wing:'날개', companion:'친구' };
+  var FREE_EXTRA_TYPES = { gum:1, bandage:1, special:1 }; // 예외 A
+  function partTypesMapOf(mf){ var o = mf && mf._partTypes; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  function partSetsMapOf(mf){ var out = {}, arr = mf && mf._partSets; if(Array.isArray(arr)) arr.forEach(function(f){ if(typeof f === 'string') out[f] = 1; }); return out; }
+  function partSideMapOf(mf){ var o = mf && mf._partSide; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  function partTypeOf(catKey, name){ // 계열 또는 null(= 규칙 없음)
+    if(!isMultiCat(catKey)) return null; // 계열 규칙은 액세서리·장비 전용
+    var t = (chara.partTypes || {})[name];
+    return (typeof t === 'string' && t) ? t : null;
+  }
+  function isSetPart(name){ return !!(chara.partSets || {})[name]; } // 예외 B
+  function partSideOf(name){ var s = (chara.partSide || {})[name]; return (s === 'left' || s === 'right') ? s : null; }
+  function isFreeExtra(catKey, name){ // 예외 A — 계열 배타도 정원도 적용받지 않는 "덤"
+    if(isSpecial(catKey, name)) return true; // manifest _special(개근상 등) — 기존 장치 재사용
+    var t = partTypeOf(catKey, name);
+    return !!(t && FREE_EXTRA_TYPES[t]);
+  }
+  function sameSlotAs(catKey, a, b){ // 두 파츠가 같은 슬롯을 다투는가 (계열 미상이면 다투지 않는다)
+    var ta = partTypeOf(catKey, a), tb = partTypeOf(catKey, b);
+    if(!ta || !tb || ta !== tb) return false;
+    if(ta === 'companion'){
+      var sa = partSideOf(a), sb = partSideOf(b);
+      if(!sa || !sb) return true; // side 미상 → 계열 전체를 한 슬롯으로(안전한 기본값)
+      return sa === sb;
+    }
+    return true;
+  }
+  function slotLabelOf(catKey, name){ // 교체 토스트 문구용
+    var t = partTypeOf(catKey, name);
+    if(!t) return '파츠';
+    var base = PART_TYPE_LABEL[t] || '파츠';
+    if(t === 'companion'){ var s = partSideOf(name); return (s === 'left' ? '왼쪽 ' : (s === 'right' ? '오른쪽 ' : '')) + base; }
+    return base;
+  }
+  function joEul(w){ // 을/를 — 마지막 글자 받침 유무
+    var s = String(w || ''); if(!s) return '을';
+    var c = s.charCodeAt(s.length - 1);
+    if(c < 0xAC00 || c > 0xD7A3) return '을';
+    return ((c - 0xAC00) % 28) ? '을' : '를';
+  }
+  /* 착장 배열을 규칙에 맞게 정규화 — 앞의 것 우선. 옛 저장본에 같은 계열이 2개 들어 있으면 앞의 것만 남긴다
+     (저장본을 지우는 게 아니라 표출만 정규화 — stripUnownedSel/filterOwnedParts와 같은 관례). */
+  function normalizeMultiSel(catKey, arr){
+    var max = slotMaxOf(catKey), out = [], slotted = [], n = 0;
+    (arr || []).forEach(function(nm){
+      if(typeof nm !== 'string' || !nm || out.indexOf(nm) >= 0) return;
+      if(isFreeExtra(catKey, nm)){ out.push(nm); return; } // 예외 A: 계열·정원 밖
+      if(n >= max) return;
+      if(!isSetPart(nm)){ // 예외 B: 세트는 계열 배타만 면제(정원은 포함)
+        for(var i = 0; i < slotted.length; i++){ if(sameSlotAs(catKey, slotted[i], nm)) return; }
+        slotted.push(nm);
+      }
+      n++; out.push(nm);
     });
+    return out;
   }
   function selArr(catKey){ // 카테고리의 현재 착장을 항상 배열로 (acc 외에는 0~1개)
     var v = chara.sel[catKey];
@@ -27626,16 +27738,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       chara.cats.forEach(function(c){
         var want = saved.parts[catName(c.key)];
         if(isMultiCat(c.key)){ // V172_GEAR: 액세서리·장비 공통
-          // acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만 최대 3개
+          // acc 하위 호환 — 구형 단일 문자열은 [문자열]로 정규화, 배열은 유효 파츠만
           var arr = Array.isArray(want) ? want : (typeof want==='string' ? [want] : []);
-          var kept = [], normalKept = 0;
-          arr.forEach(function(nm){
-            if(typeof nm!=='string' || kept.indexOf(nm)>=0 || !c.parts.some(function(p){ return p.name===nm; })) return;
-            /* V172_GEAR: 정원 3개는 일반 파츠만 센다 — 코드로 받은 특수 파츠는 개수와 무관하게 전부 복원 */
-            if(isSpecial(c.key, nm)){ kept.push(nm); return; }
-            if(normalKept < MULTI_SLOT_MAX){ normalKept++; kept.push(nm); }
+          /* V175_PARTSLOT: 목록에 실제로 있는 파츠만 남긴 뒤 새 슬롯 규칙(같은 계열 1개 + 정원)으로 정규화.
+             옛 저장본에 같은 계열이 2개 들어 있으면 앞의 것만 표출한다(저장본 자체는 건드리지 않는다).
+             V172_GEAR: 정원은 일반 파츠만 센다 — 코드로 받은 특수 파츠는 개수와 무관하게 전부 복원(예외 A). */
+          var exists = arr.filter(function(nm){
+            return typeof nm==='string' && c.parts.some(function(p){ return p.name===nm; });
           });
-          chara.sel[c.key]=kept;
+          chara.sel[c.key]=normalizeMultiSel(c.key, exists);
           return;
         }
         if(typeof want==='string' && c.parts.some(function(p){ return p.name===want; })) chara.sel[c.key]=want;
@@ -27918,6 +28029,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         chara.special = (mf && mf._special && typeof mf._special==='object') ? mf._special : {}; // V170_AWARD: 특수 파츠 정보("카테고리/파일명"→{label,desc,emoji}) — 없으면 빈 객체(기능만 조용히 비활성)
         chara.gearBack = gearBackMapOf(mf); // V173_WINGBACK: 몸통 뒤에 그릴 장비(어깨 날개) 파일명 맵 — 없으면 빈 객체
         chara.gearCostumeOk = gearCostumeOkMapOf(mf); // V173_COSTUME2: 인형탈과 함께 쓸 수 있는 장비 맵 — 키가 없으면 null(제한 없음)
+        /* V175_PARTSLOT: 계열/세트/좌우 규칙 — 키가 없으면 빈 값 = 규칙 없음(구 manifest 하위 호환) */
+        chara.partTypes = partTypesMapOf(mf);
+        chara.partSets  = partSetsMapOf(mf);
+        chara.partSide  = partSideMapOf(mf);
         var cats=[];
         Object.keys(mf||{}).forEach(function(key){
           if(key.charAt(0)==='_') return;             // _version 등 메타 키는 카테고리가 아니다
@@ -28089,11 +28204,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
           + '</div>';
       }
       var price = partPrice(cat.key, p.name);
-      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 🪙'+fmtCoins(price)+' · 눌러서 입어보기'));
-      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" title="'+title+'">'
+      var isSet = isSetPart(p.name); // V175_PARTSLOT: 세트 파츠 — 같은 계열이어도 서로/낱개와 함께 착용된다
+      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 🪙'+fmtCoins(price)+' · 눌러서 입어보기'))
+        + (isSet?' · 세트 파츠 — 같은 종류끼리도 함께 착용돼요':'');
+      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'"'+(isSet?' data-set="1"':'')+' title="'+title+'">'
         + thumbImgHtml(cat.key, p.name, p.url, '') // V169_SHOP: _rects 크롭(contain) — rect 없으면 전체 표시 폴백
         // V169: 모든 파츠가 상태 배지를 가진다 — 보유는 "보유 ✓", 미보유는 가격 (배지 없음 = 상태 불명 혼란 방지)
         + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">🪙'+fmtCoins(price)+'</span>'))
+        + (isSet?'<span class="mkCharaPrice mkSetBadge">세트</span>':'') // V175_PARTSLOT: 좌상단 세트 배지
         + '</div>';
     }).join('');
     el.innerHTML = html;
@@ -28268,16 +28386,31 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(isMultiCat(catKey)){
       // V169_SHOP: 액세서리 다중 선택 — 클릭 = 착용/해제 토글, 최대 3개(착용 순서 유지)
       // V172_GEAR: 장비도 같은 규칙. 정원 3개는 "일반 파츠"만 세고, 코드로 받은 특수 파츠는 정원 밖에서 자유롭게 추가된다.
+      /* V175_PARTSLOT: 정원 초과를 거부하지 않는다 — 같은 계열을 연달아 고르면 앞의 것이 자동으로 벗겨진다.
+         예외 A(gum/bandage/special)는 계열·정원 밖, 예외 B(_partSets 세트)는 계열 배타만 면제(정원은 포함).
+         계열을 모르는 구 manifest에서는 아래 교체가 아무것도 잡지 못해 예전처럼 정원 토스트로 떨어진다. */
       var arr = selArr(catKey).slice();
       if(!name){ arr = []; }
       else{
         var i = arr.indexOf(name);
-        if(i >= 0) arr.splice(i, 1);
-        else{
-          if(!isSpecial(catKey, name) && normalCountOf(catKey, arr) >= MULTI_SLOT_MAX){
-            toast((catName(catKey)==='gear' ? '장비는' : '액세서리는') + ' 최대 3개까지!'); return;
+        if(i >= 0) arr.splice(i, 1); // 이미 착용 중 → 해제(토글)
+        else if(isFreeExtra(catKey, name)){
+          arr.push(name); // 예외 A: 정원·배타 무시하고 그냥 덤으로
+        }else{
+          var swapped = null;
+          if(!isSetPart(name)){ // 예외 B: 세트는 정원만 검사
+            arr = arr.filter(function(nm){
+              if(isFreeExtra(catKey, nm) || isSetPart(nm)) return true; // 덤·세트는 교체 대상이 아니다
+              if(sameSlotAs(catKey, nm, name)){ if(!swapped) swapped = nm; return false; }
+              return true;
+            });
+          }
+          var max = slotMaxOf(catKey);
+          if(normalCountOf(catKey, arr) >= max){
+            toast((catName(catKey)==='gear' ? '장비는' : '액세서리는') + ' 최대 ' + max + '개까지!'); return;
           }
           arr.push(name);
+          if(swapped){ var lb = slotLabelOf(catKey, name); toast(lb + joEul(lb) + ' 바꿨어요 ✨'); }
         }
       }
       chara.sel[catKey] = arr;
@@ -28498,6 +28631,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo },
     /* V173_WINGBACK: 검증용 훅 — 레이어 z랭크 관측 (날개 장비 z5 / 특수템 z90) */
     stageLayers:stageLayers, isGearBack:isGearBack,
+    /* V175_PARTSLOT: 검증용 훅 — 계열 슬롯 판정 (같은 계열 1개 + 정원) */
+    slot:{ partTypeOf:partTypeOf, isSetPart:isSetPart, partSideOf:partSideOf, isFreeExtra:isFreeExtra,
+           sameSlotAs:sameSlotAs, normalizeMultiSel:normalizeMultiSel, slotMaxOf:slotMaxOf, slotLabelOf:slotLabelOf },
     /* V174_PARTHUE: 검증용 훅 — 파츠 단위 색 조절 (다중 착장 acc/gear) */
     parthue:{ adjKeyFor:adjKeyFor, getAdjFor:getAdjFor, filterFor:filterFor,
               colorTargetFor:colorTargetFor, setColorTarget:setColorTarget,
@@ -29052,6 +29188,51 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     try{ console.log(msg); }catch(e){}
   }
 
+  /* ---------- V175_PARTSLOT: "같은 계열은 하나만" 착장 규칙 (모달과 같은 규칙, 스코프만 다르다) ----------
+     sanitizeParts는 동기 함수라 manifest promise를 기다릴 수 없다 → ensureManifest가 성공하면 여기에 실어 두고,
+     실리기 전(첫 호출)이나 manifest에 키가 없으면 규칙 없음 = 예전 동작 그대로(하위 호환).
+     이 IIFE는 꾸미기 모달과 스코프가 달라 헬퍼를 공유하지 못한다 — isGearBack/_special_ 판정과 같은 관례. */
+  var slotRules = null; // { types:{파일명:계열}, sets:{파일명:1}, side:{파일명:'left'|'right'} }
+  var TILE_MULTI_MAX = { acc:3, gear:5 }; // acc = 헤어핀1+안경1+목도리1 / gear = 헤드셋1+가방1+날개1+동반(왼)1+동반(오)1
+  var TILE_FREE_EXTRA = { gum:1, bandage:1, special:1 }; // 예외 A — 계열 배타 없음 + 정원 밖
+  function slotMaxOf(cat){ return TILE_MULTI_MAX[cat] || 3; }
+  function partTypeOf(cat, name){
+    if(cat !== 'acc' && cat !== 'gear') return null;
+    var t = slotRules && slotRules.types[name];
+    return (typeof t === 'string' && t) ? t : null; // 목록에 없는 파츠 = 규칙 없음
+  }
+  function isSetPart(name){ return !!(slotRules && slotRules.sets[name]); } // 예외 B — 계열 배타만 면제
+  function partSideOf(name){ var s = slotRules && slotRules.side[name]; return (s === 'left' || s === 'right') ? s : null; }
+  function isFreeExtra(cat, name){
+    if(/_special_/i.test(String(name))) return true; // manifest _special을 못 읽는 스코프 — 파일명 규칙(기존 판정 유지)
+    var t = partTypeOf(cat, name);
+    return !!(t && TILE_FREE_EXTRA[t]);
+  }
+  function sameSlotAs(cat, a, b){
+    var ta = partTypeOf(cat, a), tb = partTypeOf(cat, b);
+    if(!ta || !tb || ta !== tb) return false;
+    if(ta === 'companion'){
+      var sa = partSideOf(a), sb = partSideOf(b);
+      if(!sa || !sb) return true; // side 미상 → 계열 전체를 한 슬롯으로(안전한 기본값)
+      return sa === sb;
+    }
+    return true;
+  }
+  function normalizeMultiSel(cat, arr){ // 앞의 것 우선 — 같은 계열이 2개면 앞의 것만 남긴다
+    var max = slotMaxOf(cat), out = [], slotted = [], n = 0;
+    (arr || []).forEach(function(nm){
+      if(out.indexOf(nm) >= 0) return;
+      if(isFreeExtra(cat, nm)){ out.push(nm); return; }
+      if(n >= max) return;
+      if(!isSetPart(nm)){
+        for(var i = 0; i < slotted.length; i++){ if(sameSlotAs(cat, slotted[i], nm)) return; }
+        slotted.push(nm);
+      }
+      n++; out.push(nm);
+    });
+    return out;
+  }
+
   /* ---------- 데이터 정규화 ---------- */
   function validPartName(v){ return typeof v === 'string' && v.length && v.length <= 120 && /\.png$/i.test(v) && !/[\/\\<>"']/.test(v); }
   function sanitizeParts(src){
@@ -29066,14 +29247,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
           v = Object.keys(v).sort(function(a, b){ return a - b; }).map(function(kk){ return v[kk]; });
         }
         var arr = Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
-        /* V172_GEAR: 정원 3개는 "일반 파츠"만 센다 — 관리자 코드로만 받는 특수 파츠는 개수와 무관하게 전부 유지.
-           이 IIFE는 manifest _special을 읽지 않으므로 파일명 규칙(05_acc_special_xxx.png)의 _special_로 판정한다. */
-        var kept = [], normalKept = 0;
-        arr.forEach(function(n){
-          if(!validPartName(n) || kept.indexOf(n) >= 0) return;
-          if(/_special_/i.test(n)){ kept.push(n); return; }
-          if(normalKept < 3){ normalKept++; kept.push(n); }
-        });
+        /* V172_GEAR: 정원은 "일반 파츠"만 센다 — 관리자 코드로만 받는 특수 파츠는 개수와 무관하게 전부 유지.
+           V175_PARTSLOT: 유효한 파일명만 추린 뒤 슬롯 규칙(같은 계열 1개 + 정원 acc 3/gear 5)으로 정규화한다. */
+        var valid = [];
+        arr.forEach(function(n){ if(validPartName(n) && valid.indexOf(n) < 0) valid.push(n); });
+        var kept = normalizeMultiSel(k, valid);
         if(kept.length) out[k] = kept;
         return;
       }
@@ -29306,6 +29484,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
           gearCostumeOk = {};
           mf._gearCostumeOk.forEach(function(f){ if(typeof f === 'string') gearCostumeOk[f] = 1; });
         }
+        /* V175_PARTSLOT: 계열/세트/좌우 규칙 — 키가 없으면 빈 값 = 규칙 없음(구 manifest 하위 호환).
+           동기 함수인 sanitizeParts가 쓸 수 있도록 모듈 변수 slotRules에도 실어 둔다. */
+        var partTypes = (mf && mf._partTypes && typeof mf._partTypes === 'object' && !Array.isArray(mf._partTypes)) ? mf._partTypes : {};
+        var partSets = {};
+        if(mf && Array.isArray(mf._partSets)) mf._partSets.forEach(function(f){ if(typeof f === 'string') partSets[f] = 1; });
+        var partSide = (mf && mf._partSide && typeof mf._partSide === 'object' && !Array.isArray(mf._partSide)) ? mf._partSide : {};
+        slotRules = { types: partTypes, sets: partSets, side: partSide };
         var folders = {}, files = {}, hairBackOf = {};
         Object.keys(mf || {}).forEach(function(key){
           if(key.charAt(0) === '_') return; // _version/_eyes 등 메타 키
@@ -29327,7 +29512,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
             if(files.hair[back]) hairBackOf[f] = back;
           });
         }
-        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack, gearCostumeOk: gearCostumeOk };
+        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack, gearCostumeOk: gearCostumeOk,
+                 partTypes: partTypes, partSets: partSets, partSide: partSide }; // V175_PARTSLOT
       })
       .catch(function(err){ maniPromise = null; throw err; });
     return maniPromise;
@@ -29800,6 +29986,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var hit = bakeCache.get(key);
     if(hit){ stats.bakeCacheHit++; return hit; }
     var pr = ensureManifest().then(function(mani){
+      /* V175_PARTSLOT: 위의 sanitizeParts는 manifest보다 먼저 돌 수 있어 슬롯 규칙이 아직 없었을 수 있다
+         → 규칙이 실린 지금 한 번 더 정규화한다(캐시 키는 그대로 — 같은 그림이 키 2개를 쓸 뿐 표시는 일관). */
+      parts = sanitizeParts(parts);
       var layers = [];
       /* V173_COSTUME: 전신 동물 인형탈(04_look_..._full.png)은 얼굴까지 동물 얼굴로 대체하므로
          사람 머리카락(hair/hair_back)과 얼굴(face)을 그리지 않는다 — 앞머리·얼굴이 룩 위 z라
@@ -30151,7 +30340,406 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     moverWatchdog: moverWatchdog,     // 검증용: 감시 1회 즉시 실행 (2.5초 주기와 동일 로직)
     movePeekOutNow: movePeekOutNow,   // 검증용: (edge?) 즉시 경계 밖 빼꼼
     computeEyeFracs: computeEyeFracs, // 검증용: (mani,res) → {top,bot,xmin,xmax}
+    /* V175_PARTSLOT: 검증용 훅 — 타일 스코프의 계열 슬롯 정규화 */
+    slot:{ sanitizeParts:sanitizeParts, normalizeMultiSel:normalizeMultiSel, partTypeOf:partTypeOf,
+           isSetPart:isSetPart, partSideOf:partSideOf, isFreeExtra:isFreeExtra,
+           rules:function(){ return slotRules; } },
     __testSelfUid: null        // 검증용: selfUid 강제 지정 (Firebase 없이 내 타일 경로 테스트)
+  };
+})();
+</script>
+
+
+<!-- ===== V176_BINDER: 캐꾸 도감(포토카드 바인더) — 2026-08-11 =====
+     작가들의 현재 캐릭터(charaV1)를 카드로 모아 보는 읽기 전용 모달입니다.
+     이 방의 1순위 제약은 RTDB 다운로드 절약이라, 데이터 경로를 이렇게 짰습니다.
+       1) 페이지 로드 때는 아무것도 읽지 않는다 — 모달을 "열 때만" 동작.
+       2) 열면 먼저 state.publicProfiles(이미 구독 중인 접속자 프로필)로 즉시 그린다 → 비용 0.
+       3) localStorage 캐시(mk_chara_binder_v1, TTL 30분)가 살아 있으면 네트워크 요청 없음.
+       4) 캐시가 없거나 만료면 profiles 루트를 get() "1회"만 읽는다(onValue 구독 금지).
+          받은 뒤 charaV1이 있는 항목만 {uid,name,charaV1}로 캐시 — 92KB를 받아 11KB만 남긴다.
+          theme/bubbleText는 브리지에서 이미 버려지고, 여기서도 화이트리스트로 한 번 더 거른다.
+       5) 새로고침 버튼은 30초 쿨다운 + 진행 중 비활성화(연타 방지).
+     렌더는 IntersectionObserver로 화면에 들어온 카드만 bake하고 동시 3개로 제한합니다.
+     bake는 기존 __MK_CHARA_TILE_V169__.bake(내부 캐시·slot 정규화 포함)를 그대로 재사용하고,
+     도감에서는 정지 이미지면 충분하므로 깜빡임(blink)은 붙이지 않습니다.
+     쓰기는 어떤 경로로도 하지 않습니다(읽기 전용). -->
+<style id="v176CharaBinderStyle">
+  #charaBinderModal .modal{ width:min(980px, 100%); }
+  #charaBinderModal .modalBody{ max-height:min(74vh, 660px); }
+  .binderMeta{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .binderMeta > *{ flex:0 0 auto; min-width:0; }
+  .binderHeadRight{ display:flex; align-items:center; gap:8px; }
+  #charaBinderRefresh[disabled]{ opacity:.5; cursor:default; }
+  .binderState{ padding:14px 4px; text-align:center; opacity:.9; }
+  .binderState:empty{ display:none; }
+  .binderGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(158px, 1fr)); gap:10px; }
+  .binderGrid:empty{ display:none; }
+  /* 포토카드 슬리브: 얇은 테두리 + 대각선 광택 한 줄 (과하지 않게) */
+  .binderCard{
+    position:relative; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:8px 8px 7px;
+    border:1px solid var(--line); border-radius:14px;
+    background:linear-gradient(165deg, rgba(255,255,255,.09), rgba(255,255,255,.03) 44%, rgba(0,0,0,.18));
+    box-shadow:0 8px 22px rgba(0,0,0,.28);
+  }
+  .binderCard::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,.13) 50%, transparent 60%);
+  }
+  .binderCard.mine{ border-color:rgba(255,182,214,.55); box-shadow:0 8px 24px rgba(255,119,184,.22); }
+  .binderArt{
+    width:100%; aspect-ratio:1/1; border-radius:11px;
+    background:rgba(0,0,0,.22); display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .binderArt img{ width:100%; height:100%; object-fit:contain; display:block; opacity:0; transition:opacity .18s ease; }
+  .binderCard.ready .binderArt img{ opacity:1; }
+  .binderName{
+    width:100%; text-align:center; font-size:12px; font-weight:1000; line-height:1.25;
+    color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .binderCard.mine .binderName{ color:var(--pink2); }
+  @media (max-width:560px){
+    .binderGrid{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+    .binderCard{ padding:6px 6px 5px; border-radius:12px; }
+    .binderName{ font-size:11px; }
+  }
+  @media (prefers-reduced-motion:reduce){ .binderArt img{ transition:none; } }
+
+  /* 상단바(모바일 ≤760px): .topCenter가 display:contents라 이 버튼도 .topbar 그리드의 아이템이 된다.
+     자동 배치에 맡기면 줄이 하나 더 생기므로, 실제로 비어 있는 칸(2행 3열 = ⚙️ 아래, 💌 왼쪽)에 앉힌다.
+     좁은 화면에서는 💌쪽지함이 라벨을 숨기는 것과 같은 방식으로 글자를 접고 아이콘만 남긴다.
+     761~1100px는 상단바가 flex라 그리드 규칙이 필요 없다 — 형제 버튼과 같은 크기로 흘러간다. */
+  @media (max-width:760px){
+    body.joined #charaBinderBtn{
+      grid-column:3 !important; grid-row:2 !important;
+      justify-self:stretch !important; align-self:center !important;
+      width:100% !important; min-width:0 !important;
+      height:40px !important; min-height:40px !important;
+      padding:0 !important; font-size:15px !important; line-height:1 !important;
+      white-space:nowrap !important; overflow:hidden !important;
+    }
+    body.joined #charaBinderBtn .charaBinderLabel{ display:none; }
+  }
+  @media (max-width:420px){
+    body.joined #charaBinderBtn{ height:37px !important; min-height:37px !important; font-size:14px !important; }
+  }
+</style>
+
+<div aria-hidden="true" class="modalOverlay" id="charaBinderModal">
+<div aria-modal="true" class="modal" role="dialog">
+<div class="modalHeader">
+<div class="t">✨ 캐꾸 도감</div>
+<div class="binderHeadRight">
+<button class="ghost" id="charaBinderRefresh" title="목록 새로고침(30초에 한 번)" type="button">🔄 새로고침</button>
+<button class="ghost" data-close="charaBinderModal" id="charaBinderClose" type="button">닫기</button>
+</div>
+</div>
+<div class="modalBody">
+<div class="binderMeta">
+<div class="tiny" id="charaBinderCount">—</div>
+<div class="tiny" id="charaBinderStamp"></div>
+</div>
+<div class="tiny binderState" id="charaBinderState"></div>
+<div class="binderGrid" id="charaBinderGrid"></div>
+</div>
+</div>
+</div>
+
+<script id="v176CharaBinderScript">
+(function(){
+  'use strict';
+  /* V176_BINDER: 도감 본체. 모듈 내부에는 __MK_BINDER_BRIDGE_V176__ 로만 접근하고,
+     캐릭터 합성은 __MK_CHARA_TILE_V169__.bake(parts, hue)를 그대로 재사용한다. */
+  var LS_KEY = 'mk_chara_binder_v1';
+  var TTL_MS = 30 * 60 * 1000;   // 캐시 유효 30분 — 그 안에는 네트워크 요청 0
+  var COOLDOWN_MS = 30 * 1000;   // 새로고침 연타 방지
+  var BAKE_LIMIT = 3;            // 동시 합성 3개 (스크롤 중 프레임 튐 방지)
+  var PART_KEYS = ['body','hair','face','look','acc','gear'];
+
+  var stats = { openCount:0, fetchCount:0, cacheHitCount:0, renderCount:0, cardCount:0, bakeRequested:0 };
+  var io = null;            // IntersectionObserver
+  var queue = [];           // bake 대기 카드
+  var running = 0;          // 진행 중 bake 수
+  var gen = 0;              // 모달 세대 — 닫으면 올려서 진행 중 bake 결과를 버린다
+  var cooldownTimer = null;
+  var lastFetchAtMs = 0;
+  var busy = false;
+  var items = [];           // 현재 표시 중인 {uid,name,charaV1} 목록
+  var savedAtMs = 0;
+
+  function $(id){ return document.getElementById(id); }
+  function bridge(){ return window.__MK_BINDER_BRIDGE_V176__ || null; }
+  function overlay(){ return $('charaBinderModal'); }
+  function isOpen(){ var m = overlay(); return !!(m && m.classList.contains('show')); }
+  function toast(msg, ms){
+    try{
+      if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
+      var el = $('toast');
+      if(el){
+        el.textContent = msg; el.classList.add('show');
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms || 2200);
+      }
+    }catch(e){}
+  }
+
+  /* ---------- 캐시: 화이트리스트로만 담는다 (theme/bubbleText가 새어 들어갈 여지 자체를 없앤다) ---------- */
+  function slimChara(c){
+    if(!c || typeof c !== 'object') return null;
+    var src = c.parts || {}, parts = {}, has = false;
+    PART_KEYS.forEach(function(k){
+      var v = src[k];
+      if(Array.isArray(v)){ var a = v.filter(Boolean).slice(0,4).map(String); if(a.length){ parts[k] = a; has = true; } }
+      else if(v){ parts[k] = String(v); has = true; }
+    });
+    if(!has) return null;                       // 착장이 아무것도 없으면 카드로 의미가 없다
+    var out = { v: Number(c.v) || 1, parts: parts };
+    if(c.hue && typeof c.hue === 'object' && !Array.isArray(c.hue)) out.hue = c.hue;
+    if(c.show) out.show = String(c.show);
+    if(c.mode) out.mode = String(c.mode);
+    if(c.name) out.name = String(c.name).slice(0,20);
+    var t = Number(c.updatedAtMs);
+    if(isFinite(t) && t > 0) out.updatedAtMs = t;
+    return out;
+  }
+  function slimItem(it){
+    var c = slimChara(it && it.charaV1);
+    if(!c) return null;
+    var uid = String((it && it.uid) || '');
+    if(!uid) return null;
+    return { uid: uid, name: String((it && it.name) || c.name || '').slice(0,20), charaV1: c };
+  }
+  function readCache(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(!raw) return null;
+      var obj = JSON.parse(raw);
+      if(!obj || !Array.isArray(obj.items)) return null;
+      var t = Number(obj.savedAtMs) || 0;
+      return { savedAtMs: t, items: obj.items, fresh: (t > 0 && (Date.now() - t) < TTL_MS) };
+    }catch(e){ return null; }
+  }
+  function writeCache(arr){
+    try{
+      var payload = { savedAtMs: Date.now(), items: arr };
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      return payload.savedAtMs;
+    }catch(e){ return 0; }   // 용량 초과 등은 조용히 포기 — 다음 열람 때 다시 받으면 된다
+  }
+  function merge(a, b){
+    var map = new Map();
+    function put(it){
+      var s = slimItem(it);
+      if(!s) return;
+      var old = map.get(s.uid);
+      if(!old || (s.charaV1.updatedAtMs || 0) >= (old.charaV1.updatedAtMs || 0)) map.set(s.uid, s);
+    }
+    (a || []).forEach(put);
+    (b || []).forEach(put);
+    return Array.from(map.values());
+  }
+
+  /* ---------- 화면 ---------- */
+  function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = msg || ''; }
+  function setStamp(){
+    var el = $('charaBinderStamp');
+    if(!el) return;
+    if(!savedAtMs){ el.textContent = '접속 중인 사람만 표시'; return; }
+    try{
+      var d = new Date(savedAtMs);
+      el.textContent = '마지막 갱신 ' + d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+    }catch(e){ el.textContent = ''; }
+  }
+  function cardOf(it, mine){
+    var card = document.createElement('div');
+    card.className = 'binderCard' + (mine ? ' mine' : '');
+    card.setAttribute('data-uid', it.uid);
+    card.__chara = it.charaV1;
+    var art = document.createElement('div'); art.className = 'binderArt';
+    var img = document.createElement('img');
+    img.alt = ''; img.decoding = 'async'; img.draggable = false;
+    art.appendChild(img);
+    var nm = document.createElement('div'); nm.className = 'binderName';
+    nm.textContent = (mine ? '⭐ ' : '') + (it.name || '이름 없음');   // textContent — 닉네임을 마크업으로 해석하지 않는다
+    card.appendChild(art); card.appendChild(nm);
+    return card;
+  }
+  function render(arr){
+    var grid = $('charaBinderGrid');
+    if(!grid) return;
+    teardownRender();                         // 다시 그릴 때 이전 옵저버·큐부터 정리
+    var me = '';
+    try{ me = bridge() ? bridge().selfUid() : ''; }catch(e){}
+    var list = arr.slice().sort(function(x, y){
+      if(me){                                  // 내 카드는 맨 앞 고정
+        if(x.uid === me && y.uid !== me) return -1;
+        if(y.uid === me && x.uid !== me) return 1;
+      }
+      return (y.charaV1.updatedAtMs || 0) - (x.charaV1.updatedAtMs || 0);   // 최근 갱신순
+    });
+    grid.textContent = '';
+    list.forEach(function(it){ grid.appendChild(cardOf(it, !!me && it.uid === me)); });
+    stats.renderCount++; stats.cardCount = list.length;
+    var cnt = $('charaBinderCount');
+    if(cnt) cnt.textContent = list.length + '명';
+    observeAll(grid);
+  }
+  function observeAll(grid){
+    var kids = Array.prototype.slice.call(grid.children);
+    if(typeof IntersectionObserver !== 'function'){ kids.forEach(enqueue); return; }  // 폴백: 큐 제한만 걸고 전부
+    io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(!en.isIntersecting) return;
+        try{ io.unobserve(en.target); }catch(e){}
+        enqueue(en.target);
+      });
+    }, { root: overlay().querySelector('.modalBody'), rootMargin: '140px 0px', threshold: 0.01 });
+    kids.forEach(function(el){ try{ io.observe(el); }catch(e){} });
+  }
+
+  /* ---------- bake 큐 (동시 3개) ---------- */
+  function enqueue(card){
+    if(!card || card.__baked || card.__queued) return;
+    card.__queued = true;
+    queue.push(card);
+    pump();
+  }
+  function pump(){
+    while(running < BAKE_LIMIT && queue.length){
+      var card = queue.shift();
+      if(!card || card.__baked){ continue; }
+      runBake(card);
+    }
+  }
+  function runBake(card){
+    var api = window.__MK_CHARA_TILE_V169__;
+    var myGen = gen;
+    if(!api || typeof api.bake !== 'function'){ card.__queued = false; return; }
+    running++; stats.bakeRequested++;
+    var c = card.__chara || {};
+    api.bake(c.parts, c.hue).then(function(res){
+      if(myGen !== gen) return;                       // 닫힌 뒤 도착한 결과는 버린다
+      var img = card.querySelector('img');
+      if(img && res && res.url){ img.src = res.url; card.__baked = true; card.classList.add('ready'); }
+    }).catch(function(){ /* 파츠 누락 등은 빈 카드로 두고 넘어간다 */ })
+      .then(function(){
+        running = Math.max(0, running - 1);
+        card.__queued = false;
+        if(myGen === gen) pump();
+      });
+  }
+  function teardownRender(){
+    try{ if(io) io.disconnect(); }catch(e){}
+    io = null;
+    queue.length = 0;
+    running = 0;
+  }
+
+  /* ---------- 새로고침 버튼 (30초 쿨다운 + 진행 중 비활성화) ---------- */
+  function syncRefreshBtn(){
+    var btn = $('charaBinderRefresh');
+    if(!btn) return;
+    var left = Math.max(0, COOLDOWN_MS - (Date.now() - lastFetchAtMs));
+    btn.disabled = busy || left > 0;
+    btn.textContent = busy ? '⏳ 불러오는 중' : (left > 0 ? '🔄 잠시 후' : '🔄 새로고침');
+  }
+  function armCooldown(){
+    if(cooldownTimer){ clearTimeout(cooldownTimer); cooldownTimer = null; }
+    var left = COOLDOWN_MS - (Date.now() - lastFetchAtMs);
+    if(left <= 0){ syncRefreshBtn(); return; }
+    cooldownTimer = setTimeout(function(){ cooldownTimer = null; syncRefreshBtn(); }, left + 40);
+  }
+
+  /* ---------- 읽기 (get 1회) ---------- */
+  function load(manual){
+    if(busy) return Promise.resolve();
+    var b = bridge();
+    if(!b) return Promise.resolve();
+    if(manual && (Date.now() - lastFetchAtMs) < COOLDOWN_MS){ syncRefreshBtn(); return Promise.resolve(); }
+    busy = true; lastFetchAtMs = Date.now(); syncRefreshBtn();
+    if(!items.length) setState('도감을 펼치는 중… ⏳');
+    stats.fetchCount++;
+    return Promise.resolve().then(function(){ return b.fetchCharasOnce(); }).then(function(fresh){
+      if(fresh === null){ setState('입장 후에 볼 수 있어!'); return; }
+      var slim = (fresh || []).map(slimItem).filter(Boolean);
+      savedAtMs = writeCache(slim) || savedAtMs;
+      items = slim;
+      if(isOpen()) render(items);
+      setStamp();
+      setState(items.length ? '' : '아직 캐릭터를 꾸민 사람이 없어! 🥲');
+    }).catch(function(e){
+      try{ console.warn('[binder v176] 목록을 불러오지 못했습니다', e); }catch(_e){}
+      setState(items.length ? '새로 불러오지 못했어 — 저장해 둔 목록을 보여줄게 🥲'
+                            : '도감을 불러오지 못했어 🥲 잠시 뒤 새로고침을 눌러줘.');
+    }).then(function(){
+      busy = false; syncRefreshBtn(); armCooldown();
+    });
+  }
+
+  /* ---------- 열기 / 닫기 ---------- */
+  function open(){
+    var b = bridge();
+    if(!b || !b.joined()){ toast('🔒 입장 후에만 사용할 수 있어!'); return; }
+    var m = overlay();
+    if(!m) return;
+    stats.openCount++;
+    gen++;
+    m.classList.add('show');
+    m.setAttribute('aria-hidden', 'false');
+    try{ m.inert = false; }catch(e){}
+    syncRefreshBtn();
+    armCooldown();
+
+    var online = [];
+    try{ online = b.onlineCharas() || []; }catch(e){}     // 이미 구독 중 → 추가 다운로드 0
+    var cache = readCache();
+    if(cache && cache.savedAtMs) savedAtMs = cache.savedAtMs;
+    items = merge(online, cache ? cache.items : []);
+    render(items);                                        // 먼저 보여 주고
+    setStamp();
+    setState(items.length ? '' : '도감을 펼치는 중… ⏳');
+    if(cache && cache.fresh){ stats.cacheHitCount++; return; }   // 캐시가 살아 있으면 네트워크 요청 없음
+    load(false);
+  }
+  function close(){
+    gen++;                 // 진행 중 bake 결과 폐기
+    teardownRender();
+    if(cooldownTimer){ clearTimeout(cooldownTimer); cooldownTimer = null; }
+    var m = overlay();
+    if(!m) return;
+    try{ var a = document.activeElement; if(a && m.contains(a) && a.blur) a.blur(); }catch(e){}
+    m.classList.remove('show');
+    m.setAttribute('aria-hidden', 'true');
+    try{ m.inert = true; }catch(e){}
+  }
+
+  function init(){
+    var btn = $('charaBinderBtn');
+    if(btn) btn.addEventListener('click', function(){ open(); });
+    var cl = $('charaBinderClose');
+    if(cl) cl.addEventListener('click', function(){ close(); });   // data-close(기존 공용 핸들러)와 별개로 정리까지 수행
+    var rf = $('charaBinderRefresh');
+    if(rf) rf.addEventListener('click', function(){ load(true); });
+    var m = overlay();
+    if(m) m.addEventListener('click', function(ev){ if(ev.target === m) close(); });   // 배경 클릭
+    document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape' && isOpen()) close(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  /* 공개 API (검증 훅) */
+  window.__MK_BINDER_V176__ = {
+    open: open,
+    close: close,
+    reload: function(){ return load(true); },
+    stats: stats,
+    isOpen: isOpen,
+    debug: function(){
+      return { open:isOpen(), cards:stats.cardCount, queued:queue.length, running:running,
+               observer:!!io, cooldownTimer:!!cooldownTimer, gen:gen, savedAtMs:savedAtMs, busy:busy };
+    }
   };
 })();
 </script>
