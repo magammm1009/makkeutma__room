@@ -9867,6 +9867,141 @@ async function openSudaWithTicket(baseUrl){
     }
 
 
+    // =====================
+    // ⏰ 공용 뽀모 입장 티켓 (v1)
+    // - 수다방(openSudaWithTicket)과 같은 취지: "주소만 아는 사람"의 직접 접속을 막는다.
+    // - ⚠ 수다방과 다른 점: 뽀모는 다른 오리진(mkm-pp-mm00.web.app)이라
+    //   localStorage 세션키 대조를 쓸 수 없다. 그래서 티켓 자체를 1회용으로 만들고,
+    //   뽀모 앱이 소비(usedAtMs)한 뒤 자기 오리진에 30일 로컬 세션을 저장한다.
+    // - 뽀모는 타이머 앱이라 모달(iframe)이 아니라 반드시 '새 탭'으로 연다.
+    // =====================
+    const POMO_TICKET_PATH_ = "access/pomoTickets";
+    const POMO_TICKET_TTL_MS_ = 5 * 60 * 1000;
+    const POMO_TICKET_TRAIL_KEY_ = "pomoTicketTrailV1";
+    const POMO_TICKET_TRAIL_MAX_ = 50;
+
+    function __pomoTicketTrailRead_(){
+      try{
+        const raw = localStorage.getItem(POMO_TICKET_TRAIL_KEY_);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr.filter(v => v && typeof v.tid === "string") : [];
+      }catch(_e){ return []; }
+    }
+    function __pomoTicketTrailWrite_(list){
+      try{
+        localStorage.setItem(POMO_TICKET_TRAIL_KEY_, JSON.stringify(list.slice(-POMO_TICKET_TRAIL_MAX_)));
+      }catch(_e){}
+    }
+    // 만료된 옛 티켓 정리. 규칙상 목록 조회(부모 .read)는 막아 뒀으므로
+    // "이 브라우저가 발급한 티켓" 자취만 보고 소량씩 지운다.
+    async function __pomoTicketSweep_(maxDeletes = 5){
+      const now = Date.now();
+      const trail = __pomoTicketTrailRead_();
+      const expired = trail.filter(v => Number(v.expAtMs || 0) < now).slice(0, maxDeletes);
+      if(!expired.length) return;
+      const done = new Set();
+      for(const item of expired){
+        try{ await rRemove(rRef(pomoRtdb, `${POMO_TICKET_PATH_}/${item.tid}`)); }catch(_e){}
+        done.add(item.tid); // 실패해도 자취에서는 뺀다(무한 재시도 방지)
+      }
+      __pomoTicketTrailWrite_(trail.filter(v => !done.has(v.tid)));
+    }
+    function __pomoMakeTicketId_(){
+      let rand = "";
+      try{
+        const buf = new Uint8Array(8);
+        crypto.getRandomValues(buf);
+        rand = Array.from(buf).map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+      }catch(_e){
+        rand = (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).toUpperCase();
+      }
+      // 시간순 정렬이 되는 접두사 + 랜덤 16자리. RTDB 키로 안전한 문자만 쓴다.
+      return ("T" + Date.now().toString(36).toUpperCase() + "_" + rand).replace(/[^A-Za-z0-9_-]/g, "");
+    }
+
+    async function openPomoWithTicket(baseUrl){
+      if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
+      if(!baseUrl){ showToast("설정된 뽀모 링크가 없어! (☰에서 저장)"); return; }
+
+      const withTimeout = (p, ms, label) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(()=>rej(new Error(`timeout:${label}:${ms}ms`)), ms))
+      ]);
+
+      // ⚠ 팝업 차단 회피: 클릭 제스처가 살아 있는 '지금' 빈 새 탭을 먼저 연다.
+      //   티켓 발급(익명 인증 + RTDB 왕복)을 await 한 뒤에 window.open 을 부르면
+      //   브라우저의 사용자 활성화(약 5초)가 만료돼 새 탭이 조용히 차단된다.
+      //   또 'noopener' 를 주면 window.open 이 성공/실패와 무관하게 항상 null 을
+      //   돌려줘서 차단을 감지할 수조차 없다. 그래서 핸들을 유지한다.
+      //   (여는 대상이 우리 앱(mkm-pp-mm00)이라 opener 유지는 감수한다.)
+      let win = null;
+      try{ win = window.open("", "_blank"); }catch(_e){ win = null; }
+      if(win){
+        try{
+          win.document.write('<!doctype html><meta charset="utf-8">' +
+            '<title>뽀모 여는 중…</title>' +
+            '<body style="margin:0;display:flex;align-items:center;justify-content:center;' +
+            'height:100vh;background:#fff7fb;color:#5b3b4c;' +
+            'font-family:system-ui,-apple-system,\'Segoe UI\',\'Noto Sans KR\',sans-serif">' +
+            '<div style="text-align:center"><div style="font-size:34px">🫧</div>' +
+            '<div style="margin-top:10px;font-size:15px">입장권 만드는 중…</div></div>');
+          win.document.close();
+        }catch(_e){}
+      }
+      const closeWin = ()=>{ try{ if(win && !win.closed) win.close(); }catch(_e){} };
+
+      try{
+        showToast("뽀모 여는 중…(티켓 발급)");
+        // 기존 pomo named app의 익명 인증 준비를 기다린다(새 앱을 만들지 않는다).
+        await withTimeout(ensurePomoAuthReady_(), 15000, "pomoAuthReady");
+        if(!pomoAuth.currentUser) throw new Error("뽀모 로그인을 확인하지 못했어.");
+
+        const tid = __pomoMakeTicketId_();
+        const now = Date.now();
+        const expAtMs = now + POMO_TICKET_TTL_MS_;
+        const nick = String(state.nickname || "").trim().slice(0, 40);
+
+        await withTimeout(
+          rSet(rRef(pomoRtdb, `${POMO_TICKET_PATH_}/${tid}`), {
+            createdAtMs: now,
+            expAtMs,
+            usedAtMs: 0,
+            by: nick,
+            ua: (navigator.userAgent || "").slice(0, 200)
+          }),
+          15000,
+          "pomoTicketSet"
+        );
+
+        const trail = __pomoTicketTrailRead_();
+        trail.push({ tid, expAtMs });
+        __pomoTicketTrailWrite_(trail);
+
+        const u = new URL(baseUrl, location.href);
+        u.searchParams.set("ticket", tid);
+        if(nick) u.searchParams.set("nick", nick);
+
+        // ⚠ 새 탭 유지: 모달(iframe)로 넣으면 닫을 때 타이머가 끊긴다.
+        const target = u.toString();
+        if(win && !win.closed){
+          win.location.replace(target);
+        }else{
+          // 빈 탭조차 열지 못한 경우(팝업 전면 차단) 마지막으로 한 번 더 시도한다.
+          const retry = window.open(target, "_blank");
+          if(!retry) showToast("팝업이 차단됐어! 이 사이트의 팝업을 허용해 줘 🙏", 4200);
+        }
+
+        // 발급에 성공한 뒤에만, 만료된 옛 티켓을 소량 정리한다(실패해도 무시).
+        __pomoTicketSweep_(5).catch(()=>{});
+      }catch(err){
+        console.error("openPomoWithTicket failed:", err);
+        // 티켓을 못 만들었으면 뽀모로 보내지 않는다: 미리 열어 둔 빈 탭을 닫는다.
+        closeWin();
+        const msg = (err && err.message) ? err.message : String(err);
+        showToast("뽀모 입장권을 만들지 못했어 😢 " + msg, 4200);
+      }
+    }
+
     function openUrlJoined(url){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       openUrl(url);
@@ -13040,11 +13175,11 @@ async function transitionTo(nextStatus, source="manual"){
     // 링크는 새 탭으로만 (입장 후에만 활성)
     if(els.goPomo){
       els.goPomo.disabled = !d.pomoUrl;
-      els.goPomo.onclick = d.pomoUrl ? ()=>openUrl(d.pomoUrl) : null;
+      els.goPomo.onclick = d.pomoUrl ? ()=>openPomoWithTicket(d.pomoUrl) : null;
     }
     if(els.goPomoMini){
       els.goPomoMini.disabled = !d.pomoUrl;
-      els.goPomoMini.onclick = d.pomoUrl ? ()=>openUrl(d.pomoUrl) : null;
+      els.goPomoMini.onclick = d.pomoUrl ? ()=>openPomoWithTicket(d.pomoUrl) : null;
     }
     if(els.goSuda){
       els.goSuda.disabled = !d.sudaUrl;
