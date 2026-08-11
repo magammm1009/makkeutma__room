@@ -10295,26 +10295,13 @@ function ensureDashPolling(){
         if(explicit) return explicit;
         if(isLikelyCountApiUrl(pomoBase)) return normalizeActiveApiUrl(pomoBase);
 
-        // GitHub Pages 등 정적 뽀모 앱이면 옆의 config.js에서 Apps Script 백엔드 URL 자동 탐색
-        const cfgUrl = siblingConfigUrl(pomoBase);
-        if(!cfgUrl) return "";
-        const now = Date.now();
-        if(__pomoApiResolveCache.key === cfgUrl && (now - __pomoApiResolveCache.at) < 60000){
-          return __pomoApiResolveCache.url || "";
-        }
-        __pomoApiResolveCache = { key:cfgUrl, url:"", at:now };
-        try{
-          const res = await fetch(cfgUrl + (cfgUrl.includes("?") ? "&" : "?") + "_=" + now, { cache:"no-store", credentials:"omit", mode:"cors" });
-          if(res && res.ok){
-            const txt = await res.text();
-            const found = extractAppsScriptExecUrl(txt);
-            if(found){
-              const api = normalizeActiveApiUrl(found);
-              __pomoApiResolveCache = { key:cfgUrl, url:api, at:Date.now() };
-              return api;
-            }
-          }
-        }catch(e){}
+        // ⛔ V183_NO_CONFIG_PROBE (2026-08-11): 옆의 config.js 자동 탐색을 중단한다.
+        //  - 뽀모는 v4.6.0에서 Apps Script를 완전히 걷어냈고 config.js의 POMO_APP_URL은 빈 문자열이다.
+        //    (뽀모 config.js 주석: "작업방 대시보드가 이 파일에서 주소를 자동 탐색해 폴링하던 동작까지 멈추기 위함")
+        //    즉 이 요청은 성공해도 아무것도 못 찾는다.
+        //  - 접속 인원은 V167부터 mkm-pp-mm00 RTDB의 presenceConn을 직접 읽는다. 이 경로가 없어도 무방하다.
+        //  - 2026-08-11 뽀모가 mkm-pp-mm00.web.app으로 이사하면서 작업방(github.io)과 오리진이 갈렸고,
+        //    그 결과 이 fetch가 매번 CORS로 막히며 콘솔을 도배했다. 기능은 없고 소음만 남은 코드다.
         return "";
       }
       function loadActiveCount(url){
