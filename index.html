@@ -27955,16 +27955,73 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkComboSlot .th{ width:44px; height:44px; border-radius:10px; overflow:hidden; background:#1b1720; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); font-size:10px; font-weight:900; }
   .mkComboSlot .th img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkComboSlot b{ font-size:10.5px; color:rgba(255,255,255,.72); letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .mkCharaColorPanel{ margin-top:10px; border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:10px 12px; }
+  .mkCharaColorPanel{ border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:10px 12px; }
   .mkCharaColorPanel.off{ opacity:.45; }
   .mkCharaColorHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:1000; color:rgba(255,255,255,.85); margin-bottom:8px; }
   .mkCharaColorHead b{ color:#ffd2e7; }
   #mkCharaColorReset{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; }
+  /* V184_TINT: 팔레트 12색 — 색상 패널이 반폭(약 250px)으로 줄어도 한 줄에 들어가야 하므로 12등분 그리드 + min-width:0
+     (전역 button min-width 규칙이 그리드 아이템 축소를 막아 !important로 눌러 준다) */
+  .mkCharaColorPalette{ display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-bottom:7px; }
+  .mkTintChip{ width:100%; min-width:0 !important; padding:0 !important; aspect-ratio:1/1; border:1px solid rgba(255,255,255,.22); border-radius:50%; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(0,0,0,.28); transition:transform .12s ease, box-shadow .12s ease; }
+  .mkTintChip:hover:not(:disabled){ transform:scale(1.14); }
+  .mkTintChip.on{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.55), inset 0 0 0 1px rgba(0,0,0,.3); }
+  .mkTintChip:disabled{ cursor:default; opacity:.55; }
   .mkCharaSliderRow{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
   .mkCharaSliderRow:last-child{ margin-bottom:0; }
   .mkCharaSliderRow label{ flex:0 0 30px; font-size:11px; font-weight:900; color:rgba(255,255,255,.62); }
   .mkCharaSliderRow input[type="range"]{ flex:1; accent-color:#ff8dc2; min-width:0; }
   .mkCharaSliderRow .val{ flex:0 0 42px; text-align:right; font-size:11px; color:rgba(255,255,255,.62); font-variant-numeric:tabular-nums; }
+  /* V184_TINT: 덧칠 모드 색조 슬라이더 — 절대 색조(0~359)라 트랙에 무지개를 깔아 지금 고른 색이 바로 보이게 */
+  .mkCharaSliderRow input[type="range"].mkHueAbs{ -webkit-appearance:none; appearance:none; height:9px; border-radius:999px; border:1px solid rgba(0,0,0,.35);
+    background:linear-gradient(to right,hsl(0,85%,55%),hsl(60,85%,55%),hsl(120,85%,55%),hsl(180,85%,55%),hsl(240,85%,55%),hsl(300,85%,55%),hsl(360,85%,55%)); }
+  .mkCharaSliderRow input[type="range"].mkHueAbs::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid rgba(0,0,0,.5); cursor:pointer; }
+  .mkCharaSliderRow input[type="range"].mkHueAbs::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid rgba(0,0,0,.5); cursor:pointer; }
+
+  /* ── V184_PRESET: 색상 조절(반폭) + 내 캐릭터 프리셋 칸(반폭) 2열 ──
+     색상 패널이 조합칸 아래 전체 폭으로 길게 늘어져 여백만 먹던 걸 반으로 줄이고 그 옆을 프리셋 칸에 준다.
+     margin-top은 이 컨테이너가 가진다(색상 패널에서 걷어냄 — 이중 여백 방지).
+     align-items:start = 두 칸 높이를 서로 끌고 다니지 않게(색상 패널은 헤드+팔레트+슬라이더3 ≈ 150px대). */
+  .mkCharaBottomRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; align-items:start; }
+  /* 그리드 아이템의 자동 최소폭은 min-content다 — 색상 패널(min-content 약 273px) + 프리셋 칸(약 215px)의 합이
+     좌측 컬럼보다 넓어지면 .mkCharaLeft{overflow:hidden}에 잘려 프리셋 칸이 통째로 사라진다
+     (모달이 min(1200px,96vw)라서 뷰포트 761~1080px대에서 실제로 잘렸다).
+     min-width:0으로 눌러 두면 두 칸이 같이 줄고, 프리셋 그리드는 auto-fit이 2×2로 접는다. */
+  .mkCharaBottomRow > *{ min-width:0; }
+  .mkCharaPresetBox{ border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:10px 12px; } /* 색상 패널과 같은 패널 스타일 — 좌우 대칭 */
+  .mkCharaPresetBox .petSectionTitle{ margin-bottom:8px; }
+  .mkCharaPresetBox .petSectionTitle .tiny{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } /* 반폭이라 안내문이 제목을 밀지 않게 */
+  .mkCharaPresetBox .petSectionTitle b{ color:#ffd2e7; font-size:11px; font-variant-numeric:tabular-nums; } /* V184_PRESET2: 3/12 개수 */
+  /* V184_PRESET2: 개수 배지가 붙자 반폭에서 "내 캐릭터"가 2줄로 감겨 제목이 34px가 되고,
+     프리셋 박스가 색상 패널보다 17px 튀어나왔다. #mkAwardBox와 같은 선례로 제목만 nowrap 고정
+     (안내문 .tiny는 이미 min-width:0 + ellipsis라 대신 줄어든다). */
+  .mkCharaPresetBox .petSectionTitle > span:first-child{ flex:0 0 auto; white-space:nowrap; }
+  /* 반폭(약 250px)이면 4칸이 한 줄, 더 좁아지면 auto-fit이 2×2로 접는다.
+     V184_PRESET2: 12칸으로 늘리면서 이 그리드"만" 스크롤한다 — 상한 168px은 실측값에서 나왔다.
+       모달 1200px에서 색상 패널이 217px, 프리셋 박스의 그리드 밖 크롬(테두리2+패딩20+제목19+제목여백8)이
+       49px이므로 168px이면 두 칸이 정확히 나란히 끝난다(217 = 49 + 168).
+       액세서리 칩이 떠서 색상 패널이 232px가 되면 프리셋 칸이 15px 짧아지는데, 튀어나오는 쪽보다 눈에 안 띈다.
+     4열 3행 내용은 184px이라 3행이 16px 잘리고 얇은 스크롤바가 함께 떠서 "아래에 더 있다"가 읽힌다.
+     2열로 접히는 좁은 폭에서는 6행 360px이 되어 확실히 스크롤된다.
+     grid-auto-rows:max-content + align-content:start = .mkCharaGrid와 같은 방어 —
+     칸 내용물이 전부 absolute라 Chrome이 행 트랙을 짓눌러 행이 겹치는 사고를 막는다. */
+  .mkCharaPresetGrid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(56px,1fr)); grid-auto-rows:max-content; align-content:start; gap:6px; max-height:168px; overflow-y:auto; scrollbar-width:thin; padding-right:2px; }
+  /* 칸 = 셀(div) 안에 [전환 버튼] + [× 버튼] 형제 배치 — button 안에 button을 넣을 수 없어서 감싸는 칸을 따로 둔다.
+     ×의 기준점(position 앵커)도 이 셀이다. */
+  .mkPresetCell{ position:relative; min-width:0; }
+  .mkPresetSlot{ position:relative; display:block; width:100%; aspect-ratio:1/1; min-width:auto !important; padding:0 !important; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#1b1720; cursor:pointer; } /* overflow:hidden = 머리 확대 크롭창 */
+  .mkPresetSlot:hover{ border-color:rgba(255,141,194,.45); }
+  .mkPresetSlot:focus-visible{ outline:2px solid rgba(255,141,194,.55); outline-offset:2px; }
+  .mkPresetSlot.empty{ border:1px dashed rgba(255,255,255,.26); background:rgba(255,255,255,.03); color:rgba(255,255,255,.45); font-size:21px; font-weight:1100; display:flex; align-items:center; justify-content:center; }
+  .mkPresetSlot.empty:hover{ border-color:rgba(255,141,194,.55); color:#ffd2e7; }
+  /* 머리 확대 래퍼 — 크기·이동은 renderPresets가 1024 좌표계 상수로 인라인 계산해 넣는다 */
+  .mkPresetArt{ position:absolute; top:0; left:0; }
+  .mkPresetArt img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  /* manifest에서 파츠가 사라진 옛 프리셋 — 빈 칸으로 오해받지 않게 글리프라도 남긴다 */
+  .mkPresetFallback{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; opacity:.5; }
+  .mkPresetName{ position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); color:rgba(255,255,255,.92); font-size:9px; font-weight:900; letter-spacing:-.3px; padding:2px 3px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mkPresetDel{ position:absolute; top:2px; right:2px; z-index:2; min-width:auto !important; width:16px; height:16px; padding:0 !important; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(0,0,0,.6); color:rgba(255,255,255,.85); font-size:10px; font-weight:1100; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mkPresetDel:hover{ background:#c0392b; border-color:#e74c3c; color:#fff; }
 
   /* ── 우측: 미리보기 무대 — 작업방 테마와 무관하게 다크 고정(#1b1720, 펫 슬롯 기본 배경 계열) ── */
   .mkCharaRight{ min-width:0; min-height:0; display:flex; flex-direction:column; }
@@ -27987,6 +28044,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     #mkCharaStage{ width:min(100%,320px); height:auto; margin:0 auto; }
     .mkCharaGrid{ flex:0 0 auto; max-height:38vh; }
     .mkMyPetsRow{ flex-wrap:wrap; }
+    .mkCharaBottomRow{ grid-template-columns:1fr; } /* V184_PRESET: 좁은 화면은 위아래로 */
   }
 
   /* 낮은 화면(노트북 등): 좌측 컬럼을 통째로 스크롤 — 섹션 압축·겹침 금지 */
@@ -27997,6 +28055,111 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     .mkCharaGrid{ flex:0 0 auto; max-height:38vh; }
   }
 </style>
+<script id="v184TintSolver">
+/* V184_TINT: 덧칠(tint) 필터 solver — 회색·흰색·검정 파츠도 원하는 색으로 물들인다.
+   문제: hue-rotate는 채도 0인 픽셀에 아무 효과가 없다(회전시킬 색조가 없음) → 무채색 파츠는 색이 안 먹는다.
+   해법: sepia(1) 행렬은 정확히 rank-1(행끼리 비례)이라 회색 g는 g x (1.351,1.203,0.937) 한 방향으로만 간다.
+     grayscale(1) brightness(p) sepia(1) saturate(S) hue-rotate(theta) brightness(q)
+   이 체인은 g에 대해 1차 동차(homogeneous)라서, 모든 중간 단계가 1.0을 넘지 않게 p를 눌러 두면
+   결과가 정확히 g x (목표색)으로 떨어져 원본 음영이 그대로 보존된다.
+   (음수 클램프는 모든 픽셀에 비례해 걸려 안전하고, 1.0 초과 클램프만 색조를 뒤튼다.)
+   꾸미기 모달 미리보기(CSS filter)와 타일 bake(ctx.filter)가 반드시 같은 문자열을 쓰도록 여기서만 만든다. */
+(function(){
+  'use strict';
+  var SEPIA_GRAY = [1.351, 1.203, 0.937]; // sepia(1)을 (g,g,g)에 적용한 행 합
+  var SAT_LUM = [0.213, 0.715, 0.072];
+  function satMat(s){
+    var lr=SAT_LUM[0], lg=SAT_LUM[1], lb=SAT_LUM[2];
+    return [[lr+s*(1-lr), lg-s*lg, lb-s*lb],
+            [lr-s*lr, lg+s*(1-lg), lb-s*lb],
+            [lr-s*lr, lg-s*lg, lb+s*(1-lb)]];
+  }
+  function hueMat(deg){ // filter 명세의 hue-rotate 행렬 그대로
+    var a=deg*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+    return [[0.213+c*0.787-s*0.213, 0.715-c*0.715-s*0.715, 0.072-c*0.072+s*0.928],
+            [0.213-c*0.213+s*0.143, 0.715+c*0.285+s*0.140, 0.072-c*0.072-s*0.283],
+            [0.213-c*0.213-s*0.787, 0.715-c*0.715+s*0.715, 0.072+c*0.928+s*0.072]];
+  }
+  function apply3(m, v){ // 음수만 0으로(relu) — 상한 클램프는 p가 막아 준다
+    return [ Math.max(0, m[0][0]*v[0]+m[0][1]*v[1]+m[0][2]*v[2]),
+             Math.max(0, m[1][0]*v[0]+m[1][1]*v[1]+m[1][2]*v[2]),
+             Math.max(0, m[2][0]*v[0]+m[2][1]*v[1]+m[2][2]*v[2]) ];
+  }
+  function mx3(v){ return Math.max(v[0], Math.max(v[1], v[2])); }
+  function mn3(v){ return Math.min(v[0], Math.min(v[1], v[2])); }
+  function hueOfUnit(v, mx){ // 최대 채널로 정규화한 RGB의 HSV 색조(0~360)
+    var r=v[0]/mx, g=v[1]/mx, b=v[2]/mx, d=1-Math.min(r,Math.min(g,b)), h;
+    if(d<=0) return 0;
+    if(r>=g && r>=b) h = 60*(((g-b)/d)%6);
+    else if(g>=b)    h = 60*(((b-r)/d)+2);
+    else             h = 60*(((r-g)/d)+4);
+    return (h+360)%360;
+  }
+  /* (S, theta) 후보표 — 단위 회색이 통과한 방향의 색조·채도를 미리 재 둔다.
+     S=0.6~10.0 step 0.1 (95) x theta=0~359 (360) = 34,200개. 드래그 중 반복 호출되므로 1회만 만든다. */
+  var built=false, CN=0, CH, CSAT, CSS, CTH, CSM, CVM;
+  function buildCand(){
+    if(built) return;
+    built = true;
+    var n=95*360, k=0, m1=mx3(SEPIA_GRAY);
+    CH=new Float64Array(n); CSAT=new Float64Array(n); CSS=new Float64Array(n);
+    CTH=new Float64Array(n); CSM=new Float64Array(n); CVM=new Float64Array(n);
+    for(var i=0;i<95;i++){
+      var S = Math.round((0.6+i*0.1)*100)/100;
+      var v2 = apply3(satMat(S), SEPIA_GRAY), m2 = mx3(v2);
+      for(var th=0;th<360;th++){
+        var v3 = apply3(hueMat(th), v2), m3 = mx3(v3);
+        if(m3 <= 0.001) continue; // 방향이 전부 0으로 클램프된 후보는 버린다(실제로는 발생하지 않음)
+        CH[k]=hueOfUnit(v3,m3); CSAT[k]=(m3-mn3(v3))/m3; CSS[k]=S; CTH[k]=th;
+        CSM[k]=Math.max(m1, Math.max(m2, m3)); CVM[k]=m3;
+        k++;
+      }
+    }
+    CN = k;
+  }
+  /* 목표 (색조 0~359, 채도 0~1) → {S, theta, p, q}
+     cost = |순환 색조차|/180 x 3.0 + |채도차| (색조 우선), p = 1/모든단계최대, q로 g=1 픽셀의 최대 채널을 정확히 1.0로 */
+  var memo = {};
+  function solve(targetHue, targetSat01){
+    var t = Number(targetHue), ts = Number(targetSat01);
+    if(!isFinite(t)) t = 0;
+    if(!isFinite(ts)) ts = 0.85;
+    t = ((t % 360) + 360) % 360;
+    ts = Math.max(0, Math.min(1, ts));
+    var key = t + '|' + ts, hit = memo[key];
+    if(hit) return hit;
+    buildCand();
+    var bi = 0, bd = Infinity;
+    for(var i=0;i<CN;i++){
+      var dh = Math.abs((((CH[i]-t+180) % 360) + 360) % 360 - 180) / 180;
+      var cost = dh*3.0 + Math.abs(CSAT[i]-ts);
+      if(cost < bd){ bd = cost; bi = i; }
+    }
+    var p = 1/CSM[bi];
+    var out = { S:CSS[bi], theta:CTH[bi], p:p, q:1/(p*CVM[bi]) };
+    memo[key] = out;
+    return out;
+  }
+  function fx(v){ return Number(v).toFixed(3); } // 소수 3자리 고정 — 문자열이 시그니처/캐시 키에 쓰인다
+  /* 사용자 슬라이더 s(0~200) → 목표 채도: 0→0, 100→0.85, 200→1.0 (구간별 선형) */
+  function satTargetOf(s){ return (s <= 100) ? (s/100*0.85) : (0.85 + (s-100)/100*0.15); }
+  function filterString(t, s, b){
+    /* null/undefined/빈문자/불리언은 "덧칠 아님"이다 — Number(null)이 0이라 그냥 Number()에 넘기면
+       t 없음이 t=0(빨강)으로 조용히 바뀐다. 숫자와 숫자꼴 문자열만 받는다. */
+    var th = (typeof t === 'number') ? t
+           : ((typeof t === 'string' && t.trim() !== '') ? Number(t) : NaN);
+    if(!isFinite(th)) return '';
+    th = Math.round(th);
+    if(th < 0 || th > 359) return ''; // 덧칠 모드가 아님 → 호출자가 기존 회전 모드로 폴백
+    var sv = Number(s); if(!isFinite(sv)) sv = 100; sv = Math.max(0, Math.min(200, Math.round(sv)));
+    var bv = Number(b); if(!isFinite(bv)) bv = 100; bv = Math.max(50, Math.min(150, Math.round(bv)));
+    var r = solve(th, satTargetOf(sv));
+    return 'grayscale(1) brightness(' + fx(r.p*100) + '%) sepia(1) saturate(' + fx(r.S*100)
+         + '%) hue-rotate(' + fx(r.theta) + 'deg) brightness(' + fx(r.q*bv) + '%)';
+  }
+  window.__MK_TINT_V184__ = { filterString:filterString, solve:solve, satTargetOf:satTargetOf };
+})();
+</script>
 <script id="v169CharaDressupScript">
 (function(){
   'use strict';
@@ -28108,9 +28271,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     });
     Object.keys(chara.adj).forEach(function(k){
       var a=chara.adj[k]; if(!a) return;
-      if(a.h===0 && a.s===100 && a.b===100) return;
+      /* V184_TINT: 덧칠은 h를 0으로 쓰므로 아래 "변화 없음" 판정에 그냥 걸리면 색이 통째로 사라진다
+         → t가 유효하면 무조건 저장한다. t가 없으면 기존과 완전히 같은 {h,s,b}만 기록. */
+      var tint = isTintAdj(a);
+      if(!tint && a.h===0 && a.s===100 && a.b===100) return;
       if(k.indexOf('/')>=0 && !liveHueKeys[k]) return; // V174_PARTHUE: 지금 안 입은 파츠 키는 저장하지 않음
-      hue[k]={ h:a.h, s:a.s, b:a.b };
+      hue[k]= tint ? { h:0, s:a.s, b:a.b, t:clampNum(a.t,0,359,0) } : { h:a.h, s:a.s, b:a.b };
     });
     var out = { v:1, parts:parts, hue:hue };
     var nm = sanitizeName(chara.name);
@@ -28317,11 +28483,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     });
     return out;
   }
-  function selArr(catKey){ // 카테고리의 현재 착장을 항상 배열로 (acc 외에는 0~1개)
-    var v = chara.sel[catKey];
+  /* V184_PRESET: 임의의 선택 맵에서 배열로 — 프리셋 썸네일이 chara.sel 대신 프리셋 스냅샷을 쓰려면 필요하다 */
+  function selArrIn(selMap, catKey){
+    var v = (selMap||{})[catKey];
     if(Array.isArray(v)) return v;
     return v ? [v] : [];
   }
+  function selArr(catKey){ return selArrIn(chara.sel, catKey); } // 카테고리의 현재 착장을 항상 배열로 (acc 외에는 0~1개)
   /* 미보유 파츠 착장 벗김 — 저장 복원 직후·모달 닫힘(입어보기 되돌림)에 사용. 변경 여부 반환 */
   function stripUnownedSel(){
     var owned = getOwned(), changed = false;
@@ -28368,9 +28536,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     return saveSigOf(currentSavePayload()) !== saveSigOf(saved);
   }
   /* 저장본(mk_chara_state) → 선택 상태 복원. 미보유 파츠는 "표시에서만" 벗긴다(저장본 무수정) —
-     벗겨진 결과는 미저장 변경으로 취급되어 저장 버튼이 강조된다(보유 리셋 시 저장본 파괴 금지). */
-  function applySavedToSel(){
-    var saved = loadSaved();
+     벗겨진 결과는 미저장 변경으로 취급되어 저장 버튼이 강조된다(보유 리셋 시 저장본 파괴 금지).
+     V184_PRESET: 인자로 저장 스냅샷을 받으면 그걸 복원한다(프리셋 전환). 인자 없으면 기존대로 loadSaved().
+     프리셋 복원을 따로 짜지 않는 이유 — 파츠 존재 확인·계열 정규화·hue(t 포함) 복원·미보유 벗김이 전부 여기 있다. */
+  function applySavedToSel(payloadOpt){
+    /* V184_PRESET2: parts가 배열이면 유효한 스냅샷이 아니다 — !Array.isArray로 막아야 loadSaved() 폴백으로 떨어진다
+       (배열도 typeof 'object'라 그냥 두면 파츠가 전부 undefined인 빈 캐릭터로 복원된다) */
+    var saved = (payloadOpt && payloadOpt.parts && typeof payloadOpt.parts==='object' && !Array.isArray(payloadOpt.parts)) ? payloadOpt : loadSaved();
     chara.adj = {};
     chara.cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); // V172_GEAR: 장비도 배열
     chara.name = sanitizeName(saved && saved.name);
@@ -28394,7 +28566,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(saved.hue && typeof saved.hue==='object'){
         Object.keys(saved.hue).forEach(function(k){
           var a=saved.hue[k]; if(!a || typeof a!=='object') return;
-          chara.adj[k]={ h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
+          var o={ h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
+          /* V184_TINT: t(목표 색조)가 실려 있으면 덧칠 모드로 복원 — h는 0으로 고정(덧칠은 h를 쓰지 않는다) */
+          if(a.t!=null && isFinite(Number(a.t))){ o.t=clampNum(a.t,0,359,0); o.h=0; }
+          chara.adj[k]=o;
         });
       }
       stripUnownedSel(); // 표시만 벗김 — persist하지 않는다(저장본 그대로)
@@ -28423,6 +28598,191 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     btn.title = dirty ? '미저장 변경이 있어요 — 저장해야 확정돼요' : '현재 착장이 저장돼 있어요';
     var tiny = $id('mkCharaSaveTiny');
     if(tiny) tiny.textContent = dirty ? '미저장 변경 있음 — 저장해야 내 캐릭터로 확정돼요' : '이름은 최대 5글자 · 저장하면 타일에도 반영';
+  }
+
+  /* ---------- V184_PRESET: 내 캐릭터 프리셋 4칸 ----------
+     조합칸 아래에서 색상 패널이 혼자 전체 폭을 먹던 자리를 반으로 줄이고, 그 옆에 "저장해 둔 컨셉" 4칸을 둔다.
+     칸을 누르면 그 컨셉으로 통째로 전환 — 컨셉을 바꿀 때마다 파츠를 하나씩 다시 고르지 않아도 된다.
+     저장 위치는 localStorage 전용이다. RTDB에 노드/구독을 새로 만들지 않는다 —
+     이 앱은 RTDB 다운로드 예산이 빡빡하고 서버 로직(Cloud Functions)을 쓰지 않는 방침이다.
+     mk_chara_state / mk_chara_owned_v2 / mk_chara_stats의 형태는 손대지 않는다(독립 꾸미기앱과의 계약). */
+  var PRESET_KEY = 'mk_chara_presets';
+  var PRESET_MAX = 12; // V184_PRESET2: 4 → 12 (그리드만 스크롤)
+  /* 어떤 쓰레기가 들어 있어도 절대 던지지 않는다 — 프리셋 한 칸이 깨졌다고 꾸미기 모달 전체가 죽으면 안 된다.
+     V184_PRESET2: 고정 12칸(sparse)이 아니라 "순서 목록"(compact, 길이 0~12)이다.
+       고정 칸으로 두면 빈 + 타일이 12개까지 깔려 지저분하고, 11개 저장한 사람이 빈 칸을 찾으려고
+       스크롤해야 한다. 목록이면 렌더가 "저장된 것들 + 끝에 + 하나"로 자연스럽다.
+     못 믿을 항목(null·형태 이상)은 건너뛰고 압축한다 — 구 sparse 저장본도 유효분만 그대로 살아난다. */
+  function loadPresets(){
+    var slots = [];
+    try{
+      var d = JSON.parse(localStorage.getItem(PRESET_KEY) || 'null');
+      var arr = (d && typeof d === 'object' && Array.isArray(d.slots)) ? d.slots : [];
+      for(var i = 0; i < arr.length && slots.length < PRESET_MAX; i++){
+        var s = arr[i];
+        var okParts = s && typeof s === 'object' && !Array.isArray(s) && s.parts && typeof s.parts === 'object' && !Array.isArray(s.parts);
+        if(!okParts) continue; // 압축 — 빈 칸을 남기지 않는다
+        slots.push({ parts: s.parts,
+                     hue: (s.hue && typeof s.hue === 'object' && !Array.isArray(s.hue)) ? s.hue : {},
+                     name: sanitizeName(s.name),
+                     savedAtMs: isFinite(Number(s.savedAtMs)) ? Number(s.savedAtMs) : 0 });
+      }
+    }catch(e){
+      slots = []; // 파싱 실패 — 부분 결과를 섞지 않고 통째로 빈 목록
+    }
+    return slots;
+  }
+  function savePresets(slots){
+    try{ localStorage.setItem(PRESET_KEY, JSON.stringify({ v:1, slots:slots })); }
+    catch(e){ console.warn('[chara v184] 프리셋 저장 실패', e); } // 용량 초과 등 — 현재 착장은 무해하므로 조용히 실패
+  }
+  /* V184_PRESET2: 저장은 항상 "목록 끝에 추가"다(덮어쓰기 없음). 12개가 다 차면 안내만 하고 아무것도 바꾸지 않는다. */
+  function presetSaveNew(){
+    if(chara.phase !== 'ready'){ toast('아직 파츠를 준비하는 중이에요'); return; }
+    /* saveOutfit과 같은 순서로 이름칸을 먼저 반영 — 칸 라벨이 사용자가 방금 타이핑한 이름과 어긋나지 않게 */
+    var inp = $id('mkCharaNameInput');
+    if(inp) chara.name = sanitizeName(inp.value);
+    var p = currentSavePayload(); // 미결제 입어보기 파츠는 여기서 이미 걸러진다(덧칠 t까지 포함된 스냅샷)
+    var any = Object.keys(p.parts).some(function(k){
+      var v = p.parts[k];
+      return Array.isArray(v) ? (v.length > 0) : !!v;
+    });
+    if(!any){ toast('입힌 파츠가 없어요 — 캐릭터를 먼저 만들어 주세요'); return; } // 빈 캐릭터는 저장하지 않는다
+    var slots = loadPresets();
+    if(slots.length >= PRESET_MAX){ toast('내 캐릭터 칸이 다 찼어요 (최대 ' + PRESET_MAX + '개) — 칸의 ×를 눌러 비우고 저장해 주세요', 3400); return; }
+    slots.push({ parts:p.parts, hue:p.hue, name:(p.name || ''), savedAtMs:Date.now() });
+    savePresets(slots);
+    renderPresets();
+    presetScrollToEnd(); // 새 칸이 스크롤 밖에 생기면 "저장이 안 됐나?"로 읽힌다
+    var skipped = tryOnItems().length;
+    toast('내 캐릭터 칸에 저장했어요 🧑‍🎨' + (skipped ? (' · 미결제 파츠 ' + skipped + '개는 저장에서 제외돼요') : ''), skipped ? 3400 : undefined);
+  }
+  /* 스크롤 컨테이너 자신만 내린다 — scrollIntoView는 조상(좌측 컬럼·모달)까지 끌고 내려가 화면이 튄다 */
+  function presetScrollToEnd(){
+    var grid = $id('mkCharaPresetGrid');
+    if(grid) try{ grid.scrollTop = grid.scrollHeight; }catch(e){}
+  }
+  function presetRemove(idx){
+    var slots = loadPresets();
+    var s = slots[idx]; if(!s) return;
+    var nm = s.name || '내 캐릭터';
+    if(!window.confirm('\'' + nm + '\' 칸을 비울까요?')) return;
+    slots.splice(idx, 1); // V184_PRESET2: 압축 — 뒤 칸이 앞으로 당겨진다(빈 구멍을 남기지 않는다)
+    savePresets(slots);
+    renderPresets();
+    toast('칸을 비웠어요');
+  }
+  function presetApply(idx){
+    var slots = loadPresets();
+    var s = slots[idx]; if(!s) return;
+    if(chara.phase !== 'ready'){ toast('아직 파츠를 준비하는 중이에요'); return; }
+    /* V169_SHOP2의 명시적 저장 모델 탓에 미저장 변경이 남아 있을 수 있다 — 말없이 날리지 않고 한 번 묻는다 */
+    if(isDirty() && !window.confirm('저장하지 않은 변경이 있어요. 저장해둔 캐릭터로 바꾸면 지금 변경은 사라져요. 계속할까요?')) return;
+    applySavedToSel({ v:1, parts:s.parts, hue:s.hue, name:s.name });
+    persist(); // 프리셋은 이미 "저장해 둔" 컨셉이다 → 전환 즉시 확정해 타일·친구들 화면도 따라오게
+    renderChara();
+    toast('\'' + (s.name || '내 캐릭터') + '\' 캐릭터로 바꿨어요 ✨');
+  }
+  /* V184_PRESET: 프리셋 payload는 짧은 카테고리명 키('body','acc')다. stageLayersOf는 cat.key 키('01_body','05_acc')를
+     쓰므로 변환해 준다. 조회 규칙은 applySavedToSel과 동일(saved.parts[catName(c.key)]), 목록에 없는 파츠는 버린다.
+     normalizeMultiSel은 부르지 않는다 — 썸네일은 "저장된 그대로"를 보여줘야 실제 전환 결과와 어긋나 보이지 않는다. */
+  function selMapFromPayload(payload){
+    var out = {};
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return; // 뒷머리는 헤어의 backParts로 stageLayersOf가 알아서 동반한다
+      var want = (payload && payload.parts) ? payload.parts[catName(c.key)] : null;
+      if(isMultiCat(c.key)){
+        var arr = Array.isArray(want) ? want : ((typeof want === 'string' && want) ? [want] : []);
+        out[c.key] = arr.filter(function(nm){
+          return typeof nm === 'string' && c.parts.some(function(p){ return p.name === nm; });
+        });
+      }else{
+        out[c.key] = (typeof want === 'string' && c.parts.some(function(p){ return p.name === want; })) ? want : null;
+      }
+    });
+    return out;
+  }
+  /* V184_PRESET: 프리셋의 hue 맵으로 필터 계산 — filterFor/getAdjFor는 현재 상태(chara.adj)를 보므로 그대로 쓸 수 없다.
+     폴백 순서는 getAdjFor와 같게: 파츠키('acc/파일명') → 카테고리키('acc') → 기본값. 덧칠(t)이 있으면 solver 우선(filterFor와 동일).
+     클램프 범위도 applySavedToSel과 같게 맞춘다(t가 유효하면 h는 0 고정). */
+  function presetAdjFor(hueMap, catKey, partName){
+    var m = (hueMap && typeof hueMap === 'object') ? hueMap : {};
+    var short = adjShortFor(catKey);
+    var a = (isMultiCat(catKey) && partName) ? m[short + '/' + partName] : null;
+    if(!a) a = m[short];
+    if(!a || typeof a !== 'object') return { h:0, s:100, b:100 };
+    var o = { h:clampNum(a.h,-180,180,0), s:clampNum(a.s,0,200,100), b:clampNum(a.b,50,150,100) };
+    if(a.t != null && isFinite(Number(a.t))){ o.t = clampNum(a.t,0,359,0); o.h = 0; }
+    return o;
+  }
+  function presetFilterOf(hueMap, catKey, partName){
+    var a = presetAdjFor(hueMap, catKey, partName);
+    var tf = tintFilterOf(a); if(tf) return tf; // V184_TINT: 덧칠 모드가 우선
+    if(a.h === 0 && a.s === 100 && a.b === 100) return '';
+    return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
+  }
+  /* V184_PRESET: 1024 좌표계 머리 박스 — 56~64px짜리 칸에 전신을 넣으면 얼굴이 점이 되므로
+     머리만 확대해 "어느 컨셉인지" 한눈에 알아보게 한다.
+     manifest._rects 실측: 앞머리 29종의 합집합 x 221~803 · y 21~615, 얼굴 24종 x 307~714 · y 225~515.
+     → 헤어 폭을 좌우 14px 여유로 감싸는 x 207~817(size 610, 중심 512 = 캐릭터 중심과 정확히 일치),
+       y 0~610이면 머리끝(21)부터 얼굴(225~515)과 목까지 들어온다.
+     처음 잡았던 x222/size560은 헤어 29종 중 20종이 오른쪽 끝(>782)에서 잘려 실루엣이 뭉개졌다 —
+     실제 렌더를 확대해 비교하고 넓힌 값이다(얼굴 높이는 여전히 프레임의 약 48%). */
+  var PRESET_HEAD = { x:207, y:0, size:610 };
+  /* 전신 인형탈(04_look ..._full)은 사람 몸통·얼굴·헤어를 통째로 숨기고(stageLayersOf 참고) 동물 머리를
+     훨씬 크게 그린다 — 귀 끝이 사람 머리 박스(207~817) 밖으로 나가 양쪽 귀가 잘린다(렌더로 확인).
+     → 귀와 꼬리까지 담고 몸통·날개도 보이는 넓은 박스로 폴백한다(전신 rect 3종은 x 160~910, y 0~1005).
+     전체 캔버스(1024)까지 물러서면 얼굴이 다시 작아지므로 size는 780에서 멈춘다 — 인형탈 머리가
+     프레임 높이의 약 58%를 차지해 56px 칸에서도 얼굴이 읽힌다. */
+  var PRESET_FULL = { x:120, y:0, size:780 };
+  function presetIsFullCostume(selMap){ // stageLayersOf의 isFullCostume 판정과 같은 규칙
+    var lookCat = chara.cats.find(function(c){ return catName(c.key) === 'look'; });
+    return !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
+  }
+  function presetArtHtml(slot){
+    var selMap = selMapFromPayload(slot);
+    var layers = stageLayersOf(selMap);
+    if(!layers.length) return ''; // manifest에서 파츠가 다 사라진 옛 프리셋 → 호출부가 글리프로 대체
+    var box = presetIsFullCostume(selMap) ? PRESET_FULL : PRESET_HEAD;
+    /* 정사각 칸 안에서 1024 캔버스를 size 배율로 확대하고 (x,y)만큼 밀어 [x,y,size] 영역만 남긴다.
+       래퍼 한 변 = 칸 × 1024/size, 이동 = -(x|y)/1024 × 래퍼 한 변 (translate %는 자기 박스 기준). */
+    var w = (1024 / box.size * 100).toFixed(3);
+    var tx = (-box.x / 1024 * 100).toFixed(3);
+    var ty = (-box.y / 1024 * 100).toFixed(3);
+    var style = 'width:' + w + '%;height:' + w + '%;transform:translate(' + tx + '%,' + ty + '%);';
+    /* loading="lazy" 금지 — 저장 직후 칸이 비어 보이면 "저장이 안 됐나?"로 읽힌다. 크롭도 _rects가 아니라
+       머리 박스라서 thumbImgHtml을 재사용하지 않고 <img>를 직접 쓴다.
+       url은 무대·그리드가 이미 받아 둔 것과 같은 ?v 캐시버스터라 추가 다운로드가 없다. */
+    var imgs = layers.map(function(L){
+      var f = presetFilterOf(slot.hue, L.catKey, L.part.name);
+      return '<img src="' + esc(L.part.url) + '" alt="' + esc(L.part.name) + '"' + (f ? (' style="filter:' + esc(f) + '"') : '') + '>';
+    }).join('');
+    return '<span class="mkPresetArt" style="' + esc(style) + '">' + imgs + '</span>';
+  }
+  function renderPresets(){
+    var grid = $id('mkCharaPresetGrid'); if(!grid) return;
+    var slots = loadPresets();
+    var cnt = $id('mkCharaPresetCount'); if(cnt) cnt.textContent = slots.length + '/' + PRESET_MAX; // V184_PRESET2
+    /* V184_PRESET2: 저장된 칸들 + 맨 끝에 [+] 하나. 12개가 다 차면 [+]도 그리지 않는다
+       (누를 수 없는 버튼을 남겨 두면 왜 안 되는지 알 수 없다 — 개수 표시 12/12가 이유를 말해 준다). */
+    grid.innerHTML = slots.map(function(s, i){
+      var nm = s.name || '내 캐릭터';
+      var when = '';
+      try{ if(s.savedAtMs) when = ' · ' + new Date(s.savedAtMs).toLocaleString(); }catch(e){}
+      /* 파츠 목록을 아직 못 받았으면(phase!=='ready') 합성할 재료가 없다 → 이름칸만 있는 중성 자리표시(던지지 않는다) */
+      var art = (chara.phase === 'ready') ? presetArtHtml(s) : '';
+      if(!art) art = '<span class="mkPresetFallback">🧑‍🎨</span>';
+      /* button 안에 button은 금지 → 셀(div)에 [전환 버튼]과 [× 버튼]을 형제로 둔다(둘 다 진짜 button이라 키보드도 그대로) */
+      return '<div class="mkPresetCell">'
+        +   '<button type="button" class="mkPresetSlot" data-idx="' + i + '" title="' + esc(nm + when + ' — 눌러서 이 캐릭터로 전환') + '">'
+        +     art + '<span class="mkPresetName">' + esc(nm) + '</span>'
+        +   '</button>'
+        +   '<button type="button" class="mkPresetDel" data-del="' + i + '" title="' + esc(nm + ' 칸 비우기') + '" aria-label="' + esc(nm + ' 칸 비우기') + '">×</button>'
+        + '</div>';
+    }).join('')
+    + (slots.length < PRESET_MAX
+        ? '<div class="mkPresetCell"><button type="button" class="mkPresetSlot empty" data-add="1" title="지금 꾸민 모습을 새 칸에 저장 (' + slots.length + '/' + PRESET_MAX + ')">+</button></div>'
+        : '');
   }
 
   /* ---------- V169_SHOP: 썸네일 크롭 — manifest._rects([x,y,w,h], 1024 좌표계) contain 배치 ----------
@@ -28735,7 +29095,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var base = chara.adj[short]; if(!base) return;
     selArr(catKey).forEach(function(nm){
       var k = short + '/' + nm;
-      if(!chara.adj[k]) chara.adj[k] = { h:base.h, s:base.s, b:base.b };
+      if(!chara.adj[k]) chara.adj[k] = (base.t==null) ? { h:base.h, s:base.s, b:base.b } : { h:base.h, s:base.s, b:base.b, t:base.t }; // V184_TINT: 덧칠 목표 색조도 함께 펼친다
     });
     delete chara.adj[short];
   }
@@ -28760,28 +29120,44 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var s = String(name||'').replace(/\.png$/i,'').replace(/^\d+_[a-z]+_/i,'');
     return (s.length > 18 ? s.slice(0,18)+'…' : s) || String(name||'');
   }
+  /* ── V184_TINT: 덧칠 모드 — adj에 t(목표 색조 0~359)가 실려 있으면 상대 회전(hue-rotate) 대신
+        공용 solver(__MK_TINT_V184__)의 체인을 쓴다. 그래야 회색·흰색·검정 파츠도 그 색으로 물든다.
+        t가 없으면(= 기존 저장본 전부) 아래 회전 모드로 떨어져 동작이 완전히 같다.
+        덧칠일 때 h는 항상 0으로 기록되므로 h는 읽지 않는다. ── */
+  function isTintAdj(a){
+    if(!a || a.t==null) return false;
+    var t=Number(a.t);
+    return isFinite(t) && t>=0 && t<=359;
+  }
+  function tintFilterOf(a){
+    if(!isTintAdj(a)) return '';
+    var api = window.__MK_TINT_V184__;
+    if(!api || typeof api.filterString!=='function') return ''; // solver 미탑재 → 기존 동작으로 폴백
+    return api.filterString(a.t, a.s, a.b) || '';
+  }
   function filterFor(catKey, partName){ // V174_PARTHUE: partName은 다중 카테고리에서만 의미 있음(없으면 카테고리 폴백)
     var a = getAdjFor(catKey, partName);
+    var tf = tintFilterOf(a); if(tf) return tf; // V184_TINT: 덧칠 모드가 우선
     if(a.h===0 && a.s===100 && a.b===100) return '';
     return 'hue-rotate('+a.h+'deg) saturate('+a.s+'%) brightness('+a.b+'%)';
   }
 
   /* ---------- 레이어 합성: z랭크 오름차순 (뒷머리→몸통→룩→얼굴→앞머리→액세서리) ---------- */
-  function stageLayers(){
+  function stageLayersOf(selMap){
     var layers=[];
     /* V173_COSTUME: 전신 동물 인형탈(04_look_..._full.png)은 머리끝~발끝을 덮고 얼굴까지 동물 얼굴로 대체한다.
        앞머리(z60)·사람 얼굴(z50)이 룩(z35) 위에 그려지므로 그냥 두면 인형탈 머리 위로 머리카락이
        튀어나오고 사람 얼굴이 동물 얼굴 위에 겹친다 → 헤어(뒷머리 동반분 포함)·얼굴을 통째로 건너뛴다.
        몸통(z20)은 완전히 가려지지만 안전망으로 유지하고, 액세서리·장비·특수템은 의도대로 위에 올린다. */
     var lookCat = chara.cats.find(function(c){ return catName(c.key)==='look'; });
-    var isFullCostume = !!lookCat && selArr(lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
+    var isFullCostume = !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
     chara.cats.forEach(function(cat){
       /* V173_COSTUME3: 'body'(스킨톤 몸통)도 함께 숨긴다 — 인형탈은 몸통 길이를 줄여
          머리가 아래로 내려간 형태라, 밑에 01_body를 깔면 살구색 머리가 인형탈 위로
          튀어나온다. 인형탈이 머리끝~발끝을 다 덮으므로 몸통은 어차피 안 보인다. */
       if(isFullCostume && (isHairCat(cat.key) || isHairBackCat(cat.key) || catName(cat.key)==='face' || catName(cat.key)==='body')) return; // V173_COSTUME
       // V169_SHOP: acc 다중 착장 — selArr가 항상 배열로 정규화(그 외 카테고리는 0~1개), 착용 순서대로 같은 z에 겹침(안정 정렬)
-      selArr(cat.key).forEach(function(sel){
+      selArrIn(selMap, cat.key).forEach(function(sel){
         var part=null;
         for(var i=0;i<cat.parts.length;i++){ if(cat.parts[i].name===sel){ part=cat.parts[i]; break; } }
         if(!part) return;
@@ -28802,6 +29178,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       .sort(function(a,b){ return (a.l.z-b.l.z) || (a.i-b.i); })
       .map(function(x){ return x.l; });
   }
+  function stageLayers(){ return stageLayersOf(chara.sel); } // V184_PRESET: 기존 호출부는 그대로 — 현재 착장 기준
 
   /* ---------- 렌더러들 ---------- */
   function renderTabs(){
@@ -28953,10 +29330,57 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? (cat.label + ((multi && tgt) ? (' · '+partShortLabel(tgt)) : '')) : '-';
     renderColorParts(cat, tgt);                                        // V174_PARTHUE
     var a = cat ? getAdjFor(cat.key, tgt) : { h:0, s:100, b:100 };
-    var sh=$id('mkCharaHue'); if(sh) sh.value=a.h;
+    /* V184_TINT: 색조 슬라이더 이중 모드 — 덧칠(t)이면 "고른 색의 절대 색조" 0~359 미세 조정,
+       아니면 기존 상대 회전 -180~180. min/max를 value보다 먼저 넣어야 한다(옛 범위가 남아 있으면 브라우저가 value를 잘라낸다). */
+    var tint = isTintAdj(a);
+    var hl=$id('mkCharaHueLab'); if(hl) hl.textContent = tint ? '덧칠' : '색조';
+    var sh=$id('mkCharaHue');
+    if(sh){
+      sh.min = tint ? 0 : -180;
+      sh.max = tint ? 359 : 180;
+      sh.classList.toggle('mkHueAbs', tint);
+      sh.value = tint ? clampNum(a.t,0,359,0) : a.h;
+    }
     var ss=$id('mkCharaSat'); if(ss) ss.value=a.s;
     var sb=$id('mkCharaBri'); if(sb) sb.value=a.b;
+    renderColorPalette(a, on);                                         // V184_TINT
     syncSliderVals(a);
+  }
+  /* V184_TINT: 팔레트 12색(색조 0,30,…,330) — 누르면 그 색으로 덧칠(t) 모드로 전환된다.
+     지금 t가 어떤 스와치의 ±15° 안이면 그 스와치를 활성 표시. 스와치는 1회만 만들고 이후엔 클래스만 갱신. */
+  var TINT_SWATCH = [0,30,60,90,120,150,180,210,240,270,300,330];
+  function renderColorPalette(a, on){
+    var wrap=$id('mkCharaColorPalette'); if(!wrap) return;
+    if(wrap.dataset.built!=='1'){
+      wrap.innerHTML = TINT_SWATCH.map(function(hu){
+        return '<button type="button" class="mkTintChip" data-tint="'+hu+'" title="'+hu+'° 색으로 덧칠 (회색·흰색 파츠도 물들어요)" style="background:hsl('+hu+',85%,55%)"></button>';
+      }).join('');
+      wrap.dataset.built='1';
+    }
+    var t = isTintAdj(a) ? clampNum(a.t,0,359,0) : null;
+    wrap.querySelectorAll('.mkTintChip').forEach(function(b){
+      var hu=Number(b.dataset.tint);
+      var d = (t==null) ? 999 : Math.abs(((t-hu+540)%360)-180); // 순환 거리
+      b.classList.toggle('on', d<=15);
+      b.disabled = !on;
+    });
+  }
+  /* V184_TINT: 스와치 클릭 — 지금 조절 중인 대상(카테고리 또는 파츠)을 덧칠 모드로 바꾼다.
+     채도·명도는 쓰던 값을 이어받고(없으면 100), h는 0으로 고정. 다중 카테고리 처리는 onColorInput과 동일. */
+  function onTintPick(hue){
+    var cat=activeCat(); if(!cat) return;
+    var multi = isMultiCat(cat.key);
+    var tgt = multi ? colorTargetFor(cat.key) : null;
+    if(multi ? !tgt : !chara.sel[cat.key]) return;
+    var prev = getAdjFor(cat.key, tgt);
+    var a = { h:0, s:clampNum(prev.s,0,200,100), b:clampNum(prev.b,50,150,100), t:clampNum(hue,0,359,0) };
+    if(multi) explodeCatAdj(cat.key); // V174_PARTHUE: 구 카테고리 폴백을 파츠별로 펼친 뒤 대상만 갱신
+    chara.adj[adjKeyFor(cat.key, tgt)]=a;
+    renderColorPanel();    // 색조 슬라이더를 절대 색조 모드로 전환 + 활성 스와치 표시
+    applyStageFilters();
+    paintColorChips();
+    renderCombo();
+    renderSaveBar();
   }
   /* V174_PARTHUE: 조절 대상 파츠 칩 — 2개 이상 착용했을 때만 노출(1개면 그 파츠가 자동 대상, 조작감 기존과 동일) */
   function renderColorParts(cat, tgt){
@@ -28982,7 +29406,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     });
   }
   function syncSliderVals(a){
-    var h=$id('mkCharaHueVal'); if(h) h.textContent=a.h+'°';
+    var h=$id('mkCharaHueVal'); if(h) h.textContent=(isTintAdj(a) ? clampNum(a.t,0,359,0) : a.h)+'°'; // V184_TINT: 덧칠은 절대 색조를 보여준다
     var s=$id('mkCharaSatVal'); if(s) s.textContent=a.s+'%';
     var b=$id('mkCharaBriVal'); if(b) b.textContent=a.b+'%';
   }
@@ -28994,15 +29418,21 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var multi = isMultiCat(cat.key);
     var tgt = multi ? colorTargetFor(cat.key) : null;
     if(multi ? !tgt : !chara.sel[cat.key]) return;
+    /* V184_TINT: 지금 모드를 보고 색조 슬라이더 값을 알맞은 필드에 쓴다 —
+       덧칠이면 t(절대 색조 0~359)를 갱신하고 h는 0으로 고정, 아니면 기존처럼 h(상대 회전). */
+    var tint = isTintAdj(getAdjFor(cat.key, tgt));
+    var hv = ($id('mkCharaHue')||{}).value;
     var a={
-      h:clampNum(($id('mkCharaHue')||{}).value,-180,180,0),
+      h: tint ? 0 : clampNum(hv,-180,180,0),
       s:clampNum(($id('mkCharaSat')||{}).value,0,200,100),
       b:clampNum(($id('mkCharaBri')||{}).value,50,150,100)
     };
+    if(tint) a.t = clampNum(hv,0,359,0); // V184_TINT
     if(multi) explodeCatAdj(cat.key); // V174_PARTHUE: 구 카테고리 폴백을 파츠별로 펼친 뒤 대상만 갱신
     chara.adj[adjKeyFor(cat.key, tgt)]=a; // V174_PARTHUE: 다중은 "acc/파일명" 파츠 단위 키
     /* V169_SHOP2: 자동 저장 제거 — 미리보기만 갱신, 확정은 [💾 저장] */
     syncSliderVals(a);
+    renderColorPalette(a, true); // V184_TINT: 드래그로 t가 움직이면 활성 스와치도 따라간다
     applyStageFilters();   // 미리보기: 앞·뒷머리 레이어에 동시 반영
     paintColorChips();     // V174_PARTHUE: 대상 파츠 칩 썸네일에도 즉시 반영
     renderCombo();         // 조합칸 썸네일에도 같은 필터 반영
@@ -29060,7 +29490,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     /* V169_SHOP2: 착장 클릭 = 미리보기만 — 자동 저장 없음, 확정은 [💾 저장] */
     renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); renderSaveBar();
   }
-  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); renderSaveBar(); } // V169_SHOP2: 저장 바 포함
+  function renderChara(){ renderTabs(); renderGrid(); renderCombo(); renderStage(); renderColorPanel(); renderCart(); renderSaveBar(); renderPresets(); } // V169_SHOP2: 저장 바 포함 / V184_PRESET: 프리셋 칸 포함
 
   /* ---------- 모달 개편: 기존 #petModal 안에 2컬럼 본문을 만들고 옛 본문은 숨긴다 ---------- */
   var BODY_HTML =
@@ -29081,12 +29511,19 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +   '<div class="mkCharaSection mkComboBox">'
     +     '<div class="petSectionTitle"><span>🧩 현재 조합</span><span class="tiny">칸을 누르면 해당 카테고리로 이동해요</span></div>'
     +     '<div id="mkCharaCombo" class="mkCharaCombo"></div>'
-    +     '<div id="mkCharaColorPanel" class="mkCharaColorPanel">'
-    +       '<div class="mkCharaColorHead"><span>🎨 색상 조절 · <b id="mkCharaColorCat">-</b></span><button id="mkCharaColorReset" type="button">원래 색으로</button></div>'
-    +       '<div id="mkCharaColorParts" class="mkCharaColorParts"></div>' /* V174_PARTHUE: 액세서리·장비 2개 이상 착용 시 조절 대상 파츠 칩 */
-    +       '<div class="mkCharaSliderRow"><label for="mkCharaHue">색조</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
-    +       '<div class="mkCharaSliderRow"><label for="mkCharaSat">채도</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
-    +       '<div class="mkCharaSliderRow"><label for="mkCharaBri">명도</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
+    +     '<div class="mkCharaBottomRow">' /* V184_PRESET: 색상 조절(좌) + 내 캐릭터 프리셋(우) 2열 */
+    +       '<div id="mkCharaColorPanel" class="mkCharaColorPanel">'
+    +         '<div class="mkCharaColorHead"><span>🎨 색상 조절 · <b id="mkCharaColorCat">-</b></span><button id="mkCharaColorReset" type="button">원래 색으로</button></div>'
+    +         '<div id="mkCharaColorParts" class="mkCharaColorParts"></div>' /* V174_PARTHUE: 액세서리·장비 2개 이상 착용 시 조절 대상 파츠 칩 */
+    +         '<div id="mkCharaColorPalette" class="mkCharaColorPalette"></div>' /* V184_TINT: 팔레트 12색 — 회색·흰색 파츠도 물들이는 덧칠 모드 */
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaHue" id="mkCharaHueLab">색조</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaSat">채도</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaBri">명도</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
+    +       '</div>'
+    +       '<div id="mkCharaPresetBox" class="mkCharaPresetBox">'
+    +         '<div class="petSectionTitle"><span>🧑‍🎨 내 캐릭터 <b id="mkCharaPresetCount">0/12</b></span><span class="tiny">칸을 누르면 그 컨셉으로 전환</span></div>' /* V184_PRESET2: 개수 표시 */
+    +         '<div id="mkCharaPresetGrid" class="mkCharaPresetGrid"></div>'
+    +       '</div>'
     +     '</div>'
     +   '</div>'
     + '</div>'
@@ -29156,6 +29593,26 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(colorParts) colorParts.addEventListener('click', function(e){
       var b = e.target && e.target.closest ? e.target.closest('.mkColorPartChip') : null;
       if(b && b.dataset.name) setColorTarget(b.dataset.name);
+    });
+    /* V184_TINT: 팔레트 스와치 — 위임 바인딩(1회) */
+    var colorPal=body.querySelector('#mkCharaColorPalette');
+    if(colorPal) colorPal.addEventListener('click', function(e){
+      var b = e.target && e.target.closest ? e.target.closest('.mkTintChip') : null;
+      if(b && b.dataset.tint!=null) onTintPick(Number(b.dataset.tint));
+    });
+    /* V184_PRESET: 내 캐릭터 프리셋 4칸 — 위임 바인딩(1회).
+       ×(비우기)를 먼저 걸러야 칸 클릭(전환)으로 새지 않는다 — 셀 안에서 형제라 버블링 경로는 겹치지 않지만
+       나중에 구조가 바뀌어도 안전하게 stopPropagation까지 걸어 둔다. */
+    var presetGrid=body.querySelector('#mkCharaPresetGrid');
+    if(presetGrid) presetGrid.addEventListener('click', function(e){
+      var d = e.target && e.target.closest ? e.target.closest('.mkPresetDel') : null;
+      if(d && d.dataset.del!=null){ e.preventDefault(); e.stopPropagation(); presetRemove(Number(d.dataset.del)); return; }
+      var b = e.target && e.target.closest ? e.target.closest('.mkPresetSlot') : null;
+      if(!b) return;
+      /* V184_PRESET2: [+]는 "목록 끝에 추가"라 인덱스가 없다(data-add). 찬 칸만 data-idx를 가진다. */
+      if(b.dataset.add!=null){ presetSaveNew(); return; }
+      if(b.dataset.idx==null) return;
+      presetApply(Number(b.dataset.idx));
     });
     /* V169_SHOP: 장바구니 결제 버튼 + 체크박스 위임 바인딩(1회) */
     var payBtn=body.querySelector('#mkCartPay'); if(payBtn) payBtn.addEventListener('click', payCart);
@@ -29277,7 +29734,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     /* V174_PARTHUE: 검증용 훅 — 파츠 단위 색 조절 (다중 착장 acc/gear) */
     parthue:{ adjKeyFor:adjKeyFor, getAdjFor:getAdjFor, filterFor:filterFor,
               colorTargetFor:colorTargetFor, setColorTarget:setColorTarget,
-              onColorInput:onColorInput, resetColor:resetColor, renderColorPanel:renderColorPanel }
+              onColorInput:onColorInput, resetColor:resetColor, renderColorPanel:renderColorPanel },
+    /* V184_TINT: 검증용 훅 — 덧칠 모드(팔레트 + 절대 색조) */
+    tint:{ isTintAdj:isTintAdj, tintFilterOf:tintFilterOf, onTintPick:onTintPick,
+           renderColorPalette:renderColorPalette, swatches:TINT_SWATCH },
+    /* V184_PRESET: 검증용 훅 — 내 캐릭터 프리셋(localStorage 전용) / V184_PRESET2: 12칸 순서 목록 */
+    presets:{ load:loadPresets, save:savePresets, saveNew:presetSaveNew, apply:presetApply, remove:presetRemove,
+              scrollToEnd:presetScrollToEnd, MAX:PRESET_MAX,
+              renderPresets:renderPresets, selMapFromPayload:selMapFromPayload, stageLayersOf:stageLayersOf,
+              presetFilterOf:presetFilterOf, KEY:PRESET_KEY, HEAD:PRESET_HEAD, FULL:PRESET_FULL }
   };
 })();
 </script>
@@ -29905,8 +30370,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     function put(k, a){
       if(!a || typeof a !== 'object') return false;
       var h = clampNum(a.h, -180, 180, 0), s = clampNum(a.s, 0, 200, 100), b = clampNum(a.b, 50, 150, 100);
-      if(h === 0 && s === 100 && b === 100) return false;
-      out[k] = { h:h, s:s, b:b };
+      /* V184_TINT: 덧칠(t = 목표 색조 0~359)은 h를 0으로 쓰므로 아래 "변화 없음" 판정에 걸려 색이 통째로 사라진다
+         → t가 유효하면 항상 통과시킨다. t가 없으면 기존과 완전히 같은 {h,s,b}만 남는다. */
+      var tv = (a.t == null || !isFinite(Number(a.t))) ? null : clampNum(a.t, 0, 359, 0);
+      if(tv === null && h === 0 && s === 100 && b === 100) return false;
+      out[k] = (tv === null) ? { h:h, s:s, b:b } : { h:0, s:s, b:b, t:tv };
       return true;
     }
     PART_KEYS.forEach(function(k){ put(k, src[k]); });
@@ -29979,7 +30447,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       var v = parts && parts[k];
       p.push(Array.isArray(v) ? v.join(',') : (v || '')); // V169_SHOP: acc 배열은 착용 순서대로 시그니처화
       var a = hue && hue[k];
-      h.push(a ? (a.h + ',' + a.s + ',' + a.b) : '');
+      // V184_TINT: 덧칠 목표 색조(t)도 시그니처에 — 색만 바꿔도 bake 캐시가 갱신된다. t가 없으면 꼬리가 비어 기존 문자열과 동일.
+      h.push(a ? (a.h + ',' + a.s + ',' + a.b + (a.t == null ? '' : ('t' + a.t))) : '');
     });
     /* V174_PARTHUE: 파츠 단위 hue도 시그니처에 넣는다 — 한 파츠만 색을 바꿔도 bake 캐시가 갱신되고 charaV1이 다시 쓰인다.
        내부 표기('acc/파일명.png')와 전송 표기('acc:파일명')가 같은 문자열이 되도록 정규화해서 비교한다.
@@ -29988,7 +30457,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(hue) Object.keys(hue).forEach(function(k){
       var m = /^(acc|gear)[\/:](.+)$/.exec(k); if(!m) return;
       var a = hue[k]; if(!a) return;
-      ph.push(m[1] + ':' + m[2].replace(/\.png$/i, '') + '=' + a.h + ',' + a.s + ',' + a.b);
+      ph.push(m[1] + ':' + m[2].replace(/\.png$/i, '') + '=' + a.h + ',' + a.s + ',' + a.b + (a.t == null ? '' : ('t' + a.t))); // V184_TINT
     });
     ph.sort();
     return p.join('|') + '#' + h.join('|') + (ph.length ? ('#' + ph.join('|')) : '');
@@ -30617,6 +31086,15 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(i > 0) a = hue && hue[key.slice(0, i)];
     }
     if(!a) return '';
+    /* V184_TINT: 덧칠 모드(t 유효)는 공용 solver의 체인을 쓴다 — 무채색 파츠도 물들고,
+       모달 미리보기와 완전히 같은 문자열이라 bake 결과가 어긋나지 않는다. solver 미탑재면 기존 회전으로 폴백. */
+    if(a.t != null){
+      var tapi = window.__MK_TINT_V184__;
+      if(tapi && typeof tapi.filterString === 'function'){
+        var tf = tapi.filterString(a.t, a.s, a.b);
+        if(tf) return tf;
+      }
+    }
     return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
   }
   function bakeChara(parts, hue){
@@ -30778,19 +31256,22 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
 
   /* ---------- charaV1 빌드 + 디바운스 쓰기 ---------- */
+  /* V184_TINT: 공유 페이로드의 색 1건 — 덧칠일 때만 t 1필드가 늘고, t가 없으면 기존과 완전히 같은 {h,s,b}.
+     (sanitizeHue를 이미 통과한 값이라 t는 0~359 정수이고 h는 0으로 고정돼 있다.) */
+  function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, s:a.s, b:a.b, t:a.t }; }
   function buildCharaV1(){
     var lc = readLocalChara();
     if(!lc) return null; // 캐릭터를 만든 적 없는 브라우저 → 공개 데이터도 만들지 않음
     var payload = { v: 1, parts: {}, hue: {}, show: getMyShow(), mode: getMyMode(), updatedAtMs: Date.now() }; // V169_MOVE: mode 공유
     PART_KEYS.forEach(function(k){ if(lc.parts[k]) payload.parts[k] = lc.parts[k]; });
-    PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = { h: lc.hue[k].h, s: lc.hue[k].s, b: lc.hue[k].b }; });
+    PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = hueOutOf(lc.hue[k]); }); // V184_TINT
     /* V174_PARTHUE: 파츠 단위 hue도 함께 공유. RTDB 키에는 '.'과 '/'를 못 쓰므로
        'acc/파일명.png' → 'acc:파일명'으로 인코딩한다(sanitizeHue가 읽을 때 되돌린다).
        구버전 클라이언트는 PART_KEYS만 보므로 이 키들을 그냥 무시한다. */
     Object.keys(lc.hue).forEach(function(k){
       var m = /^(acc|gear)\/(.+)$/.exec(k); if(!m) return;
       var a = lc.hue[k]; if(!a) return;
-      payload.hue[m[1] + ':' + m[2].replace(/\.png$/i, '')] = { h: a.h, s: a.s, b: a.b };
+      payload.hue[m[1] + ':' + m[2].replace(/\.png$/i, '')] = hueOutOf(a); // V184_TINT
     });
     if(!Object.keys(payload.hue).length) delete payload.hue;
     if(lc.name) payload.name = lc.name; // V169_SHOP2: 캐릭터 이름(≤5자) 공유 — 타인 타일 명찰용
