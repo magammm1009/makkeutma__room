@@ -16967,7 +16967,9 @@ t.appendChild(bg);
         const out = [];
         try{
           state.publicProfiles.forEach((v, uid)=>{
-            if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || v.nickname || ""), charaV1: v.charaV1 });
+            /* V178_OWNER: 캐릭터 이름과 "주인 닉네임"을 분리해 넘긴다.
+               프로필의 표시 이름 필드는 nickname이 아니라 name이다(실측). */
+            if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || ""), owner:String(v.name || v.nickname || ""), charaV1: v.charaV1 });
           });
         }catch(e){}
         return out;
@@ -16979,7 +16981,8 @@ t.appendChild(bg);
         const out = [];
         Object.keys(val).forEach((uid)=>{
           const v = val[uid];
-          if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || v.nickname || ""), charaV1: v.charaV1 });
+          // V178_OWNER: 오프라인 포함 전체 경로 — 여기도 주인 닉네임(profiles.name)을 함께 싣는다
+          if(v && v.charaV1) out.push({ uid:String(uid), name:String(v.charaV1.name || ""), owner:String(v.name || v.nickname || ""), charaV1: v.charaV1 });
         });
         return out;
       }
@@ -30400,6 +30403,12 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .binderCard.mine .binderName{ color:var(--pink2); }
+  /* V178_OWNER: 주인 닉네임 — 캐릭터 이름보다 한 단계 작고 흐리게 */
+  .binderOwner{
+    width:100%; text-align:center; font-size:10.5px; font-weight:700; line-height:1.2;
+    margin-top:1px; color:var(--text-soft, #9b8a93); opacity:.85;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
   @media (max-width:560px){
     .binderGrid{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
     .binderCard{ padding:6px 6px 5px; border-radius:12px; }
@@ -30452,7 +30461,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   'use strict';
   /* V176_BINDER: 도감 본체. 모듈 내부에는 __MK_BINDER_BRIDGE_V176__ 로만 접근하고,
      캐릭터 합성은 __MK_CHARA_TILE_V169__.bake(parts, hue)를 그대로 재사용한다. */
-  var LS_KEY = 'mk_chara_binder_v1';
+  /* V178_OWNER: 항목에 owner(주인 닉네임)가 추가되어 키를 v2로 올린다.
+     v1 캐시에는 owner가 없어 카드에 닉네임이 안 뜨는데, 키를 올리면 다음 열람 때
+     한 번만 다시 받고 끝난다(구 v1 값은 그대로 남지만 30분 뒤 무의미해진다). */
+  var LS_KEY = 'mk_chara_binder_v2';
   var TTL_MS = 30 * 60 * 1000;   // 캐시 유효 30분 — 그 안에는 네트워크 요청 0
   var COOLDOWN_MS = 30 * 1000;   // 새로고침 연타 방지
   var BAKE_LIMIT = 3;            // 동시 합성 3개 (스크롤 중 프레임 튐 방지)
@@ -30509,7 +30521,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(!c) return null;
     var uid = String((it && it.uid) || '');
     if(!uid) return null;
-    return { uid: uid, name: String((it && it.name) || c.name || '').slice(0,20), charaV1: c };
+    /* V178_OWNER: owner(주인 닉네임)를 캐시까지 함께 나른다. 옛 캐시에는 owner가 없으므로
+       읽는 쪽은 빈 값을 견뎌야 한다(카드가 캐릭터 이름만 보여주고 끝) — LS_KEY를 올려
+       한 번만 다시 받게 한다. */
+    return { uid: uid, name: String((it && it.name) || c.name || '').slice(0,20),
+             owner: String((it && it.owner) || '').slice(0,20), charaV1: c };
   }
   function readCache(){
     try{
@@ -30564,6 +30580,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var nm = document.createElement('div'); nm.className = 'binderName';
     nm.textContent = (mine ? '⭐ ' : '') + (it.name || '이름 없음');   // textContent — 닉네임을 마크업으로 해석하지 않는다
     card.appendChild(art); card.appendChild(nm);
+    /* V178_OWNER: 캐릭터 이름 아래에 주인 닉네임. 옛 캐시(owner 없음)면 줄 자체를 만들지 않아
+       카드 높이가 들쭉날쭉해지지 않게 한다. 여기도 textContent만 쓴다(닉네임에 마크업이 섞여도 안전). */
+    if(it.owner){
+      var ow = document.createElement('div'); ow.className = 'binderOwner';
+      ow.textContent = it.owner;
+      ow.title = it.owner;
+      card.appendChild(ow);
+    }
     return card;
   }
   function render(arr){
