@@ -748,3 +748,38 @@ body{
   overflow-wrap:anywhere;
   word-break:break-word;
 }
+
+
+/* v33: 작업방 밖에서 열렸을 때의 차단 화면 */
+.gate-lead{
+  font-size:14px;
+  line-height:1.65;
+  color:var(--soft-ink);
+  margin:12px auto 22px;
+  max-width:390px;
+}
+.gate-room-btn{
+  width:min(320px,100%);
+  padding:14px;
+  margin-top:6px;
+}
+.gate-admin-row{
+  margin-top:26px;
+  padding-top:14px;
+  border-top:1px dashed #e2d5ca;
+  text-align:center;
+}
+.gate-admin-link{
+  border:0;
+  background:none;
+  padding:4px 10px;
+  color:var(--soft-ink);
+  font-size:11px;
+  font-weight:700;
+  opacity:.55;
+  cursor:pointer;
+  text-decoration:underline;
+}
+.gate-admin-link:hover{
+  opacity:.9;
+}

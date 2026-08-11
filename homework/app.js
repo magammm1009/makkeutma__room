@@ -28,16 +28,26 @@ const MONTHLY_TARGET = 20;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const WRITER_BROWSER_PROFILE_KEY = 'homework-book:writer-profile:v1';
 
-// 작업방(마끝마) 안 iframe으로 열렸는가. 주소창으로 직접 연 경우는 false라
-// 지금까지처럼 닉네임 입력 화면이 그대로 뜹니다(관리자가 직접 여는 경로).
+// 작업방(마끝마) 안 iframe으로 열렸는가. 주소창으로 직접 연 경우는 false입니다.
 const IS_EMBEDDED = (() => { try { return window.top !== window.self; } catch { return true; } })();
 const EMBED_IDENTITY_TIMEOUT_MS = 1500;
-// 작업방이 닉네임을 알려 줄 때까지 로그인 화면을 잠깐 붙잡아 둡니다.
-// 시간 안에 응답이 없으면(구버전 작업방) 그냥 닉네임 입력 화면으로 돌아갑니다.
+const ROOM_URL = 'https://magammm1009.github.io/makkeutma__room/';
+// 작업방이 닉네임을 알려 줄 때까지 화면을 잠깐 로딩 상태로 붙잡아 둡니다.
+// 시간 안에 응답이 없으면(구버전 작업방 등) 차단 화면으로 갑니다.
 let embedIdentityPending = IS_EMBEDDED;
 let embedIdentityHandled = false;
 let embedIdentityTimer = null;
 let embedLoginSuppressed = false;
+
+// v33 게이트: 숙제장은 작업방 iframe 안에서, 작업방이 알려 준 닉네임으로만 열립니다.
+// 같은 오리진의 부모(작업방)가 보낸 MKM_HW_IDENTITY 를 받았을 때만 이 값이 채워지고,
+// 값이 없으면 익명 로그인 · writerSessions 쓰기 · 숙제 구독을 아예 시작하지 않습니다.
+// 관리자는 예외입니다(차단 화면 아래 '관리자' 링크 → 이메일+비밀번호 로그인).
+// 이건 클라이언트 게이트라 개발자도구를 쓰면 우회할 수 있습니다. 주소를 아는 사람이
+// 그냥 들어와 쓰는 것을 막는 용도이고, 진짜 차단은 보안 규칙(서버) 몫입니다.
+let roomVerifiedWriterKey = null;
+function isRoomVerified() { return Boolean(roomVerifiedWriterKey); }
+function gateAllows(user = state.user) { return isRoomVerified() || isAdmin(user); }
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -644,10 +654,12 @@ function waitForWrite(promise, timeoutMs = 10000) {
   return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
 }
 function showScreen(name) {
-  // 작업방에서 열렸는데 아직 닉네임을 못 받았다면 로그인 화면이 깜빡이지 않게
-  // 로딩 화면을 유지합니다. 나중에 게이트가 풀리면 다시 제대로 보여 줍니다.
-  let target = name;
-  if (name === 'login' && embedIdentityPending) {
+  // v33 게이트: 통과하지 못하면 닉네임 화면과 숙제장으로는 갈 수 없습니다.
+  // (진짜 차단은 signInWriterWithName / handleAuthChanged 쪽 검문이고, 여기는 화면 정리입니다.)
+  let target = (name === 'login' || name === 'writer') && !gateAllows() ? 'gate' : name;
+  // 작업방에서 열렸는데 아직 닉네임을 못 받았다면 화면이 깜빡이지 않게
+  // 로딩 화면을 유지합니다. 나중에 대기가 끝나면 다시 제대로 보여 줍니다.
+  if ((target === 'login' || target === 'gate') && embedIdentityPending) {
     embedLoginSuppressed = true;
     target = 'loading';
   }
@@ -667,7 +679,9 @@ function renderTopActions() {
     actions.push(`<span class="pill">${esc(normalizeWriterEmoji(state.profile.emoji, '🌷'))} ${esc(state.profile.nickname)} 작가님</span>`);
     actions.push('<button id="writerLogout" class="ghost-btn" type="button">로그아웃</button>');
     actions.push('<button id="openAdminFromTop" class="ghost-btn" type="button">관리자 인증</button>');
-  } else {
+  } else if (gateAllows()) {
+    // 게이트에 막혀 있으면(차단 화면) 위쪽 '관리자 인증' 버튼은 내립니다.
+    // 관리자 입구는 차단 화면 아래의 작은 '관리자' 링크 하나로 충분합니다.
     actions.push('<button id="openAdminFromTop" class="ghost-btn" type="button">관리자 인증</button>');
   }
   if (state.installPrompt) actions.push('<button id="installApp" class="install-btn" type="button">앱 설치</button>');
@@ -722,12 +736,21 @@ async function handleAuthChanged(user) {
     return;
   }
 
+  // 관리자가 아닌 이메일 계정은 게이트를 풀지 않습니다. 로그아웃시키고 차단 화면 유지.
   if (!user.isAnonymous) {
     await signOut(auth);
     if (version === state.authVersion) {
       showScreen('login');
       toast('등록된 관리자 이메일로만 관리함을 열 수 있어요.');
     }
+    return;
+  }
+
+  // v33 게이트: 작업방 신원(닉네임)을 받기 전에는 여기서 멈춥니다.
+  // 이 자리에서 막아야 writerSessions/profiles 읽기와 숙제 데이터 구독이 시작되지 않고,
+  // 브라우저에 남아 있던 익명 세션으로 자동 재입장하는 길도 함께 닫힙니다.
+  if (!isRoomVerified()) {
+    showScreen('gate');
     return;
   }
 
@@ -1874,6 +1897,14 @@ async function signInWriterWithName(rawName, rawEmoji, { button = null, errorPre
     return false;
   }
 
+  // v33 게이트: 작업방이 알려 준 닉네임만 통과시킵니다.
+  // 화면을 숨기는 것만으로는 게이트가 아니라서, 로그인 경로 자체를 여기서 끊습니다.
+  // 이 줄 아래로 내려가야 익명 로그인과 writerSessions 쓰기가 일어납니다.
+  if (writerKey !== roomVerifiedWriterKey) {
+    toast('숙제장은 마끝마 작업방 안에서만 열 수 있어요 🌸');
+    return false;
+  }
+
   setButtonBusy(button, true, '숙제장 여는 중…');
 
   try {
@@ -2344,6 +2375,12 @@ renderLoginEmojiPicker();
 $('#nicknameForm').addEventListener('submit', signInWriter);
 $('#brandHome').addEventListener('click', () => { if (isAdmin()) showScreen('admin'); else if (state.profile) showScreen('writer'); else showScreen('login'); });
 $('#openAdminLogin').addEventListener('click', () => openModal('adminAuthModal'));
+// 차단 화면의 관리자 예외 입구. 로그인 UI는 기존 adminAuthModal 을 그대로 씁니다.
+$('#openAdminGate').addEventListener('click', () => openModal('adminAuthModal'));
+$('#gateRoomLink').addEventListener('click', () => {
+  // iframe 안이면 작업방(부모)을 통째로 새로 엽니다. 직접 접속이면 top === self 라 그대로 이동.
+  try { window.top.location.href = ROOM_URL; } catch (_) { window.location.href = ROOM_URL; }
+});
 $('#signInAdmin').addEventListener('click', () => adminAuth('signin'));
 $('#createAdmin').addEventListener('click', () => adminAuth('create'));
 $('#openSubmit').addEventListener('click', () => openModal('submitModal'));
@@ -2481,7 +2518,8 @@ function closeEmbedGate() {
   }
 }
 
-// 대기를 끝내고, 아직 아무 데도 못 들어갔으면 닉네임 입력 화면으로 돌려보냅니다.
+// 대기를 끝내고, 아직 아무 데도 못 들어갔으면 화면을 다시 그립니다.
+// 통행증이 없으면 showScreen 이 알아서 차단 화면(gate)으로 보냅니다.
 function releaseEmbedGate({ showLogin = false } = {}) {
   const suppressed = embedLoginSuppressed;
   closeEmbedGate();
@@ -2498,6 +2536,10 @@ async function handleRoomIdentity(data) {
 
   const nickname = displayNickname(data?.nickname || '');
   const writerKey = normalizeNickname(nickname);
+
+  // v33 게이트: 같은 오리진의 작업방이 알려 준 이 닉네임이 유일한 통행증입니다.
+  // 닉네임이 비어 있으면 통행증도 없고, 그대로 차단 화면에 남습니다.
+  if (writerKey) roomVerifiedWriterKey = writerKey;
 
   // 관리자 이메일로 로그인해 둔 상태면 관리함을 그대로 둡니다.
   // 닉네임이 비어 있거나 이미 같은 작가로 들어와 있으면 다시 로그인할 이유가 없습니다.

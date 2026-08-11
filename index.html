@@ -5640,6 +5640,45 @@ body.joined #preJoinCard{ display:none; }
     #homeworkOverlay .hwCard{ width:100%; height:100%; max-width:none; border-radius:0; border:none; }
   }
 </style>
+<!-- ✅ V183_ATTEND_MODAL: 🔥출근부 모달 전용 스타일 (at 네임스페이스만 사용, 기존 룰은 건드리지 않음)
+     프레임(오버레이/카드/헤더)만 작업방 톤이고, 카드 안 iframe은 출근부 자체 색(분홍 종이 톤)이 그대로 보인다. -->
+<style id="attendModalStyle">
+  #attendOverlay{
+    position:fixed; inset:0; z-index:10210; display:none; align-items:center; justify-content:center;
+    padding:14px; background:rgba(0,0,0,.72);
+  }
+  #attendOverlay.on{ display:flex; }
+  #attendOverlay .atCard{
+    /* 출근부는 닉네임 카드(146px 고정)가 여러 열로 깔리는 가로로 넓은 앱이다.
+       숙제장(760px)보다 넓게 잡아야 카드가 한 줄로 뭉개지지 않는다. */
+    width:min(920px,96vw); height:min(88vh,940px); height:min(88dvh,940px);
+    background:#000; border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #attendOverlay .atHead{
+    display:flex; align-items:center; gap:8px; flex:0 0 auto;
+    padding:12px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  #attendOverlay .atTitle{
+    font-size:15px; font-weight:900; letter-spacing:-.3px; color:var(--pink2);
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #attendOverlay .atCloseBtn{
+    margin-left:auto; flex:0 0 auto; width:30px; height:30px; padding:0; min-width:0;
+    border:1px solid var(--line); border-radius:10px;
+    background:rgba(255,119,184,.14); color:var(--pink2);
+    font-size:14px; font-weight:900; line-height:1;
+  }
+  #attendOverlay .atCloseBtn:hover{ background:rgba(255,119,184,.26); color:#fff; }
+  #attendOverlay .atBody{ flex:1 1 auto; min-height:0; }
+  #attendOverlay #attendFrame{ display:block; width:100%; height:100%; border:0; background:#fff7fb; }
+  /* 모바일: 거의 전체화면 */
+  @media (max-width:619px){
+    #attendOverlay{ padding:0; }
+    #attendOverlay .atCard{ width:100%; height:100%; max-width:none; border-radius:0; border:none; }
+  }
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -6555,6 +6594,19 @@ body.joined #preJoinCard{ display:none; }
 <div class="hwBody">
 <!-- src는 열 때 JS에서 넣고, 닫을 때 about:blank로 비운다(숙제장 Firestore 구독 정리) -->
 <iframe id="homeworkFrame" title="숙제장"></iframe>
+</div>
+</div>
+</div>
+<!-- ✅ V183_ATTEND_MODAL: 출근부는 다른 오리진(Firebase Hosting)이라 iframe + postMessage로 신원을 넘긴다 -->
+<div aria-hidden="true" id="attendOverlay">
+<div aria-label="출근부" aria-modal="true" class="atCard" role="dialog">
+<div class="atHead">
+<span class="atTitle">🔥 출근부</span>
+<button class="atCloseBtn" id="attendClose" title="닫기" type="button">✕</button>
+</div>
+<div class="atBody">
+<!-- src는 열 때 JS에서 넣고, 닫을 때 about:blank로 비운다(출근부 RTDB 구독 정리) -->
+<iframe id="attendFrame" title="출근부"></iframe>
 </div>
 </div>
 </div>
@@ -19450,6 +19502,103 @@ function maybeAutoOpenAttendModal(){
   };
 })();
 
+/* ✅ V183_ATTEND_MODAL — 🔥출근부를 새 탭이 아니라 모달(iframe)로 연다.
+   - 구조는 📚숙제장(MKM_HOMEWORK_MODAL_V1)과 같지만 오리진이 다르다.
+       부모(작업방)  https://magammm1009.github.io   ← GitHub Pages
+       자식(출근부)  https://magamm00-5baee.web.app  ← Firebase Hosting
+     그래서 숙제장처럼 location.origin을 쓸 수 없고, 양쪽 다 상대 오리진을 상수로 못 박는다.
+     postMessage 대상 오리진에 와일드카드('*')를 쓰지 않는다.
+   - 주소 자체는 대시보드 설정 choolUrl을 그대로 쓴다(관리자가 바꿀 수 있어야 하므로).
+     다만 신원 응답은 ATTEND_ORIGIN에서 온 메시지에만 보낸다.
+   - ⚠ 닫을 때 iframe.src를 about:blank로 반드시 비운다 —
+     출근부는 RTDB를 구독하므로 살려두면 닫아도 계속 다운로드를 먹는다.
+   - Escape는 이 모달 자체의 open 플래그로만 판단해 다른 모달과 간섭하지 않는다. */
+(function MKM_ATTEND_MODAL_V1(){
+  'use strict';
+
+  const ATTEND_ORIGIN = 'https://magamm00-5baee.web.app';   // 출근부(자식) 오리진
+  let atOpen = false;
+
+  function byId(id){ return document.getElementById(id); }
+
+  function settingsUrl(){
+    try{
+      return (state.roomSettings && state.roomSettings.dashboard && state.roomSettings.dashboard.choolUrl)
+        ? String(state.roomSettings.dashboard.choolUrl).trim() : "";
+    }catch(e){ return ""; }
+  }
+
+  function openAttendBoard(url){
+    if(!state.joined){ try{ showToast("입장하고 열어줘! 💗"); }catch(e){} return; }
+    const src = String(url || settingsUrl() || "").trim();
+    if(!src){ try{ showToast("출근부 링크가 아직 등록되지 않았어요"); }catch(e){} return; }
+    const ov = byId('attendOverlay');
+    const fr = byId('attendFrame');
+    if(!ov || !fr) return;
+    try{
+      if(new URL(src, location.href).origin !== ATTEND_ORIGIN){
+        console.warn("[attend] choolUrl 오리진이 출근부와 달라 신원 전달이 되지 않습니다:", src);
+      }
+    }catch(e){}
+    // 공지 팝업은 닫는다(모달 위에 겹치지 않게).
+    // ⚠ closeAttendModal()이 아니라 hideModal()을 쓴다 — closeAttendModal()은 attendGateOpen을 풀어
+    //    쪽지 도착 편지를 흘려보내고, 그 팝업이 출근부 모달 뒤에 떠 버린다.
+    try{ hideModal(els.attendModal); }catch(e){}
+    try{ state.attendGateOpen = true; }catch(e){}   // 출근부를 보는 동안에도 편지는 미뤄둔다
+    atOpen = true;
+    ov.classList.add('on');
+    ov.setAttribute('aria-hidden', 'false');
+    fr.src = src;   // 열 때 그제야 로드
+  }
+
+  function closeAttendBoard(){
+    const ov = byId('attendOverlay');
+    const fr = byId('attendFrame');
+    if(!ov) return;
+    atOpen = false;
+    try{ const a = document.activeElement; if(a && ov.contains(a) && a.blur) a.blur(); }catch(e){}
+    ov.classList.remove('on');
+    ov.setAttribute('aria-hidden', 'true');
+    if(fr) fr.src = 'about:blank';   // 구독 정리(출근부 RTDB 다운로드 절약)
+    try{ state.attendGateOpen = false; }catch(e){}
+    try{ setTimeout(showNextDirectArrival_, 200); }catch(e){}
+  }
+
+  /* 출근부에 넘길 신원.
+     ⚠ 숙제장과 달리 닉네임이 비어도 반드시 보낸다 — 출근부는 이 메시지가 와야 게이트가 열린다.
+        (닉네임이 비었거나 명단에 없으면 출근부가 알아서 닉네임 그리드를 보여준다.) */
+  function identityPayload(){
+    let nickname = "";
+    try{ nickname = String(state.nickname || els.name?.value || "").trim(); }catch(e){}
+    return { type:'MKM_AT_IDENTITY', v:1, nickname: nickname.slice(0,40) };
+  }
+
+  /* 출근부(iframe)가 뜨면 { type:'MKM_AT_READY', v:1 } 을 보낸다 → 신원으로 답한다. */
+  function onAttendMessage(ev){
+    if(!atOpen) return;                                  // 모달이 열려 있을 때만 반응
+    if(ev.origin !== ATTEND_ORIGIN) return;              // 다른 오리진은 즉시 무시
+    const fr = byId('attendFrame');
+    if(!fr || !fr.contentWindow || ev.source !== fr.contentWindow) return;   // 우리 iframe이 맞는지
+    const data = ev.data;
+    if(!data || data.type !== 'MKM_AT_READY') return;
+    try{ fr.contentWindow.postMessage(identityPayload(), ATTEND_ORIGIN); }catch(e){}
+  }
+
+  const closeBtn = byId('attendClose');
+  if(closeBtn) closeBtn.addEventListener('click', closeAttendBoard);
+  const ovEl = byId('attendOverlay');
+  if(ovEl) ovEl.addEventListener('click', (e)=>{ if(e.target === ovEl) closeAttendBoard(); });   // 배경 클릭
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && atOpen) closeAttendBoard(); });
+  window.addEventListener('message', onAttendMessage);
+
+  /* 검증 훅 */
+  window.__MK_ATTEND_MODAL_V1__ = {
+    open: openAttendBoard,
+    close: closeAttendBoard,
+    isOpen: ()=>atOpen
+  };
+})();
+
 // Button wiring
 try{
   if(els.updateBtn){
@@ -19494,7 +19643,8 @@ try{
       try{
         const url = (state.roomSettings && state.roomSettings.dashboard && state.roomSettings.dashboard.choolUrl) ? String(state.roomSettings.dashboard.choolUrl).trim() : "";
         if(!url){ showToast("출근부 링크가 아직 등록되지 않았어요"); return; }
-        openUrlJoined(url);
+        // ✅ V183_ATTEND_MODAL: 새 탭(openUrlJoined) 대신 작업방 안 모달로 연다.
+        window.__MK_ATTEND_MODAL_V1__.open(url);
       }catch(e){}
     });
   }

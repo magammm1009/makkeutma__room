@@ -71,6 +71,24 @@
         </div>
       </section>
 
+      <!-- v33: 작업방 밖에서 열렸을 때 보이는 차단 화면입니다.
+           닉네임 입력 폼(#loginScreen)은 이 화면에서 닿을 수 없고,
+           로그인 경로 자체도 app.js 의 게이트 검문에서 막힙니다. -->
+      <section class="screen" id="gateScreen">
+        <div class="login-wrap">
+          <article class="login-card card">
+            <div class="login-seed">🌸</div>
+            <h1>작업방에서 열어 주세요</h1>
+            <!-- .lead 는 styles.css 에서 전역으로 감춰져 있어 전용 클래스를 씁니다. -->
+            <p class="gate-lead">숙제장은 마끝마 작업방 안에서만 열 수 있어요.<br />대시보드의 📚숙제장 버튼을 눌러 주세요.</p>
+            <button id="gateRoomLink" type="button" class="primary-btn gate-room-btn">마끝마 작업방 열기 ✦</button>
+            <div class="gate-admin-row">
+              <button id="openAdminGate" type="button" class="gate-admin-link">관리자</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section class="screen" id="writerScreen">
         <article class="card king-card writer-king-card writer-king-top">
           <div class="king-card-head">
