@@ -30441,6 +30441,47 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     });
     return out;
   }
+  /* ---------- V184_OWNEDFIX: 보유 목록이 사라진 브라우저에서 내 캐릭터 자동 복구 ----------
+     보유 목록(mk_chara_owned_v2)은 localStorage 전용이고 서버에 사본이 없다. 그래서 브라우저를
+     바꾸거나 저장소가 비면, 관리자가 프로필 연결로 charaV1을 되살려 줘도 filterOwnedParts가
+     전부 걸러내 "남들 화면엔 보이는데 내 화면만 빈" 상태가 된다(2026-08-12 실제 사고).
+     persist()는 보유한 파츠만 저장하므로 charaV1에 실려 있다는 것 자체가 그 파츠를 보유했다는
+     증거다 → 내 charaV1에 있는 파츠만큼만 보유를 되돌린다.
+     안전장치: (1) 보유 목록이 완전히 비었을 때만 개입 — 일부만 다른 정상 사용자는 건드리지 않는다,
+     (2) manifest에 실제로 있는 파일만, (3) 세션당 1회, (4) RTDB 읽기·쓰기 추가 0(이미 받은 charaV1만 씀). */
+  var ownedRepairDone = false;
+  function repairOwnedFromCharaV1(cv){
+    if(ownedRepairDone) return;
+    ownedRepairDone = true; // 성공·실패 무관 1회 — 렌더마다 재시도해 만신창이가 되는 걸 막는다
+    var parts = sanitizeParts(cv && cv.parts);
+    if(!hasParts(parts)) return;
+    var cur = null;
+    try{ cur = JSON.parse(localStorage.getItem(OWNED_KEY_V169) || 'null'); }catch(e){ return; }
+    if(cur && typeof cur === 'object' && Object.keys(cur).length) return; // 보유 기록이 남아 있으면 손대지 않는다
+    ensureManifest().then(function(mani){
+      var grant = {}, n = 0;
+      PART_KEYS.forEach(function(k){
+        var folder = mani.folders[k]; if(!folder) return;
+        var files = mani.files[k] || {};
+        var v = parts[k];
+        (Array.isArray(v) ? v : (v ? [v] : [])).forEach(function(nm){
+          if(!files[nm]) return; // manifest에 없는 파일은 되돌리지 않는다
+          grant[folder + '/' + nm] = true; n++;
+          var back = (k === 'hair') ? mani.hairBackOf[nm] : null;
+          if(back) grant[folder + '/' + back] = true; // 뒷머리 동반분도 함께(grantOwned와 같은 규칙)
+        });
+      });
+      if(!n) return;
+      /* 되돌리는 사이(manifest fetch 동안) 사용자가 무언가 샀을 수 있다 → 다시 읽어 합친다(덮어쓰지 않는다) */
+      var now = {};
+      try{ now = JSON.parse(localStorage.getItem(OWNED_KEY_V169) || 'null') || {}; }catch(e){}
+      Object.keys(grant).forEach(function(key){ now[key] = true; });
+      try{ localStorage.setItem(OWNED_KEY_V169, JSON.stringify(now)); }catch(e){ return; }
+      localCacheLoaded = false; // mk_chara_state가 남아 있었다면 걸러진 값이 캐시돼 있다 → 다시 읽게
+      try{ onLocalCharaChanged(); }catch(e){}
+      try{ if(typeof window.showToast === 'function') window.showToast('캐릭터를 되살렸어요 ✨ 보유 파츠 ' + n + '개를 복구했어요', 3600); }catch(e){}
+    }, function(){});
+  }
   function sigOf(parts, hue){
     var p = [], h = [];
     PART_KEYS.forEach(function(k){
@@ -30540,7 +30581,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var cv = p && p.charaV1;
     if(cv && typeof cv === 'object'){
       var parts = sanitizeParts(cv.parts);
-      if(isMe) parts = filterOwnedParts(parts); // V169_SHOP2: 내 표출은 원격 폴백도 보유분만
+      if(isMe){
+        var hadParts = hasParts(parts);
+        parts = filterOwnedParts(parts); // V169_SHOP2: 내 표출은 원격 폴백도 보유분만
+        /* V184_OWNEDFIX: charaV1엔 파츠가 있는데 보유 필터가 전부 걸러냈다 = 보유 목록이 사라진 브라우저.
+           바로 이 지점이 "남들에겐 보이는데 나만 안 보이는" 증상의 발생점이라 여기서 되돌린다. */
+        if(hadParts && !hasParts(parts)) repairOwnedFromCharaV1(cv);
+      }
       if(hasParts(parts)) return { parts: parts, hue: sanitizeHue(cv.hue),
         name: sanitizeCharaName(cv.name), // V169_SHOP2: 타인 이름은 charaV1.name
         show: isMe ? getMyShow() : normShow(cv.show),
@@ -31444,6 +31491,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     bake: bakeChara,           // bake(parts, hue) → Promise<{url,facePart,faceRect,layers}> (후속 깜빡임 패치용 메타 포함)
     ensureManifest: ensureManifest,
     getMyShow: getMyShow,
+    /* V184_OWNEDFIX: 검증용 — 보유 목록이 비었을 때 내 charaV1로 보유를 되돌리는 복구.
+       resetOwnedRepair는 세션 1회 가드를 풀어 재검증할 수 있게 한다. */
+    repairOwnedFromCharaV1: repairOwnedFromCharaV1,
+    resetOwnedRepair: function(){ ownedRepairDone = false; },
     flushNow: flushWrite,      // 검증용: 디바운스 없이 즉시 flush
     stats: stats,              // bake/쓰기 횟수 관측
     /* V169_BLINK: 깜빡임 API — 모달 미리보기(v169CharaDressupScript)와 검증이 사용 */
