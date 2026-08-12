@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V186.3_FRAME_FIX: 화면공유가 정지화면으로 나가던 진짜 원인 수정. 선택 영역을 파랗게 칠하는 큰 변화조차 남들 화면에 안 나타난다는 제보로 잡았다 — 모자이크 입자 문제가 아니었다. ①원인: 확인 모달을 닫을 때 vid.remove()로 <video>를 문서에서 떼어냈다. 문서 밖 video는 프레임이 갱신되지 않아 캔버스가 계속 같은 그림을 그렸다. 진단 페이지(화공_멈춤진단.html)에서는 video가 문서 안에 display:none으로 남아 있어 정상으로 나왔던 것이 차이였다. 화면 밖 홀더(position:fixed;left:-9999px)를 문서에 두고 그 안에서 재생하며, 모달은 잠시 빌려 갔다가 되돌려준다. ②프레임 공급을 MediaStreamTrackProcessor 우선으로 바꿨다 — 트랙에 매여 있어 탭 가시성과 무관하고, 실측에서 숨김 상태 내용 갱신이 <video> 0.7회/초 대비 1.2회/초로 안정적이었다. 미지원 브라우저를 위해 <video>+setInterval 경로는 보조로 남긴다(프레임이 뜸할 때의 안전망도 겸함). ③확인 모달이 떠 있는 동안 미리보기를 갱신하는 타이머가 없어 슬라이더를 만질 때만 다시 그려졌다 — 타이머를 모달보다 먼저 걸도록 순서를 바꿨다. 빌드 17010 -->
 <!-- V186.2_MOSAIC_TUNE: 파일럿 피드백 3건 수정. ①세로로 긴 창을 공유하면 미리보기가 길어져 [이대로 시작]이 화면 밖으로 밀렸다 — 카드에 max-height:calc(100vh-32px)+세로 스크롤, 원본 미리보기는 max-height:42vh로 묶고 래퍼를 inline-block으로 바꿔 선택 사각형의 % 좌표를 그대로 유지. ②"타이핑이 안 드러나고 뿌연 정지화면 같다"의 원인은 프레임 정지가 아니라 모자이크 평균이었다 — 진단(화공_멈춤진단.html) 결과 숨김 상태에서도 원본은 초당 0.7회 갱신되고 있었다(<video>+setInterval 1.0그림/0.7내용, MediaStreamTrackProcessor 1.5/1.2). 1600×900 창을 배율1로 잡으면 블록 하나가 원본 37.5px를 덮어 한 글자를 쳐도 블록 평균이 1~2%만 바뀌어 눈에 안 보인다. 핵심 손잡이는 "블록당 원본 픽셀"(=크롭 한 변/블록 수)이고 30px 초과면 타이핑이 묻히고 18px 미만이면 글자 윤곽이 드러난다. 모달에 이 상태를 말로 알려주는 안내를 넣고(30 초과/18 미만/적정), 저장값이 없는 첫 사용에는 블록당 24px가 되도록 초기 배율을 자동 계산한다(zoom = side/(24*blocks)). ③블러 모드에는 모자이크를 권하는 안내를 띄운다. ⚠️ 진단에서 MediaStreamTrackProcessor가 숨김 상태에서 더 안정적(0.7→1.2)이었다. 갱신 빈도가 부족하면 그 경로로 바꾸는 것이 다음 카드다. 빌드 17000 -->
 <!-- V186.1_MOSAIC: 화면공유 가리기를 블러 → 모자이크 기본으로 바꿈. 블러(8px)는 구조까지 뭉개서 "지금 글을 쓰는 중"인지조차 안 보인다는 파일럿 피드백(2026-08-12). 모자이크는 작은 캔버스로 줄였다가 imageSmoothingEnabled=false로 되키워 각진 블록을 만들며, 글줄 덩어리·페이지 모양·커서 이동 같은 형태는 남기고 글자만 없앤다. 블록 수 14~32(기본 24), 상한 32는 안전선 — 더 세밀하면 확대 시 글자 윤곽이 드러난다. 확인 모달에서 모자이크/블러를 즉시 전환하며 비교할 수 있고 선택은 localStorage(mkScreenCropV1)에 남는다. 타일 라벨은 "화면 LIVE" → "화공 LIVE"로 바꾸고, 연결 중(ready:false)이라 HC_LIVE에 아직 내 슬롯이 없을 때 "손캠 LIVE"로 잘못 뜨던 것을 hcLiveInfoFor_로 hc.my/hc.pending의 kind를 먼저 보게 고쳤다. ⚠️ 모자이크는 경계가 각져 블러보다 압축이 불리할 수 있다 — 50kbps 상한은 그대로이므로 파일럿 실측에서 프레임 저하가 없는지 확인할 것. 빌드 16990 -->
 <!-- V186_SCREEN_SHARE: 화면공유 1단계(파일럿) + 손캠 슬롯 9→12. ①손캠과 슬롯·송출·정리 경로를 공유한다(startPublish_(kind)) — 한 사람당 슬롯 하나라 손캠과 화면공유는 자동으로 배타적이고, 타일 렌더·RTDB 규칙·시청 구독이 그대로 재사용된다. 슬롯 레코드에 kind("cam"|"screen")만 추가. ②블러는 반드시 송출 전, 보내는 사람 기기의 캔버스에서 건다(받는 쪽 CSS 블러는 원본이 전송되어 개발자도구로 보인다). getDisplayMedia는 monitorTypeSurfaces:"exclude"로 전체 화면 선택지를 없애 창 단위 캡처만 허용 — 알림·작업표시줄·다른 창이 물리적으로 캡처에 안 들어온다. ③캔버스 그리기는 setInterval로만 돌린다. 송출자의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고 숨김 탭에서 rAF는 0.0fps다(2026-08-12 실측, setInterval은 1.0fps 유지). ④maxBitrate 50kbps·2fps 하드 상한 — egress가 ingress의 8.6배로 증폭되므로 이 상한 하나가 월 사용량을 결정한다(7명 동시 사용 시 약 247GB). 손캠 maxFramerate도 V185.2의 10fps에 맞춰 15→10. ⑤시작 전 확인 모달: 왼쪽에 내 원본(나만 봄) + 공유 범위 사각형, 오른쪽에 실제로 나가는 블러 영상을 나란히 띄운다. 오른쪽은 캡처 소스 캔버스 그 자체를 붙이므로 "미리보기와 실제가 다를" 여지가 없다. 원본을 눌러 위치를 옮기고 막대로 1~3배 확대하며, 선택 사각형은 화면 밖으로 못 나가게 가둔다(localStorage mkScreenCropV1에 비율로 저장). ⑥파일럿 게이트: 주소에 ?screen=1을 한 번 붙인 브라우저에만 버튼이 열린다. 실측이 끝나면 걷어낸다. ⚠️ 슬롯 12는 firebase-rules.json의 handcam/live/$slotId가 0~11을 허용해야 동작한다(2026-08-12 배포 완료). 빌드 16980 -->
@@ -21848,12 +21849,17 @@ joinRoom();
     function confirmScreenShare_(vid, cv, crop, draw){
       return new Promise((resolve)=>{
         let done = false, uiTimer = 0;
+        // ⚠️ 원래 자리(문서 안의 숨은 홀더)로 되돌려야 한다. 문서에서 떼면 프레임이 멈춘다.
+        const vidHome = vid.parentNode;
         const onKey = (ev)=>{ if(ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); finish(false); } };
         function finish(ok){
           if(done) return; done = true;
           try{ clearInterval(uiTimer); }catch(e){}
           try{ document.removeEventListener("keydown", onKey, true); }catch(e){}
-          try{ vid.remove(); }catch(e){}   // 다시 화면 밖으로(재생은 계속된다)
+          try{
+            vid.style.cssText = "display:block;width:1px;height:1px;";
+            if(vidHome) vidHome.appendChild(vid); else vid.remove();
+          }catch(e){}
           try{ cv.remove(); }catch(e){}
           try{ ov.remove(); }catch(e){}
           resolve(ok);
@@ -22023,8 +22029,19 @@ joinRoom();
         surfaceSwitching: "exclude",     // 공유 중 소스 바꾸기 버튼 제거
         audio: false
       });
+      /* ⚠️ <video>를 문서에서 떼면 프레임이 갱신되지 않아 정지화면이 나간다.
+         (2026-08-12 파일럿: 선택 영역을 파랗게 칠하는 큰 변화조차 남들 화면에 안 나타났다.
+          진단 페이지에서는 video가 문서 안에 display:none으로 남아 있어 정상 동작했는데,
+          실제 코드는 확인 모달을 닫으며 vid.remove()로 떼어내고 있었다.)
+         화면에 안 보이되 문서에는 남는 자리를 만들어 거기에 둔다. */
+      const holder = document.createElement("div");
+      holder.setAttribute("aria-hidden", "true");
+      holder.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none;";
+      document.body.appendChild(holder);
+
       const vid = document.createElement("video");
       vid.playsInline = true; vid.muted = true; vid.srcObject = src;
+      holder.appendChild(vid);
       try{ await vid.play(); }catch(_e){}
 
       const crop = loadScreenCrop_();
@@ -22054,14 +22071,24 @@ joinRoom();
       const small = document.createElement("canvas");
       const sctx = small.getContext("2d");
 
+      /* 프레임 공급원. 트랙에서 직접 읽는 경로가 있으면 그쪽을 쓴다 —
+         화면 렌더링이 아니라 트랙에 매여 있어 탭 가시성과 무관하다.
+         (2026-08-12 실측, 숨김 상태 내용 갱신: <video> 0.7회/초 vs 트랙 직접 1.2회/초) */
+      let latest = null;   // 트랙에서 받은 최신 VideoFrame
+      const frameSrc = ()=>{
+        if(latest) return { img: latest, w: latest.displayWidth || latest.codedWidth, h: latest.displayHeight || latest.codedHeight };
+        return { img: vid, w: vid.videoWidth, h: vid.videoHeight };
+      };
+
       const draw = ()=>{
         try{
-          const vw = vid.videoWidth, vh = vid.videoHeight;
+          const f = frameSrc();
+          const vw = f.w, vh = f.h;
           if(!vw || !vh) return;
           const r = screenCropRect_(vw, vh, crop);
           if(crop.style === "blur"){
             ctx.filter = `blur(${SCREEN_BLUR_PX}px)`;
-            ctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
+            ctx.drawImage(f.img, r.sx, r.sy, r.s, r.s, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
             ctx.filter = "none";
             return;
           }
@@ -22070,30 +22097,54 @@ joinRoom();
           if(small.width !== n){ small.width = n; small.height = n; }
           sctx.imageSmoothingEnabled = true;
           sctx.imageSmoothingQuality = "high";
-          sctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, n, n);
+          sctx.drawImage(f.img, r.sx, r.sy, r.s, r.s, 0, 0, n, n);
           ctx.imageSmoothingEnabled = false;
           ctx.drawImage(small, 0, 0, n, n, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
           ctx.imageSmoothingEnabled = true;
         }catch(_e){}
       };
       draw();
+      /* ⚠️ requestAnimationFrame 금지.
+         송출하는 사람의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고, 숨김 탭에서 rAF는
+         아예 실행되지 않는다(2026-08-12 실측: 숨김 시 rAF 0.0fps / rVFC 0.0fps / setInterval 1.0fps).
+         rAF로 짜면 남들 화면에서 내 화면이 얼어붙은 채로 남는다.
+         확인 모달이 떠 있는 동안에도 미리보기가 살아 움직여야 하므로 모달보다 먼저 건다. */
+      const timer = setInterval(draw, Math.round(1000 / SCREEN_FPS));
 
       /* 시작 전에 "남들에게 보이는 그대로"를 확인시킨다. 원고가 걸린 기능이라
          이 확인 없이 켜게 하면 아무도 안 켠다. 취소하면 캡처를 즉시 반납한다. */
       const okay = await confirmScreenShare_(vid, cv, crop, draw);
       if(!okay){
+        try{ clearInterval(timer); }catch(_e){}
         try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
         try{ vid.srcObject = null; }catch(_e){}
+        try{ holder.remove(); }catch(_e){}
         const err = new Error("screen-share-cancelled");
         err.__cancelled = true;
         throw err;
       }
       saveScreenCrop_(crop);
-      /* ⚠️ requestAnimationFrame 금지.
-         송출하는 사람의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고, 숨김 탭에서 rAF는
-         아예 실행되지 않는다(2026-08-12 실측: 숨김 시 rAF 0.0fps / rVFC 0.0fps / setInterval 1.0fps).
-         rAF로 짜면 남들 화면에서 내 화면이 얼어붙은 채로 남는다. */
-      const timer = setInterval(draw, Math.round(1000 / SCREEN_FPS));
+
+      /* 트랙에서 직접 프레임을 읽어 도착할 때마다 그린다. 위 setInterval은 이 경로가
+         없는 브라우저를 위한 보조이자, 프레임이 뜸할 때의 안전망으로 남겨 둔다. */
+      let alive = true, reader = null;
+      if(typeof window.MediaStreamTrackProcessor === "function"){
+        try{
+          const track = src.getVideoTracks()[0];
+          reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
+          (async function pump(){
+            while(alive){
+              const { value, done } = await reader.read();
+              if(done) break;
+              if(!alive){ try{ value.close(); }catch(_e){} break; }
+              const prev = latest;
+              latest = value;
+              draw();
+              if(prev){ try{ prev.close(); }catch(_e){} }   // 그린 뒤에 이전 프레임을 반납한다
+            }
+          })().catch(()=>{});
+        }catch(e){ reader = null; }
+      }
 
       const out = cv.captureStream(SCREEN_FPS);
       /* 브라우저 자체 "공유 중지" 버튼을 누르면 원본 트랙이 끝난다.
@@ -22107,10 +22158,14 @@ joinRoom();
       return {
         stream: out,
         stop(){
+          alive = false;
           try{ clearInterval(timer); }catch(_e){}
+          try{ reader && reader.cancel(); }catch(_e){}
+          try{ if(latest){ latest.close(); latest = null; } }catch(_e){}
           try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
           try{ out.getTracks().forEach(t=>t.stop()); }catch(_e){}
           try{ vid.srcObject = null; }catch(_e){}
+          try{ holder.remove(); }catch(_e){}
         }
       };
     }
@@ -23225,7 +23280,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17000; // ✅ V186.2: 화면공유 모달 스크롤 + 타이핑이 드러나는 배율 안내/자동설정.
+  const MK_APP_BUILD = 17010; // ✅ V186.3: 화면공유 정지화면 수정 — video를 문서에서 떼면 프레임이 멈춘다.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
