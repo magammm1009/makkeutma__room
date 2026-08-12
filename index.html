@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V185.3_FEED_GUARD_FIX: "타일이 전부 사라지고 나만 남음" 재발 수정(2026-08-12 뽀솜님, 새로고침 후 새 코드에서 겪음 = V185.2 실패). 원인은 가드 임계값이 ONLINE_TTL_MS(20분)와 같았던 것 — 구독은 붙어 있는데 수신만 끊긴 경우 T0+17분(마지막 하트비트가 T0-3분이던 사람)부터 만료가 시작되는데 가드는 T0+20분에야 발동해, 그 3분 사이에 전원이 사라지고 그 빈 명단이 _lastPresenceArrBase에 기록되어 가드가 빈 명단을 붙잡는 래치가 됐다. ①임계값을 하트비트x2(6분)로 낮춰 첫 만료보다 11분 앞서 발동 ②보관본(__presenceGoodArr)은 피드가 살아 있을 때만 갱신해 래치 차단 ③내 하트비트 메아리는 수신 근거에서 제외(3분 주기라 그것만으로 6분 임계값을 영원히 넘김) ④presenceFeedWatchdog_: 구독이 붙어 있는데 6분 넘게 소식이 없으면 재구독해 실제로 되살린다(보이는 탭 + 절약 일시정지 아님 + 10분 쿨다운으로 다운로드 폭주 방지). 빌드 16970 -->
+<!-- V185.2_SQUARE_CAM: 손캠 SFU egress 절감 — 카메라 캡처를 4:3(320×240)에서 정사각(240×240)으로, fps 15→10. 타일이 aspect-ratio:1/1이고 video가 object-fit:cover라 4:3으로 보내면 좌우 25%가 잘려 아무도 보지 못하는데 전송 요금은 그대로 나갔다(실측 2026-08-12: Cloudflare Realtime SFU egress 412GB / ingress 48GB = 8.6배 증폭, 8월 환산 약 1,087GB로 무료 1,000GB 초과 예상). 정사각 캡처는 화면에 보이는 그림이 1픽셀도 바뀌지 않고 픽셀만 25% 줄며, fps 저하는 선명도와 무관하다(움직임만 덜 부드러워짐). 둘을 합쳐 약 610GB 예상. 정사각 모드를 못 만드는 카메라가 240×180으로 떨어지면 조용히 흐려지므로 협상 결과를 mkDiag("손캠-해상도미달")로 남긴다. 빌드 16960 -->
 <!-- V185_RENDER_RECOVER: 화면 갱신이 멈추는 문제 수정 — ①렌더 예약이 requestAnimationFrame 하나에만 걸려 있어, 브라우저가 창을 hidden(다른 창에 완전히 가려짐·최소화 포함)으로 판단하면 예약 플래그가 잠긴 채 남고 이후 채팅·프레즌스 이벤트가 전부 "이미 예약됨"으로 무시됐다 — 데이터는 멀쩡한데 화면만 굳는다. 하트비트는 setInterval이라 계속 돌아서 남들 눈에는 정상 접속으로 보였다. mkScheduleFrame_로 rAF와 타이머 중 먼저 오는 쪽 1회만 실행한다(보이는 상태에서는 rAF가 항상 먼저라 기존 동작과 동일, 숨김일 때만 2초로 묶어 백그라운드 비용 억제). 적용: 채팅 렌더/타일·명단 렌더/프레즌스 재계산. ②presence 구독이 끊긴 채 20분(ONLINE_TTL_MS)이 지나면 캐시 속 타인 전원이 동시에 낡아, 이후 재렌더 한 번에 전원이 필터에서 떨어지고 로컬 합성된 내 타일만 남았다("나만 혼자 남음"). presenceFeedLive_/presenceDisplayList_로 피드가 실제로 살아 있을 때만 TTL 탈락을 화면에 반영한다. 적용: 프로필 저장/관리자 프로필 연결/캐릭터앱 재렌더/창 크기 변경/저사양·경량 전환/프레즌스 재계산. 접속 판정(isOfflinePresence)은 미션 성공 인원·접속 수·손캠 대상이 공유하므로 건드리지 않았다. 빌드 16950 -->
 <!-- V172.1_GHOST_SWEEP_FIX: V172 유령 세션 정리 긴급 수정 — ①kick 레코드에 sessionId(대상의 presenceSessionId)를 실어 "그 사람"이 아니라 "그 시점의 그 탭"만 끊는다. 받는 쪽은 sessionId 없음/불일치/이미 소비를 모두 무시하므로, 지우는 코드가 없는 kick 레코드 때문에 2시간 동안 재입장할 때마다 튕기던 사고가 끝난다(기존 사고 레코드는 sessionId가 없어 자동 무력화). 일반 강퇴 경로는 그대로. ②판정에서 totalSecondsToday 폴백 제거 — 자정마다 0으로 리셋되는 값이라 "24시간 방치"가 아니라 "어제 탭 열고 오늘 작업중 안 누름"이 되어 방 전체가 대상이 됐다. 이제 statusSinceMs가 없으면 대상에서 제외. 빌드 16941 -->
 <!-- V172_GHOST_SWEEP: 관리자용 유령 세션 정리(작업중 아닌 상태 24시간 초과 → kicks에 mode:"session"으로 소프트 종료, 재입장 차단 없음) + presence.statusSinceMs 추가 + 출석부 사본 신선도 가드(attendSheetLooksLive_)로 휴가·병가 보호 무력화 방지. 빌드 16940 -->
@@ -9602,26 +9604,68 @@ function isDisplayablePresence(p){
 // 그래서 "피드가 실제로 살아 있을 때만" TTL 탈락을 화면에 반영한다.
 // 판정 함수 자체는 건드리지 않는다 — 미션 성공 인원/접속 수/손캠 대상 등
 // 같은 판정을 공유하는 다른 소비처의 의미가 바뀌면 안 되기 때문이다.
+/* V185.3_FEED_GUARD_FIX: V185.2의 임계값이 ONLINE_TTL_MS(20분)와 같아서 구멍이 있었다.
+   구독은 붙어 있는데 데이터만 안 들어오는 상태(네트워크 끊김·좀비 소켓)가 T0에 시작하면
+     T0+17분  마지막 하트비트가 T0-3분이던 사람부터 TTL 만료 시작
+     T0+20분  전원 만료 완료 (하트비트 주기가 3분이라 이 3분 안에 모두가 만료된다)
+     T0+20분  가드가 그제서야 "피드 죽음"으로 판정
+   즉 17~20분 사이 3분 동안 가드는 피드가 살아있다고 믿는데 사람들은 하나씩 사라졌고,
+   그렇게 비어버린 명단이 _lastPresenceArrBase에 기록되어 가드가 그 빈 명단을 붙잡았다.
+   (2026-08-12 뽀솜님 재발 사례 — 새로고침 후 새 코드에서 겪으셨다.)
+   임계값을 하트비트 2배(6분)로 낮춰 첫 만료(17분)보다 11분 앞서 발동하게 한다.
+   내 하트비트 메아리는 피드 생존 근거에서 제외한다 — 3분 주기라 그것만으로도
+   6분 임계값을 영원히 넘겨버려 가드가 발동하지 못하기 때문이다. */
+const PRESENCE_FEED_DEAD_MS = PRESENCE_HEARTBEAT_INTERVAL_MS * 2; // 6분
+// 남의 presence가 도착한 시각만 기록한다. 내 하트비트가 되돌아온 것은 "남들 소식이
+// 오고 있다"는 증거가 못 되므로 세지 않는다.
+function stampPresenceFeed_(uid){
+  try{
+    if(!uid || String(uid) === String((state && state.uid) || "")) return;
+    state.__presenceFeedAtMs = Date.now();
+  }catch(e){}
+}
 function presenceFeedLive_(){
   try{
     if(!state || !state.joined) return true;      // 입장 전에는 기존 동작 그대로
     if(!state.unsubParticipants) return false;    // presence 구독이 붙어 있지 않음
     const at = Number(state.__presenceFeedAtMs || 0);
     if(!at) return false;                         // 재구독 직후, 첫 데이터 도착 전
-    return (Date.now() - at) <= ONLINE_TTL_MS;
+    return (Date.now() - at) <= PRESENCE_FEED_DEAD_MS;
   }catch(e){ return true; }
 }
-// 화면에 그릴 명단을 만든다. 피드가 끊겨 있으면 마지막으로 정상 수신했을 때의 명단을
+// 화면에 그릴 명단을 만든다. 피드가 끊겨 있으면 마지막으로 "정상 수신 중에" 만든 명단을
 // 유지해, 낡은 캐시로 전원을 지우는 렌더가 아예 일어나지 않게 한다.
-// 피드가 살아나면 다음 이벤트에서 곧바로 정상 필터로 돌아온다.
+// 보관본은 피드가 살아 있을 때만 갱신한다 — 죽은 뒤에 만들어진 빈 명단을
+// 보관본으로 삼으면 가드가 그 빈 명단을 계속 되돌려주는 래치가 된다(V185.2의 실패 지점).
 function presenceDisplayList_(arr){
   const list = (Array.isArray(arr) ? arr : []).filter(p=> isDisplayablePresence(p));
   try{
-    if(presenceFeedLive_()) return list;
-    const last = (state && Array.isArray(state._lastPresenceArrBase)) ? state._lastPresenceArrBase : null;
-    if(last && last.length > list.length) return last.slice();
+    if(presenceFeedLive_()){
+      if(list.length > 1) state.__presenceGoodArr = list.slice();
+      return list;
+    }
+    const good = (state && Array.isArray(state.__presenceGoodArr)) ? state.__presenceGoodArr : null;
+    if(good && good.length > list.length) return good.slice();
   }catch(e){}
   return list;
+}
+/* 위 가드는 화면이 비는 것만 막을 뿐, 끊긴 피드를 되살리지는 않는다.
+   구독이 붙어 있는데도 6분 넘게 아무 소식이 없으면 그 구독은 죽은 것이므로 다시 붙인다.
+   heartbeat(3분 주기)에서만 부르고, 탭이 보이는 중 + 절약 일시정지 상태가 아닐 때로 좁히고,
+   재구독 1회는 presence 전체와 profiles를 다시 받으므로(실측 ~135KB) 10분 쿨다운을 둔다. */
+function presenceFeedWatchdog_(){
+  try{
+    if(!state || !state.joined || !state.nonChatEnabled) return;
+    if(!state.unsubParticipants) return;             // 의도적으로 끊긴 상태(절약/숨김)는 건드리지 않는다
+    if(state.nonChatPausedByHidden) return;
+    if(document.visibilityState !== "visible") return;
+    if(presenceFeedLive_()) return;
+    const now = Date.now();
+    if(now - Number(state.__presenceRefetchAt || 0) < 10 * 60 * 1000) return;
+    state.__presenceRefetchAt = now;
+    mkDiag("presence-재구독", `${Math.round((now - Number(state.__presenceFeedAtMs || 0))/1000)}초간 수신 없음`);
+    Promise.resolve(subscribeParticipants()).catch(()=>{});
+  }catch(e){}
 }
     // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 MAC_HELPER_URL/WIN_HELPER_URL 기본 다운로드 상수 삭제.
 
@@ -12385,6 +12429,8 @@ async function heartbeat(){
   try{
     // ✅ V134: 절전 복귀 직후 전날 시작시각을 다시 올리기 전에 날짜를 먼저 보정
     try{ await ensureFocusDayCurrent("heartbeat"); }catch(_e){}
+    // V185.3: 구독이 붙어 있는데도 소식이 끊긴 presence를 되살린다(쿨다운 내장).
+    try{ presenceFeedWatchdog_(); }catch(_e){}
     const now = Date.now();
     try{
       const meNow = state.currentParticipants?.get?.(state.uid) || null;
@@ -17901,8 +17947,8 @@ t.appendChild(bg);
       const onAdd = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
-          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
+          stampPresenceFeed_(uid); // V185.3: 내 메아리는 제외하고 수신 시각 기록
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid || !data) return;
           seenPresenceUids.add(String(uid));
@@ -17919,8 +17965,8 @@ t.appendChild(bg);
       const onChg = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
-          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
+          stampPresenceFeed_(uid); // V185.3: 내 메아리는 제외하고 수신 시각 기록
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid) return;
           if(data) seenPresenceUids.add(String(uid));
@@ -17944,8 +17990,8 @@ t.appendChild(bg);
       const onRem = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
-          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
+          stampPresenceFeed_(uid); // V185.3: 내 메아리는 제외하고 수신 시각 기록
           if(uid){ state.currentParticipants.delete(uid); detachPublicProfileForUid(uid); }
           scheduleRecalc();
         }catch(e){}
@@ -21750,14 +21796,29 @@ joinRoom();
             // 손캠 목적이라 모바일에서는 후면 카메라를 우선 제안하고,
             // 데스크톱/후면 카메라 없는 기기에서는 가능한 카메라를 그대로 사용.
             facingMode: { ideal: "environment" },
-            // 비용 방어용: 손캠은 4:3 저해상도·15fps로 제한합니다.
+            // 비용 방어용: 손캠은 저해상도·저프레임으로 제한합니다.
             // max를 함께 지정해 브라우저가 고해상도 카메라 원본을 잡는 일을 막습니다.
-            width: { ideal: 320, max: 320 },
+            /* V185.2_SQUARE_CAM: 4:3(320×240) → 정사각(240×240).
+               타일은 aspect-ratio:1/1이고 video는 object-fit:cover라, 4:3으로 보내면
+               좌우 25%가 잘려 아무도 보지 못하는데 SFU egress 요금은 그대로 나갔다
+               (실측 2026-08-12: egress가 ingress의 8.6배라 송출 1을 줄이면 요금은 8.6 줄어든다).
+               정사각으로 찍으면 화면에 보이는 그림은 1픽셀도 바뀌지 않고 픽셀 수만 25% 준다.
+               fps 15→10은 선명도와 무관하다(움직임만 덜 부드러워짐). 손캠은 손이 느리게 움직여 체감이 작다. */
+            width: { ideal: 240, max: 240 },
             height: { ideal: 240, max: 240 },
-            frameRate: { ideal: 15, max: 15 }
+            aspectRatio: { ideal: 1 },
+            frameRate: { ideal: 10, max: 10 }
           },
           audio: false
         });
+        /* 정사각 모드를 못 만드는 카메라가 있으면 240×180으로 떨어져 오히려 흐려진다.
+           조용히 나빠지면 알아채기 어려우므로 실제 협상값을 진단 로그에 남긴다. */
+        try{
+          const st0 = stream.getVideoTracks()[0]?.getSettings?.() || {};
+          if(Number(st0.height) < 240 || Number(st0.width) < 240){
+            mkDiag("손캠-해상도미달", `${st0.width}x${st0.height} @${st0.frameRate}fps`);
+          }
+        }catch(_e){}
       }catch(e){
         hc.starting = false;
         updateMyBtn();
@@ -22740,7 +22801,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16950; // ✅ V185: 렌더 정지 수정판 — 구버전 탭이 굳은 화면을 계속 쓰지 않도록 반드시 올린다.
+  const MK_APP_BUILD = 16970; // ✅ V185.3: 타일 전원 사라짐 재발 수정 — 구버전 탭이 같은 증상을 계속 겪지 않도록 반드시 올린다.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
