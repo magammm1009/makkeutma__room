@@ -9593,6 +9593,35 @@ function hasValidNick(n){
 function isDisplayablePresence(p){
   return !!(p && isOnlinePresence(p) && hasValidNick(p.name));
 }
+
+// V185_FEED_GUARD: 접속 판정(isOfflinePresence)은 각 브라우저가 자기 캐시로 한다.
+// presence 구독이 끊긴 채 ONLINE_TTL_MS가 지나면 캐시 속 "타인 전원"이 한꺼번에 낡아,
+// 그 뒤 재렌더 한 번에 전원이 필터에서 떨어지고 내 타일만 남는다
+// (내 타일만 ensureLocalSelfPresenceShadow_가 로컬에서 합성해 살려두기 때문).
+// 그래서 "피드가 실제로 살아 있을 때만" TTL 탈락을 화면에 반영한다.
+// 판정 함수 자체는 건드리지 않는다 — 미션 성공 인원/접속 수/손캠 대상 등
+// 같은 판정을 공유하는 다른 소비처의 의미가 바뀌면 안 되기 때문이다.
+function presenceFeedLive_(){
+  try{
+    if(!state || !state.joined) return true;      // 입장 전에는 기존 동작 그대로
+    if(!state.unsubParticipants) return false;    // presence 구독이 붙어 있지 않음
+    const at = Number(state.__presenceFeedAtMs || 0);
+    if(!at) return false;                         // 재구독 직후, 첫 데이터 도착 전
+    return (Date.now() - at) <= ONLINE_TTL_MS;
+  }catch(e){ return true; }
+}
+// 화면에 그릴 명단을 만든다. 피드가 끊겨 있으면 마지막으로 정상 수신했을 때의 명단을
+// 유지해, 낡은 캐시로 전원을 지우는 렌더가 아예 일어나지 않게 한다.
+// 피드가 살아나면 다음 이벤트에서 곧바로 정상 필터로 돌아온다.
+function presenceDisplayList_(arr){
+  const list = (Array.isArray(arr) ? arr : []).filter(p=> isDisplayablePresence(p));
+  try{
+    if(presenceFeedLive_()) return list;
+    const last = (state && Array.isArray(state._lastPresenceArrBase)) ? state._lastPresenceArrBase : null;
+    if(last && last.length > list.length) return last.slice();
+  }catch(e){}
+  return list;
+}
     // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 MAC_HELPER_URL/WIN_HELPER_URL 기본 다운로드 상수 삭제.
 
 function openUrl(url){
@@ -13073,7 +13102,7 @@ async function transitionTo(nextStatus, source="manual"){
           // 캐시 무효화 후 재렌더
           try{ state.lastRendered?.delete?.(state.uid); }catch(e){}
           const arr = [...state.currentParticipants.values()];
-          const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+          const onlineArr = presenceDisplayList_(arr); // V185_FEED_GUARD
             sortPresenceArr(onlineArr);
           renderGridTilesOrRoster(onlineArr);
         }
@@ -13566,7 +13595,7 @@ async function adminConnectSelectedProfile_(){
       state.currentParticipants.set(targetUid,target);
       state.publicProfiles.set(targetUid,linked);
       state.lastRendered?.delete?.(targetUid);
-      const onlineArr = [...state.currentParticipants.values()].filter(item=>isDisplayablePresence(item));
+      const onlineArr = presenceDisplayList_([...state.currentParticipants.values()]); // V185_FEED_GUARD
       sortPresenceArr(onlineArr);
       renderGridTilesOrRoster(onlineArr);
     }catch(e){}
@@ -14478,6 +14507,31 @@ const p = m.uid ? resolveChatProfileByUid_(m.uid) : null;
       }
     }
 
+    // V185_FRAME_FALLBACK: 렌더 예약을 requestAnimationFrame 하나에만 걸면,
+    // 브라우저가 그 창을 "안 보임"으로 판단하는 동안 콜백이 아예 실행되지 않는다.
+    // 예약 플래그(__chatRenderScheduled / presenceRecalcScheduled / _presenceRenderQueued)는
+    // rAF 콜백 안에서 풀리므로 잠긴 채로 남고, 이후 도착하는 채팅·프레즌스 이벤트는
+    // "이미 예약됨"으로 전부 무시된다 = 데이터는 멀쩡한데 화면만 굳는다.
+    // hidden은 "사용자가 안 보는 중"이 아니라 다른 창에 가려짐/최소화도 포함하므로,
+    // 작가님이 화면을 보고 있는데도 발생한다(채팅이 안 올라가는 증상).
+    // rAF와 타이머 중 먼저 오는 쪽으로 딱 한 번 실행해 플래그가 영구히 잠기지 않게 한다.
+    // 보이는 상태에서는 rAF(약 16ms)가 항상 먼저라 기존 동작과 완전히 같고,
+    // 숨김 상태에서만 2초로 묶어 백그라운드 렌더 비용을 억제한다.
+    const MK_FRAME_FALLBACK_VISIBLE_MS = 250;
+    const MK_FRAME_FALLBACK_HIDDEN_MS = 2000;
+    function mkScheduleFrame_(fn){
+      let done = false;
+      const run = ()=>{
+        if(done) return;
+        done = true;
+        try{ fn(); }catch(e){}
+      };
+      let hidden = false;
+      try{ hidden = (document.visibilityState === "hidden"); }catch(_e){}
+      try{ requestAnimationFrame(run); }catch(e){}
+      try{ setTimeout(run, hidden ? MK_FRAME_FALLBACK_HIDDEN_MS : MK_FRAME_FALLBACK_VISIBLE_MS); }catch(e){}
+    }
+
     // ✅ V158: 날짜별 채팅 버킷을 KST 자정에 즉시 전환
     // - 기존 60초 폴링은 자정 직후 최대 1분 동안 새 채팅이 안 보일 수 있었음
     // - 정확한 다음 자정 타이머 + 복귀/전송 시 즉시 보정으로 공백을 없앰
@@ -14636,7 +14690,7 @@ function subscribeChat(){
       // V92-hotfix: 채팅 렌더는 입력 보호 대상에서 제외합니다.
       // 입력 보호는 타일/대시보드처럼 무거운 비채팅 렌더에만 적용해야
       // 메시지가 전송 직후 바로 목록에 올라옵니다.
-      requestAnimationFrame(()=>{
+      mkScheduleFrame_(()=>{
       __chatRenderScheduled = false;
       try{
         if(!isCurrentChatSub()) return;
@@ -15988,7 +16042,7 @@ t.appendChild(bg);
           }, 360);
           return;
         }
-        requestAnimationFrame(()=>{
+        mkScheduleFrame_(()=>{
           state._presenceRenderQueued = false;
           const arr = state._pendingPresenceArr || [];
           try{ renderStatusRoster(arr); }catch(e){}
@@ -17194,7 +17248,7 @@ t.appendChild(bg);
           else state.lastRendered?.clear?.();
           const arr = Array.from(state.currentParticipants?.values?.() || []).filter(Boolean)
             .map(p=>{ try{ return mergePublicProfileIntoParticipant(p); }catch(e){ return p; } });
-          const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+          const onlineArr = presenceDisplayList_(arr); // V185_FEED_GUARD
           sortPresenceArr(onlineArr);
           renderGridTilesOrRoster(onlineArr);
           return true;
@@ -17698,6 +17752,7 @@ t.appendChild(bg);
 
       // 먼저 세대를 올려 이전 child/profile 콜백을 즉시 무효화한 뒤 구독을 정리한다.
       state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
+      state.__presenceFeedAtMs = 0; // V185_FEED_GUARD: 첫 데이터가 도착할 때까지는 끊긴 것으로 본다
       const presenceSubSeq = state.presenceSubSeq;
       const isCurrentPresenceSub = ()=> state.presenceSubSeq === presenceSubSeq;
       if(state.unsubParticipants) state.unsubParticipants();
@@ -17740,7 +17795,7 @@ t.appendChild(bg);
         if(presenceRecalcScheduled) return;
         presenceRecalcScheduled = true;
 
-        requestAnimationFrame(()=>{
+        mkScheduleFrame_(()=>{
           presenceRecalcScheduled = false;
           if(!isCurrentPresenceSub()) return;
 
@@ -17803,7 +17858,7 @@ t.appendChild(bg);
             }catch(e){}
 
             // ✅ 오프라인은 "접속 종료"처럼 처리: 리스트/타일에서 제외
-            const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+            const onlineArr = presenceDisplayList_(arr); // V185_FEED_GUARD
 
             // ✅ 입장 전: 인원만 '대략치'로 보여주고, 타일/목록/상태 등은 렌더하지 않음
             try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
@@ -17845,6 +17900,7 @@ t.appendChild(bg);
       const onAdd = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
+          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid || !data) return;
@@ -17862,6 +17918,7 @@ t.appendChild(bg);
       const onChg = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
+          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
           const data = (snap && snap.val) ? snap.val() : null;
           if(!uid) return;
@@ -17886,6 +17943,7 @@ t.appendChild(bg);
       const onRem = (snap)=>{
         try{
           if(!isCurrentPresenceSub()) return;
+          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 실제 수신 시각
           const uid = snap && snap.key;
           if(uid){ state.currentParticipants.delete(uid); detachPublicProfileForUid(uid); }
           scheduleRecalc();
@@ -17940,6 +17998,7 @@ t.appendChild(bg);
       try{
         const onInitialPresenceValue = (snap)=>{
           if(!isCurrentPresenceSub()) return;
+          state.__presenceFeedAtMs = Date.now(); // V185_FEED_GUARD: 빈 방이라 child_added가 없을 때도 수신 확정
           try{ if(initialPresenceValueOff) initialPresenceValueOff(); }catch(_e){}
           initialPresenceValueOff = null;
           const authoritativeUids = new Set();
@@ -18411,7 +18470,7 @@ window.addEventListener("resize", ()=>{
   // ✅ 창 폭 변화 시: compact 모드/타일↔접속자목록 즉시 갱신
   try{
     const arr = [...state.currentParticipants.values()];
-    const onlineArr = arr.filter(p=> isDisplayablePresence(p));
+    const onlineArr = presenceDisplayList_(arr); // V185_FEED_GUARD
             sortPresenceArr(onlineArr);
     renderGridTilesOrRoster(onlineArr);
   }catch(e){
@@ -18428,6 +18487,7 @@ function pauseNonChatSubscriptions(reason){
   try{
     // ✅ V160: unsubscribe 직전 세대를 올려 대기 중인 RAF/프로필 콜백까지 무효화
     state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
+    state.__presenceFeedAtMs = 0; // V185_FEED_GUARD: 여기부터는 presence가 안 들어온다
     if(state.unsubParticipants){ state.unsubParticipants(); state.unsubParticipants = null; }
     if(state.unsubRoom){ state.unsubRoom(); state.unsubRoom = null; }
     // kick은 1문서라 가볍지만, 원하면 같이 끊기
@@ -22430,7 +22490,7 @@ joinRoom();
     if(!options.fromLight){
       restartUiTickV143();
       try{
-        const arr = [...(state.currentParticipants?.values?.() || [])].filter(p=>isDisplayablePresence(p));
+        const arr = presenceDisplayList_([...(state.currentParticipants?.values?.() || [])]); // V185_FEED_GUARD
         sortPresenceArr(arr);
         state._lastPresenceArr = arr;
         renderGridTilesOrRoster(arr);
@@ -22566,7 +22626,7 @@ joinRoom();
 
       // 현재 타일/손캠/펫/채팅은 제거하지 않고 같은 데이터로 가볍게 다시 그립니다.
       try{
-        const arr = [...(state.currentParticipants?.values?.() || [])].filter(p=>isDisplayablePresence(p));
+        const arr = presenceDisplayList_([...(state.currentParticipants?.values?.() || [])]); // V185_FEED_GUARD
         sortPresenceArr(arr);
         state._lastPresenceArr = arr;
         renderGridTilesOrRoster(arr);
