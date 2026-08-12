@@ -17171,6 +17171,22 @@ t.appendChild(bg);
         await rUpdate(rRef(rtdb), updates);
         return true;
       },
+      /* V184_PRESET_SYNC: 내 캐릭터 프리셋 12칸의 기기 간 백업 — rooms/{roomId}/charaPresets/{uid}.
+         profiles가 아니라 형제 노드인 이유: profiles/{uid}는 참가자마다 개별 구독되므로(17902행)
+         거기 넣으면 프리셋이 바뀔 때마다 방 전체가 다시 받는다. 이 노드는 구독하는 코드가 없고
+         규칙상 읽기도 본인뿐이라 남의 다운로드에 절대 얹히지 않는다.
+         쓰기는 프리셋이 바뀔 때만, 읽기는 로컬이 비었을 때 세션 1회. */
+      async writeCharaPresets(payload){
+        if(!state.uid || !state.roomId || !payload || typeof payload !== "object") return false;
+        await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/charaPresets/${state.uid}`), payload);
+        return true;
+      },
+      async readCharaPresets(){
+        if(!state.uid || !state.roomId) return null;
+        const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/charaPresets/${state.uid}`));
+        const v = snap && snap.val ? snap.val() : null;
+        return (v && typeof v === "object") ? v : null;
+      },
       // uid 지정 시 해당 타일만 캐시 무효화 후 현재 명단으로 다시 그림 (applyProfile의 즉시 반영 패턴)
       rerenderTiles(uid){
         try{
@@ -17559,6 +17575,7 @@ t.appendChild(bg);
           if(!c.superseded && !attendAllowsPrune_(attendMonths, c.nick)) continue; // 휴가·병가 등 보호 대상
           updates[`${rRoomBase(state.roomId)}/presence/${c.uid}`] = null;
           updates[`${rRoomBase(state.roomId)}/profiles/${c.uid}`] = null; // ✅ V169.1: 프로필 시체도 함께 정리
+          updates[`${rRoomBase(state.roomId)}/charaPresets/${c.uid}`] = null; // ✅ V184_PRESET_SYNC: 프리셋 사본도 함께 (안 지우면 새로 생긴 시체 종류가 영구 잔존)
           n++;
         }
         if(!n) return;
@@ -28600,11 +28617,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     if(tiny) tiny.textContent = dirty ? '미저장 변경 있음 — 저장해야 내 캐릭터로 확정돼요' : '이름은 최대 5글자 · 저장하면 타일에도 반영';
   }
 
-  /* ---------- V184_PRESET: 내 캐릭터 프리셋 4칸 ----------
-     조합칸 아래에서 색상 패널이 혼자 전체 폭을 먹던 자리를 반으로 줄이고, 그 옆에 "저장해 둔 컨셉" 4칸을 둔다.
+  /* ---------- V184_PRESET: 내 캐릭터 프리셋 12칸 ----------
+     조합칸 아래에서 색상 패널이 혼자 전체 폭을 먹던 자리를 반으로 줄이고, 그 옆에 "저장해 둔 컨셉"을 둔다.
      칸을 누르면 그 컨셉으로 통째로 전환 — 컨셉을 바꿀 때마다 파츠를 하나씩 다시 고르지 않아도 된다.
-     저장 위치는 localStorage 전용이다. RTDB에 노드/구독을 새로 만들지 않는다 —
-     이 앱은 RTDB 다운로드 예산이 빡빡하고 서버 로직(Cloud Functions)을 쓰지 않는 방침이다.
+     localStorage가 정본이다. V184_PRESET_SYNC에서 기기 간 백업(사본)을 형제 노드에 두되,
+     구독은 만들지 않는다 — 이 앱은 RTDB 다운로드 예산이 빡빡하고 서버 로직(Cloud Functions)을 쓰지 않는 방침이다.
      mk_chara_state / mk_chara_owned_v2 / mk_chara_stats의 형태는 손대지 않는다(독립 꾸미기앱과의 계약). */
   var PRESET_KEY = 'mk_chara_presets';
   var PRESET_MAX = 12; // V184_PRESET2: 4 → 12 (그리드만 스크롤)
@@ -28632,9 +28649,47 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }
     return slots;
   }
-  function savePresets(slots){
+  function savePresets(slots, opts){
     try{ localStorage.setItem(PRESET_KEY, JSON.stringify({ v:1, slots:slots })); }
-    catch(e){ console.warn('[chara v184] 프리셋 저장 실패', e); } // 용량 초과 등 — 현재 착장은 무해하므로 조용히 실패
+    catch(e){ console.warn('[chara v184] 프리셋 저장 실패', e); return; } // 용량 초과 등 — 현재 착장은 무해하므로 조용히 실패
+    if(!(opts && opts.noSync)) presetCloudPush(slots); // V184_PRESET_SYNC: 서버 사본도 갱신(되받아 쓴 경우는 noSync)
+  }
+  /* ---------- V184_PRESET_SYNC: 기기 간 백업 ----------
+     localStorage가 정본이고 서버(rooms/{roomId}/charaPresets/{uid})는 사본이다.
+     - 쓰기: 프리셋이 바뀔 때만. 저장·삭제는 어쩌다 한 번 하는 일이라 사실상 무비용이다.
+     - 읽기: 로컬이 비었을 때만 세션 1회. 브라우저를 바꾼 경우가 정확히 이 조건이고,
+             평소에는 서버를 아예 보지 않는다(다운로드 0).
+     - profiles가 아니라 형제 노드인 이유: profiles/{uid}는 참가자마다 개별 구독이라
+       거기 넣으면 프리셋이 바뀔 때마다 방 전체가 다시 받는다. 이 노드는 구독하는 코드가 없고
+       규칙상 읽기도 본인뿐이다.
+     - 압축 인코딩은 쓰지 않는다: 12칸이 6.4KB, 압축해도 2.6KB다. 4KB 아끼자고 인코딩 왕복 실패
+       위험을 "다른 사본이 없는 데이터"에 얹을 이유가 없다. */
+  function presetCloudBridge(){ try{ return window.__MK_CHARA_TILE_BRIDGE__ || null; }catch(e){ return null; } }
+  function presetCloudPush(slots){
+    var b = presetCloudBridge();
+    if(!b || typeof b.writeCharaPresets !== 'function') return;
+    try{ if(!b.joined()) return; }catch(e){ return; } // 입장 전에는 쓰지 않는다
+    try{ b.writeCharaPresets({ v:1, slots:slots, updatedAtMs:Date.now() }).then(function(){}, function(){}); }catch(e){}
+  }
+  var presetPullDone = false;
+  function presetCloudPull(){
+    if(presetPullDone) return;
+    var b = presetCloudBridge();
+    if(!b || typeof b.readCharaPresets !== 'function') return;
+    try{ if(!b.joined()) return; }catch(e){ return; }
+    if(loadPresets().length){ presetPullDone = true; return; } // 로컬에 있으면 서버를 읽지 않는다
+    presetPullDone = true;
+    try{
+      b.readCharaPresets().then(function(remote){
+        if(!remote || !Array.isArray(remote.slots) || !remote.slots.length) return;
+        if(loadPresets().length) return; // 비동기 사이에 사용자가 저장했으면 덮지 않는다
+        savePresets(remote.slots, { noSync:true }); // 되받은 걸 그대로 다시 올리지 않는다
+        var n = loadPresets().length; // loadPresets가 한 번 더 걸러내므로 실제 살아난 수로 안내
+        if(!n) return;
+        renderPresets();
+        toast('저장해 둔 내 캐릭터 ' + n + '칸을 불러왔어요 🧑‍🎨', 3200);
+      }, function(){});
+    }catch(e){}
   }
   /* V184_PRESET2: 저장은 항상 "목록 끝에 추가"다(덮어쓰기 없음). 12개가 다 차면 안내만 하고 아무것도 바꾸지 않는다. */
   function presetSaveNew(){
@@ -29684,6 +29739,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   /* 진입점 유지: 대시보드 펫 카드 클릭 → 기존 openModal()이 .show를 붙이면 여기서 이어받는다 */
   function onShown(){
     restructure();
+    presetCloudPull(); // V184_PRESET_SYNC: 로컬이 비었을 때만 서버 사본을 세션 1회 조회
     if(chara.phase==='idle' || chara.phase==='error') loadManifest();
     else renderChara();
   }
@@ -29741,6 +29797,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     /* V184_PRESET: 검증용 훅 — 내 캐릭터 프리셋(localStorage 전용) / V184_PRESET2: 12칸 순서 목록 */
     presets:{ load:loadPresets, save:savePresets, saveNew:presetSaveNew, apply:presetApply, remove:presetRemove,
               scrollToEnd:presetScrollToEnd, MAX:PRESET_MAX,
+              /* V184_PRESET_SYNC: 검증용 — 기기 간 백업 push/pull */
+              cloudPush:presetCloudPush, cloudPull:presetCloudPull,
+              resetPull:function(){ presetPullDone = false; },
               renderPresets:renderPresets, selMapFromPayload:selMapFromPayload, stageLayersOf:stageLayersOf,
               presetFilterOf:presetFilterOf, KEY:PRESET_KEY, HEAD:PRESET_HEAD, FULL:PRESET_FULL }
   };
