@@ -15398,50 +15398,323 @@ function showJoinTicker(msg){
     }
 
     // ✅ V160: "/하트" 처럼 입력하면 비슷한 이모지를 보기로 띄우고 골라 넣기
+    /* ═══ V187_EMOJI: 채팅 이모지 묶음 — 2026-08-13 전면 재정리 ═══
+       이전 구성은 임시였다. 채팅에서 실제로 치는 말을 기준으로 다시 짰다.
+       원칙
+        · 이름은 2~3글자로 짧게 — /키워드로 치는 것이라 길면 아무도 안 쓴다.
+        · 감정·반응은 잘게 나누고(제일 많이 쓴다), 사물은 뭉친다(가끔 쓴다).
+          그래서 과일+채소 → 과일, 음식+간식 → 먹기, 취미+운동 → 놀기,
+          꽃+날씨+계절 → 자연, 표시+무서움 → 기호로 합쳤다.
+        · words에는 줄임말·초성·오타까지 넣는다(ㄱㅅ ㅇㅈ ㅈㅅ 홧팅 빡 겜 …).
+          픽커의 값어치는 이모지 개수가 아니라 "떠오른 단어로 찾아지느냐"다.
+        · 한 묶음은 80개(EMOJI_PICK_MAX_PER_SEC)를 넘기지 않는다 — 넘으면 잘려서 안 보인다.
+        · 순서 = 채팅에서 쓰는 빈도. 검색어 없이 열면 앞 3묶음만 보이므로 손짓·하트·웃음을 앞에 둔다.
+       신형 이모지가 섞여 있어도 emojiCanRender_가 기기별로 걸러 주므로 미리 뺄 필요는 없다. */
     const CHAT_EMOJI_GROUPS = [
-      { key:"하트", words:["하트","사랑","좋아","러브","마음","heart","love"],
-        emojis:"❤️🩷🧡💛💚🩵💙💜🤎🖤🩶🤍💖💗💓💞💕💘💝💟❣️❤️‍🔥❤️‍🩹💔💋💌😍🥰😘😻" },
-      { key:"웃음", words:["웃음","웃","기쁨","행복","즐거움","스마일","ㅋㅋ","하하","smile","happy"],
-        emojis:"😀😃😄😁😆😅🤣😂🙂😉😊😇☺️😚😙😗🤩🥳😎🤗😌😺😸😹" },
-      { key:"슬픔", words:["슬픔","슬퍼","눈물","울음","우울","ㅠㅠ","sad","cry"],
-        emojis:"🥲🥹😢😭😞😔😟🙁☹️😥😓😩😫🥺😖😣😿😰😨😧😦😪" },
-      { key:"화남", words:["화남","화","분노","짜증","열받","angry"],
+      { key:"손짓", words:["손짓","손","따봉","엄지","굿","좋아요","박수","짝짝","오케이","오키","콜","하이파이브","ok","thumbs","clap"],
+        emojis:"👍👎👏🙏🤝✌️👌🤞🤙👊✊🫰🫶👐🙌💪👆👇👉👈☝️🖐️✋🤚👋" },
+      { key:"하트", words:["하트","사랑","사랑해","좋아","좋아해","러브","마음","애정","연애","심쿵","설렘","조아","최애","heart","love","like"],
+        emojis:"❤️🩷🧡💛💚🩵💙💜🤎🖤🩶🤍💖💗💓💞💕💘💝💟❣️❤️‍🔥❤️‍🩹💔💋💌😍🥰😘😻🫶" },
+      { key:"웃음", words:["웃음","웃","웃겨","웃김","기쁨","행복","즐거움","스마일","ㅋㅋ","ㅋㅋㅋ","ㅎㅎ","하하","크크","미소","신남","기분좋","smile","happy","lol"],
+        emojis:"😀😃😄😁😆😅🤣😂🙂😉😊😇☺️😚😙😗🤩🥳😎🤗😌😺😸😹🙃" },
+      { key:"슬픔", words:["슬픔","슬퍼","슬프","눈물","울음","울어","우울","ㅠㅠ","ㅜㅜ","흑흑","엉엉","속상","서럽","sad","cry"],
+        emojis:"🥲🥹😢😭😞😔😟🙁☹️😥😓😩😫🥺😖😣😿😰😨😧😦😪💔" },
+      { key:"놀람", words:["놀람","놀라","깜짝","헉","헐","대박","당황","어이","실화","와","우와","미친","surprise","wow","omg"],
+        emojis:"😮😯😲😱🫢😳🤯🙀😵😵‍💫🫨❗❓" },
+      { key:"화남", words:["화남","화","화나","분노","짜증","열받","빡","빡침","킹받","성남","억울","angry","mad"],
         emojis:"😤😡😠🤬😬👿😈💢💥😾" },
-      { key:"놀람", words:["놀람","놀라","깜짝","헉","당황","surprise"],
-        emojis:"😮😯😲😱🫢😳🤯🙀😵😵‍💫🫨" },
-      { key:"피곤", words:["피곤","졸림","졸려","아픔","아파","감기","병","sick","tired"],
-        emojis:"😴😪🥱🤤🥴🤒🤕😷🤧🤮🤢🥶🥵😵💉🩹🩼" },
-      { key:"생각", words:["생각","고민","의심","조용","비밀","말풍선","think"],
-        emojis:"🤔🧐🤨😐😑😶🙄😏😒🫤😕🫣🤫🤭🤐🫠🙃🫡🫥💭🗯️💬🗨️👀👄" },
-      { key:"장난", words:["장난","메롱","윙크","까불","웃김","funny"],
+      { key:"민망", words:["민망","머쓱","뻘쭘","부끄","쑥스","멋쩍","식은땀","아이고","어쩌지","모르겠","죄송한데","awkward"],
+        emojis:"😅😳🫠🙈🤦🤷😬😶‍🌫️😖🫣😔🥴" },
+      { key:"장난", words:["장난","메롱","윙크","까불","놀리","드립","유머","개그","funny","joke"],
         emojis:"😝🤪😜😛😋🤠🥸🤓🤥🙈🙉🙊😼😽" },
-      { key:"동물", words:["동물","강아지","고양이","펫","새","animal"],
-        emojis:"🐶🐕🦮🐩🐺🦊🦝🐱🐈🦁🐯🐅🐆🐴🐎🦄🦓🦌🐮🐂🐃🐄🐷🐖🐗🐽🐏🐐🐪🐘🐭🐹🐰🐻🐻‍❄️🐼🐨🐵🐒🦍🦧🐔🐣🐤🐥🐧🦉🦩🦚🐸🦕🦖🐳🐋🦀🪼🦐🦑🦋" },
-      { key:"꽃", words:["꽃","식물","나뭇잎","단풍","flower"],
-        emojis:"🌸💮🪷🏵️🌹🥀🌺🌻🌼🌷🪻🍀🍁🍂🍄🪵" },
-      { key:"날씨", words:["날씨","하늘","별","달","해","비","눈","구름","weather"],
-        emojis:"☀️🌞🌝🌙🌛🌜⭐🌟🌠🌌🪐☁️⛅🌤️🌥️🌦️🌧️🌨️⛈️🌩️🌪️❄️⚡☔☂️🌂🌈🌀🌬️🌫️☃️⛄☄️🔥💧🌊💦⛱️" },
-      { key:"과일", words:["과일","fruit"],
-        emojis:"🍇🍈🍉🍊🍋🍌🍍🥭🍎🍏🍐🍑🍒🍓🫐🥝🍅🥥🫒" },
-      { key:"채소", words:["채소","야채","버섯"],
-        emojis:"🥦🥬🥒🫑🌶️🌽🥕🥔🍆🥑🧄🧅🥜🌰🫘🫛🫚🍄" },
-      { key:"음식", words:["음식","밥","식사","먹방","고기","면","food"],
-        emojis:"🍚🍙🍘🍱🍛🍜🍝🍲🫕🍳🥘🥣🥗🍔🍟🍕🌭🥪🌯🌮🥙🧆🥚🍞🥐🥖🥯🥨🫓🧇🥞🍗🍖🥩🥓🧀🍠🍢🍣🍤🍥🍡🥟🥠🥡🍿🧂🧈🥫" },
-      { key:"간식", words:["간식","디저트","케이크","빵","달다","dessert"],
-        emojis:"🍰🎂🧁🥧🍪🍩🍨🍧🍦🍭🍬🍫🍯🥮" },
-      { key:"음료", words:["음료","커피","술","차","주스","drink"],
+      { key:"생각", words:["생각","고민","의심","글쎄","흠","음","조용","비밀","침묵","말풍선","눈치","모르겠","think","hmm"],
+        emojis:"🤔🧐🤨😐😑😶🙄😏😒🫤😕🫣🤫🤭🤐🫠🙃🫡🫥💭🗯️💬🗨️👀👄" },
+      { key:"피곤", words:["피곤","졸림","졸려","잠","자자","쉬고싶","힘들","지침","녹초","드러눕","번아웃","tired","sleep"],
+        emojis:"😴😪🥱🤤😮‍💨💤🛌🥴😵" },
+      { key:"아픔", words:["아픔","아파","병","감기","열","몸살","두통","배탈","멀미","병원","약","입원","sick","hurt"],
+        emojis:"🤒🤕😷🤧🤮🤢🥶🥵😵💉🩹🩼🏥💊🚑" },
+      { key:"인사", words:["인사","안녕","안뇽","하이","방가","반가워","어서와","잘가","바이","수고","고생","감사","고마워","고맙","ㄱㅅ","ㅎㅇ","hi","bye","hello","thanks"],
+        emojis:"👋🙇🤝👐🫱🫲😊🙏💐🎊☺️🤗" },
+      { key:"응원", words:["응원","화이팅","파이팅","홧팅","힘내","힘내라","할수있어","가자","고고","고고싱","아자","열심","분발","격려","cheer","fighting"],
+        emojis:"💪🔥✨⭐🌟💯👊✊🙌🫡🏆🥇🎌📣📢🚀⚡" },
+      { key:"축하", words:["축하","축","추카","생일","생축","파티","기념","경사","잔치","완성","성공","해냈다","congrats","party","hbd"],
+        emojis:"🎉🎊🥳🎂🍰🧁🎁🎈🎀🏆🥇🍾🥂👏✨🌟🎆🎇" },
+      { key:"칭찬", words:["칭찬","최고","멋져","멋있","잘했","잘한다","대단","굿","짱","쩐다","미쳤","갓","인정","ㅇㅈ","리스펙","존경","best","nice","great"],
+        emojis:"👏👍💯🏆🥇✨🌟⭐🔥😍🤩💖🙌👑💎" },
+      { key:"부탁", words:["부탁","제발","플리즈","미안","죄송","ㅈㅅ","사과","잘못","봐줘","도와","도와줘","헬프","살려","please","sorry","help"],
+        emojis:"🙏🥺👉👈😥💦🫠😭🆘🫡" },
+      { key:"글쓰기", words:["글","글쓰기","쓰기","쓴다","작업","원고","집필","연재","소설","웹소설","책","독서","메모","노트","타자","키보드","퇴고","교정","탈고","write","novel"],
+        emojis:"✍️📝📖📚📕📗📘📙📓📔📒📄📃🗒️🖊️🖋️✏️✒️💻⌨️🖥️🗂️📑🔖" },
+      { key:"마감", words:["마감","데드라인","시간","촉박","급함","급해","쫓김","늦음","지각","오늘까지","내일까지","연참","펑크","deadline"],
+        emojis:"⏰⏱️⌛⏳📅🗓️🔔🚨😱💀🔥💦😰🏃" },
+      { key:"코인", words:["코인","돈","머니","현금","결제","구매","쇼핑","가격","비싸","싸다","저축","월급","정산","수익","부자","거지","통장","상점","money"],
+        emojis:"💰💸💵💴💶💷🪙💳🧾🏦📈📉💎🤑" },
+      { key:"먹기", words:["먹기","음식","밥","식사","먹방","먹","배고","고기","면","치킨","피자","라면","야식","점심","저녁","맛있","간식","디저트","케이크","빵","달다","단거","당충전","food","eat","dessert"],
+        emojis:"🍚🍙🍘🍱🍛🍜🍝🍲🫕🍳🥘🥣🥗🍔🍟🍕🌭🥪🌯🌮🥙🧆🥚🍞🥐🥖🥯🥨🫓🧇🥞🍗🍖🥩🥓🧀🍠🍢🍣🍤🍥🍡🥟🥠🥡🍿🧂🧈🥫🍰🎂🧁🥧🍪🍩🍨🍧🍦🍭🍬🍫🍯🥮" },
+      { key:"마시기", words:["마시기","음료","커피","카페인","아메","라떼","술","맥주","소주","와인","차","주스","물","한잔","drink","coffee","beer"],
         emojis:"☕🫖🍵🥛🍼🧋🥤🍶🍾🥃🥂🍺🍹🍷🫗" },
-      { key:"물건", words:["물건","도구","선물","옷","패션","공부","시계","object"],
+      { key:"과일", words:["과일","채소","야채","버섯","샐러드","비타민","fruit","veggie"],
+        emojis:"🍇🍈🍉🍊🍋🍌🍍🥭🍎🍏🍐🍑🍒🍓🫐🥝🍅🥥🫒🥦🥬🥒🫑🌶️🌽🥕🥔🍆🥑🧄🧅🥜🌰🫘🫛🫚🍄" },
+      { key:"놀기", words:["놀기","취미","게임","겜","놀이","영화","드라마","애니","사진","그림","덕질","휴식","방송","음악","노래","운동","헬스","산책","걷기","달리기","요가","스트레칭","다이어트","hobby","game","sport"],
+        emojis:"🎮🕹️🎲🧩🎯🎬🎨🖌️📷📸🎧🎤🎼🎵🎶📺🍿🎪🎡🏃🚶🧘🏋️🤸🚴🏊⚽🏀⚾🎾🏐🥊🧗" },
+      { key:"나들이", words:["나들이","여행","이동","출발","차","기차","지하철","버스","비행기","집","카페","회사","학교","병원","장소","숙소","travel","home"],
+        emojis:"✈️🚗🚕🚌🚄🚅🚇🚲🛵🏠🏡🏢🏫🏥🏨⛰️🏖️🗺️🧳🚀⛵" },
+      { key:"동물", words:["동물","강아지","개","멍멍","고양이","냥","야옹","펫","반려","새","토끼","곰","호랑이","동물원","animal","cat","dog"],
+        emojis:"🐶🐕🦮🐩🐺🦊🦝🐱🐈🦁🐯🐅🐆🐴🐎🦄🦓🦌🐮🐂🐃🐄🐷🐖🐗🐽🐏🐐🐪🐘🐭🐹🐰🐻🐻‍❄️🐼🐨🐵🐒🦍🦧🐔🐣🐤🐥🐧🦉🦩🦚🐸🦕🦖🐳🐋🦀🪼🦐🦑🦋" },
+      { key:"자연", words:["자연","꽃","식물","화분","나뭇잎","단풍","벚꽃","장미","날씨","하늘","별","달","해","비","장마","눈","구름","덥","추워","무지개","태풍","계절","봄","여름","가을","겨울","크리스마스","할로윈","명절","설날","추석","연말","새해","flower","weather","season"],
+        emojis:"🌸💮🪷🏵️🌹🥀🌺🌻🌼🌷🪻🍀🍁🍂🍄🪵☀️🌞🌝🌙🌛🌜⭐🌟🌠🌌🪐☁️⛅🌤️🌥️🌦️🌧️🌨️⛈️🌩️🌪️❄️⚡☔☂️🌂🌈🌀🌬️🌫️☃️⛄☄️🔥💧🌊💦⛱️🎃🎄🎅🧧🎑🎆🍉" },
+      { key:"물건", words:["물건","도구","선물","옷","패션","공부","시계","열쇠","청소","object"],
         emojis:"🎀👑👒👓💄💍💎👔👙👠🎒🪮🥼🦺✏️✒️✂️⏰🔑🔨🪓⛏️⚒️🛠️🔪🗡️⚔️💣🪛💉🧺🧴🪒🧼🪣🚿🫧🪥🧽🧯🛒📢🎼🎤🎧📻🎹📺📷" },
-      { key:"표시", words:["표시","기호","금지","경고","최고","물음표","sign"],
-        emojis:"💯💢💥💤🔅📶⚠️🚸⛔🚫🔞📵🚷🚱🚯🚭🚳❓❔❕❗‼️⁉️〰️❌🔘🟠🔴🕳️💨🛗" },
-      { key:"무서움", words:["무서움","귀신","해골","외계인","좀비","horror"],
-        emojis:"💀💩👻👽👿😈🕳️" },
+      { key:"기호", words:["기호","표시","금지","경고","물음표","느낌표","주의","무서움","귀신","해골","외계인","좀비","sign","horror"],
+        emojis:"💯💢💥💤🔅📶⚠️🚸⛔🚫🔞📵🚷🚱🚯🚭🚳❓❔❕❗‼️⁉️〰️❌🔘🟠🔴🕳️💨🛗💀💩👻👽👿😈" },
     ];
     const EMOJI_PICK_MAX_SECTIONS = 3;   // 한 번에 보여줄 묶음 수
     const EMOJI_PICK_MAX_PER_SEC = 80;   // 묶음당 최대 이모지 수
     const EMOJI_PICK_CMD_RE = /(?:^|\s)\/([^\s\/]*)$/;
     let __emojiPickEl = null;
+
+    /* ═══ V187_EMOJI: 기기가 실제로 그릴 수 있는 이모지만 픽커에 남긴다 ═══
+       폰트에 글리프가 없으면 두부(□)로 뜬다. 어느 기기에 뭐가 있는지는 OS/폰트 버전마다
+       달라서 목록을 고정으로 거를 수가 없다(2019년 이후 이모지가 특히 갈린다).
+       그래서 캔버스에 그려 폭을 재고, "확실히 글리프가 없는 문자"와 폭이 같으면 없는 것으로 본다.
+       덕분에 목록에는 신형을 마음껏 넣어도 된다 — 최신 기기는 전부 보이고, 구형 기기는
+       자기가 그릴 수 있는 것만 보이며, OS가 업데이트되면 저절로 늘어난다.
+       ⚠ 판정기가 어긋나면 픽커가 통째로 비어 버린다. 그래서 처음 한 번 자가진단을 하고,
+          기준 문자 둘을 구분하지 못하면 필터를 통째로 끈다(= 전부 보여준다, fail-open). */
+    const EMOJI_TOFU_PROBE = "\u{10FFFD}";   // 사용처가 없는 코드포인트 — 어떤 폰트에도 글리프가 없다
+    const EMOJI_KNOWN_OK   = "\u{1F600}";    // 😀 Emoji 1.0 — 없는 기기가 사실상 없다
+    const __emojiRenderCache = new Map();
+    let __emojiMeasureCtx = null;
+    let __emojiDetectOn = null;              // null=미검사, true=필터 사용, false=필터 끔
+
+    /* ⚠ 폭(measureText)만으로 판정하면 안 된다 — 2026-08-13 실측으로 확인.
+       ⚽(U+26BD) ⚾ 🆘 처럼 텍스트 표현으로 그려지는 문자는 폭이 정확히 1em(=24)인데,
+       두부 상자도 1em이라 폭이 똑같이 나온다. 폭으로 걸렀더니 2010년 이모지인
+       축구공·야구공이 "글리프 없음"으로 잡혔다. 그래서 캔버스에 그린 뒤 픽셀을 통째로 비교한다.
+       - 두부와 픽셀이 같다   → 글리프 없음
+       - 아무것도 안 그려졌다 → 역시 쓸 수 없음
+       결과는 캐시하므로 같은 이모지를 두 번 그리지 않는다. */
+    // 판정용 글자는 16px. 화면(22px)과 크기가 달라도 '글리프가 있느냐'만 보므로 상관없고,
+    // getImageData 비용이 면적에 비례해서 작을수록 좋다. 셀 26px = 16px 이모지(약 22px)가 넉넉히 들어간다.
+    const EMOJI_PROBE_PX = 26;               // 판정용 캔버스 한 변(px)
+    const EMOJI_PROBE_FONT = 16;             // 판정용 글자 크기(px)
+    let __emojiTofuPix = null;               // 두부를 그렸을 때의 픽셀
+    let __emojiBlankPix = null;              // 아무것도 안 그렸을 때의 픽셀
+
+    function emojiMeasureCtx_(){
+      try{
+        if(__emojiMeasureCtx) return __emojiMeasureCtx;
+        const c = document.createElement("canvas");
+        c.width = EMOJI_PROBE_PX; c.height = EMOJI_PROBE_PX;
+        const ctx = c.getContext("2d", { willReadFrequently:true });
+        if(!ctx || !ctx.getImageData) return null;
+        // 픽커가 실제로 쓰는 폰트로 그려야 판정과 화면이 어긋나지 않는다
+        let fam = "sans-serif";
+        try{ fam = getComputedStyle(document.body).fontFamily || fam; }catch(_e){}
+        ctx.font = EMOJI_PROBE_FONT + 'px ' + fam;
+        ctx.textBaseline = "top";
+        __emojiMeasureCtx = ctx;
+        return ctx;
+      }catch(e){ return null; }
+    }
+
+    // 문자 하나를 그려 픽셀을 돌려준다(비교 전용)
+    function emojiPixOf_(ctx, ch){
+      ctx.clearRect(0, 0, EMOJI_PROBE_PX, EMOJI_PROBE_PX);
+      if(ch) ctx.fillText(ch, 0, 0);
+      return ctx.getImageData(0, 0, EMOJI_PROBE_PX, EMOJI_PROBE_PX).data;
+    }
+    function emojiPixSame_(a, b){
+      if(!a || !b || a.length !== b.length) return false;
+      for(let i = 0; i < a.length; i++){ if(a[i] !== b[i]) return false; }
+      return true;
+    }
+
+    let __emojiVerdictLoaded = false;
+    function emojiDetectInit_(){
+      if(__emojiDetectOn !== null){
+        // 저장해 둔 판정 결과를 한 번만 불러온다(판정기가 살아 있을 때만 의미가 있다)
+        if(__emojiDetectOn && !__emojiVerdictLoaded){ __emojiVerdictLoaded = true; emojiVerdictLoad_(); }
+        return __emojiDetectOn;
+      }
+      __emojiDetectOn = false;
+      try{
+        const ctx = emojiMeasureCtx_();
+        if(!ctx) return false;
+        __emojiTofuPix  = new Uint8ClampedArray(emojiPixOf_(ctx, EMOJI_TOFU_PROBE));
+        __emojiBlankPix = new Uint8ClampedArray(emojiPixOf_(ctx, ""));
+        const okPix = emojiPixOf_(ctx, EMOJI_KNOWN_OK);
+        // 자가진단: 확실히 되는 이모지가 두부·빈칸과 구분돼야 판정에 의미가 있다.
+        // (캔버스가 막혔거나 폰트가 이상하면 여기서 걸러져 필터 자체를 끈다 = 전부 보여줌)
+        if(!emojiPixSame_(okPix, __emojiTofuPix) && !emojiPixSame_(okPix, __emojiBlankPix)){
+          __emojiDetectOn = true;
+        }
+      }catch(e){ __emojiDetectOn = false; }
+      return __emojiDetectOn;
+    }
+
+    function emojiCanRender_(emo){
+      if(!emojiDetectInit_()) return true;      // 판정 불가 환경에서는 전부 통과
+      if(!emo) return false;
+      if(__emojiRenderCache.has(emo)) return __emojiRenderCache.get(emo);
+      let ok = true;
+      try{
+        const ctx = emojiMeasureCtx_();
+        const pix = emojiPixOf_(ctx, emo);
+        if(emojiPixSame_(pix, __emojiTofuPix) || emojiPixSame_(pix, __emojiBlankPix)){
+          ok = false;
+        }else if(emo.indexOf("\u200D") >= 0){
+          // ZWJ 결합(예: ❤️+ZWJ+🔥)을 폰트가 모르면 조각이 따로 그려진다.
+          // 이건 두부가 아니라 "결합만 실패"한 것이라 픽셀 비교로는 안 잡혀 폭으로 본다.
+          // ZWJ는 폭이 0인 보이지 않는 문자라 소스에 직접 쓰지 않고 반드시 \u200D로 적는다.
+          const w = ctx.measureText(emo).width;
+          let sum = 0;
+          for(const part of emo.split("\u200D")) sum += ctx.measureText(part).width;
+          if(sum > 0 && w > sum * 0.8) ok = false;
+        }
+      }catch(e){ ok = true; }
+      __emojiRenderCache.set(emo, ok);
+      return ok;
+    }
+
+    /* 여러 개를 한꺼번에 판정한다. getImageData는 호출 한 번의 고정 비용이 커서
+       이모지마다 부르면 701개에 1.7초가 걸렸다(2026-08-13 실측).
+       큰 캔버스 하나에 격자로 몰아 그린 뒤 getImageData를 딱 한 번만 부르면
+       같은 일이 수십 ms로 끝난다. 판정 결과는 emojiCanRender_와 같은 캐시에 넣는다. */
+    function emojiPrecheckBatch_(list){
+      if(!emojiDetectInit_()) return;
+      const todo = [];
+      for(const e of (list || [])){ if(e && !__emojiRenderCache.has(e)) todo.push(e); }
+      if(!todo.length) return;
+      try{
+        const CELL = EMOJI_PROBE_PX, COLS = 16;
+        const rows = Math.ceil(todo.length / COLS);
+        const c = document.createElement("canvas");
+        c.width = CELL * COLS; c.height = CELL * rows;
+        const ctx = c.getContext("2d", { willReadFrequently:true });
+        if(!ctx){ for(const e of todo) __emojiRenderCache.set(e, true); return; }
+        let fam = "sans-serif";
+        try{ fam = getComputedStyle(document.body).fontFamily || fam; }catch(_e){}
+        ctx.font = EMOJI_PROBE_FONT + 'px ' + fam;
+        ctx.textBaseline = "top";
+        for(let i = 0; i < todo.length; i++){
+          ctx.fillText(todo[i], (i % COLS) * CELL, Math.floor(i / COLS) * CELL);
+        }
+        const img = ctx.getImageData(0, 0, c.width, c.height).data;
+        const W = c.width;
+        for(let i = 0; i < todo.length; i++){
+          const ox = (i % COLS) * CELL, oy = Math.floor(i / COLS) * CELL;
+          let sameAsTofu = true, blank = true;
+          for(let y = 0; y < CELL; y++){
+            for(let x = 0; x < CELL; x++){
+              const o = ((oy + y) * W + (ox + x)) * 4;
+              const t = (y * CELL + x) * 4;
+              if(sameAsTofu && (img[o] !== __emojiTofuPix[t] || img[o+1] !== __emojiTofuPix[t+1]
+                             || img[o+2] !== __emojiTofuPix[t+2] || img[o+3] !== __emojiTofuPix[t+3])){
+                sameAsTofu = false;
+              }
+              if(blank && img[o+3] !== 0) blank = false;
+              if(!sameAsTofu && !blank) break;
+            }
+            if(!sameAsTofu && !blank) break;
+          }
+          let ok = !(sameAsTofu || blank);
+          if(ok && todo[i].indexOf("\u200D") >= 0){
+            // 결합만 실패한 ZWJ는 두부가 아니라서 픽셀로 안 잡힌다 — 폭으로 본다
+            const w = ctx.measureText(todo[i]).width;
+            let sum = 0;
+            for(const part of todo[i].split("\u200D")) sum += ctx.measureText(part).width;
+            if(sum > 0 && w > sum * 0.8) ok = false;
+          }
+          __emojiRenderCache.set(todo[i], ok);
+        }
+      }catch(e){
+        for(const e2 of todo){ if(!__emojiRenderCache.has(e2)) __emojiRenderCache.set(e2, true); }
+      }
+    }
+
+    /* ═══ 판정 결과를 기기에 저장 ═══
+       판정은 비싸지만(캔버스 읽기) 결과는 폰트/OS가 바뀌지 않는 한 그대로다.
+       그래서 한 번 잰 값을 localStorage에 남겨 다음부터는 즉시 쓴다.
+       서명(sig)이 달라지면 — OS 업데이트로 이모지가 늘었거나 폰트가 바뀌면 — 통째로 버리고 다시 잰다. */
+    const EMOJI_VERDICT_KEY = "mk_chat_emoji_ok_v1";
+    function emojiVerdictSig_(){
+      let fam = "";
+      try{ fam = getComputedStyle(document.body).fontFamily || ""; }catch(_e){}
+      let w = 0;
+      try{
+        const ctx = emojiMeasureCtx_();
+        if(ctx) w = Math.round(ctx.measureText(EMOJI_KNOWN_OK).width * 10);
+      }catch(_e){}
+      let ua = "";
+      try{ ua = String(navigator.userAgent || ""); }catch(_e){}
+      return ua + "|" + fam + "|" + w;
+    }
+    function emojiVerdictLoad_(){
+      try{
+        const d = JSON.parse(localStorage.getItem(EMOJI_VERDICT_KEY) || "null");
+        if(!d || d.sig !== emojiVerdictSig_()) return false;
+        for(const e of (d.ok  || [])) __emojiRenderCache.set(e, true);
+        for(const e of (d.bad || [])) __emojiRenderCache.set(e, false);
+        return true;
+      }catch(e){ return false; }
+    }
+    function emojiVerdictSave_(){
+      try{
+        const ok = [], bad = [];
+        __emojiRenderCache.forEach((v, k)=>{ (v ? ok : bad).push(k); });
+        localStorage.setItem(EMOJI_VERDICT_KEY, JSON.stringify({ sig:emojiVerdictSig_(), ok, bad }));
+      }catch(e){}
+    }
+
+    /* 아직 모르는 이모지를 조금씩 나눠 판정한다.
+       한 번에 다 하면 1~2초간 화면이 멈춘다 — 32개씩 끊고 사이사이 양보한다.
+       다 끝나면 결과를 저장하고 onDone으로 알려 준다(호출한 쪽이 한 번 다시 그린다). */
+    let __emojiCheckBusy = false;
+    function emojiPrecheckAsync_(list, onDone){
+      if(!emojiDetectInit_()){ if(onDone) onDone(false); return; }
+      const todo = [];
+      for(const e of (list || [])){ if(e && !__emojiRenderCache.has(e)) todo.push(e); }
+      if(!todo.length || __emojiCheckBusy){ if(onDone) onDone(false); return; }
+      __emojiCheckBusy = true;
+      let i = 0;
+      const step = ()=>{
+        try{ emojiPrecheckBatch_(todo.slice(i, i + 32)); }catch(_e){}
+        i += 32;
+        if(i < todo.length){ setTimeout(step, 0); return; }
+        __emojiCheckBusy = false;
+        emojiVerdictSave_();
+        if(onDone) onDone(true);
+      };
+      setTimeout(step, 0);
+    }
+
+    /* ═══ V187_EMOJI: 최근 쓴 이모지 ═══
+       묶음이 늘어날수록 찾는 비용이 커져서, 자주 쓰는 것을 맨 위에 둔다.
+       내 브라우저에만 남는다(localStorage) — 서버/RTDB를 쓰지 않으므로 다운로드 부담이 없다. */
+    const EMOJI_RECENT_KEY = "mk_chat_emoji_recent";
+    const EMOJI_RECENT_MAX = 24;
+    function emojiRecentRead_(){
+      try{
+        const a = JSON.parse(localStorage.getItem(EMOJI_RECENT_KEY) || "[]");
+        return Array.isArray(a) ? a.filter((x)=>typeof x === "string" && x).slice(0, EMOJI_RECENT_MAX) : [];
+      }catch(e){ return []; }
+    }
+    function emojiRecentPush_(emo){
+      try{
+        if(!emo) return;
+        const a = emojiRecentRead_().filter((x)=>x !== emo);
+        a.unshift(emo);
+        localStorage.setItem(EMOJI_RECENT_KEY, JSON.stringify(a.slice(0, EMOJI_RECENT_MAX)));
+      }catch(e){}
+    }
+    // 최근 묶음을 앞에 붙인 전체 목록. 비어 있으면 붙이지 않는다(빈 칸이 생기지 않게).
+    function emojiAllGroups_(){
+      // 판정 전이면 일단 통과 — 어차피 뒤에서 재고 다시 그린다(동기 판정은 화면을 멈춘다)
+      const recent = emojiRecentRead_().filter((e)=> __emojiRenderCache.has(e) ? __emojiRenderCache.get(e) : true);
+      if(!recent.length) return CHAT_EMOJI_GROUPS;
+      return [{ key:"최근", words:["최근","자주","방금","recent"], emojis: recent.join("") }].concat(CHAT_EMOJI_GROUPS);
+    }
 
     // V159의 이모지 정규식을 재사용해 문자열을 이모지 하나씩 쪼갠다.
     function emojiPickSplit_(s){
@@ -15465,9 +15738,11 @@ function showJoinTicker(msg){
 
     function emojiPickMatchGroups_(q){
       const s = String(q || "").trim().toLowerCase();
-      if(!s) return CHAT_EMOJI_GROUPS.slice();
+      // V187_EMOJI: 최근 쓴 이모지 묶음이 맨 앞에 붙는다(없으면 기존과 동일)
+      const all = emojiAllGroups_();
+      if(!s) return all.slice();
       const exact = [], partial = [];
-      for(const g of CHAT_EMOJI_GROUPS){
+      for(const g of all){
         let hit = 0;
         for(const w of [g.key].concat(g.words || [])){
           const lw = String(w).toLowerCase();
@@ -15533,6 +15808,7 @@ function showJoinTicker(msg){
           next = t + emo;
         }
         inp.value = next;
+        emojiRecentPush_(emo);   // V187_EMOJI: 다음에 열 때 맨 위 "최근"에 뜬다
         closeEmojiPick_();
         try{ inp.focus(); inp.setSelectionRange(next.length, next.length); }catch(e){}
       }catch(e){}
@@ -15543,14 +15819,34 @@ function showJoinTicker(msg){
         const el = ensureEmojiPickPanel_();
         if(!el) return false;
         const groups = emojiPickMatchGroups_(q);
-        const chips = CHAT_EMOJI_GROUPS
+        const chips = emojiAllGroups_()
           .map((g)=>`<button type="button" data-group="${escapeHtml(g.key)}">/${escapeHtml(g.key)}</button>`)
           .join("");
         const hint = groups.length
           ? "이모지를 누르면 입력창에 들어가요"
           : `“/${escapeHtml(String(q || ""))}”와 맞는 묶음이 없어요. 아래에서 골라보세요`;
-        const secs = groups.slice(0, EMOJI_PICK_MAX_SECTIONS).map((g)=>{
-          const list = emojiPickSplit_(g.emojis).slice(0, EMOJI_PICK_MAX_PER_SEC);
+        // V187_EMOJI: 이 기기가 못 그리는 이모지는 두부(□)로 뜨므로 걸러낸다.
+        // 걸러낸 뒤 남은 게 없는 묶음은 통째로 건너뛴다(빈 칸이 자리만 차지하지 않게,
+        // 그리고 노출 칸 EMOJI_PICK_MAX_SECTIONS를 잡아먹지 않게).
+        // ⚠ 판정에 캔버스를 쓰므로 묶음 33개를 다 훑으면 701개를 판정하게 되어 픽커가 버벅인다.
+        //    앞에서부터 보다가 보여줄 칸이 차면 멈춘다 — 보통 3~4묶음이면 끝난다.
+        // 판정은 캔버스 읽기라 비싸다(701개 기준 1.5초). 화면을 막지 않으려고
+        // ①이미 아는 것은 즉시 반영하고 ②모르는 것은 '일단 보여준' 뒤 뒤에서 판정한다.
+        // 판정이 끝나면 아래에서 한 번만 다시 그린다. 결과는 저장되므로 다음부터는 즉시다.
+        const picked = [], unknown = [];
+        for(const g of groups){
+          if(picked.length >= EMOJI_PICK_MAX_SECTIONS) break;
+          const all = emojiPickSplit_(g.emojis);
+          const list = [];
+          for(const e of all){
+            if(__emojiRenderCache.has(e)){ if(__emojiRenderCache.get(e)) list.push(e); }
+            else { unknown.push(e); list.push(e); }   // 모르면 일단 보여준다
+          }
+          const cut = list.slice(0, EMOJI_PICK_MAX_PER_SEC);
+          if(cut.length) picked.push({ g, list:cut });
+        }
+        const secs = picked
+          .map(({ g, list })=>{
           const cells = list
             .map((e)=>`<button type="button" data-emoji="${escapeHtml(e)}" title="${escapeHtml(g.key)}">${escapeHtml(e)}</button>`)
             .join("");
@@ -15561,6 +15857,18 @@ function showJoinTicker(msg){
           `<div class="emojiPickGroups">${chips}</div>` + secs;
         el.style.display = "";
         try{ el.scrollTop = 0; }catch(e){}
+        // 아직 판정 못 한 것이 있으면 뒤에서 재고, 끝나면 이 화면만 한 번 다시 그린다.
+        // (다시 그릴 때는 unknown이 비어 있으므로 무한 반복되지 않는다)
+        if(unknown.length){
+          const q0 = q;
+          emojiPrecheckAsync_(unknown, (changed)=>{
+            try{
+              if(!changed) return;
+              if(!__emojiPickEl || __emojiPickEl.style.display === "none") return;
+              renderEmojiPick_(q0);
+            }catch(_e){}
+          });
+        }
         return true;
       }catch(e){ return false; }
     }
@@ -28519,7 +28827,15 @@ body.joined #dashboardCard .dashLinksBox{
     border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.26);
     color:rgba(255,255,255,.9); border-radius:999px; cursor:pointer; font-weight:900;
   }
-  .emojiPickGroups{ display:flex; flex-wrap:wrap; gap:4px; margin-bottom:2px; }
+  /* V187_EMOJI: 묶음이 19개 → 33개로 늘면서 칩이 줄바꿈되면 패널(190px) 안에서
+     정작 이모지가 보일 자리가 사라진다. 한 줄로 두고 가로 스크롤한다. */
+  .emojiPickGroups{
+    display:flex; flex-wrap:nowrap; gap:4px; margin-bottom:2px;
+    overflow-x:auto; overscroll-behavior-x:contain;
+    scrollbar-width:none; padding-bottom:2px;
+  }
+  .emojiPickGroups::-webkit-scrollbar{ display:none; }
+  .emojiPickGroups button{ flex:0 0 auto; }
   .emojiPickGroups button{
     border:1px solid rgba(255,255,255,.16);
     background:rgba(255,255,255,.06);
