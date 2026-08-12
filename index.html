@@ -2113,6 +2113,27 @@
       flex-wrap:wrap;
       position:relative;
     }
+    /* ── V192_TOPBAR(2026-08-13): 상단 중앙 버튼을 '창 중앙'이 아니라 '타일 영역 중앙'에 맞춘다 ──
+       .wrap이 [1fr 340px] 그리드라 타일 영역은 오른쪽 사이드바만큼 왼쪽으로 치우쳐 있는데,
+       .topbar는 창 전체 기준 3열 그리드(양옆 1fr)라 버튼이 창 정중앙에 놓여 오른쪽으로 밀려 보였다.
+       타일 영역 중심 = 14 + (100vw - 28 - 340 - 10)/2 = 100vw/2 - 175px 이고
+       버튼 그룹은 기본적으로 100vw/2 에 놓이므로, **정확히 175px** 왼쪽으로 밀면 된다.
+       ((340 + 10) / 2 = 175. 뷰포트 폭과 무관하게 일정하다.)
+
+       ⚠️ margin-right로 밀면 안 된다. .topbar의 좌우 칸이 minmax(160px,1fr)과 minmax(320px,1fr)로
+       최소값이 달라 균등 분배가 아니라서, margin으로는 이동량이 폭에 따라 달라진다(실측 -80px 오차).
+       position:relative + left는 그리드 분배와 무관하게 정확히 그 값만 이동한다.
+
+       기본값을 0으로 두고 넓은 폭에서만 켜는 이유: 좁아지면 그리드가 중앙 칸을 눌러서
+       기준점(창 중앙)이 무너지고, 175px를 그대로 밀면 브랜드 글자와 겹친다.
+       실측(2026-08-13) — 1300px: 어긋남 -27px·브랜드와 21px 겹침 / 1340px: -7px /
+       **1360px부터 어긋남 0px·브랜드 여백 36px**. 그래서 임계값은 1360px. */
+    :root{ --topCenterShift: 0px; }
+    @media (min-width: 1360px){ :root{ --topCenterShift: 175px; } }
+    /* 사이드바가 사라지는 상태에서는 보정하지 않는다(셋 다 .wrap을 1fr로 만든다) */
+    body.railFolded, body.compact{ --topCenterShift: 0px; }
+    @media (max-width: 920px){ :root{ --topCenterShift: 0px; } }
+    .topCenter{ left: calc(-1 * var(--topCenterShift)); }   /* .topCenter는 이미 position:relative */
 
     .statusMenu{
       position:absolute;
