@@ -5936,7 +5936,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   </div>
   <div class="tiny">
     ⚠️ 네이버는 인증 메일을 <b>스팸함</b>으로 보낼 수 있습니다.<br/>
-    ⚠️ 링크는 반드시 <b>지금 이 브라우저</b>에서 열어 주세요. 다른 곳에서 열면 그동안 모은 캐릭터·펫·코인이 이어지지 않습니다.
+    ⚠️ 링크는 반드시 <b>지금 이 브라우저</b>에서 열어 주세요.
   </div>
 </div>
 
@@ -18802,6 +18802,8 @@ async function joinRoom(){
         if(!mainUser || !mainUser.uid) throw new Error("main auth user unavailable");
         // 항상 실제 auth.currentUser와 같은 UID를 사용한다.
         state.uid = mainUser.uid;
+        try{ walletMaybePull_(); }catch(_e){}   // V189_WALLET: 입장 시점에도 한 번 맞춘다
+        try{ ownedMaybePull_(); }catch(_e){}    // V190_OWNED: 보유 파츠도 함께
       // ✅ V141: 이 탭이 입장할 때의 초기화 ACK를 미리 고정해 다중 탭 누락을 방지
       try{ primeTimerResetAckForTab_(); }catch(_e){}
 
@@ -19986,6 +19988,8 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     function mkRefreshAll_(){
       try{ mkRefreshAuthHint_(); }catch(_e){}
       try{ mkRefreshJoinState_(); }catch(_e){}
+      try{ walletMaybePull_(); }catch(_e){}   // V189_WALLET: uid가 확정되면 지갑도 맞춘다
+      try{ ownedMaybePull_(); }catch(_e){}    // V190_OWNED: 보유 파츠도 함께
     }
 
     // 보낸 주소를 칸에 되살리고, 링크로 돌아온 경우엔 입장을 누르기 전에 미리 처리한다
@@ -20003,6 +20007,212 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       }
     }catch(_e){}
     /* ===== /V188_MAGICLINK ===== */
+
+    /* ===== V189_WALLET (2026-08-13): 코인 지갑 서버 백업 =====
+       그동안 코인(mk_chara_stats)은 localStorage에만 있어서 브라우저를 바꾸면 0부터 시작했다.
+       매직링크로 uid가 안정됐으므로 rooms/{room}/charaWallet/{uid}에 사본을 둔다.
+
+       설계 제약 두 가지:
+       ① mk_chara_stats는 독립 꾸미기앱(캐릭터꾸미기앱.html)과의 계약이라 형태를 바꾸지 않는다.
+          → 동기화 시각은 별도 키(mk_chara_wallet_meta_v1)에 보관한다.
+       ② 코인은 5초마다 오르므로 틱마다 쓰면 안 된다. → 30초 디바운스 + 구매·탭전환 시 즉시 flush.
+
+       충돌은 updatedAtMs가 더 새로운 쪽 채택(V184_PRESET_SYNC와 같은 규칙).
+       localStorage가 정본, 서버는 사본이다. 두 브라우저를 동시에 켜두면 나중 쓰기가 이긴다. */
+    const WALLET_STATS_KEY = "mk_chara_stats";
+    const WALLET_META_KEY  = "mk_chara_wallet_meta_v1";
+    const WALLET_PUSH_DEBOUNCE_MS = 30000;
+
+    function walletReadLocal_(){
+      try{
+        const raw = localStorage.getItem(WALLET_STATS_KEY);
+        if(raw === null) return null;            // 키 자체가 없다 = 지갑을 쓴 적 없는 브라우저
+        const d = JSON.parse(raw) || {};
+        return {
+          coins:        Math.max(0, Math.floor(Number(d.coins) || 0)),
+          totalSec:     Math.max(0, Math.floor(Number(d.totalSec) || 0)),
+          coinCarrySec: Math.max(0, Math.floor(Number(d.coinCarrySec) || 0))
+        };
+      }catch(_e){ return null; }
+    }
+    function walletLocalStampMs_(){
+      try{
+        const m = JSON.parse(localStorage.getItem(WALLET_META_KEY) || "null") || {};
+        return Math.max(0, Number(m.updatedAtMs) || 0);
+      }catch(_e){ return 0; }
+    }
+    function walletTouchLocal_(ms){
+      try{ localStorage.setItem(WALLET_META_KEY, JSON.stringify({ updatedAtMs: Number(ms) || Date.now() })); }catch(_e){}
+    }
+    function walletApplyLocal_(w, stampMs){
+      const cur = walletReadLocal_() || {};
+      try{
+        localStorage.setItem(WALLET_STATS_KEY, JSON.stringify({
+          totalSec:     Math.max(0, Math.floor(Number(w.totalSec) || 0)),
+          coins:        Math.max(0, Math.floor(Number(w.coins) || 0)),
+          coinCarrySec: Math.max(0, Math.floor(Number(w.coinCarrySec != null ? w.coinCarrySec : cur.coinCarrySec) || 0))
+        }));
+      }catch(_e){}
+      walletTouchLocal_(stampMs);
+      try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.updateWalletUI && window.__MK_PET_V24__.updateWalletUI(); }catch(_e){}
+    }
+    function walletRef_(uid){ return rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/charaWallet/${uid}`); }
+
+    let __walletPulledUid = "";
+    let __walletPushTimer = null;
+    let __walletPushing = false;
+
+    async function walletPush_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      const local = walletReadLocal_(); if(!local) return;
+      if(__walletPushing) return;
+      __walletPushing = true;
+      try{
+        await rSet(walletRef_(u.uid), {
+          coins: local.coins, totalSec: local.totalSec,
+          coinCarrySec: local.coinCarrySec,
+          updatedAtMs: walletLocalStampMs_() || Date.now()
+        });
+      }catch(err){ console.warn("[V189_WALLET] 백업 실패", err); }
+      finally{ __walletPushing = false; }
+    }
+
+    function walletMarkDirty_(immediate){
+      walletTouchLocal_(Date.now());
+      if(immediate){
+        if(__walletPushTimer){ clearTimeout(__walletPushTimer); __walletPushTimer = null; }
+        walletPush_(); return;
+      }
+      if(__walletPushTimer) return;              // 이미 예약됨 — 코인 틱마다 쓰지 않는다
+      __walletPushTimer = setTimeout(()=>{ __walletPushTimer = null; walletPush_(); }, WALLET_PUSH_DEBOUNCE_MS);
+    }
+
+    async function walletMaybePull_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      if(__walletPulledUid === u.uid) return;     // uid당 1회 (익명→이메일 승격으로 uid가 바뀌면 다시 돈다)
+      __walletPulledUid = u.uid;
+      try{
+        const remote = (await rGet(walletRef_(u.uid))).val();
+        const local  = walletReadLocal_();
+        if(!remote || !Number.isFinite(Number(remote.updatedAtMs))){
+          if(local) walletMarkDirty_();           // 서버에 아직 없다 → 지금 것을 올린다
+          return;
+        }
+        if(!local){
+          walletApplyLocal_(remote, Number(remote.updatedAtMs));
+          console.info("[V189_WALLET] 새 브라우저 — 코인 " + remote.coins + " 복원");
+          return;
+        }
+        if(Number(remote.updatedAtMs) > walletLocalStampMs_()){
+          walletApplyLocal_(remote, Number(remote.updatedAtMs));
+          console.info("[V189_WALLET] 서버 쪽이 최신 — 코인 " + remote.coins + " 적용");
+        }else{
+          walletMarkDirty_();                     // 로컬이 최신 → 서버를 갱신
+        }
+      }catch(err){
+        console.warn("[V189_WALLET] 지갑 동기화 실패", err);
+        __walletPulledUid = "";                   // 다음 기회에 재시도
+      }
+    }
+
+    // 상점(v169CharaDressupScript)과 지갑은 서로 다른 <script> 블록이라 함수를 직접 못 쓴다.
+    window.__MK_WALLET_SYNC__ = { markDirty: walletMarkDirty_, pull: walletMaybePull_ };
+
+    // 탭을 덮거나 닫을 때 예약된 백업을 흘려보낸다(구매 직후 이탈 대비)
+    try{
+      document.addEventListener("visibilitychange", ()=>{
+        if(document.visibilityState === "hidden" && __walletPushTimer){
+          clearTimeout(__walletPushTimer); __walletPushTimer = null; walletPush_();
+        }
+      });
+    }catch(_e){}
+    /* ===== /V189_WALLET ===== */
+
+    /* ===== V190_OWNED (2026-08-13): 보유 파츠 서버 백업 =====
+       코인과 달리 파츠는 **늘기만 한다**(쓰기는 상점 saveOwned와 V184_OWNEDFIX 복구 두 곳뿐이고
+       삭제 경로가 없다). 그래서 시각을 비교해 한쪽을 버릴 필요가 없다 — 항상 **로컬 ∪ 서버**로
+       합집합 병합한다. 코인보다 안전한 구조다.
+
+       저장 형태: RTDB 키에는 '/'와 '.'를 쓸 수 없는데 파츠 키가 "04_look/x.png" 형태라
+       키로 못 쓴다. 그래서 개행으로 이은 문자열 하나(parts)로 저장한다.
+       전체 파츠 237개 ≈ 7KB이므로 상한 20,000자는 충분하다(규칙과 같은 값). */
+    const OWNED_LS_KEY = "mk_chara_owned_v2";
+    const OWNED_PUSH_DEBOUNCE_MS = 4000;
+    const OWNED_MAX_CHARS = 20000;
+
+    function ownedReadLocal_(){
+      try{
+        const d = JSON.parse(localStorage.getItem(OWNED_LS_KEY) || "null");
+        if(!d || typeof d !== "object") return null;
+        return Object.keys(d).filter(k => d[k] === true);
+      }catch(_e){ return null; }
+    }
+    function ownedWriteLocal_(list){
+      try{
+        const o = {};
+        list.forEach(k => { if(k) o[k] = true; });
+        localStorage.setItem(OWNED_LS_KEY, JSON.stringify(o));
+        return true;
+      }catch(_e){ return false; }
+    }
+    function ownedRef_(uid){ return rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/charaOwned/${uid}`); }
+    function ownedPack_(list){ return list.join("\n"); }
+    function ownedUnpack_(s){ return String(s || "").split("\n").map(x=>x.trim()).filter(Boolean); }
+
+    let __ownedPulledUid = "";
+    let __ownedPushTimer = null;
+    let __ownedPushing = false;
+
+    async function ownedPush_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      const list = ownedReadLocal_();
+      if(!list || !list.length) return;          // 빈 목록으로 서버를 덮지 않는다(보유 소실 방지)
+      const packed = ownedPack_(list);
+      if(packed.length > OWNED_MAX_CHARS){
+        console.warn("[V190_OWNED] 목록이 상한을 넘어 백업하지 않음:", packed.length); return;
+      }
+      if(__ownedPushing) return;
+      __ownedPushing = true;
+      try{ await rSet(ownedRef_(u.uid), { parts: packed, updatedAtMs: Date.now() }); }
+      catch(err){ console.warn("[V190_OWNED] 백업 실패", err); }
+      finally{ __ownedPushing = false; }
+    }
+    function ownedMarkDirty_(){
+      if(__ownedPushTimer) return;               // 파츠는 자주 안 바뀌므로 짧게 묶기만 한다
+      __ownedPushTimer = setTimeout(()=>{ __ownedPushTimer = null; ownedPush_(); }, OWNED_PUSH_DEBOUNCE_MS);
+    }
+    async function ownedMaybePull_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      if(__ownedPulledUid === u.uid) return;      // uid당 1회 (익명→이메일 승격 시 다시 돈다)
+      __ownedPulledUid = u.uid;
+      try{
+        const remote = (await rGet(ownedRef_(u.uid))).val();
+        const local  = ownedReadLocal_() || [];
+        const server = remote ? ownedUnpack_(remote.parts) : [];
+        if(!server.length){ if(local.length) ownedMarkDirty_(); return; }
+        const merged = Array.from(new Set(local.concat(server)));
+        if(merged.length !== local.length){
+          ownedWriteLocal_(merged);
+          console.info("[V190_OWNED] 파츠 " + (merged.length - local.length) + "개 복원 (총 " + merged.length + "개)");
+          try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.updateWalletUI && window.__MK_PET_V24__.updateWalletUI(); }catch(_e){}
+        }
+        if(merged.length !== server.length) ownedMarkDirty_();   // 서버에 없던 게 있으면 올린다
+      }catch(err){
+        console.warn("[V190_OWNED] 파츠 동기화 실패", err);
+        __ownedPulledUid = "";
+      }
+    }
+    // 상점 블록·V184_OWNEDFIX 블록이 각각 다른 <script>라 window로 노출한다.
+    window.__MK_OWNED_SYNC__ = { markDirty: ownedMarkDirty_, pull: ownedMaybePull_ };
+
+    try{
+      document.addEventListener("visibilitychange", ()=>{
+        if(document.visibilityState === "hidden" && __ownedPushTimer){
+          clearTimeout(__ownedPushTimer); __ownedPushTimer = null; ownedPush_();
+        }
+      });
+    }catch(_e){}
+    /* ===== /V190_OWNED ===== */
 
     // ✅ Nickname clamp (IME-safe)
     if(els.name){
@@ -29951,7 +30161,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
     }catch(e){ return null; }
   }
-  function saveOwned(o){ try{ localStorage.setItem(OWNED_KEY, JSON.stringify(o)); }catch(e){} }
+  function saveOwned(o){
+    try{ localStorage.setItem(OWNED_KEY, JSON.stringify(o)); }catch(e){}
+    // V190_OWNED: 서버 사본 갱신 예약(4초 디바운스). 파츠는 늘기만 하므로 합집합으로 안전하게 병합된다.
+    try{ window.__MK_OWNED_SYNC__ && window.__MK_OWNED_SYNC__.markDirty(); }catch(e){}
+  }
   /* V169_SHOP: 보유 목록 — 없으면 빈 객체(전원 완전 미보유 시작). 기득권 마이그레이션은 폐기됨. */
   function getOwned(){ return loadOwned() || {}; }
   function grantOwned(catKey, name){
@@ -29973,6 +30187,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       if(s.coins < n) return false;
       s.coins -= n;
       localStorage.setItem(STATS_KEY, JSON.stringify(s));
+      // V189_WALLET: 구매는 즉시 백업한다(디바운스를 기다리다 이탈하면 서버에 옛 잔액이 남는다)
+      try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
       return true;
     }catch(e){ return false; }
   }
@@ -31508,6 +31724,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   function writeStats(s){
     try{ localStorage.setItem(STATS_KEY, JSON.stringify({ totalSec:s.totalSec, coins:s.coins, coinCarrySec:(Math.floor(Number(s.coinCarrySec))||0) })); }catch(e){}
+    // V189_WALLET: 서버 사본 갱신 예약(30초 디바운스). 코인은 5초마다 오르므로 즉시 쓰지 않는다.
+    try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(); }catch(e){}
   }
   function fmtDur(sec){
     sec = Math.max(0, Math.floor(Number(sec)||0));
@@ -32111,6 +32329,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       try{ now = JSON.parse(localStorage.getItem(OWNED_KEY_V169) || 'null') || {}; }catch(e){}
       Object.keys(grant).forEach(function(key){ now[key] = true; });
       try{ localStorage.setItem(OWNED_KEY_V169, JSON.stringify(now)); }catch(e){ return; }
+      // V190_OWNED: charaV1에서 되살린 보유분도 서버 사본에 올린다(다음 브라우저에서 또 복구하지 않도록)
+      try{ window.__MK_OWNED_SYNC__ && window.__MK_OWNED_SYNC__.markDirty(); }catch(e){}
       localCacheLoaded = false; // mk_chara_state가 남아 있었다면 걸러진 값이 캐시돼 있다 → 다시 읽게
       try{ onLocalCharaChanged(); }catch(e){}
       try{ if(typeof window.showToast === 'function') window.showToast('캐릭터를 되살렸어요 ✨ 보유 파츠 ' + n + '개를 복구했어요', 3600); }catch(e){}
