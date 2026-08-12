@@ -90,6 +90,7 @@
       <button role="tab" aria-selected="true"  data-tab="pending" type="button">승인 대기 <span id="cntPending">0</span></button>
       <button role="tab" aria-selected="false" data-tab="members" type="button">멤버 <span id="cntMembers">0</span></button>
       <button role="tab" aria-selected="false" data-tab="admins"  type="button">관리자 <span id="cntAdmins">0</span></button>
+      <button role="tab" aria-selected="false" data-tab="archive" type="button">보관함 <span id="cntArchive">0</span></button>
     </div>
 
     <section id="tab-pending">
@@ -107,6 +108,15 @@
       <h2>관리자</h2>
       <p class="muted" id="adminNote">관리자 임명·해제는 방장만 할 수 있습니다.</p>
       <div id="adminList"><p class="muted">불러오는 중…</p></div>
+    </section>
+
+    <section id="tab-archive" class="hide">
+      <h2>보관함</h2>
+      <p class="muted">
+        심사를 마친 신청 기록입니다. 스크린샷은 <b>삭제하지 않고 보관</b>합니다.<br/>
+        용량 때문에 목록에는 스크린샷이 포함되지 않습니다 — <b>[스크린샷 보기]</b>를 누른 것만 내려받습니다.
+      </p>
+      <div id="archiveList"><p class="muted">불러오는 중…</p></div>
     </section>
   </div>
 </div>
@@ -210,6 +220,24 @@ function headMatch(email, typed){
   return local.startsWith(t);
 }
 
+/* ===== 보관함 기록 만들기 =====
+   스크린샷은 파기하지 않고 남긴다. 다만 본체(joinArchive)와 목록용 색인(joinArchiveIndex)을 나눈다 —
+   한 노드에 몰아두면 목록을 열 때마다 보관된 스크린샷 전부를 내려받게 되어(52건이면 5MB) 한도가 샌다.
+   규칙에서도 joinArchive는 컬렉션 읽기를 주지 않아 한 건씩만 열람하게 막아 두었다. */
+function archivePaths_(uid, v, status, head, who, now){
+  const meta = {
+    email: v.email || "", nick: v.nick || "", cafeIdHead: head || "",
+    createdAtMs: Number(v.createdAtMs) || now,
+    status, reviewedBy: who, reviewedAtMs: now
+  };
+  const full = Object.assign({}, meta);
+  if(typeof v.img === "string" && v.img.startsWith("data:image/")) full.img = v.img;
+  return {
+    [`rooms/${ROOM}/joinArchive/${uid}`]: full,
+    [`rooms/${ROOM}/joinArchiveIndex/${uid}`]: meta
+  };
+}
+
 /* ===== 승인 대기 ===== */
 function renderPending(snapVal){
   const box = $("pendingList");
@@ -260,24 +288,29 @@ function renderPending(snapVal){
       const r = headMatch(v.email, typed);
       if(r === null){ toast("스샷의 카페 아이디 앞글자를 3글자 이상 입력해 주세요.", 4000); input.focus(); return; }
       if(!r && !confirm("이메일과 아이디가 일치하지 않아요.\n그래도 승인할까요?")) return;
-      if(!confirm(`${v.nick || uid} 님을 승인할까요?\n승인하면 스크린샷은 삭제됩니다.`)) return;
+      if(!confirm(`${v.nick || uid} 님을 승인할까요?\n스크린샷은 보관함에 남습니다.`)) return;
+      const now = Date.now(), who = me?.email || me?.uid || "", head = typed.toLowerCase();
       try{
-        await update(ref(db), {
+        await update(ref(db), Object.assign({
           [`rooms/${ROOM}/members/${uid}`]: {
-            email: v.email || "", nick: v.nick || "", cafeIdHead: typed.toLowerCase(),
-            approvedAtMs: Date.now(), approvedBy: me?.email || me?.uid || ""
+            email: v.email || "", nick: v.nick || "", cafeIdHead: head,
+            approvedAtMs: now, approvedBy: who
           },
-          [`rooms/${ROOM}/joinRequests/${uid}`]: null   // 스크린샷 즉시 파기
-        });
-        toast("승인이 완료되었습니다. 스크린샷도 삭제했습니다.", 4000);
+          [`rooms/${ROOM}/joinRequests/${uid}`]: null
+        }, archivePaths_(uid, v, "approved", head, who, now)));
+        toast("승인이 완료되었습니다. 스크린샷은 보관함에 남았습니다.", 4500);
       }catch(err){ console.warn(err); toast("승인 실패: " + (err?.code || err?.message || ""), 6000); }
     });
 
     card.querySelector(".reject").addEventListener("click", async () => {
-      if(!confirm(`${v.nick || uid} 님의 신청을 반려(삭제)할까요?\n스크린샷도 함께 삭제되며, 본인은 다시 신청할 수 있습니다.\n사유는 카톡으로 알려 주세요.`)) return;
+      if(!confirm(`${v.nick || uid} 님의 신청을 반려할까요?\n본인은 다시 신청할 수 있고, 스크린샷은 보관함에 남습니다.\n사유는 카톡으로 알려 주세요.`)) return;
+      const now = Date.now(), who = me?.email || me?.uid || "";
+      const head = (card.querySelector(".head")?.value || "").trim().toLowerCase();
       try{
-        await update(ref(db), { [`rooms/${ROOM}/joinRequests/${uid}`]: null });
-        toast("반려 처리했습니다. 스크린샷도 삭제했습니다.", 4000);
+        await update(ref(db), Object.assign({
+          [`rooms/${ROOM}/joinRequests/${uid}`]: null
+        }, archivePaths_(uid, v, "rejected", head, who, now)));
+        toast("반려 처리했습니다. 스크린샷은 보관함에 남았습니다.", 4500);
       }catch(err){ console.warn(err); toast("반려 실패: " + (err?.code || err?.message || ""), 6000); }
     });
   });
@@ -349,11 +382,56 @@ function renderAdmins(val){
   });
 }
 
+/* ===== 보관함 =====
+   목록은 색인(메타만)으로 그리고, 스크린샷은 누른 항목 하나만 그때 내려받는다. */
+function renderArchive(val){
+  const box = $("archiveList");
+  const items = Object.entries(val || {}).sort((a, b) => Number(b[1]?.reviewedAtMs || 0) - Number(a[1]?.reviewedAtMs || 0));
+  $("cntArchive").textContent = String(items.length);
+  if(!items.length){ box.innerHTML = '<p class="muted">보관된 기록이 없습니다.</p>'; return; }
+  box.innerHTML = items.map(([uid, v]) => `
+    <div class="card" data-uid="${esc(uid)}">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span class="pill ${v?.status === "approved" ? "ok" : "bad"}">${v?.status === "approved" ? "승인" : "반려"}</span>
+          <b> ${esc(v?.nick || "(닉네임 없음)")}</b>
+          <span class="mono muted"> ${esc(v?.email || "")}</span>
+          <div class="muted">
+            심사 ${esc(fmt(v?.reviewedAtMs))} · ${esc(v?.reviewedBy || "")}${v?.cafeIdHead ? " · 카페 " + esc(v.cafeIdHead) + "****" : ""}
+          </div>
+        </div>
+        <button class="showShot" type="button">🖼️ 스크린샷 보기</button>
+      </div>
+      <div class="shotHolder"></div>
+    </div>`).join("");
+
+  box.querySelectorAll(".showShot").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest(".card"), uid = card.dataset.uid, holder = card.querySelector(".shotHolder");
+      if(holder.dataset.loaded === "1"){        // 접기 — 다시 누르면 메모리에서도 내려간다
+        holder.innerHTML = ""; holder.dataset.loaded = ""; btn.textContent = "🖼️ 스크린샷 보기"; return;
+      }
+      btn.disabled = true; btn.textContent = "불러오는 중…";
+      try{
+        const rec = (await get(ref(db, `rooms/${ROOM}/joinArchive/${uid}`))).val();
+        holder.innerHTML = (rec && typeof rec.img === "string" && rec.img.startsWith("data:image/"))
+          ? `<img class="shot" src="${esc(rec.img)}" alt="보관된 스크린샷"/>`
+          : '<p class="muted">이 기록에는 스크린샷이 없습니다.</p>';
+        holder.dataset.loaded = "1"; btn.textContent = "🙈 접기";
+      }catch(err){
+        console.warn(err);
+        toast("스크린샷을 불러오지 못했습니다: " + (err?.code || ""), 5000);
+        btn.textContent = "🖼️ 스크린샷 보기";
+      }finally{ btn.disabled = false; }
+    });
+  });
+}
+
 /* ===== 탭 ===== */
 document.querySelectorAll('[role="tab"]').forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll('[role="tab"]').forEach(b => b.setAttribute("aria-selected", String(b === btn)));
-    ["pending","members","admins"].forEach(t => $("tab-" + t).classList.toggle("hide", t !== btn.dataset.tab));
+    ["pending","members","admins","archive"].forEach(t => $("tab-" + t).classList.toggle("hide", t !== btn.dataset.tab));
   });
 });
 
@@ -389,6 +467,8 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     onValue(ref(db, `rooms/${ROOM}/joinRequests`), s => renderPending(s.val() || {}), fail("승인 대기"));
     onValue(ref(db, `rooms/${ROOM}/members`),      s => renderMembers(s.val() || {}), fail("멤버"));
     onValue(ref(db, `rooms/${ROOM}/admins`),       s => renderAdmins(s.val() || {}),  fail("관리자"));
+    // 색인만 구독한다(메타 ~150바이트/건). 스크린샷 본체는 버튼을 눌렀을 때만 내려받는다.
+    onValue(ref(db, `rooms/${ROOM}/joinArchiveIndex`), s => renderArchive(s.val() || {}), fail("보관함"));
   });
 })();
 </script>
