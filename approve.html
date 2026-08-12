@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>마끝마 작업방 · 가입 승인</title>
+<style>
+  :root{
+    --bg:#f6f5f8; --card:#ffffff; --line:#e3e0e8; --fg:#241f2b; --muted:#6d6678;
+    --accent:#7b5ea7; --accent-fg:#ffffff; --ok:#1f7a4d; --okbg:#e6f5ec;
+    --bad:#b3261e; --badbg:#fdecea; --warn:#8a6100; --warnbg:#fff5e0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17151b; --card:#211e27; --line:#372f41; --fg:#efe9f5; --muted:#a79db5;
+      --accent:#a98cd6; --accent-fg:#1a1520; --ok:#7fd6a6; --okbg:#1c3328;
+      --bad:#ffb4ab; --badbg:#3a2220; --warn:#f0c76a; --warnbg:#33280f;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:20px 16px 64px}
+  h1{font-size:20px;margin:0 0 4px}
+  h2{font-size:16px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button{font:inherit;border-radius:9px;border:1px solid var(--line);padding:8px 11px;
+               background:var(--card);color:var(--fg)}
+  input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent;font-weight:600}
+  button.danger{color:var(--bad);border-color:var(--bad)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.ok{background:var(--okbg);color:var(--ok)}
+  .pill.bad{background:var(--badbg);color:var(--bad)}
+  .pill.warn{background:var(--warnbg);color:var(--warn)}
+  .muted{color:var(--muted);font-size:13px}
+  .mono{font-family:ui-monospace,Consolas,"D2Coding",monospace;font-size:13px;word-break:break-all}
+  .shot{max-width:100%;border:1px solid var(--line);border-radius:8px;display:block;margin:10px 0}
+  .grid{display:grid;grid-template-columns:1fr;gap:6px}
+  .kv{display:grid;grid-template-columns:96px 1fr;gap:6px;font-size:14px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0;word-break:break-all}
+  .hide{display:none !important}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);
+         color:var(--bg);padding:11px 18px;border-radius:10px;max-width:92vw;opacity:0;
+         transition:opacity .2s;pointer-events:none;z-index:99;font-size:14px}
+  #toast.show{opacity:.96}
+  .banner{border-left:4px solid var(--warn);background:var(--warnbg);color:var(--warn);
+          padding:10px 12px;border-radius:8px;font-size:13px;margin:10px 0}
+  .tablist{display:flex;gap:6px;margin:16px 0 0;flex-wrap:wrap}
+  .tablist button{border-radius:999px}
+  .tablist button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:transparent;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌸 마끝마 작업방 · 가입 승인</h1>
+  <p class="sub">글담 카페 활동내역 스크린샷과 인증 이메일을 대조해 입장을 승인합니다.</p>
+
+  <!-- 로그인 -->
+  <section class="card" id="loginCard">
+    <div class="row">
+      <input id="email" type="email" placeholder="관리자 네이버 이메일" style="flex:1;min-width:220px" autocomplete="email"/>
+      <button class="primary" id="sendBtn" type="button">✉️ 인증메일 받기</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0">
+      네이버는 인증 메일을 <b>스팸함</b>으로 보낼 수 있습니다. 링크는 반드시 <b>이 브라우저에서</b> 열어 주세요.
+    </p>
+  </section>
+
+  <!-- 로그인 후 -->
+  <section class="card hide" id="meCard">
+    <div class="row" style="justify-content:space-between">
+      <div><span class="pill ok" id="mePill">로그인</span> <span class="mono" id="meEmail"></span></div>
+      <button id="logoutBtn" type="button">로그아웃</button>
+    </div>
+  </section>
+
+  <div class="banner hide" id="noPerm">
+    이 계정은 관리자가 아닙니다. 방장에게 관리자 임명을 요청해 주세요.
+  </div>
+
+  <div class="hide" id="adminUI">
+    <div class="tablist" role="tablist">
+      <button role="tab" aria-selected="true"  data-tab="pending" type="button">승인 대기 <span id="cntPending">0</span></button>
+      <button role="tab" aria-selected="false" data-tab="members" type="button">멤버 <span id="cntMembers">0</span></button>
+      <button role="tab" aria-selected="false" data-tab="admins"  type="button">관리자 <span id="cntAdmins">0</span></button>
+    </div>
+
+    <section id="tab-pending">
+      <h2>승인 대기</h2>
+      <div id="pendingList"><p class="muted">불러오는 중…</p></div>
+    </section>
+
+    <section id="tab-members" class="hide">
+      <h2>멤버 명단</h2>
+      <p class="muted">여기 있는 분들만 입장할 수 있습니다(2단계 규칙 배포 후 적용).</p>
+      <div id="memberList"><p class="muted">불러오는 중…</p></div>
+    </section>
+
+    <section id="tab-admins" class="hide">
+      <h2>관리자</h2>
+      <p class="muted" id="adminNote">관리자 임명·해제는 방장만 할 수 있습니다.</p>
+      <div id="adminList"><p class="muted">불러오는 중…</p></div>
+    </section>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut,
+         sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, get, onValue, update }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAmhsxF7syCPNfgIVb2ZIQBxgGV_rZ2nDI",
+  authDomain: "magamm00-5baee.firebaseapp.com",
+  projectId: "magamm00-5baee",
+  storageBucket: "magamm00-5baee.firebasestorage.app",
+  messagingSenderId: "829544685832",
+  appId: "1:829544685832:web:7ae0a5a2cd48cb62a6ccbd",
+  databaseURL: "https://magamm00-5baee-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+const ROOM = "magamm";
+const OWNER_EMAIL = "redfox1123@naver.com";   // 규칙에 박힌 값과 반드시 같아야 한다
+const EMAIL_LS = "mk_signin_email_v1";        // 작업방(index.html)과 같은 키 — 왕복이 이어진다
+const DOMAIN = "@naver.com";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app, firebaseConfig.databaseURL);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let toastT = null;
+function toast(msg, ms = 3000){
+  const el = $("toast"); el.textContent = msg; el.classList.add("show");
+  if(toastT) clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), ms);
+}
+const fmt = (ms) => { try{ return new Date(Number(ms)).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"}); }catch(_e){ return "-"; } };
+const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim().toLowerCase())
+                    && String(e).trim().toLowerCase().endsWith(DOMAIN);
+
+/* ===== 로그인 ===== */
+$("sendBtn").addEventListener("click", async () => {
+  const e = ($("email").value || "").trim().toLowerCase();
+  if(!emailOk(e)){ toast("네이버 메일(@naver.com)로 입력해 주세요.", 4000); $("email").focus(); return; }
+  const btn = $("sendBtn"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "보내는 중…";
+  try{
+    await sendSignInLinkToEmail(auth, e, { url: location.origin + location.pathname, handleCodeInApp: true });
+    try{ localStorage.setItem(EMAIL_LS, e); }catch(_e){}
+    toast("인증 메일을 보냈습니다. 스팸함도 확인해 주시고, 링크는 이 브라우저에서 열어 주세요.", 8000);
+  }catch(err){
+    console.warn(err);
+    toast("발송 실패: " + (err?.code || err?.message || ""), 6000);
+  }finally{ btn.disabled = false; btn.textContent = label; }
+});
+$("logoutBtn").addEventListener("click", async () => { await signOut(auth); location.reload(); });
+
+async function completeLinkIfAny(){
+  if(!isSignInWithEmailLink(auth, location.href)) return;
+  let e = "";
+  try{ e = (localStorage.getItem(EMAIL_LS) || "").trim().toLowerCase(); }catch(_e){}
+  if(!e) e = String(prompt("인증 메일을 받은 이메일 주소를 입력해 주세요.") || "").trim().toLowerCase();
+  if(!e) return;
+  try{
+    await signInWithEmailLink(auth, e, location.href);
+    try{ localStorage.removeItem(EMAIL_LS); }catch(_e){}
+  }catch(err){
+    console.warn(err);
+    toast(err?.code === "auth/invalid-action-code"
+      ? "링크가 만료됐거나 이미 사용됐습니다. 다시 받아 주세요." : ("인증 실패: " + (err?.code || "")), 7000);
+  }finally{
+    try{ history.replaceState(null, "", location.origin + location.pathname); }catch(_e){}
+  }
+}
+
+/* ===== 권한 판정 ===== */
+let me = null, isOwner = false, isAdmin = false;
+async function resolveRole(user){
+  const email = String(user.email || "").toLowerCase();
+  isOwner = (email === OWNER_EMAIL);
+  if(!isOwner){
+    try{
+      const s = await get(ref(db, `rooms/${ROOM}/settings/ownerUid`));
+      if(s.exists() && String(s.val()) === user.uid) isOwner = true;
+    }catch(_e){}
+  }
+  isAdmin = isOwner;
+  if(!isAdmin){
+    try{ isAdmin = (await get(ref(db, `rooms/${ROOM}/admins/${user.uid}`))).exists(); }catch(_e){}
+  }
+}
+
+/* ===== 카페 아이디 앞글자 ↔ 이메일 대조 =====
+   네이버 아이디 redfox1123 → redfox1123@naver.com 이므로 이메일 로컬파트의 앞부분과 비교한다.
+   카페 마스킹 자릿수가 4가 아닐 수도 있어 startsWith로 유연하게 본다(3글자 이상일 때만 판정). */
+function headMatch(email, typed){
+  const local = String(email || "").split("@")[0].toLowerCase();
+  const t = String(typed || "").trim().toLowerCase();
+  if(t.length < 3) return null;
+  return local.startsWith(t);
+}
+
+/* ===== 승인 대기 ===== */
+function renderPending(snapVal){
+  const box = $("pendingList");
+  const items = Object.entries(snapVal || {})
+    .filter(([, v]) => v && v.status === "pending")
+    .sort((a, b) => Number(a[1].createdAtMs || 0) - Number(b[1].createdAtMs || 0));
+  $("cntPending").textContent = String(items.length);
+  if(!items.length){ box.innerHTML = '<p class="muted">대기 중인 신청이 없습니다. 🎉</p>'; return; }
+
+  box.innerHTML = items.map(([uid, v]) => `
+    <div class="card" data-uid="${esc(uid)}">
+      <dl class="kv">
+        <dt>닉네임</dt><dd><b>${esc(v.nick || "(미기재)")}</b></dd>
+        <dt>인증 이메일</dt><dd class="mono">${esc(v.email || "")}</dd>
+        <dt>신청 시각</dt><dd class="muted">${esc(fmt(v.createdAtMs))}</dd>
+        <dt>uid</dt><dd class="mono muted">${esc(uid)}</dd>
+      </dl>
+      ${v.img ? `<img class="shot" src="${esc(v.img)}" alt="글담 카페 활동내역 스크린샷"/>`
+              : `<p class="pill bad">스크린샷 없음</p>`}
+      <div class="row">
+        <label class="muted" for="head-${esc(uid)}">스샷의 카페 아이디 앞글자</label>
+        <input id="head-${esc(uid)}" class="head" placeholder="예: redf" style="width:120px" maxlength="20" autocapitalize="off" spellcheck="false"/>
+        <span class="verdict muted">입력하시면 대조됩니다</span>
+      </div>
+      <p class="muted" style="margin:8px 0 10px">
+        가입일이 <b>3개월 이상</b> 전인지, 방문·작성글 수와 최신 글 10개가 보이는지 함께 확인해 주세요.
+      </p>
+      <div class="row">
+        <button class="primary approve" type="button">승인</button>
+        <button class="danger reject" type="button">반려(삭제)</button>
+      </div>
+    </div>`).join("");
+
+  box.querySelectorAll(".card").forEach(card => {
+    const uid = card.dataset.uid;
+    const v = snapVal[uid] || {};
+    const input = card.querySelector(".head");
+    const verdict = card.querySelector(".verdict");
+    const paint = () => {
+      const r = headMatch(v.email, input.value);
+      verdict.className = "verdict " + (r === null ? "muted" : (r ? "pill ok" : "pill bad"));
+      verdict.textContent = r === null ? "3글자 이상 입력" : (r ? "✅ 이메일과 일치" : "❌ 불일치 — 승인하지 마세요");
+    };
+    input.addEventListener("input", paint); paint();
+
+    card.querySelector(".approve").addEventListener("click", async () => {
+      const typed = input.value.trim();
+      const r = headMatch(v.email, typed);
+      if(r === null){ toast("스샷의 카페 아이디 앞글자를 3글자 이상 입력해 주세요.", 4000); input.focus(); return; }
+      if(!r && !confirm("이메일과 아이디가 일치하지 않아요.\n그래도 승인할까요?")) return;
+      if(!confirm(`${v.nick || uid} 님을 승인할까요?\n승인하면 스크린샷은 삭제됩니다.`)) return;
+      try{
+        await update(ref(db), {
+          [`rooms/${ROOM}/members/${uid}`]: {
+            email: v.email || "", nick: v.nick || "", cafeIdHead: typed.toLowerCase(),
+            approvedAtMs: Date.now(), approvedBy: me?.email || me?.uid || ""
+          },
+          [`rooms/${ROOM}/joinRequests/${uid}`]: null   // 스크린샷 즉시 파기
+        });
+        toast("승인이 완료되었습니다. 스크린샷도 삭제했습니다.", 4000);
+      }catch(err){ console.warn(err); toast("승인 실패: " + (err?.code || err?.message || ""), 6000); }
+    });
+
+    card.querySelector(".reject").addEventListener("click", async () => {
+      if(!confirm(`${v.nick || uid} 님의 신청을 반려(삭제)할까요?\n스크린샷도 함께 삭제되며, 본인은 다시 신청할 수 있습니다.\n사유는 카톡으로 알려 주세요.`)) return;
+      try{
+        await update(ref(db), { [`rooms/${ROOM}/joinRequests/${uid}`]: null });
+        toast("반려 처리했습니다. 스크린샷도 삭제했습니다.", 4000);
+      }catch(err){ console.warn(err); toast("반려 실패: " + (err?.code || err?.message || ""), 6000); }
+    });
+  });
+}
+
+/* ===== 멤버 / 관리자 ===== */
+function renderMembers(val){
+  const box = $("memberList");
+  const items = Object.entries(val || {}).sort((a, b) => Number(b[1]?.approvedAtMs || 0) - Number(a[1]?.approvedAtMs || 0));
+  $("cntMembers").textContent = String(items.length);
+  if(!items.length){ box.innerHTML = '<p class="muted">아직 승인된 멤버가 없습니다.</p>'; return; }
+  box.innerHTML = items.map(([uid, v]) => `
+    <div class="card" data-uid="${esc(uid)}">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>${esc(v?.nick || "(닉네임 없음)")}</b>
+          <span class="mono muted"> ${esc(v?.email || "")}</span>
+          <div class="muted">승인 ${esc(fmt(v?.approvedAtMs))} · ${esc(v?.approvedBy || "")}</div>
+        </div>
+        <div class="row">
+          ${isOwner ? '<button class="mkadmin" type="button">관리자 임명</button>' : ""}
+          <button class="danger rm" type="button">명단에서 제거</button>
+        </div>
+      </div>
+    </div>`).join("");
+
+  box.querySelectorAll(".card").forEach(card => {
+    const uid = card.dataset.uid, v = (val || {})[uid] || {};
+    card.querySelector(".rm").addEventListener("click", async () => {
+      if(!confirm(`${v.nick || uid} 님을 명단에서 제거할까요?\n2단계 규칙 적용 후에는 즉시 입장이 막힙니다.`)) return;
+      try{ await update(ref(db), { [`rooms/${ROOM}/members/${uid}`]: null }); toast("제거했습니다.", 3500); }
+      catch(err){ toast("실패: " + (err?.code || ""), 5000); }
+    });
+    const b = card.querySelector(".mkadmin");
+    if(b) b.addEventListener("click", async () => {
+      if(!confirm(`${v.nick || uid} 님을 관리자로 임명할까요?`)) return;
+      try{
+        await update(ref(db), { [`rooms/${ROOM}/admins/${uid}`]:
+          { email: v.email || "", nick: v.nick || "", addedAtMs: Date.now() } });
+        toast("관리자로 임명했습니다.", 3500);
+      }catch(err){ toast("실패: " + (err?.code || ""), 5000); }
+    });
+  });
+}
+
+function renderAdmins(val){
+  const box = $("adminList");
+  const items = Object.entries(val || {});
+  $("cntAdmins").textContent = String(items.length);
+  $("adminNote").textContent = isOwner
+    ? "임명은 [멤버] 탭에서 해당 멤버의 '관리자 임명' 버튼으로 합니다. 방장은 이 목록과 무관하게 항상 관리자입니다."
+    : "관리자 임명·해제는 방장만 할 수 있습니다.";
+  if(!items.length){ box.innerHTML = '<p class="muted">등록된 관리자가 없습니다(방장은 규칙에 고정되어 있어 목록에 없어도 동작합니다).</p>'; return; }
+  box.innerHTML = items.map(([uid, v]) => `
+    <div class="card" data-uid="${esc(uid)}">
+      <div class="row" style="justify-content:space-between">
+        <div><b>${esc(v?.nick || "(닉네임 없음)")}</b> <span class="mono muted">${esc(v?.email || "")}</span>
+             <div class="muted">임명 ${esc(fmt(v?.addedAtMs))}</div></div>
+        ${isOwner ? '<button class="danger rmAdmin" type="button">해제</button>' : ""}
+      </div>
+    </div>`).join("");
+  box.querySelectorAll(".rmAdmin").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const uid = btn.closest(".card").dataset.uid;
+      if(!confirm("이 관리자를 해제할까요?")) return;
+      try{ await update(ref(db), { [`rooms/${ROOM}/admins/${uid}`]: null }); toast("해제했습니다.", 3500); }
+      catch(err){ toast("실패: " + (err?.code || ""), 5000); }
+    });
+  });
+}
+
+/* ===== 탭 ===== */
+document.querySelectorAll('[role="tab"]').forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll('[role="tab"]').forEach(b => b.setAttribute("aria-selected", String(b === btn)));
+    ["pending","members","admins"].forEach(t => $("tab-" + t).classList.toggle("hide", t !== btn.dataset.tab));
+  });
+});
+
+/* ===== 부팅 ===== */
+(async () => {
+  try{ await setPersistence(auth, browserLocalPersistence); }catch(_e){}
+  await completeLinkIfAny();
+  try{
+    const saved = localStorage.getItem(EMAIL_LS) || "";
+    if(saved && !$("email").value) $("email").value = saved;
+  }catch(_e){}
+
+  onAuthStateChanged(auth, async (user) => {
+    me = user || null;
+    if(!user){
+      $("loginCard").classList.remove("hide");
+      $("meCard").classList.add("hide"); $("adminUI").classList.add("hide"); $("noPerm").classList.add("hide");
+      return;
+    }
+    $("loginCard").classList.add("hide");
+    $("meCard").classList.remove("hide");
+    $("meEmail").textContent = user.email || "(이메일 없음)";
+    await resolveRole(user);
+    $("mePill").textContent = isOwner ? "방장" : (isAdmin ? "관리자" : "권한 없음");
+    $("mePill").className = "pill " + (isAdmin ? "ok" : "bad");
+    if(!isAdmin){ $("noPerm").classList.remove("hide"); $("adminUI").classList.add("hide"); return; }
+    $("noPerm").classList.add("hide"); $("adminUI").classList.remove("hide");
+
+    const fail = (where) => (err) => {
+      console.warn(where, err);
+      toast(`${where} 읽기 실패: ${err?.code || err?.message || ""}`, 6000);
+    };
+    onValue(ref(db, `rooms/${ROOM}/joinRequests`), s => renderPending(s.val() || {}), fail("승인 대기"));
+    onValue(ref(db, `rooms/${ROOM}/members`),      s => renderMembers(s.val() || {}), fail("멤버"));
+    onValue(ref(db, `rooms/${ROOM}/admins`),       s => renderAdmins(s.val() || {}),  fail("관리자"));
+  });
+})();
+</script>
+</body>
+</html>

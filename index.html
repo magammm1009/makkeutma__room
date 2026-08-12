@@ -2632,7 +2632,9 @@ body::before{
 #photoSizeRow{display:none !important;}
 
 /* ✅ PRE-JOIN LOCK: 입장 전에는 어떤 정보도 보이지 않게 */
-#preJoinCard{ display:none; max-width: 720px; margin: 22px auto 0; padding: 18px 18px; }
+/* V188_MAGICLINK: .wrap이 [1fr 340px] 그리드라 예전엔 왼쪽 칸 안에서만 가운데 정렬됐다.
+   두 칸을 모두 차지하게 해서 화면 기준으로 가운데 오게 하고, 가독성을 위해 폭도 넓혔다. */
+#preJoinCard{ display:none; grid-column: 1 / -1; max-width: 860px; margin: 22px auto 0; padding: 22px 26px; }
 #preJoinCard h3{ margin:0; font-size:16px; }
 #preJoinCard .hint{ margin-top:8px; opacity:.86; font-size:13px; line-height:1.35; }
 #preJoinCard .prePills{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -2648,6 +2650,30 @@ body:not(.joined) #sortModeBtn{ display:none !important; }
 /* 입장 전 안내 카드만 표시 */
 body:not(.joined) #preJoinCard{ display:block; }
 body.joined #preJoinCard{ display:none; }
+    /* ===== V188_MAGICLINK: 입장 전 인증 안내 ===== */
+    #authBig{ margin:16px 0 4px; padding:16px 14px; border-radius:12px; text-align:center;
+              background:rgba(128,128,128,.10); border:1px solid rgba(128,128,128,.22); }
+    #authBigIcon{ font-size:30px; line-height:1.1; }
+    #authBigTitle{ font-size:17px; font-weight:800; margin-top:6px; }
+    #authBigDesc{ font-size:13px; opacity:.85; margin-top:5px; line-height:1.5; }
+    #authBig.ok{ background:rgba(64,180,120,.14); border-color:rgba(64,180,120,.45); }
+    #authBig.wait{ background:rgba(230,170,60,.14); border-color:rgba(230,170,60,.45); }
+    #authBig.need{ background:rgba(225,90,90,.12); border-color:rgba(225,90,90,.40); }
+    .joinStep{ margin-top:14px; padding-top:12px; border-top:1px solid rgba(128,128,128,.24); text-align:left; }
+    .joinStep .stepLabel{ font-weight:800; font-size:14px; margin-bottom:6px; }
+    .joinStep .stepLabel b{ display:inline-block; min-width:20px; height:20px; line-height:20px;
+                            border-radius:50%; background:rgba(128,128,128,.30); text-align:center;
+                            font-size:12px; margin-right:6px; }
+    .joinStep .tiny{ opacity:.85; line-height:1.5; }
+    .joinStep input[type=file]{ display:block; margin:8px 0; max-width:100%; }
+    .joinRow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+    .joinRow input[type=email]{ flex:1; min-width:200px; }
+    #shotPreviewWrap{ margin:8px 0; }
+    #shotPreview{ display:block; max-width:100%; max-height:210px; border-radius:10px;
+                  border:1px solid rgba(128,128,128,.35); margin-bottom:6px; }
+    #joinReqHint{ margin-top:10px; opacity:.85; }
+    /* 인증이 끝나면 상단바 배지는 초록으로 */
+    #authStateHint.authOk{ color:#3fae7a; font-weight:700; }
 
 
     /* ===== V66 펫 놀이터 채팅/액션 최적화 ===== */
@@ -5855,10 +5881,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="actions">
 <input id="name" maxlength="7" placeholder="닉네임" style="width:180px"/>
 <input id="roomPass" placeholder="입장키" style="width:120px" type="password"/>
-<!-- V188_MAGICLINK(2026-08-13): 이메일 인증은 A단계에서 '선택'이다. 아직 입장키가 정본 게이트이고
-     이 칸은 계정을 이메일에 묶어두는 용도다. 전원 이관이 끝나면 입장키를 걷어내고 필수로 바꾼다. -->
-<input autocomplete="email" id="signinEmail" placeholder="이메일(네이버)" style="width:170px" type="email"/>
-<button class="ghost" id="sendLinkBtn" title="입력한 주소로 인증 메일을 보냅니다" type="button">✉️ 인증메일</button>
+<!-- V188_MAGICLINK(2026-08-13): 이메일 입력·발송 UI는 입장 전 카드(화면 중앙)로 옮겼다.
+     상단바에는 인증 여부 배지만 남긴다 — 인증 후에 이메일 주소를 계속 노출할 이유가 없다. -->
 <span class="meMini" id="authStateHint"></span>
 <input id="adminPassJoin" placeholder="관리자비번(선택)" style="width:150px" type="password"/>
 <button class="primary" id="joinBtn">입장</button>
@@ -5873,11 +5897,50 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div class="wrap">
 <div aria-live="polite" class="card preJoinCard" id="preJoinCard">
-<h3>🔒 입장 전에는 내용이 표시되지 않아요</h3>
-<div class="hint">상단에서 <b>닉네임</b>과 <b>입장키</b>를 입력하고 <b>입장</b>을 눌러줘!<br/><span class="tiny">※ 접속 인원은 대략치로만 보여요.</span></div>
-<div class="prePills">
-<div class="pill">👥 현재 접속 <b id="approxOnlineText">—</b></div>
+<h3>🔒 입장 전에는 내용이 표시되지 않습니다</h3>
+<div class="hint">닉네임과 입장키를 입력하신 뒤 <b>입장</b>을 눌러 주세요.</div>
+
+<!-- V188_MAGICLINK: 인증 상태를 크게. 접속 인원 표시는 걷어냈다(인증 안내가 우선). -->
+<div id="authBig">
+  <div id="authBigIcon">⏳</div>
+  <div id="authBigTitle">인증 상태를 확인하고 있습니다…</div>
+  <div id="authBigDesc"></div>
 </div>
+
+<!-- 1단계: 스크린샷. 인증 전에도 고를 수 있고, 압축해서 브라우저에 잠시 보관했다가
+     이메일 인증이 끝나면 자동으로 제출된다(규칙상 서버 기록은 인증 후에만 가능). -->
+<div class="joinStep" id="stepShot">
+  <div class="stepLabel"><b>1</b> 글담 카페 활동내역 스크린샷</div>
+  <div class="tiny">
+    카페 <b>나의활동</b> 화면을 캡처해 주세요. <b>가입일 · 방문 · 작성글 수 · 최신 글 10개</b>가 함께 보여야 하고,
+    아이디(<code>redf****</code>)가 가려지지 않아야 합니다.
+  </div>
+  <input accept="image/*" id="joinReqFile" type="file"/>
+  <div id="shotPreviewWrap" style="display:none">
+    <img alt="선택한 스크린샷 미리보기" id="shotPreview"/>
+    <button class="ghost" id="shotClear" type="button">다시 고르기</button>
+  </div>
+</div>
+
+<!-- 2단계: 이메일 -->
+<div class="joinStep" id="stepMail">
+  <div class="stepLabel"><b>2</b> 카페 아이디와 <u>같은</u> 네이버 메일</div>
+  <div class="joinRow">
+    <input autocomplete="email" id="signinEmail" placeholder="아이디@naver.com" type="email"/>
+    <button class="primary" id="sendLinkBtn" type="button">✉️ 인증메일 받기</button>
+  </div>
+  <div class="tiny">
+    ⚠️ 네이버는 인증 메일을 <b>스팸함</b>으로 보낼 수 있습니다.<br/>
+    ⚠️ 링크는 반드시 <b>지금 이 브라우저</b>에서 열어 주세요. 다른 곳에서 열면 그동안 모은 캐릭터·펫·코인이 이어지지 않습니다.
+  </div>
+</div>
+
+<!-- 인증은 됐는데 보관된 스샷이 없을 때(다른 기기에서 링크를 연 경우 등) -->
+<div class="joinStep" id="stepSubmit" style="display:none">
+  <button class="primary" id="joinReqSubmit" type="button">신청 보내기</button>
+</div>
+
+<div class="tiny" id="joinReqHint"></div>
 </div>
 <main>
 <div class="gridHead">
@@ -7590,13 +7653,18 @@ const auth = getAuth(app);
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.endsWith(MK_EMAIL_DOMAIN);
     }
 
-    // 현재 로그인 상태를 상단바에 한 줄로 표시
+    // 상단바에는 인증 여부만 배지로 남긴다(이메일 주소는 노출하지 않는다 — 입장 후엔 볼 이유가 없다).
+    function mkAuthDone_(){ const u = auth.currentUser; return !!(u && !u.isAnonymous && u.email); }
     function mkRefreshAuthHint_(){
       try{
         const el = els?.authStateHint; if(!el) return;
-        const u = auth.currentUser;
-        if(u && !u.isAnonymous && u.email){ el.textContent = "✅ " + u.email; el.title = "이메일 인증 완료"; }
-        else { el.textContent = "⚠️ 미인증"; el.title = "이메일 인증 전이야. 인증메일을 받아 같은 브라우저에서 링크를 열어줘."; }
+        if(mkAuthDone_()){
+          el.textContent = "✅ 인증됨"; el.className = "meMini authOk";
+          el.title = "이메일 인증 완료";
+        }else{
+          el.textContent = "⚠️ 미인증"; el.className = "meMini";
+          el.title = "입장 전 화면에서 스크린샷과 이메일 인증을 진행해 주세요.";
+        }
       }catch(_e){}
     }
 
@@ -7619,7 +7687,7 @@ const auth = getAuth(app);
       try{ email = (localStorage.getItem(MK_EMAIL_LS) || "").trim().toLowerCase(); }catch(_e){}
       if(!email){
         // 메일을 보낸 브라우저가 아니다 → uid 이어받기는 이미 불가능하지만 로그인은 시켜준다
-        email = String(prompt("인증 메일을 받은 이메일 주소를 입력해줘\n(※ 작업방을 쓰던 브라우저가 아니면 기존 데이터가 이어지지 않아)") || "").trim().toLowerCase();
+        email = String(prompt("인증 메일을 받은 이메일 주소를 입력해 주세요.\n(※ 작업방을 쓰던 브라우저가 아니면 기존 데이터가 이어지지 않습니다)") || "").trim().toLowerCase();
       }
       if(!email) return null;
 
@@ -7639,7 +7707,7 @@ const auth = getAuth(app);
             // 그 이메일이 이미 다른 계정에 묶여 있다 → 그쪽으로 로그인(uid가 바뀐다)
             const r2 = await signInWithEmailLink(auth, email, href);
             user = r2.user;
-            try{ showToast("이 이메일은 이미 다른 계정에 연결돼 있어서 그 계정으로 들어왔어. 예전 데이터가 안 보이면 관리자에게 말해줘!", 7000); }catch(_e){}
+            try{ showToast("이 이메일은 이미 다른 계정에 연결되어 있어 그 계정으로 접속했습니다. 예전 데이터가 보이지 않으면 관리자에게 알려 주세요.", 7000); }catch(_e){}
           }else{ throw err; }
         }
       }else{
@@ -7690,8 +7758,8 @@ const auth = getAuth(app);
         }catch(err){
           const code = String(err?.code || "");
           const msg = (code === "auth/invalid-action-code")
-            ? "인증 링크가 만료됐거나 이미 사용됐어. 인증메일을 다시 받아줘!"
-            : ("이메일 인증에 실패했어: " + (code || err?.message || ""));
+            ? "인증 링크가 만료됐거나 이미 사용됐습니다. 인증메일을 다시 받아 주세요."
+            : ("이메일 인증에 실패했습니다: " + (code || err?.message || ""));
           console.warn("[V188_MAGICLINK] 링크 처리 실패", err);
           try{ showToast(msg, 6000); }catch(_e){}
           try{ history.replaceState(null, "", location.origin + location.pathname); }catch(_e){}
@@ -7805,6 +7873,19 @@ const auth = getAuth(app);
       signinEmail: $("signinEmail"),   // V188_MAGICLINK
       sendLinkBtn: $("sendLinkBtn"),   // V188_MAGICLINK
       authStateHint: $("authStateHint"), // V188_MAGICLINK
+      authBig: $("authBig"),                 // V188_MAGICLINK
+      authBigIcon: $("authBigIcon"),         // V188_MAGICLINK
+      authBigTitle: $("authBigTitle"),       // V188_MAGICLINK
+      authBigDesc: $("authBigDesc"),         // V188_MAGICLINK
+      stepShot: $("stepShot"),               // V188_MAGICLINK
+      stepMail: $("stepMail"),               // V188_MAGICLINK
+      stepSubmit: $("stepSubmit"),           // V188_MAGICLINK
+      shotPreview: $("shotPreview"),         // V188_MAGICLINK
+      shotPreviewWrap: $("shotPreviewWrap"), // V188_MAGICLINK
+      shotClear: $("shotClear"),             // V188_MAGICLINK
+      joinReqFile: $("joinReqFile"),         // V188_MAGICLINK
+      joinReqSubmit: $("joinReqSubmit"),     // V188_MAGICLINK
+      joinReqHint: $("joinReqHint"),         // V188_MAGICLINK
       adminPassJoin: $("adminPassJoin"),
       joinBtn: $("joinBtn"),
       leaveBtn: $("leaveBtn"),
@@ -19676,29 +19757,210 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     /* ===== V188_MAGICLINK: 상단바 인증메일 버튼 ===== */
     if(els.sendLinkBtn){
       els.sendLinkBtn.addEventListener("click", async ()=>{
+        // 1단계(스크린샷)를 먼저 끝내야 인증 메일을 보낸다.
+        // 규칙상 서버 기록은 인증 뒤에만 되므로, 스샷은 압축해서 브라우저에 잠시 보관했다가 자동 제출한다.
+        if(!mkGetStashedShot_()){
+          showToast("먼저 1단계에서 글담 카페 활동내역 스크린샷을 올려 주세요.", 5000);
+          try{ els.joinReqFile?.focus(); els.stepShot?.scrollIntoView({behavior:"smooth", block:"center"}); }catch(_e){}
+          return;
+        }
         const raw = (els.signinEmail?.value || "").trim();
-        if(!raw){ showToast("이메일을 입력해줘!", 2500); try{ els.signinEmail?.focus(); }catch(_e){} return; }
+        if(!raw){ showToast("이메일을 입력해 주세요.", 2500); try{ els.signinEmail?.focus(); }catch(_e){} return; }
         if(!mkEmailLooksValid_(raw)){
-          showToast("글담 카페 아이디와 같은 네이버 메일(@naver.com)로 입력해줘!", 4500);
+          showToast("글담 카페 아이디와 같은 네이버 메일(@naver.com)로 입력해 주세요.", 4500);
           try{ els.signinEmail?.focus(); }catch(_e){} return;
         }
         const before = els.sendLinkBtn.textContent;
         els.sendLinkBtn.disabled = true; els.sendLinkBtn.textContent = "보내는 중…";
         try{
           await mkSendSignInLink_(raw);
-          showToast("인증 메일을 보냈어! ⚠️ 네이버는 스팸함으로 보낼 수 있으니 스팸함도 확인하고, 링크는 반드시 이 브라우저에서 열어줘.", 9000);
+          showToast("인증 메일을 보냈습니다. ⚠️ 네이버는 스팸함으로 보낼 수 있으니 스팸함도 확인해 주시고, 링크는 반드시 이 브라우저에서 열어 주세요.", 9000);
         }catch(err){
           console.warn("[V188_MAGICLINK] 발송 실패", err);
           const code = String(err?.code || "");
           showToast(
-            code === "auth/unauthorized-continue-uri" ? "이 주소가 Firebase 승인된 도메인에 없어. 관리자에게 알려줘!" :
-            code === "auth/invalid-email"             ? "이메일 형식을 다시 확인해줘!" :
+            code === "auth/unauthorized-continue-uri" ? "이 주소가 Firebase 승인된 도메인에 없습니다. 관리자에게 알려 주세요." :
+            code === "auth/invalid-email"             ? "이메일 형식을 다시 확인해 주세요." :
             ("인증 메일 발송 실패: " + (code || err?.message || "")), 7000);
         }finally{
           els.sendLinkBtn.disabled = false; els.sendLinkBtn.textContent = before;
         }
       });
     }
+    /* --- 가입 신청(글담 카페 활동내역 스샷) ---
+       규칙 제약: joinRequests/{uid}는 본인이 status:'pending'으로만 쓸 수 있고,
+       img는 'data:image/'로 시작하는 400,000자 이하 문자열이어야 한다. */
+    const MK_IMG_MAX_CHARS = 380000;   // 규칙 상한보다 여유를 둔다
+
+    async function mkShrinkImage_(file){
+      const bmp = await createImageBitmap(file);
+      try{
+        let w = Math.min(900, bmp.width), q = 0.72;
+        for(let i = 0; i < 10; i++){
+          const h = Math.max(1, Math.round(bmp.height * (w / bmp.width)));
+          const cv = document.createElement("canvas");
+          cv.width = w; cv.height = h;
+          cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+          const url = cv.toDataURL("image/jpeg", q);
+          if(url.length <= MK_IMG_MAX_CHARS) return url;
+          if(q > 0.45) q = Math.round((q - 0.1) * 100) / 100; else w = Math.round(w * 0.85);
+        }
+      }finally{ try{ bmp.close(); }catch(_e){} }
+      const e = new Error("IMAGE_TOO_BIG"); e.code = "mk/image-too-big"; throw e;
+    }
+
+    /* --- 스크린샷 임시 보관 -----------------------------------------------
+       규칙상 joinRequests 쓰기에는 email_verified가 필요해서 인증 전에는 서버에 못 올린다.
+       그래서 압축한 스샷을 localStorage에 잠깐 두었다가, 인증이 끝나면 자동으로 제출한다.
+       사용자 눈에는 "스샷 먼저 → 메일 인증" 순서가 되고 규칙은 건드리지 않는다. */
+    const MK_SHOT_LS = "mk_join_shot_v1";
+    function mkGetStashedShot_(){
+      try{ const v = localStorage.getItem(MK_SHOT_LS) || ""; return v.startsWith("data:image/") ? v : ""; }
+      catch(_e){ return ""; }
+    }
+    function mkClearStashedShot_(){ try{ localStorage.removeItem(MK_SHOT_LS); }catch(_e){} }
+    function mkPaintShotPreview_(){
+      const url = mkGetStashedShot_();
+      if(els.shotPreview) els.shotPreview.src = url || "";
+      if(els.shotPreviewWrap) els.shotPreviewWrap.style.display = url ? "" : "none";
+    }
+
+    if(els.joinReqFile){
+      els.joinReqFile.addEventListener("change", async ()=>{
+        const f = els.joinReqFile.files?.[0];
+        if(!f) return;
+        if(!/^image\//.test(f.type)){ showToast("이미지 파일만 올려 주세요.", 3000); els.joinReqFile.value = ""; return; }
+        if(els.joinReqHint) els.joinReqHint.textContent = "이미지 압축 중…";
+        try{
+          const img = await mkShrinkImage_(f);
+          try{ localStorage.setItem(MK_SHOT_LS, img); }
+          catch(_e){ showToast("브라우저 저장 공간이 부족합니다. 더 작게 잘라서 올려 주세요.", 6000); return; }
+          mkPaintShotPreview_();
+          if(mkAuthDone_()){ await mkSubmitStashed_(); }   // 이미 인증했다면 바로 제출
+          else{
+            showToast("스크린샷을 확인했습니다. 이제 2단계에서 이메일을 입력해 주세요 🌸", 5000);
+            await mkRefreshJoinState_();
+          }
+        }catch(err){
+          console.warn("[V188_MAGICLINK] 이미지 처리 실패", err);
+          showToast(String(err?.code || "") === "mk/image-too-big"
+            ? "이미지가 너무 큽니다. 화면을 조금 잘라서 다시 올려 주세요."
+            : "이미지를 읽지 못했습니다. 다른 파일로 시도해 주세요.", 6000);
+        }finally{ if(els.joinReqHint) els.joinReqHint.textContent = ""; }
+      });
+    }
+    if(els.shotClear){
+      els.shotClear.addEventListener("click", async ()=>{
+        mkClearStashedShot_();
+        if(els.joinReqFile) els.joinReqFile.value = "";
+        mkPaintShotPreview_();
+        await mkRefreshJoinState_();
+      });
+    }
+
+    /* --- 신청 제출 --- */
+    let __mkSubmitting = false;
+    let __mkAutoSubmitted = false;   // 자동 제출은 페이지당 1회 (실패 시 무한 재시도 방지)
+    async function mkSubmitStashed_(){
+      if(__mkSubmitting) return;
+      const u = auth.currentUser;
+      if(!u || u.isAnonymous || !u.email){ showToast("먼저 이메일 인증을 마쳐 주세요.", 4000); return; }
+      const img = mkGetStashedShot_();
+      if(!img){ showToast("스크린샷을 먼저 올려 주세요.", 4000); return; }
+      __mkSubmitting = true;
+      const btn = els.joinReqSubmit, label = btn ? btn.textContent : "";
+      if(btn){ btn.disabled = true; btn.textContent = "보내는 중…"; }
+      if(els.joinReqHint) els.joinReqHint.textContent = "신청을 보내는 중…";
+      try{
+        await rSet(rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/joinRequests/${u.uid}`), {
+          email: u.email,
+          img,
+          nick: normalizeNick(String(els.name?.value || "")) || "",
+          createdAtMs: Date.now(),
+          status: "pending"
+        });
+        mkClearStashedShot_();
+        if(els.joinReqFile) els.joinReqFile.value = "";
+        showToast("신청을 보냈습니다. 관리자 승인을 기다려 주세요 🌸", 6000);
+      }catch(err){
+        console.warn("[V188_MAGICLINK] 신청 실패", err);
+        const raw = String(err?.code || err?.message || "");
+        showToast(raw.includes("PERMISSION_DENIED")
+          ? "권한이 없습니다. 이메일 인증이 끝났는지 확인해 주세요."
+          : ("신청 실패: " + (raw || "알 수 없는 오류")), 7000);
+      }finally{
+        __mkSubmitting = false;
+        if(btn){ btn.disabled = false; btn.textContent = label; }
+        if(els.joinReqHint) els.joinReqHint.textContent = "";
+        await mkRefreshJoinState_();
+      }
+    }
+    if(els.joinReqSubmit) els.joinReqSubmit.addEventListener("click", ()=>{ mkSubmitStashed_(); });
+
+    /* --- 입장 전 화면 상태 그리기 --- */
+    async function mkRefreshJoinState_(){
+      const big = els?.authBig; if(!big) return;
+      const set = (cls, icon, title, desc)=>{
+        big.className = cls || "";
+        if(els.authBigIcon) els.authBigIcon.textContent = icon;
+        if(els.authBigTitle) els.authBigTitle.textContent = title;
+        if(els.authBigDesc) els.authBigDesc.innerHTML = desc || "";
+      };
+      const steps = (shot, mail, submit)=>{
+        if(els.stepShot) els.stepShot.style.display = shot ? "" : "none";
+        if(els.stepMail) els.stepMail.style.display = mail ? "" : "none";
+        if(els.stepSubmit) els.stepSubmit.style.display = submit ? "" : "none";
+      };
+      mkPaintShotPreview_();
+
+      if(!mkAuthDone_()){
+        set("need", "🔒", "이메일 인증이 필요합니다",
+          mkGetStashedShot_()
+            ? "스크린샷을 확인했습니다. 이제 <b>2단계</b>에서 카페 아이디와 같은 네이버 메일을 입력해 주세요."
+            : "글담 카페 활동내역 스크린샷과 이메일 인증이 필요합니다. <b>1단계</b>부터 진행해 주세요.");
+        steps(true, true, false);
+        return;
+      }
+      try{
+        const base = rRoomBase(FIXED_ROOM_ID);
+        const uid = auth.currentUser.uid;
+        if((await rGet(rRef(rtdb, `${base}/members/${uid}`))).exists()){
+          set("ok", "✅", "승인이 완료되었습니다", "닉네임과 입장키를 입력하신 뒤 <b>입장</b>을 눌러 주세요.");
+          steps(false, false, false); return;
+        }
+        const req = await rGet(rRef(rtdb, `${base}/joinRequests/${uid}`));
+        if(req.exists()){
+          const t = Number((req.val() || {}).createdAtMs) || 0;
+          set("wait", "⏳", "심사 대기 중입니다",
+            "관리자가 확인한 뒤 알려 드립니다." + (t ? `<br/><span class="tiny">신청 ${new Date(t).toLocaleString("ko-KR")}</span>` : ""));
+          steps(false, false, false); return;
+        }
+        if(mkGetStashedShot_()){
+          if(!__mkAutoSubmitted){
+            __mkAutoSubmitted = true;
+            set("wait", "📤", "신청을 보내는 중입니다", "잠시만 기다려 주세요.");
+            steps(false, false, false);
+            await mkSubmitStashed_();
+            return;
+          }
+          set("need", "📤", "신청을 보내지 못했습니다", "아래 <b>신청 보내기</b>를 다시 눌러 주세요.");
+          steps(true, false, true); return;
+        }
+        set("need", "📸", "스크린샷만 올리시면 완료됩니다",
+          "이메일 인증이 끝났습니다. 글담 카페 활동내역 스크린샷을 올려 주시면 신청이 접수됩니다.");
+        steps(true, false, true);
+      }catch(err){
+        console.warn("[V188_MAGICLINK] 신청 상태 조회 실패", err);
+        set("wait", "⚠️", "상태를 불러오지 못했습니다", "잠시 뒤 새로고침해 주세요.");
+        steps(false, false, false);
+      }
+    }
+
+    function mkRefreshAll_(){
+      try{ mkRefreshAuthHint_(); }catch(_e){}
+      try{ mkRefreshJoinState_(); }catch(_e){}
+    }
+
     // 보낸 주소를 칸에 되살리고, 링크로 돌아온 경우엔 입장을 누르기 전에 미리 처리한다
     try{
       const saved = localStorage.getItem(MK_EMAIL_LS) || "";
@@ -19706,11 +19968,11 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     }catch(_e){}
     try{
       if(isSignInWithEmailLink(auth, location.href)){
-        ensureMainAuthReady_().then(()=>mkRefreshAuthHint_(), ()=>mkRefreshAuthHint_());
+        ensureMainAuthReady_().then(()=>mkRefreshAll_(), ()=>mkRefreshAll_());
       }else if(typeof auth.authStateReady === "function"){
-        auth.authStateReady().then(()=>mkRefreshAuthHint_(), ()=>{});
+        auth.authStateReady().then(()=>mkRefreshAll_(), ()=>{});
       }else{
-        onAuthStateChanged(auth, ()=>mkRefreshAuthHint_());
+        onAuthStateChanged(auth, ()=>mkRefreshAll_());
       }
     }catch(_e){}
     /* ===== /V188_MAGICLINK ===== */
