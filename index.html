@@ -4505,7 +4505,7 @@ body.joined #preJoinCard{ display:none; }
        버튼이 타일 헤더로 옮겨 간 뒤에도 이 ::before가 살아 있으면 "🍃🍃 경량"처럼 이모지가 두 번 찍히므로
        짝과 같은 .actions 범위로 한정합니다(규칙 자체는 보존). */
     body.joined .actions #lightModeBtn::before{ content:"🍃"; font-size:15px; }
-    body.joined .actions #lowSpecBtn::before{ content:"🪶"; font-size:15px; }
+    body.joined .actions #lowSpecBtn::before{ content:"☁️"; font-size:15px; }
   }
   #lightModeSettingsBtn.lightModeOn{
     border-color:rgba(170,236,190,.56) !important;
@@ -4984,11 +4984,65 @@ body.joined #preJoinCard{ display:none; }
    - 이 블록은 .bigTimer 규칙들 중 파일에서 가장 뒤에 온다. 아래 변형 보정은 원본과
      같은 선택자를 써서 특정도를 맞추고 순서로 이긴다(선택자를 바꾸면 안 먹는다). */
 .bigTimer{ justify-content:flex-start; }
+/* ⚠ 이모지(🪙 U+1FA99)를 쓰지 않는다 — Emoji 13.0(2020)에 들어간 신형이라
+   구형 Windows 10 / 안드로이드의 이모지 폰트에 없고 두부(□)로 뜬다(2026-08-12 실사용 신고).
+   CSS로 직접 그리면 폰트·OS와 무관하게 어디서나 같은 모양이 나오고,
+   크기는 em이라 타이머 글자 크기를 따라 자동으로 커진다. */
 .bigTimer .coinTick{
-  font-size:.75em;   /* 2026-08-12 사용자 확정 — .62em은 숫자 옆에서 눌려 보였음 */
-  line-height:1;
+  position:relative;
+  width:.75em; height:.75em;   /* 2026-08-12 사용자 확정 — .62em은 숫자 옆에서 눌려 보였음 */
   flex:0 0 auto;
+  align-self:center;           /* .bigTimer가 baseline 정렬이라 빈 요소는 따로 세로 중앙을 잡아 준다 */
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,.82) 0 6%, rgba(255,255,255,0) 54%),
+    linear-gradient(150deg, #ffdf7a 0%, #f2b52c 50%, #c8871a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.34),
+    0 1px 2px rgba(0,0,0,.32);
   user-select:none;
+}
+/* 코인 면의 $ — ASCII라 어떤 폰트에도 있어서 이모지처럼 두부가 되지 않는다.
+   위쪽 흰 그림자로 살짝 음각처럼 보이게 한다. 회색 정지(grayscale)와 펄스(transform)는
+   부모에 걸리므로 이 각인도 함께 따라간다. */
+.bigTimer .coinTick::after{
+  content:"$";
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.46em;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:0;
+  color:rgba(116,72,8,.92);
+  text-shadow:0 .5px 0 rgba(255,255,255,.55);
+}
+
+/* V186_COIN_TICK: 상점·지갑용 인라인 코인 아이콘 — 타일 코인과 같은 모양을 글자 크기에 맞춰 쓴다.
+   상점 전체가 🪙 이모지를 쓰고 있었는데 같은 이유로 구형 기기에서 두부(□)로 떴다.
+   width/height가 1em이라 가격표(11px)든 지갑 pill이든 주변 글자 크기를 그대로 따라간다. */
+.mkCoinIcon{
+  display:inline-block;
+  position:relative;
+  width:1em; height:1em;
+  vertical-align:-.14em;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,.82) 0 6%, rgba(255,255,255,0) 54%),
+    linear-gradient(150deg, #ffdf7a 0%, #f2b52c 50%, #c8871a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.34),
+    0 1px 2px rgba(0,0,0,.32);
+  user-select:none;
+}
+.mkCoinIcon::after{
+  content:"$";
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.62em;
+  font-weight:900;
+  line-height:1;
+  color:rgba(116,72,8,.92);
+  text-shadow:0 .5px 0 rgba(255,255,255,.55);
 }
 .bigTimer .coinTick.coinTickIdle{ filter:grayscale(1); opacity:.42; }
 .bigTimer .coinTick.coinTickPulse{ animation:mkCoinTick .62s ease-out 1; }
@@ -5788,7 +5842,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="topPills legacyHide">
 <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
 </div>
-<button class="ghost" id="profileBtn">🪪 내 프로필</button>
+<button class="ghost" id="profileBtn">🆔 내 프로필</button>
 <!-- V183_UI(2026-08-11): 💌쪽지함을 타일 헤더(.gridHead .right)에서 상단바 내 프로필 뒤로 되돌렸다.
      오늘 V179_UI가 반대로 옮겼던 버튼이라 그때 붙인 layoutToggle(형제 버튼 크기 맞춤용)은 뗀다 —
      .topCenter button 규칙(135행)이 같은 40px·13px을 주므로 필요 없다.
@@ -5841,15 +5895,15 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <span class="modeSegLabel">모드</span>
 <button aria-pressed="true" class="modeSegBtn" id="modeSegNormal" title="일반 · 모든 화면 효과를 그대로 사용" type="button">일반</button>
 <button aria-pressed="false" class="modeSegBtn" id="modeSegLight" title="경량 · 프로필·펫·손캠 기능은 유지하고 화면 효과만 가볍게" type="button">🍃<span class="modeSegText"> 경량</span></button>
-<button aria-pressed="false" class="modeSegBtn" id="modeSegLow" title="저사양 · 프로필 타일을 접속자 목록으로 바꾸고 손캠·장식 효과를 줄임" type="button">🪶<span class="modeSegText"> 저사양</span></button>
+<button aria-pressed="false" class="modeSegBtn" id="modeSegLow" title="저사양 · 프로필 타일을 접속자 목록으로 바꾸고 손캠·장식 효과를 줄임" type="button">☁️<span class="modeSegText"> 저사양</span></button>
 </div>
 <button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃<span class="perfLabel"> 경량</span></button>
-<button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">🪶<span class="perfLabel"> 저사양</span></button>
+<button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">☁️<span class="perfLabel"> 저사양</span></button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
 <!-- 보기/정렬 메뉴 -->
 <div aria-label="보기/정렬 메뉴" class="viewMenu hidden" id="viewMenu" role="menu">
 <div class="vmSection">
-<div class="vmTitle">🪟 정렬</div>
+<div class="vmTitle">🔲 정렬</div>
 <div class="vmBtns">
 <button class="ghost" id="vmSortName" type="button">닉네임</button>
 <button class="ghost" id="vmSortStatus" type="button">상태&amp;닉네임</button>
@@ -5865,7 +5919,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 <!-- (레거시 버튼: 기능 유지용, UI에서는 숨김) -->
-<button aria-label="타일 정렬 방식" class="ghost layoutToggle legacyHide" id="sortModeBtn" title="타일 정렬 방식" type="button">🪟정렬: 닉네임</button>
+<button aria-label="타일 정렬 방식" class="ghost layoutToggle legacyHide" id="sortModeBtn" title="타일 정렬 방식" type="button">🔲정렬: 닉네임</button>
 <button aria-label="타일 정렬 모드 변경" class="ghost layoutToggle legacyHide" id="layoutToggleBtn" title="타일 정렬 모드 변경" type="button">◽미니 보기</button></div>
 </div>
 <div class="gridScroll" id="gridScroll">
@@ -5938,7 +5992,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="body chatBody">
 <div class="embedBar" id="embedBar" style="display:none">
 <div class="left">
-<span class="pill">🫧 임베드</span>
+<span class="pill">💧 임베드</span>
 <span class="tiny" id="embedTitle">열린 창</span>
 </div>
 <div class="right" style="display:flex; gap:8px; align-items:center">
@@ -5999,7 +6053,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div aria-hidden="true" class="modalOverlay" id="profileModal">
 <div aria-modal="true" class="modal" role="dialog">
 <div class="modalHeader">
-<div class="t">🪪 내 프로필</div>
+<div class="t">🆔 내 프로필</div>
 <button class="ghost" id="closeProfile">닫기</button>
 </div>
 <div class="modalBody">
@@ -6042,7 +6096,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="row" id="charaMotionRow">
 <label>✨캐릭터 움직임</label>
 <select id="charaMotionMode">
-<option value="stand">🧍 서 있기</option>
+<option value="stand">👤 서 있기</option>
 <option value="move">🚶 움직이기</option>
 </select>
 <span class="tiny">움직이기를 고르면 캐릭터가 내 프로필 타일 안을 자유롭게 돌아다녀요. 캐릭터 보여주기를 켰을 때만 골라요.</span>
@@ -6284,7 +6338,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <h2 id="worldTreeLineage">아직 정해지지 않은 세계수</h2>
 <p class="worldTreeLore" id="worldTreeLore">천상의 빛과 심연의 불꽃 사이, 첫 문장을 기다리는 씨앗이 잠들어 있습니다.</p>
 <div class="worldTreeTeamBox" aria-label="세계수 팀 선택">
-<button class="worldTreeTeamBtn" data-team="angel" id="worldTreeAngelTeam" type="button"><b id="worldTreeAngelTeamName">🤍 천사팀</b><span>화이트 · 라벤더 계열의<br/>찬란한 세계수를 키워요</span><span class="worldTreeRecruit" id="worldTreeAngelRecruit">1차 모집 · 0/5</span></button>
+<button class="worldTreeTeamBtn" data-team="angel" id="worldTreeAngelTeam" type="button"><b id="worldTreeAngelTeamName">🕊️ 천사팀</b><span>화이트 · 라벤더 계열의<br/>찬란한 세계수를 키워요</span><span class="worldTreeRecruit" id="worldTreeAngelRecruit">1차 모집 · 0/5</span></button>
 <button class="worldTreeTeamBtn" data-team="demon" id="worldTreeDemonTeam" type="button"><b id="worldTreeDemonTeamName">🖤 악마팀</b><span>화이트 · 레드 계열의<br/>심연의 세계수를 키워요</span><span class="worldTreeRecruit" id="worldTreeDemonRecruit">1차 모집 · 0/5</span></button>
 </div>
 <div class="worldTreeRecruitStatus" id="worldTreeRecruitStatus">1차 모집 중 · 양 팀이 각각 5명씩 차면 다음 차수가 열려요.</div>
@@ -6292,7 +6346,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="worldTreeMyStatus" id="worldTreeMyStatus">팀을 고르면 다음 작업 시간부터 기여가 시작돼요.</div>
 <div class="worldTreeRace">
 <div class="worldTreeRaceHead"><b id="worldTreeRoundTitle">Lv.1 선점 경쟁</b><span id="worldTreeMemberCount">소속 작가 0명</span></div>
-<div class="worldTreeGaugeLine"><strong id="worldTreeAngelGaugeName">🤍 천사</strong><div class="worldTreeGauge" role="progressbar" id="worldTreeAngelGauge" aria-label="천사팀 현재 레벨 진행률"><i id="worldTreeAngelBar"></i></div><output id="worldTreeAngelHours">0 / 100h</output></div>
+<div class="worldTreeGaugeLine"><strong id="worldTreeAngelGaugeName">🕊️ 천사</strong><div class="worldTreeGauge" role="progressbar" id="worldTreeAngelGauge" aria-label="천사팀 현재 레벨 진행률"><i id="worldTreeAngelBar"></i></div><output id="worldTreeAngelHours">0 / 100h</output></div>
 <div class="worldTreeGaugeLine"><strong id="worldTreeDemonGaugeName">🖤 악마</strong><div class="worldTreeGauge" role="progressbar" id="worldTreeDemonGauge" aria-label="악마팀 현재 레벨 진행률"><i id="worldTreeDemonBar"></i></div><output id="worldTreeDemonHours">0 / 100h</output></div>
 <div class="worldTreeClaims"><div class="worldTreeClaim"><span id="worldTreeAngelClaimLabel">천사팀 선점</span><b id="worldTreeAngelClaims">0</b></div><div class="worldTreeClaim"><span id="worldTreeDemonClaimLabel">악마팀 선점</span><b id="worldTreeDemonClaims">0</b></div></div>
 </div>
@@ -6300,7 +6354,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="worldTreeRankHead"><b>🏆 누적 기여 랭킹</b><span id="worldTreeRankTotal">참여 0명</span></div>
 <div class="worldTreePodiumWrap" id="worldTreePodiumWrap">
 <div class="worldTreePodiumGroup" data-side="mine">
-<div class="worldTreePodiumGroupHead"><b id="worldTreePodiumMineName">🤍 천사팀</b><span class="worldTreePodiumTag" id="worldTreePodiumMineTag">내 팀</span></div>
+<div class="worldTreePodiumGroupHead"><b id="worldTreePodiumMineName">🕊️ 천사팀</b><span class="worldTreePodiumTag" id="worldTreePodiumMineTag">내 팀</span></div>
 <ol class="worldTreePodium" id="worldTreePodiumMineList"></ol>
 </div>
 <div class="worldTreePodiumGroup" data-side="theirs">
@@ -6320,7 +6374,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div class="worldTreeRosterBody" id="worldTreeRosterBody">
 <div class="worldTreeRosterCol" data-team="angel">
-<div class="worldTreeRosterColHead"><b id="worldTreeRosterAngelName">🤍 천사팀</b><span id="worldTreeRosterAngelCount">0/30</span></div>
+<div class="worldTreeRosterColHead"><b id="worldTreeRosterAngelName">🕊️ 천사팀</b><span id="worldTreeRosterAngelCount">0/30</span></div>
 <ol class="worldTreeRosterList" id="worldTreeRosterAngelList"></ol>
 </div>
 <div class="worldTreeRosterCol" data-team="demon">
@@ -6366,7 +6420,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="hint">⚡ 화면 성능 모드</div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button aria-pressed="false" class="ghost" id="lightModeSettingsBtn" type="button">🍃 경량</button>
-<button aria-pressed="false" class="ghost" id="lowSpecSettingsBtn" type="button">🪶 저사양</button>
+<button aria-pressed="false" class="ghost" id="lowSpecSettingsBtn" type="button">☁️ 저사양</button>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">경량은 프로필·펫·손캠 기능을 유지하면서 효과와 화면 갱신만 줄여요. 저사양은 프로필 타일을 접속자 목록으로 바꾸고 손캠과 장식 효과를 줄입니다.</div>
 <div class="hr"></div>
@@ -6399,7 +6453,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="primary" id="sudaOpenRoom" type="button">💣 오늘 수다방 열기</button>
 <button class="ghost" id="sudaCloseRoom" type="button">💣 오늘 수다방 닫기</button>
-<button class="ghost" id="sudaCopyOwnerUid" type="button">🪪 제어 ID 복사(예비)</button>
+<button class="ghost" id="sudaCopyOwnerUid" type="button">🆔 제어 ID 복사(예비)</button>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 메인 작업방 관리자 인증 후 현재 브라우저의 수다 제어 ID를 자동으로 연결·복구해요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요. 제어 ID 복사는 자동 연결이 막힐 때만 사용하는 예비 기능이에요.</div>
 <div class="hr"></div>
@@ -6486,7 +6540,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div class="worldTreeAdminAtlas">
 <div class="worldTreeAdminAtlasHead"><b>📖 관리자 전용 성장 도감</b><span>일반 작가 화면에는 현재 모습만 표시됩니다</span></div>
-<div class="worldTreeAdminSideBtns"><button class="ghost on" id="worldTreePreviewAngel" type="button">🤍 천사 계열 보기</button><button class="ghost" id="worldTreePreviewDemon" type="button">🖤 악마 계열 보기</button></div>
+<div class="worldTreeAdminSideBtns"><button class="ghost on" id="worldTreePreviewAngel" type="button">🕊️ 천사 계열 보기</button><button class="ghost" id="worldTreePreviewDemon" type="button">🖤 악마 계열 보기</button></div>
 <section class="worldTreeScene worldTreeAdminPreviewScene" id="worldTreeAdminPreviewScene" data-alignment="angel" data-stage="0" aria-label="관리자 세계수 성장 미리보기">
 <div class="worldTreeAura" aria-hidden="true"></div><div class="worldTreeGround" aria-hidden="true"></div><div class="worldTreeCompletionAura" aria-hidden="true"></div>
 <div class="worldTreeEffects" aria-hidden="true"><div class="worldTreeSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="worldTreeButterflies"><i class="worldTreeButterfly b1"></i><i class="worldTreeButterfly b2"></i><i class="worldTreeButterfly b3"></i></div></div>
@@ -6527,7 +6581,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <!-- ✅ V172: 관리자 유령 세션 정리 -->
 <div class="hr"></div>
-<div class="hint">🧹 유령 세션 정리</div>
+<div class="hint">🗑️ 유령 세션 정리</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">작업중이 아닌 상태로 24시간이 넘은 접속을 찾아 연결을 끊습니다. 끊긴 분은 다시 입장할 수 있고 재입장 차단은 걸리지 않아요. 작업중인 분은 대상에서 제외됩니다.</div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="ghost" id="ghostSweepScan" type="button">대상 찾기</button>
@@ -6593,7 +6647,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
 <button id="ctxTimerReset" type="button">⏱️ 타이머 0초 · 휴식중</button>
 <button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
-<button class="danger" id="ctxForceOff" type="button">🫥 로그아웃 처리</button>
+<button class="danger" id="ctxForceOff" type="button">🚪 로그아웃 처리</button>
 <button class="danger" id="ctxHandcamOff" type="button">📹 손캠 끄기</button>
 <button id="ctxClose" type="button">닫기</button>
 </div>
@@ -7286,7 +7340,7 @@ function setSortModeDirect(mode){
 function setLayoutModeDirect(mode){
   // ✅ V143: 저사양 모드에서는 펫 놀이터 진입을 막아 GPU/실시간 리스너 부하를 차단
   if(typeof isLowSpecModeV143 === "function" && isLowSpecModeV143() && mode === "playground"){
-    try{ showToast("저사양 모드에서는 펫 놀이터를 쉬어가요 🪶"); }catch(e){}
+    try{ showToast("저사양 모드에서는 펫 놀이터를 쉬어가요 ☁️"); }catch(e){}
     mode = "default";
   }
   // ✅ V90: 펫 놀이터는 새 창을 열지 않고 현재 작업방 내부에서 전환합니다.
@@ -9293,7 +9347,7 @@ async function requestForceOff(targetUid, targetName){
   const isOwner = !!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid);
   const isAdmin = !!state.adminOk;
   if(!(isOwner || isAdmin)){
-    showToast("🫥 로그아웃 처리는 관리자만 가능해");
+    showToast("🚪 로그아웃 처리는 관리자만 가능해");
     return;
   }
   try{
@@ -9304,10 +9358,10 @@ async function requestForceOff(targetUid, targetName){
       lastSeenAtMs: rServerTimestamp(),
     };
     await rUpdate(rMePresenceRef(state.roomId, targetUid), patch);
-    showToast(`🫥 ${targetName || targetUid} 로그아웃 처리 완료`);
+    showToast(`🚪 ${targetName || targetUid} 로그아웃 처리 완료`);
   }catch(e){
     console.warn("[forceOff] failed", e);
-    showToast("🫥 로그아웃 처리 실패(권한/rules 확인)");
+    showToast("🚪 로그아웃 처리 실패(권한/rules 확인)");
   }
 }
 
@@ -9397,7 +9451,7 @@ function renderMissionMonthlyTable(agg, monthKey){
   sum.textContent = `${monthKey} · 완료 ${agg.totalCompletions}회 · 완료자 ${agg.uniquePeople}명 · 활동일 ${agg.activeDays}일`;
 
   if(!agg.rows.length){
-    body.innerHTML = `<div class="tiny statMuted">이 달에는 미션 완료 기록이 없어요 🥲</div>`;
+    body.innerHTML = `<div class="tiny statMuted">이 달에는 미션 완료 기록이 없어요 😅</div>`;
     return;
   }
 
@@ -9483,7 +9537,7 @@ function openMissionListModal(){
       done.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ko"));
       body.textContent = done.length
         ? done.map((d,i)=> `${i+1}. ${d.name}${d.text ? " — " + d.text : ""}`).join("\n")
-        : "아직 아무도 미션을 완료하지 않았어요 🥲";
+        : "아직 아무도 미션을 완료하지 않았어요 😅";
     })().catch(()=>{});
   }catch(e){}
 }
@@ -9938,7 +9992,7 @@ function openUrl(url){
       try{
         const uid = await getSudaAdminUid_();
         try{ await navigator.clipboard.writeText(uid); }catch(_){ window.prompt("아래 메인 수다 제어 ID를 복사해 주세요.", uid); }
-        showToast("🪪 메인 수다 제어 ID를 복사했어! 수다방 ☰ → 💣 세션 폭파 관리에서 등록해 주세요.", 4600);
+        showToast("🆔 메인 수다 제어 ID를 복사했어! 수다방 ☰ → 💣 세션 폭파 관리에서 등록해 주세요.", 4600);
       }catch(err){
         console.warn("copySudaOwnerUid failed", err);
         showToast((err && err.message) || "메인 수다 제어 ID 복사에 실패했어.", 3400);
@@ -10122,7 +10176,7 @@ async function openSudaWithTicket(baseUrl){
             '<body style="margin:0;display:flex;align-items:center;justify-content:center;' +
             'height:100vh;background:#fff7fb;color:#5b3b4c;' +
             'font-family:system-ui,-apple-system,\'Segoe UI\',\'Noto Sans KR\',sans-serif">' +
-            '<div style="text-align:center"><div style="font-size:34px">🫧</div>' +
+            '<div style="text-align:center"><div style="font-size:34px">💧</div>' +
             '<div style="margin-top:10px;font-size:15px">입장권 만드는 중…</div></div>');
           win.document.close();
         }catch(_e){}
@@ -13572,7 +13626,7 @@ function renderAdminProfileCatalog_(){
       }
       els.adminProfileSavedSelect.appendChild(group);
     };
-    appendGroup("🟢 현재 접속",onlineItems,"현재 접속 중인 저장 프로필 없음");
+    appendGroup("✅ 현재 접속",onlineItems,"현재 접속 중인 저장 프로필 없음");
     appendGroup("⚫ 로그아웃 · 최근 접속순",offlineItems,"로그아웃 상태의 저장 프로필 없음");
     /*
       optgroup을 사용해 접속/로그아웃을 시각적으로 구분하고,
@@ -15706,7 +15760,7 @@ async function sendChatCore(text, isFlush=false){
     // Tiles
     function statusBadge(p){
       const online = isOnlinePresence(p);
-      if(!online) return { text: "offline", cls: "bOff", emoji:"🫥" };
+      if(!online) return { text: "offline", cls: "bOff", emoji:"⚫" };
       if(p.status === "work")  return { text:"Work", cls:"bWork recBadge", emoji:"" };
       if(p.status === "break") return { text:"휴식중", cls:"bBreak", emoji:"☕", emojiHtml:'<span class="coffeeSteam" aria-hidden="true">☕</span>' };
       return { text:"자리비움", cls:"bIdle", emoji:"🌙" };
@@ -15940,7 +15994,8 @@ timer.className = "bigTimer";
 // ⚠ .time 노드는 어떤 상태에서도 반드시 남겨야 한다 — updateTimersLive가 이 노드를 못 찾으면
 //   거기서 continue로 빠져 focusSaveSeconds가 끊기고, heartbeat가 totalSecondsToday를
 //   (liveTotal − elapsedSec)로 계산하는 탓에 값이 0까지 붕괴해 코인 적립까지 망가진다.
-timer.innerHTML = `<span class="coinTick${(p && p.status === "work") ? "" : " coinTickIdle"}" aria-hidden="true">🪙</span><span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--"}</span>`;
+// 코인은 빈 span에 CSS로 그린다(위 .coinTick 참고) — 이모지를 쓰면 구형 OS에서 두부(□)로 뜬다.
+timer.innerHTML = `<span class="coinTick${(p && p.status === "work") ? "" : " coinTickIdle"}" aria-hidden="true"></span><span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--"}</span>`;
       const mbtn = timer.querySelector(".missionBtn");
       if(mbtn) updateMissionBtnForTile(mbtn, p);
 
@@ -20307,7 +20362,7 @@ try{
               await navigator.clipboard.writeText(txt);
               showToast("복사 완료! ✨");
             }catch(e){
-              showToast("복사 실패 🥲");
+              showToast("복사 실패 😅");
             }
           });
         }
@@ -20498,7 +20553,7 @@ try{
 
         els.onlineList.innerHTML = "";
         if(!arr.length){
-          els.onlineList.innerHTML = `<div class="tiny" style="opacity:.8;">지금 접속 중인 사람이 없어 🫥</div>`;
+          els.onlineList.innerHTML = `<div class="tiny" style="opacity:.8;">지금 접속 중인 사람이 없어 💤</div>`;
           return;
         }
 
@@ -23095,7 +23150,7 @@ joinRoom();
       for(const b of buttons){
         b.classList.toggle("lowSpecOn", !!on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
-        b.textContent = on ? "🪶 저사양 ON" : "🪶 저사양";
+        b.textContent = on ? "☁️ 저사양 ON" : "☁️ 저사양";
         b.title = on
           ? "저사양 모드 사용 중 · 클릭하면 일반 화면으로 복귀"
           : "프로필 타일·카메라·애니메이션을 줄인 경량 화면";
@@ -23192,7 +23247,7 @@ joinRoom();
     if(!options.silent){
       try{
         showToast(on
-          ? "저사양 모드 ON · 타일/카메라/애니메이션을 줄였어요 🪶"
+          ? "저사양 모드 ON · 타일/카메라/애니메이션을 줄였어요 ☁️"
           : "일반 화면으로 돌아왔어요");
       }catch(e){}
     }
@@ -23219,7 +23274,7 @@ joinRoom();
       if(!b) return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
-      showToast("저사양 모드에서는 손캠을 꺼두어요 🪶");
+      showToast("저사양 모드에서는 손캠을 꺼두어요 ☁️");
     }catch(e){}
   }, true);
 
@@ -23775,13 +23830,13 @@ joinRoom();
     const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
     const angelTeamName=content.angelTeamName;
     const demonTeamName=content.demonTeamName;
-    setText("worldTreeAngelTeamName",`🤍 ${angelTeamName}`);
+    setText("worldTreeAngelTeamName",`🕊️ ${angelTeamName}`);
     setText("worldTreeDemonTeamName",`🖤 ${demonTeamName}`);
-    setText("worldTreeAngelGaugeName",`🤍 ${angelTeamName}`);
+    setText("worldTreeAngelGaugeName",`🕊️ ${angelTeamName}`);
     setText("worldTreeDemonGaugeName",`🖤 ${demonTeamName}`);
     setText("worldTreeAngelClaimLabel",`${angelTeamName} 선점`);
     setText("worldTreeDemonClaimLabel",`${demonTeamName} 선점`);
-    setText("worldTreePreviewAngel",`🤍 ${angelTeamName} 계열 보기`);
+    setText("worldTreePreviewAngel",`🕊️ ${angelTeamName} 계열 보기`);
     setText("worldTreePreviewDemon",`🖤 ${demonTeamName} 계열 보기`);
     setText("worldTreeAngelClaims",tree.claims.angel.toLocaleString("ko-KR"));
     setText("worldTreeDemonClaims",tree.claims.demon.toLocaleString("ko-KR"));
@@ -23823,7 +23878,7 @@ joinRoom();
     }else{
       setText("worldTreeRecruitStatus",`${capacity.wave}차 모집 중 · 양 팀이 각각 5명씩 차면 ${capacity.wave<WORLD_TREE_TEAM_MAX_WAVES?`${capacity.wave+1}차가 열려요.`:"모집이 완료돼요."}`);
     }
-    const teamName=team==="angel"?`🤍 ${angelTeamName}`:team==="demon"?`🖤 ${demonTeamName}`:"미선택";
+    const teamName=team==="angel"?`🕊️ ${angelTeamName}`:team==="demon"?`🖤 ${demonTeamName}`:"미선택";
     setText("worldTreeMyStatus",team ? `${teamName} · ${Math.max(1,Number(member?.wave)||1)}차 합류 · 작업중으로 쌓인 시간이 약 45초 간격으로 반영돼요.` : "현재 모집 중인 팀을 고르면 선택 이후의 작업 시간부터 기여가 시작돼요.");
     // 팀 선택 취소는 실제로 서버에 내 멤버 기록이 있고, 아직 완성 전일 때만 노출한다.
     const cancelButton=document.getElementById("worldTreeTeamCancel");
@@ -23835,7 +23890,7 @@ joinRoom();
     setText("worldTreeLineage",branchName?`${content.treeName} · ${branchName}`:content.treeName);
     setText("worldTreeLore",lore);
     const ribbon=document.getElementById("worldTreeFinalRibbon");
-    if(ribbon) ribbon.textContent=alignment==="angel"?`🤍 ${content.angelName} 완성`:alignment==="demon"?`🖤 ${content.demonName} 완성`:`⚖️ ${content.balanceName} 완성`;
+    if(ribbon) ribbon.textContent=alignment==="angel"?`🕊️ ${content.angelName} 완성`:alignment==="demon"?`🖤 ${content.demonName} 완성`:`⚖️ ${content.balanceName} 완성`;
     setText("worldTreeRules",`팀은 ${capacity.wave}차 모집 중이며 한 차수에 양 팀 각 5명, 팀당 최대 30명까지 참여합니다. 양 팀의 현재 차수가 모두 차야 다음 차수가 열립니다. 각 레벨에서 팀별 ${tree.config.hoursPerLevel}시간을 먼저 채운 팀이 선점하며, 최대 ${max.toLocaleString("ko-KR")}레벨에서 더 많은 레벨을 선점한 계열로 완성됩니다.`);
 
     const maxInput=document.getElementById("worldTreeAdminMaxLevel");
@@ -23890,7 +23945,7 @@ joinRoom();
     const rows=worldTreeMemberRows_(tree);
     const content=tree?.config?.content||{};
     const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
-    setText("worldTreeRosterAngelName",`🤍 ${content.angelTeamName||"천사팀"}`);
+    setText("worldTreeRosterAngelName",`🕊️ ${content.angelTeamName||"천사팀"}`);
     setText("worldTreeRosterDemonName",`🖤 ${content.demonTeamName||"악마팀"}`);
     [["angel","worldTreeRosterAngelList","worldTreeRosterAngelCount"],["demon","worldTreeRosterDemonList","worldTreeRosterDemonCount"]].forEach(([team,listId,countId])=>{
       const list=document.getElementById(listId);
@@ -23981,7 +24036,7 @@ joinRoom();
     const overall=worldTreeAlignment_(tree);
     const mineTeam=(myTeam==="angel"||myTeam==="demon")?myTeam:(overall==="demon"?"demon":"angel");
     const theirsTeam=mineTeam==="angel"?"demon":"angel";
-    const label=(t)=>t==="angel"?`🤍 ${content.angelTeamName||"천사팀"}`:`🖤 ${content.demonTeamName||"악마팀"}`;
+    const label=(t)=>t==="angel"?`🕊️ ${content.angelTeamName||"천사팀"}`:`🖤 ${content.demonTeamName||"악마팀"}`;
     const setText=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=value; };
     setText("worldTreePodiumMineName",label(mineTeam));
     setText("worldTreePodiumTheirsName",label(theirsTeam));
@@ -24103,7 +24158,7 @@ joinRoom();
     const requestedTeamName=team==="angel"?labels.angelTeamName:labels.demonTeamName;
     const previous=worldTreeSelectedTeam_();
     const remotePrevious=worldTreeS2Runtime.snapshot?.members?.[uid]?.team||"";
-    if(previous===team && remotePrevious===team){ showToast(`이미 ${requestedTeamName}이에요 ${team==="angel"?"🤍":"🖤"}`); return; }
+    if(previous===team && remotePrevious===team){ showToast(`이미 ${requestedTeamName}이에요 ${team==="angel"?"🕊️":"🖤"}`); return; }
     if(worldTreeS2Runtime.snapshot){
       const capacity=worldTreeTeamCapacity_(worldTreeS2Runtime.snapshot,uid);
       if(!capacity[`${team}Open`]){
@@ -24185,7 +24240,7 @@ joinRoom();
       rememberWorldTreeTeam_(team);
       renderWorldTreeS2_(tree);
       const wave=Math.max(1,Number(tree.members?.[uid]?.wave)||1);
-      showToast(`${requestedTeamName} ${wave}차로 합류했어요 ${team==="angel"?"🤍":"🖤"}`,2800);
+      showToast(`${requestedTeamName} ${wave}차로 합류했어요 ${team==="angel"?"🕊️":"🖤"}`,2800);
       if(mergeInfo.count>0){
         setTimeout(()=>showToast("다른 기기에서 등록한 프로필 기록을 하나로 합쳤어요",2800),1500);
       }
@@ -25508,7 +25563,7 @@ if(!window.__MK_BOOT_OK__){
 <pre class="guidePre" id="guidePre">
 
 
-🟥사용 안내서🟥
+🔴사용 안내서🔴
 
 🔥 /출근 링크로 접속
 
@@ -25522,9 +25577,9 @@ if(!window.__MK_BOOT_OK__){
 👉내 프로필에서 자유롭게 프로필 타일을 꾸미기(⚡​플꾸타임~~~!!)
 👉대시 보드 화면 위로 접기, 대시보드/채팅창 사이드 접기 가능
 
-🟥우리가 함께 사용하는 링크들의 바로가기는 대시보드에 연결되어 있습니다.
-🟥오류/건의는 수시로 수정이 가능합니다.
-🟥혹여라도 새 작업방에서 작업하시다가 문제가 생긴 듯하다면 갠톡 주십셔! 
+🔴우리가 함께 사용하는 링크들의 바로가기는 대시보드에 연결되어 있습니다.
+🔴오류/건의는 수시로 수정이 가능합니다.
+🔴혹여라도 새 작업방에서 작업하시다가 문제가 생긴 듯하다면 갠톡 주십셔! 
 </pre>
 </div>
 </div>
@@ -26652,7 +26707,7 @@ if(!window.__MK_BOOT_OK__){
     if(lv.textContent !== nextLv) lv.textContent = nextLv;
     // 자세한 설명은 카드에 넣지 않고 툴팁으로만 둔다(좁은 칸에서 줄이 깨지지 않도록).
     if(inner){
-      const teamLabel = info.myTeam ? `${info.myTeam === 'angel' ? '🤍' : '🖤'} ${info.teamName}` : '팀 미선택';
+      const teamLabel = info.myTeam ? `${info.myTeam === 'angel' ? '🕊️' : '🖤'} ${info.teamName}` : '팀 미선택';
       inner.title = `${info.treeName} · ${info.finished ? '완성' : info.stageName} · ${teamLabel} · MAX ${Number(info.maxLevel).toLocaleString('ko-KR')} · 눌러서 자세히 보기`;
     }
     // ✅ V168: tree 모드에서도 물방울 배지를 함께 갱신한다.
@@ -29120,6 +29175,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     return { emoji: emo, label: lb };
   }
   function fmtCoins(n){ try{ return Number(n).toLocaleString('ko-KR'); }catch(e){ return String(n); } }
+  // V186_COIN_TICK: 🪙 이모지(U+1FA99, Emoji 13.0)는 구형 Windows 10·안드로이드에 글리프가 없어
+  // 두부(□)로 뜬다(2026-08-12 실사용 신고). CSS로 그린 .mkCoinIcon으로 대체한다.
+  // 텍스트만 들어가는 자리(토스트·title 속성)는 아이콘을 못 넣으므로 "코인" 글자를 쓴다.
+  var COIN = '<span class="mkCoinIcon"></span>';
   function ownedKeyFor(catKey, name){ return catKey + '/' + name; }
   function loadOwned(){
     try{
@@ -29670,9 +29729,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       // V170_AWARD2: 결제 후보가 0개여도 특수 미리보기 중이면 그 행은 보여준다(빈 안내로 덮지 않는다)
       if(list) list.innerHTML = spHtml || '<div class="mkCartEmpty"><span class="ic">👗</span><span>파츠를 누르면 여기에 담겨요<br>결제 전엔 나만 보여요</span></div>';
       var tot0 = $id('mkCartTotal');
-      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>🪙0</b> · 보유 🪙' + fmtCoins(readCoins()) + spTail;
+      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>' + COIN + '0</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail;
       var pay0 = $id('mkCartPay');
-      if(pay0){ pay0.disabled = true; pay0.textContent = '🪙 결제'; }
+      // textContent → innerHTML: 넣는 값이 고정 문자열이라 안전하다(아이콘을 그리려면 HTML이어야 한다)
+      if(pay0){ pay0.disabled = true; pay0.innerHTML = COIN + ' 결제'; }
       return;
     }
     var total = 0, checkedN = 0;
@@ -29684,13 +29744,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         + '<input type="checkbox" data-key="' + esc(k) + '"' + (checked ? ' checked' : '') + '>'
         + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
         + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
-        + '<span class="mkCartPrice">🪙' + fmtCoins(it.price) + '</span>'
+        + '<span class="mkCartPrice">' + COIN + fmtCoins(it.price) + '</span>'
         + '</label>';
     }).join('') + spHtml; // 결제 후보 뒤에 안내 행
     var tot = $id('mkCartTotal');
-    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>🪙' + fmtCoins(total) + '</b> · 보유 🪙' + fmtCoins(readCoins()) + spTail;
+    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>' + COIN + fmtCoins(total) + '</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail;
     var pay = $id('mkCartPay');
-    if(pay){ pay.disabled = !checkedN; pay.textContent = '🪙 ' + fmtCoins(total) + ' 결제'; }
+    // textContent → innerHTML: fmtCoins는 숫자 포맷 결과라 안전하다
+    if(pay){ pay.disabled = !checkedN; pay.innerHTML = COIN + ' ' + fmtCoins(total) + ' 결제'; }
   }
   function payCart(){
     var items = tryOnItems().filter(function(it){ return !cartUnchecked[ownedKeyFor(it.catKey, it.name)]; });
@@ -29702,7 +29763,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     /* V169_SHOP2: 결제는 소유권 구매만 — 착장 확정은 [💾 저장] 버튼. 자동 persist 없음.
        보유 변경으로 타일 표출(보유분 필터)이 달라질 수 있어 재계산만 트리거한다. */
     try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e){}
-    toast('🪙-' + fmtCoins(total) + ' · 파츠 ' + items.length + '개 구매 완료! [💾 저장]을 눌러야 착장이 확정돼요 ✨', 3400);
+    // 토스트는 텍스트만 받으므로 아이콘 대신 "코인" 글자를 쓴다(이모지 두부 회피)
+    toast('코인 -' + fmtCoins(total) + ' · 파츠 ' + items.length + '개 구매 완료! [💾 저장]을 눌러야 착장이 확정돼요 ✨', 3400);
     renderChara(); // renderSaveBar 포함 — 미저장 상태면 저장 버튼 강조
   }
   function revertTryOn(){ // V169_SHOP2: 모달 닫힘 — 미저장 변경(착장/색/이름/입어보기)을 마지막 저장본으로 되돌림
@@ -30020,12 +30082,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       }
       var price = partPrice(cat.key, p.name);
       var isSet = isSetPart(p.name); // V175_PARTSLOT: 세트 파츠 — 같은 계열이어도 서로/낱개와 함께 착용된다
-      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 🪙'+fmtCoins(price)+' · 눌러서 입어보기'))
+      // title 속성은 HTML이 안 들어가므로 아이콘 대신 "코인" 글자를 쓴다(이모지 두부 회피)
+      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기'))
         + (isSet?' · 세트 파츠 — 같은 종류끼리도 함께 착용돼요':'');
       return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'"'+(isSet?' data-set="1"':'')+' title="'+title+'">'
         + thumbImgHtml(cat.key, p.name, p.url, '') // V169_SHOP: _rects 크롭(contain) — rect 없으면 전체 표시 폴백
         // V169: 모든 파츠가 상태 배지를 가진다 — 보유는 "보유 ✓", 미보유는 가격 (배지 없음 = 상태 불명 혼란 방지)
-        + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">🪙'+fmtCoins(price)+'</span>'))
+        + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">'+COIN+fmtCoins(price)+'</span>'))
         + (isSet?'<span class="mkCharaPrice mkSetBadge">세트</span>':'') // V175_PARTSLOT: 좌상단 세트 배지
         + '</div>';
     }).join('');
@@ -30335,7 +30398,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox">'
     +     '<div class="petSectionTitle"><span>🛒 입어보는 중</span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
     +     '<div id="mkCartList" class="mkCartList"></div>'
-    +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">🪙 결제</button></div>'
+    +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">' + COIN + ' 결제</button></div>'
     +   '</div>'
     /* V170_AWARD: 개근상 코드 등록 칸 — 코인으로는 못 사는 특수 파츠를 코드로 해금.
        한 달에 한 번 몇 분만 쓰는 칸이라 기본은 접어 두고(제목 줄만) 남는 높이를 미리보기 무대에 양보한다.
@@ -30686,6 +30749,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
     return h ? (h + '시간 ' + m + '분') : (m + '분');
   }
+  // V186_COIN_TICK: 여기는 상점(v169CharaDressupScript)과 다른 스크립트 블록이라
+  // 그쪽 COIN이 보이지 않는다. 같은 아이콘을 쓰도록 따로 정의한다.
+  var COIN = '<span class="mkCoinIcon"></span>';
   function ensureWalletEl(){
     var ov = document.getElementById('petModal'); if(!ov) return null;
     var head = ov.querySelector('.modalHeader'); if(!head) return null;
@@ -30701,7 +30767,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   function updateWalletUI(){
     var el = ensureWalletEl(); if(!el) return;
     var s = readStats();
-    el.textContent = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · 🪙 ' + s.coins.toLocaleString('ko-KR');
+    // textContent → innerHTML: fmtDur/toLocaleString 모두 숫자 포맷 결과라 안전하다
+    el.innerHTML = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' ' + s.coins.toLocaleString('ko-KR');
     el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; // V169 3차: 파츠 상점 오픈
   }
 
@@ -32683,13 +32750,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       items = slim;
       if(isOpen()) render(items);
       setStamp();
-      if(!items.length) setState('아직 캐릭터를 꾸민 사람이 없어! 🥲');
+      if(!items.length) setState('아직 캐릭터를 꾸민 사람이 없어! 😅');
       else if(indexEmpty) setState('전체 명단은 준비 중이야 — 지금은 접속 중인 캐릭터만 보여! 🌱');
       else setState('');
     }).catch(function(e){
       try{ console.warn('[binder v176] 목록을 불러오지 못했습니다', e); }catch(_e){}
-      setState(items.length ? '새로 불러오지 못했어 — 저장해 둔 목록을 보여줄게 🥲'
-                            : '도감을 불러오지 못했어 🥲 잠시 뒤 새로고침을 눌러줘.');
+      setState(items.length ? '새로 불러오지 못했어 — 저장해 둔 목록을 보여줄게 😅'
+                            : '도감을 불러오지 못했어 😅 잠시 뒤 새로고침을 눌러줘.');
     }).then(function(){
       busy = false; syncRefreshBtn(); armCooldown();
     });
