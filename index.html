@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V186.8_FULLSCREEN: 스크리브너 몰입 모드 같은 전체화면 집필 기능을 켜면 화면공유가 멈추던 문제. 그런 기능은 기존 창을 키우는 게 아니라 새 창을 띄우기 때문에, 공유 중이던 창이 더 이상 그려지지 않아 캡처가 멎는다. monitorTypeSurfaces:"exclude"로 전체 화면 선택지를 아예 막아 둔 것이 원인이라 그 옵션을 걷어냈다. displaySurface:"window"는 힌트로 남겨 창 탭이 여전히 먼저 열리므로, 전체화면 모드를 안 쓰는 분들에게는 달라지는 것이 없다(기본값 변경이 아니라 선택지 추가). surfaceSwitching도 "include"로 열어 공유를 끊지 않고 소스를 바꿀 수 있게 했다. 프라이버시는 세 겹으로 유지된다 — ①크롬 자체 선택 창에서 무엇을 공유할지 직접 보고 고르고 ②영역 선택으로 고른 사각형 밖은 애초에 전송되지 않으며 ③모자이크가 한 겹 더 가린다. 다만 전체 화면을 고르면 그 사각형 안에서 앱을 전환할 때 그 내용도 (모자이크된 채로) 나가므로, 확인 모달에 언제 전체 화면을 골라야 하는지와 함께 안내한다. 빌드 17060 -->
 <!-- V186.7_OPEN: 화면공유 파일럿 종료 — 전원 공개(screenShareUnlocked_가 항상 true). 실측으로 확인한 것: 송출량 2,700~3,900bps로 상한 50kbps의 1/15(12명이 하루 8시간 써도 월 34GB, 손캠 610GB와 합쳐 무료 1,000GB 안), 송출·수신 양쪽 정상 동작, 창 단위 캡처 + 송출 전 모자이크로 원고 보호. 다시 잠가야 하면 그 함수만 예전 조건(?screen=1 + localStorage 마커)으로 되돌리면 된다. 상단 버튼은 V186.4에서 하나로 합쳐져 있으므로 꺼져 있으면 "📹 캠/공 n/12", 누르면 손캠·화면공유 선택 메뉴가 뜬다. 빌드 17050 -->
 <!-- V186.6_KIND_KEEP: 화면공유인데도 타일이 계속 "손캠 LIVE"로 뜨던 것 수정. 송출 경로는 슬롯에 kind:"screen"을 제대로 썼지만, refreshOwnLive가 rRunTransaction으로 슬롯 레코드를 통째로 교체하면서 payload에 kind가 없어 방금 쓴 값을 지웠다. 이 함수는 pc-connected 직후에 바로 도니 사실상 항상 지워졌다(RTDB 실측: 점유 슬롯 3개 모두 kind 없음). payload에 kind를 추가하고, "여기 빠진 필드는 지워진다"는 경고를 주석으로 남긴다. reserveSlot도 레코드를 통째로 쓰지만 ready:false 단계라 아직 아무도 렌더하지 않으므로 그대로 둔다. kind가 없는 옛 레코드는 hcLiveLabel_이 "손캠 LIVE"로 처리하므로 구버전 탭과도 호환된다. 빌드 17040 -->
 <!-- V186.5_FPS5: 화공 2fps → 5fps. 파일럿 실측(2026-08-12, chrome://webrtc-internals) 송출량이 2,700~3,900bps로 상한 50kbps의 약 1/15이었고, 타이핑 중이든 아니든 값이 거의 같았다 — 비트레이트가 내용이 아니라 프레임 수에 지배된다는 뜻이라 fps가 체감을 좌우하는 유일한 손잡이다. 모자이크(24블록=실질 576값)가 압축에 오히려 유리했던 것으로, "각진 경계라 압축이 불리할 것"이라던 V186.1의 우려는 정반대였다. 5fps에서도 12명이 하루 8시간 쓸 때 월 86GB 수준(손캠 610GB와 합쳐도 무료 1,000GB 안)이라 여유가 크다. 숨김 탭에서도 MediaStreamTrackProcessor가 트랙 프레임을 그대로 받으므로 실제로 올라간다(setInterval 보조 경로만 숨김 시 1fps로 묶인다). maxBitrate 50kbps는 안전 상한으로 그대로 둔다. 빌드 17030 -->
@@ -22377,8 +22378,10 @@ joinRoom();
             '</span>' +
           '</div>' +
           '<div id="mkScHint" style="font-size:12px;margin-top:10px;line-height:1.55;"></div>' +
-          '<div style="font-size:11.5px;opacity:.55;margin-top:6px;line-height:1.55;">' +
-            '공유 중에는 그 창을 최소화하지 마세요 — 화면이 멈춘 채로 남습니다.' +
+          '<div style="font-size:11.5px;opacity:.6;margin-top:6px;line-height:1.6;">' +
+            '공유 중에는 그 창을 최소화하지 마세요 — 화면이 멈춘 채로 남습니다.<br>' +
+            '스크리브너 몰입 모드처럼 <b style="opacity:.9">전체화면 집필 기능</b>을 쓰신다면, 그 기능이 새 창을 띄우기 때문에 ' +
+            '창 대신 <b style="opacity:.9">[전체 화면]</b>을 골라야 계속 보입니다. 이때도 위에서 고른 사각형 밖은 전송되지 않아요.' +
           '</div>' +
           '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">' +
             '<button id="mkScCancel" type="button" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">취소</button>' +
@@ -22495,11 +22498,19 @@ joinRoom();
     }
 
     async function makeBlurredScreenSource_(onSourceEnded){
+      /* V186.8: monitorTypeSurfaces:"exclude"(전체 화면 선택지 제거)를 걷어낸다.
+         스크리브너 몰입 모드처럼 집필 프로그램의 전체화면 기능은 기존 창을 키우는 게 아니라
+         새 창을 띄우는 경우가 많다. 그러면 공유 중이던 창은 더 이상 그려지지 않아 캡처가 멈춘다.
+         '전체 화면'을 고를 수 있게 열어 두면 그런 분들도 쓸 수 있다.
+         displaySurface:"window"는 힌트로 남겨 창 탭이 기본으로 열리므로,
+         전체화면 모드를 안 쓰는 분들의 선택은 지금과 같다(추가 선택지일 뿐 기본값 변경이 아니다).
+         surfaceSwitching도 열어 공유를 끊지 않고 소스를 바꿀 수 있게 한다.
+         프라이버시는 ①크롬 자체 선택 창에서 무엇을 공유할지 직접 보고 고르고
+         ②영역 선택으로 고른 사각형 밖은 아예 전송되지 않으며 ③모자이크가 한 겹 더 가린다. */
       const src = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "window", frameRate: SCREEN_FPS },
-        monitorTypeSurfaces: "exclude",  // 전체 화면 선택지를 없앤다(창만 고르게)
+        video: { displaySurface: "window", frameRate: SCREEN_FPS },  // 힌트: 창 탭이 먼저 열린다
         selfBrowserSurface: "exclude",   // 작업방 탭 자기 자신 제외(무한 거울 방지)
-        surfaceSwitching: "exclude",     // 공유 중 소스 바꾸기 버튼 제거
+        surfaceSwitching: "include",     // 공유 중에도 소스 변경 허용(전체화면 모드로 갈아탈 때)
         audio: false
       });
       /* ⚠️ <video>를 문서에서 떼면 프레임이 갱신되지 않아 정지화면이 나간다.
@@ -23785,7 +23796,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17050; // ✅ V186.7: 화면공유 파일럿 종료 — 전원 공개.
+  const MK_APP_BUILD = 17060; // ✅ V186.8: 전체화면 집필 모드에서도 공유되도록 '전체 화면' 선택지 개방.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
