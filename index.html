@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V186.1_MOSAIC: 화면공유 가리기를 블러 → 모자이크 기본으로 바꿈. 블러(8px)는 구조까지 뭉개서 "지금 글을 쓰는 중"인지조차 안 보인다는 파일럿 피드백(2026-08-12). 모자이크는 작은 캔버스로 줄였다가 imageSmoothingEnabled=false로 되키워 각진 블록을 만들며, 글줄 덩어리·페이지 모양·커서 이동 같은 형태는 남기고 글자만 없앤다. 블록 수 14~32(기본 24), 상한 32는 안전선 — 더 세밀하면 확대 시 글자 윤곽이 드러난다. 확인 모달에서 모자이크/블러를 즉시 전환하며 비교할 수 있고 선택은 localStorage(mkScreenCropV1)에 남는다. 타일 라벨은 "화면 LIVE" → "화공 LIVE"로 바꾸고, 연결 중(ready:false)이라 HC_LIVE에 아직 내 슬롯이 없을 때 "손캠 LIVE"로 잘못 뜨던 것을 hcLiveInfoFor_로 hc.my/hc.pending의 kind를 먼저 보게 고쳤다. ⚠️ 모자이크는 경계가 각져 블러보다 압축이 불리할 수 있다 — 50kbps 상한은 그대로이므로 파일럿 실측에서 프레임 저하가 없는지 확인할 것. 빌드 16990 -->
 <!-- V186_SCREEN_SHARE: 화면공유 1단계(파일럿) + 손캠 슬롯 9→12. ①손캠과 슬롯·송출·정리 경로를 공유한다(startPublish_(kind)) — 한 사람당 슬롯 하나라 손캠과 화면공유는 자동으로 배타적이고, 타일 렌더·RTDB 규칙·시청 구독이 그대로 재사용된다. 슬롯 레코드에 kind("cam"|"screen")만 추가. ②블러는 반드시 송출 전, 보내는 사람 기기의 캔버스에서 건다(받는 쪽 CSS 블러는 원본이 전송되어 개발자도구로 보인다). getDisplayMedia는 monitorTypeSurfaces:"exclude"로 전체 화면 선택지를 없애 창 단위 캡처만 허용 — 알림·작업표시줄·다른 창이 물리적으로 캡처에 안 들어온다. ③캔버스 그리기는 setInterval로만 돌린다. 송출자의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고 숨김 탭에서 rAF는 0.0fps다(2026-08-12 실측, setInterval은 1.0fps 유지). ④maxBitrate 50kbps·2fps 하드 상한 — egress가 ingress의 8.6배로 증폭되므로 이 상한 하나가 월 사용량을 결정한다(7명 동시 사용 시 약 247GB). 손캠 maxFramerate도 V185.2의 10fps에 맞춰 15→10. ⑤시작 전 확인 모달: 왼쪽에 내 원본(나만 봄) + 공유 범위 사각형, 오른쪽에 실제로 나가는 블러 영상을 나란히 띄운다. 오른쪽은 캡처 소스 캔버스 그 자체를 붙이므로 "미리보기와 실제가 다를" 여지가 없다. 원본을 눌러 위치를 옮기고 막대로 1~3배 확대하며, 선택 사각형은 화면 밖으로 못 나가게 가둔다(localStorage mkScreenCropV1에 비율로 저장). ⑥파일럿 게이트: 주소에 ?screen=1을 한 번 붙인 브라우저에만 버튼이 열린다. 실측이 끝나면 걷어낸다. ⚠️ 슬롯 12는 firebase-rules.json의 handcam/live/$slotId가 0~11을 허용해야 동작한다(2026-08-12 배포 완료). 빌드 16980 -->
 <!-- V185.3_FEED_GUARD_FIX: "타일이 전부 사라지고 나만 남음" 재발 수정(2026-08-12 뽀솜님, 새로고침 후 새 코드에서 겪음 = V185.2 실패). 원인은 가드 임계값이 ONLINE_TTL_MS(20분)와 같았던 것 — 구독은 붙어 있는데 수신만 끊긴 경우 T0+17분(마지막 하트비트가 T0-3분이던 사람)부터 만료가 시작되는데 가드는 T0+20분에야 발동해, 그 3분 사이에 전원이 사라지고 그 빈 명단이 _lastPresenceArrBase에 기록되어 가드가 빈 명단을 붙잡는 래치가 됐다. ①임계값을 하트비트x2(6분)로 낮춰 첫 만료보다 11분 앞서 발동 ②보관본(__presenceGoodArr)은 피드가 살아 있을 때만 갱신해 래치 차단 ③내 하트비트 메아리는 수신 근거에서 제외(3분 주기라 그것만으로 6분 임계값을 영원히 넘김) ④presenceFeedWatchdog_: 구독이 붙어 있는데 6분 넘게 소식이 없으면 재구독해 실제로 되살린다(보이는 탭 + 절약 일시정지 아님 + 10분 쿨다운으로 다운로드 폭주 방지). 빌드 16970 -->
 <!-- V185.2_SQUARE_CAM: 손캠 SFU egress 절감 — 카메라 캡처를 4:3(320×240)에서 정사각(240×240)으로, fps 15→10. 타일이 aspect-ratio:1/1이고 video가 object-fit:cover라 4:3으로 보내면 좌우 25%가 잘려 아무도 보지 못하는데 전송 요금은 그대로 나갔다(실측 2026-08-12: Cloudflare Realtime SFU egress 412GB / ingress 48GB = 8.6배 증폭, 8월 환산 약 1,087GB로 무료 1,000GB 초과 예상). 정사각 캡처는 화면에 보이는 그림이 1픽셀도 바뀌지 않고 픽셀만 25% 줄며, fps 저하는 선명도와 무관하다(움직임만 덜 부드러워짐). 둘을 합쳐 약 610GB 예상. 정사각 모드를 못 만드는 카메라가 240×180으로 떨어지면 조용히 흐려지므로 협상 결과를 mkDiag("손캠-해상도미달")로 남긴다. 빌드 16960 -->
@@ -21511,7 +21512,15 @@ joinRoom();
 
     // V186: 슬롯 레코드의 kind로 타일 라벨을 고른다. kind가 없으면 예전 손캠 레코드다.
     function hcLiveLabel_(liveInfo){
-      return (String((liveInfo && liveInfo.kind) || "") === "screen") ? "화면 LIVE" : "손캠 LIVE";
+      return (String((liveInfo && liveInfo.kind) || "") === "screen") ? "화공 LIVE" : "손캠 LIVE";
+    }
+    /* 연결 중(ready:false)에는 내 슬롯이 아직 HC_LIVE에 없어서 라벨이 기본값("손캠")으로 뜬다.
+       내 타일일 때는 hc.my / hc.pending의 kind를 먼저 본다. */
+    function hcLiveInfoFor_(uid, isMine){
+      const fromLive = HC_LIVE.get(uid);
+      if(fromLive) return fromLive;
+      if(isMine) return hc.my || hc.pending || {};
+      return {};
     }
 
     function hcReceiveLayoutAllowed(){
@@ -21796,7 +21805,14 @@ joinRoom();
        창 단위 캡처라 알림·작업표시줄·다른 창은 애초에 캡처에 들어오지 않는다(블러에만 기대지 않는 이중 장치). */
     const SCREEN_OUT_PX = 240;        // 송출 한 변. 타일과 같은 크기라 더 키울 이유가 없다
     const SCREEN_FPS = 2;             // 목표치. 숨김 탭에서는 브라우저가 1fps로 낮춘다(2026-08-12 실측)
-    const SCREEN_BLUR_PX = 8;         // 240px 캔버스 기준 고정값. 사용자가 낮출 수 없게 상수로 못 박는다
+    const SCREEN_BLUR_PX = 8;         // 240px 캔버스 기준. 블러 방식일 때만 쓴다
+    /* 모자이크 방식: 작은 캔버스로 줄였다가 보간 없이 되키워 각진 블록을 만든다.
+       블러는 구조까지 뭉개서 "글을 쓰는 중"인지조차 안 보인다는 피드백(2026-08-12)이 있었다.
+       모자이크는 글줄 덩어리·페이지 모양·커서 이동 같은 형태는 남기고 글자만 없앤다.
+       블록 수 상한을 32로 못 박는다 — 더 세밀해지면 확대했을 때 글자 윤곽이 드러난다. */
+    const SCREEN_PIXEL_MIN = 14;      // 가장 거칠게
+    const SCREEN_PIXEL_MAX = 32;      // 가장 세밀하게(안전 상한)
+    const SCREEN_PIXEL_DEFAULT = 24;
     const SCREEN_MAX_BITRATE = 50000; // 50kbps 하드 상한 — 7명이 동시에 써도 무료 한도 안에 들어오는 값
 
     /* 공유할 사각형: 화면 대비 비율로 저장한다(창 크기가 바뀌어도 대략 같은 곳을 본다).
@@ -21808,9 +21824,11 @@ joinRoom();
         return {
           zoom: Math.min(3, Math.max(1, Number(v.zoom) || 1)),
           cx: Math.min(1, Math.max(0, Number(v.cx ?? 0.5))),
-          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5)))
+          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5))),
+          style: (v.style === "blur") ? "blur" : "pixel",   // 기본은 모자이크
+          blocks: Math.min(SCREEN_PIXEL_MAX, Math.max(SCREEN_PIXEL_MIN, Number(v.blocks) || SCREEN_PIXEL_DEFAULT))
         };
-      }catch(e){ return { zoom:1, cx:0.5, cy:0.5 }; }
+      }catch(e){ return { zoom:1, cx:0.5, cy:0.5, style:"pixel", blocks:SCREEN_PIXEL_DEFAULT }; }
     }
     function saveScreenCrop_(crop){
       try{ localStorage.setItem(SCREEN_CROP_KEY, JSON.stringify(crop)); }catch(e){}
@@ -21862,9 +21880,19 @@ joinRoom();
             '</div>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">' +
-            '<span style="font-size:12px;opacity:.7;">넓게</span>' +
+            '<span style="font-size:12px;opacity:.7;width:34px;">넓게</span>' +
             '<input id="mkScZoom" type="range" min="100" max="300" step="5" style="flex:1;accent-color:#ff4081;">' +
             '<span style="font-size:12px;opacity:.7;">확대</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">' +
+            '<span style="font-size:12px;opacity:.7;width:34px;">가림</span>' +
+            '<button id="mkScPixel" type="button" style="border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;">모자이크</button>' +
+            '<button id="mkScBlur" type="button" style="border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;">블러</button>' +
+            '<span id="mkScGrainRow" style="display:flex;align-items:center;gap:8px;flex:1;min-width:170px;">' +
+              '<span style="font-size:12px;opacity:.7;">거칠게</span>' +
+              '<input id="mkScGrain" type="range" min="14" max="32" step="1" style="flex:1;accent-color:#ff4081;">' +
+              '<span style="font-size:12px;opacity:.7;">세밀</span>' +
+            '</span>' +
           '</div>' +
           '<div style="font-size:11.5px;opacity:.55;margin-top:10px;line-height:1.55;">' +
             '공유 중에는 그 창을 최소화하지 마세요 — 화면이 멈춘 채로 남습니다.' +
@@ -21908,6 +21936,29 @@ joinRoom();
           syncBox(); draw();
         });
 
+        // 가리는 방식(모자이크/블러) 전환 + 모자이크 거칠기
+        const pixBtn = card.querySelector("#mkScPixel");
+        const blurBtn = card.querySelector("#mkScBlur");
+        const grainEl = card.querySelector("#mkScGrain");
+        const grainRow = card.querySelector("#mkScGrainRow");
+        const ON  = "background:rgba(255,64,129,.95);color:#fff;border:1px solid rgba(255,255,255,.5);";
+        const OFF = "background:rgba(255,255,255,.08);color:#f4eef2;border:1px solid rgba(255,255,255,.16);";
+        const syncStyle = ()=>{
+          const isPix = crop.style !== "blur";
+          pixBtn.style.cssText  = pixBtn.style.cssText.replace(/background:[^;]*;|color:[^;]*;|border:[^;]*;/g, "") + (isPix ? ON : OFF);
+          blurBtn.style.cssText = blurBtn.style.cssText.replace(/background:[^;]*;|color:[^;]*;|border:[^;]*;/g, "") + (isPix ? OFF : ON);
+          grainRow.style.display = isPix ? "flex" : "none";
+          draw();
+        };
+        grainEl.value = String(crop.blocks || SCREEN_PIXEL_DEFAULT);
+        grainEl.addEventListener("input", ()=>{
+          crop.blocks = Math.min(SCREEN_PIXEL_MAX, Math.max(SCREEN_PIXEL_MIN, Number(grainEl.value) || SCREEN_PIXEL_DEFAULT));
+          draw();
+        });
+        pixBtn.addEventListener("click", ()=>{ crop.style = "pixel"; syncStyle(); });
+        blurBtn.addEventListener("click", ()=>{ crop.style = "blur"; syncStyle(); });
+        syncStyle();
+
         let dragging = false;
         const moveTo = (ev)=>{
           const rect = srcWrap.getBoundingClientRect();
@@ -21949,14 +22000,30 @@ joinRoom();
       const ctx = cv.getContext("2d");
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
 
+      // 모자이크용 축소 캔버스. 크기가 바뀔 때만 다시 잡는다(매 프레임 resize는 낭비 + 내용 초기화).
+      const small = document.createElement("canvas");
+      const sctx = small.getContext("2d");
+
       const draw = ()=>{
         try{
           const vw = vid.videoWidth, vh = vid.videoHeight;
           if(!vw || !vh) return;
           const r = screenCropRect_(vw, vh, crop);
-          ctx.filter = `blur(${SCREEN_BLUR_PX}px)`;
-          ctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
-          ctx.filter = "none";
+          if(crop.style === "blur"){
+            ctx.filter = `blur(${SCREEN_BLUR_PX}px)`;
+            ctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
+            ctx.filter = "none";
+            return;
+          }
+          // 모자이크: ①블록 수만큼 줄이며 평균을 낸다 ②보간 없이 되키워 각진 블록으로 만든다
+          const n = Math.min(SCREEN_PIXEL_MAX, Math.max(SCREEN_PIXEL_MIN, Math.round(crop.blocks) || SCREEN_PIXEL_DEFAULT));
+          if(small.width !== n){ small.width = n; small.height = n; }
+          sctx.imageSmoothingEnabled = true;
+          sctx.imageSmoothingQuality = "high";
+          sctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, n, n);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(small, 0, 0, n, n, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
+          ctx.imageSmoothingEnabled = true;
         }catch(_e){}
       };
       draw();
@@ -22114,7 +22181,7 @@ joinRoom();
         return;
       }
 
-      hc.pending = { stream, roomId, uid, slotId, startedAt: stableStartedAt };
+      hc.pending = { stream, roomId, uid, slotId, startedAt: stableStartedAt, kind };
       // 권한 허용 직후 내 타일에 즉시 로컬 미리보기를 붙입니다.
       scheduleMount();
 
@@ -22464,12 +22531,12 @@ joinRoom();
               tag.className = "hcTag";
               const nameEl = document.createElement("span");
               nameEl.className = "hcName";
-              const liveInfo = HC_LIVE.get(uid) || {};
+              const liveInfo = hcLiveInfoFor_(uid, isMine);
               const displayName = normalizeNick(liveInfo.name || (isMine && state.nickname) || tile.querySelector(".namePill, .name")?.textContent || "손님");
               nameEl.textContent = displayName;
               const labelEl = document.createElement("span");
               labelEl.className = "hcLabel";
-              labelEl.textContent = hcLiveLabel_(liveInfo);   // V186: 손캠/화면공유 구분
+              labelEl.textContent = hcLiveLabel_(liveInfo);   // V186: 손캠/화공 구분
               tag.appendChild(nameEl);
               tag.appendChild(labelEl);
               box.appendChild(vd);
@@ -22485,7 +22552,7 @@ joinRoom();
             const tag = box.querySelector(".hcTag");
             const nameEl = tag && tag.querySelector(".hcName");
             if(nameEl){
-              const liveInfo = HC_LIVE.get(uid) || {};
+              const liveInfo = hcLiveInfoFor_(uid, isMine);
               const displayName = normalizeNick(liveInfo.name || (isMine && state.nickname) || tile.querySelector(".namePill, .name")?.textContent || "손님");
               nameEl.textContent = displayName;
               // V186: 손캠 ↔ 화면공유를 갈아탈 때 박스는 그대로 남으므로 라벨을 매번 맞춰준다.
@@ -23108,7 +23175,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16980; // ✅ V186: 손캠 슬롯 12 + 화면공유(파일럿 게이트). 옛 탭은 슬롯 9~11을 못 잡으므로 올린다.
+  const MK_APP_BUILD = 16990; // ✅ V186.1: 화면공유 모자이크 전환 + 화공 라벨.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
