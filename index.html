@@ -122,6 +122,11 @@
     .brandTitle{font-weight:1100; font-size:18px; letter-spacing:-.4px;}
     .actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; justify-self:end}
     body.joined #meHint{display:none !important;}
+    /* V188_UI(2026-08-13): 입장 전 상단바 정리 — 비활성 상태인 '퇴장'과, 입장 전에는 '—'만
+       보여주는 #meHint를 숨긴다. meHint의 textContent는 닉네임 대체값으로 계속 읽히므로
+       (쪽지 발신자명 등) 요소는 남기고 표시만 감춘다. 입장하면 '퇴장'은 다시 나온다. */
+    body:not(.joined) #leaveBtn,
+    body:not(.joined) #meHint{display:none !important;}
 
     input, button, textarea{
       font:inherit;
