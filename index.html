@@ -4970,6 +4970,52 @@ body.joined #preJoinCard{ display:none; }
     font-size:clamp(21px, 6.8vw, 28px) !important;
   }
 }
+
+/* ===== V186_COIN_TICK: 타이머 자리 = 🪙 적립 신호 + 분 단위 시간 =====
+   타이머의 성격이 "작업 시간 표시"에서 "코인 재화"로 바뀌면서 초 단위 표시를 걷어냈다.
+   - 예전에는 작업중 인원수만큼 매초 .time의 textContent가 바뀌어 그 영역이 영구히
+     리페인트됐다. 20명 방에 12명이 작업중이면 초당 12개 노드가 쉬지 않고 다시 그려져
+     브라우저가 idle 프레임에 도달할 틈이 없었다(화면 느려짐 신고의 유력 후보).
+     분 단위로 바꾸면 갱신이 1/60로 줄어 59초 동안 이 영역이 완전히 조용해진다.
+   - 🪙 펄스는 분이 넘어가는 순간에만 1회(0.62s). 시간 갱신과 같은 리듬이라
+     타일이 1분에 딱 한 번만 움직인다. transform만 써서 컴포지터에서 처리되게 하고
+     타일 리페인트를 만들지 않는다(box-shadow/filter/top-left 금지).
+   - 회색 정지(coinTickIdle)의 filter는 정적이라 한 번만 적용되고 매 프레임 비용이 없다.
+   - 이 블록은 .bigTimer 규칙들 중 파일에서 가장 뒤에 온다. 아래 변형 보정은 원본과
+     같은 선택자를 써서 특정도를 맞추고 순서로 이긴다(선택자를 바꾸면 안 먹는다). */
+.bigTimer{ justify-content:flex-start; }
+.bigTimer .coinTick{
+  font-size:.75em;   /* 2026-08-12 사용자 확정 — .62em은 숫자 옆에서 눌려 보였음 */
+  line-height:1;
+  flex:0 0 auto;
+  user-select:none;
+}
+.bigTimer .coinTick.coinTickIdle{ filter:grayscale(1); opacity:.42; }
+.bigTimer .coinTick.coinTickPulse{ animation:mkCoinTick .62s ease-out 1; }
+@keyframes mkCoinTick{
+  0%  { transform:translate3d(0,0,0)    scale(1); }
+  32% { transform:translate3d(0,-26%,0) scale(1.2); }
+  62% { transform:translate3d(0,0,0)    scale(.96); }
+  100%{ transform:translate3d(0,0,0)    scale(1); }
+}
+/* 애니메이션 kill 스위치 — 기존 정책(prefers-reduced-motion / 저사양 모드)과 동일하게 맞춘다 */
+@media (prefers-reduced-motion: reduce){
+  .bigTimer .coinTick.coinTickPulse{ animation:none !important; }
+}
+body.mkLowSpecMode .bigTimer .coinTick.coinTickPulse{ animation:none !important; }
+
+/* 레이아웃 변형 보정 — 코인과 시간이 한 덩어리로 붙어 보이게 한다.
+   자식이 1개일 때는 space-between이 flex-start와 같아서 티가 안 났지만,
+   2개가 되면 양 끝으로 벌어져 따로 노는 것처럼 보인다. */
+.grid.compact5 .bigTimer{ flex-direction:row; gap:6px; }          /* 원본은 column — 코인이 시간 위로 올라가는 것 방지 */
+body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
+  justify-content:flex-end !important;                             /* 원본 space-between → 양끝 벌어짐 방지 */
+  gap:8px !important;
+}
+@media (max-width:760px){
+  body.joined .grid .tile.mineTile .bigTimer{ gap:7px !important; }
+  body.joined .grid .tile.mineTile .bigTimer .time{ width:auto !important; }  /* 원본 width:100% — 코인 자리 확보 */
+}
 </style>
 
 <!-- DIRECT_MESSAGE_V1: 개인 쪽지 · 쪽지함 · 답장 -->
@@ -9039,6 +9085,15 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       const m = Math.floor((sec%3600)/60);
       const s = sec%60;
       return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+    }
+    // V186_COIN_TICK: 프로필 타일용 분 단위 표기(초 없음).
+    // 초를 떼면 텍스트가 분당 1회만 바뀌어, 작업중 인원수만큼 매초 발생하던 리페인트가 사라진다.
+    // fmtHMS는 이 변경으로 호출부가 없어졌지만 관리자/디버그에서 다시 쓸 수 있어 남겨 둔다.
+    function fmtHM(sec){
+      sec = Math.max(0, Math.floor(sec || 0));
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      return `${pad2(h)}:${pad2(m)}`;
     }
     function nowTimeStr(withSeconds=true){
       const opt = withSeconds ? { timeZone: "Asia/Seoul", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }
@@ -15667,7 +15722,12 @@ async function sendChatCore(text, isFlush=false){
         // theme (visual)
         emo:p.theme?.emoji, emoBg:p.theme?.emojiBg, emoSize:p.theme?.emojiSize, photoSize:p.theme?.photoSize,
         // ✅ V71: 시각 결과에 영향을 주는 설정값은 캐시 키에 포함해야 즉시 반영됨
-        timerHidden:p.theme?.timerHidden,
+        // ⚠ V186 수정: 원래 p.theme?.timerHidden을 봤는데 이 필드는 존재하지 않는다.
+        // 실제 플래그는 top-level p.timerHidden(presence에 직접 기록, ctxTimerPrivacyToggle이 씀)이라
+        // 이 키는 항상 undefined였고 숨김 토글이 타일 재렌더를 한 번도 일으키지 못했다.
+        // 지금까지는 updateTimersLive가 매 tick .time 텍스트를 덮어써서 우연히 동작했을 뿐이라,
+        // 타일 생성 시점에 그리는 코인 아이콘을 붙이는 순간 그 우연이 깨진다.
+        timerHidden:p.timerHidden,
         emoBgTransparent:p.theme?.emoBgTransparent,
         petSlotMotion:p.theme?.petSlotMotion,
         petMotionSeedMs:p.petMotionSeedMs,
@@ -15876,7 +15936,11 @@ if(photoEnabled){
 const timer = document.createElement("div");
 timer.className = "bigTimer";
       const isMeTile = (p && p.id && state.uid) ? (p.id === state.uid) : false;
-timer.innerHTML = `<span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--:--"}</span>`;
+// V186_COIN_TICK: 코인(적립 신호) + 시간(분 단위)을 나란히 놓는다.
+// ⚠ .time 노드는 어떤 상태에서도 반드시 남겨야 한다 — updateTimersLive가 이 노드를 못 찾으면
+//   거기서 continue로 빠져 focusSaveSeconds가 끊기고, heartbeat가 totalSecondsToday를
+//   (liveTotal − elapsedSec)로 계산하는 탓에 값이 0까지 붕괴해 코인 적립까지 망가진다.
+timer.innerHTML = `<span class="coinTick${(p && p.status === "work") ? "" : " coinTickIdle"}" aria-hidden="true">🪙</span><span class="time">${(p && p.timerHidden) ? "⌨️" : "--:--"}</span>`;
       const mbtn = timer.querySelector(".missionBtn");
       if(mbtn) updateMissionBtnForTile(mbtn, p);
 
@@ -15917,7 +15981,14 @@ t.appendChild(bg);
       // attachMover가 모드/저사양 판정과 이전 컨트롤러 정리를 모두 담당한다.
       try{ if(window.__MK_CHARA_TILE_V169__ && window.__MK_CHARA_TILE_V169__.attachMover) window.__MK_CHARA_TILE_V169__.attachMover(t, p); }catch(e){}
 
-      state.lastRendered.set(p.id, { key, el: t, timeEl: (timer && timer.querySelector) ? timer.querySelector('.time') : null });
+      state.lastRendered.set(p.id, {
+        key, el: t,
+        timeEl: (timer && timer.querySelector) ? timer.querySelector('.time') : null,
+        // V186_COIN_TICK: 코인 span도 같이 캐시해 tick마다 querySelector를 돌지 않게 한다.
+        // lastMin은 일부러 비워 둔다 — 재렌더 직후 첫 tick에서 헛펄스가 튀지 않게 하는 장치다.
+        coinEl: (timer && timer.querySelector) ? timer.querySelector('.coinTick') : null,
+        coinIdle: !(p && p.status === "work")
+      });
       return t;
     }
     function updateTimersLive(){
@@ -15938,8 +16009,39 @@ t.appendChild(bg);
         const __disp = computeDisplayedTotal(p);
 
         // ✅ 내 타이머 숨김(개별 프로필 설정)이면 시간 대신 잠금 표시
-        const nextText = (p.timerHidden) ? "⌨️" : fmtHMS(__disp);
+        // V186_COIN_TICK: fmtHMS → fmtHM. 초를 떼면 텍스트가 분당 1회만 바뀐다.
+        // 예전에는 작업중 인원수만큼 매초 이 노드가 다시 그려져 화면이 idle 프레임에 도달하지 못했다.
+        const nextText = (p.timerHidden) ? "⌨️" : fmtHM(__disp);
         if(timeEl.textContent !== nextText) timeEl.textContent = nextText;
+
+        // ✅ V186_COIN_TICK: 코인 = "지금 적립 중" 신호
+        // - 펄스는 분이 넘어가는 순간 1회. 시간 갱신과 같은 리듬이라 타일이 1분에 한 번만 움직인다.
+        // - 판정은 텍스트 변화가 아니라 '분 값'으로 한다. 타이머 숨김이면 텍스트가 "⌨️"로 고정이라
+        //   텍스트 기준으로는 펄스가 영원히 안 일어난다(숨긴 분도 적립 신호는 보여야 한다).
+        // - 클래스는 animationend에서 뗀다. offsetWidth 강제 리플로우 트릭을 쓰지 않는다.
+        //   이미 붙어 있으면 건너뛰므로, 애니메이션이 꺼진 환경(reduced-motion/저사양)에서
+        //   animationend가 안 와도 리스너가 쌓이지 않는다.
+        let coinEl = rec.coinEl;
+        if(!coinEl){
+          try{ coinEl = rec.el.querySelector(".coinTick"); }catch(e){}
+          if(coinEl) rec.coinEl = coinEl;
+        }
+        if(coinEl){
+          const working = (p.status === "work");
+          const nextMin = Math.floor(Math.max(0, Number(__disp)||0) / 60);
+          if(working && rec.lastMin !== undefined && rec.lastMin !== nextMin
+             && !coinEl.classList.contains("coinTickPulse")){
+            coinEl.classList.add("coinTickPulse");
+            coinEl.addEventListener("animationend", function offPulse(){
+              try{ coinEl.classList.remove("coinTickPulse"); }catch(_e){}
+            }, { once:true });
+          }
+          rec.lastMin = working ? nextMin : undefined;
+          if(rec.coinIdle !== !working){
+            rec.coinIdle = !working;
+            coinEl.classList.toggle("coinTickIdle", !working);
+          }
+        }
 
         // ✅ 로컬(브라우저) "오늘 작업시간" 24h 누적 저장 + 펫 성장 동기화
         // v44: 펫 성장은 별도 상태 추정값이 아니라, 실제 화면 타이머가 증가하는 이 지점을 기준으로 누적한다.
