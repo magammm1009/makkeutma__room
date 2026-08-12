@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V186_SCREEN_SHARE: 화면공유 1단계(파일럿) + 손캠 슬롯 9→12. ①손캠과 슬롯·송출·정리 경로를 공유한다(startPublish_(kind)) — 한 사람당 슬롯 하나라 손캠과 화면공유는 자동으로 배타적이고, 타일 렌더·RTDB 규칙·시청 구독이 그대로 재사용된다. 슬롯 레코드에 kind("cam"|"screen")만 추가. ②블러는 반드시 송출 전, 보내는 사람 기기의 캔버스에서 건다(받는 쪽 CSS 블러는 원본이 전송되어 개발자도구로 보인다). getDisplayMedia는 monitorTypeSurfaces:"exclude"로 전체 화면 선택지를 없애 창 단위 캡처만 허용 — 알림·작업표시줄·다른 창이 물리적으로 캡처에 안 들어온다. ③캔버스 그리기는 setInterval로만 돌린다. 송출자의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고 숨김 탭에서 rAF는 0.0fps다(2026-08-12 실측, setInterval은 1.0fps 유지). ④maxBitrate 50kbps·2fps 하드 상한 — egress가 ingress의 8.6배로 증폭되므로 이 상한 하나가 월 사용량을 결정한다(7명 동시 사용 시 약 247GB). 손캠 maxFramerate도 V185.2의 10fps에 맞춰 15→10. ⑤시작 전 확인 모달: 왼쪽에 내 원본(나만 봄) + 공유 범위 사각형, 오른쪽에 실제로 나가는 블러 영상을 나란히 띄운다. 오른쪽은 캡처 소스 캔버스 그 자체를 붙이므로 "미리보기와 실제가 다를" 여지가 없다. 원본을 눌러 위치를 옮기고 막대로 1~3배 확대하며, 선택 사각형은 화면 밖으로 못 나가게 가둔다(localStorage mkScreenCropV1에 비율로 저장). ⑥파일럿 게이트: 주소에 ?screen=1을 한 번 붙인 브라우저에만 버튼이 열린다. 실측이 끝나면 걷어낸다. ⚠️ 슬롯 12는 firebase-rules.json의 handcam/live/$slotId가 0~11을 허용해야 동작한다(2026-08-12 배포 완료). 빌드 16980 -->
 <!-- V185.3_FEED_GUARD_FIX: "타일이 전부 사라지고 나만 남음" 재발 수정(2026-08-12 뽀솜님, 새로고침 후 새 코드에서 겪음 = V185.2 실패). 원인은 가드 임계값이 ONLINE_TTL_MS(20분)와 같았던 것 — 구독은 붙어 있는데 수신만 끊긴 경우 T0+17분(마지막 하트비트가 T0-3분이던 사람)부터 만료가 시작되는데 가드는 T0+20분에야 발동해, 그 3분 사이에 전원이 사라지고 그 빈 명단이 _lastPresenceArrBase에 기록되어 가드가 빈 명단을 붙잡는 래치가 됐다. ①임계값을 하트비트x2(6분)로 낮춰 첫 만료보다 11분 앞서 발동 ②보관본(__presenceGoodArr)은 피드가 살아 있을 때만 갱신해 래치 차단 ③내 하트비트 메아리는 수신 근거에서 제외(3분 주기라 그것만으로 6분 임계값을 영원히 넘김) ④presenceFeedWatchdog_: 구독이 붙어 있는데 6분 넘게 소식이 없으면 재구독해 실제로 되살린다(보이는 탭 + 절약 일시정지 아님 + 10분 쿨다운으로 다운로드 폭주 방지). 빌드 16970 -->
 <!-- V185.2_SQUARE_CAM: 손캠 SFU egress 절감 — 카메라 캡처를 4:3(320×240)에서 정사각(240×240)으로, fps 15→10. 타일이 aspect-ratio:1/1이고 video가 object-fit:cover라 4:3으로 보내면 좌우 25%가 잘려 아무도 보지 못하는데 전송 요금은 그대로 나갔다(실측 2026-08-12: Cloudflare Realtime SFU egress 412GB / ingress 48GB = 8.6배 증폭, 8월 환산 약 1,087GB로 무료 1,000GB 초과 예상). 정사각 캡처는 화면에 보이는 그림이 1픽셀도 바뀌지 않고 픽셀만 25% 줄며, fps 저하는 선명도와 무관하다(움직임만 덜 부드러워짐). 둘을 합쳐 약 610GB 예상. 정사각 모드를 못 만드는 카메라가 240×180으로 떨어지면 조용히 흐려지므로 협상 결과를 mkDiag("손캠-해상도미달")로 남긴다. 빌드 16960 -->
 <!-- V185_RENDER_RECOVER: 화면 갱신이 멈추는 문제 수정 — ①렌더 예약이 requestAnimationFrame 하나에만 걸려 있어, 브라우저가 창을 hidden(다른 창에 완전히 가려짐·최소화 포함)으로 판단하면 예약 플래그가 잠긴 채 남고 이후 채팅·프레즌스 이벤트가 전부 "이미 예약됨"으로 무시됐다 — 데이터는 멀쩡한데 화면만 굳는다. 하트비트는 setInterval이라 계속 돌아서 남들 눈에는 정상 접속으로 보였다. mkScheduleFrame_로 rAF와 타이머 중 먼저 오는 쪽 1회만 실행한다(보이는 상태에서는 rAF가 항상 먼저라 기존 동작과 동일, 숨김일 때만 2초로 묶어 백그라운드 비용 억제). 적용: 채팅 렌더/타일·명단 렌더/프레즌스 재계산. ②presence 구독이 끊긴 채 20분(ONLINE_TTL_MS)이 지나면 캐시 속 타인 전원이 동시에 낡아, 이후 재렌더 한 번에 전원이 필터에서 떨어지고 로컬 합성된 내 타일만 남았다("나만 혼자 남음"). presenceFeedLive_/presenceDisplayList_로 피드가 실제로 살아 있을 때만 TTL 탈락을 화면에 반영한다. 적용: 프로필 저장/관리자 프로필 연결/캐릭터앱 재렌더/창 크기 변경/저사양·경량 전환/프레즌스 재계산. 접속 판정(isOfflinePresence)은 미션 성공 인원·접속 수·손캠 대상이 공유하므로 건드리지 않았다. 빌드 16950 -->
@@ -21351,7 +21352,11 @@ joinRoom();
      - 기본 타일이 보일 때만 원격 영상을 구독해 미니/모바일/백그라운드 데이터 낭비 방지
   */
   (function(){
-    const HC_MAX = 9;
+    /* V186_SLOTS12: 9 → 12. 화면공유가 손캠과 같은 슬롯을 쓰므로(한 사람당 한 자리, 자동 배타)
+       손캠 4~5명 + 화면공유 5~7명이면 9자리로는 모자란다.
+       ⚠️ firebase-rules.json의 handcam/live/$slotId 쓰기 규칙도 0~11을 허용해야 한다.
+          규칙이 0~8만 허용하면 슬롯 9~11 예약이 조용히 거부된다. */
+    const HC_MAX = 12;
     // V4 안정화: RTDB/WebRTC가 잠깐 흔들려도 내 손캠을 즉시 끄지 않고 복구를 먼저 시도합니다.
     const HC_SELF_RECOVER_MS = 7000;
     const HC_PENDING_RECOVER_MS = 6500;
@@ -21490,6 +21495,23 @@ joinRoom();
     // Rules에서 각 사용자가 자기 슬롯만 생성·수정·삭제하도록 막을 수 있습니다.
     function hcSlotRef(roomId, slotId){
       return rRef(rtdb, `${rRoomBase(roomId || state.roomId)}/handcam/live/${String(slotId)}`);
+    }
+
+    /* V186 파일럿 게이트: 주소에 ?screen=1 을 한 번 붙이면 그 브라우저에만 버튼이 열린다.
+       실측(비트레이트·숨김 탭 프레임)이 끝나고 영역 선택까지 붙인 뒤에 이 함수를 걷어낸다.
+       배포는 해두되 다른 작가님들에게는 아직 보이지 않게 하려는 목적. */
+    function screenShareUnlocked_(){
+      try{
+        if(new URLSearchParams(location.search).get("screen") === "1"){
+          localStorage.setItem("mkScreenSharePilotV1", "1");
+        }
+        return localStorage.getItem("mkScreenSharePilotV1") === "1";
+      }catch(e){ return false; }
+    }
+
+    // V186: 슬롯 레코드의 kind로 타일 라벨을 고른다. kind가 없으면 예전 손캠 레코드다.
+    function hcLiveLabel_(liveInfo){
+      return (String((liveInfo && liveInfo.kind) || "") === "screen") ? "화면 LIVE" : "손캠 LIVE";
     }
 
     function hcReceiveLayoutAllowed(){
@@ -21768,21 +21790,240 @@ joinRoom();
       try{ await rOnDisconnect(ref).cancel(); }catch(e){}
     }
 
-    async function startMyCam(){
+    /* ===== V186_SCREEN: 화면공유(블러) 소스 =====
+       원고를 다루는 기능이라 블러는 반드시 "송출 전에, 보내는 사람 기기에서" 건다.
+       받는 쪽 CSS 블러는 원본이 그대로 전송되어 개발자도구로 열면 다 보이므로 절대 쓰지 않는다.
+       창 단위 캡처라 알림·작업표시줄·다른 창은 애초에 캡처에 들어오지 않는다(블러에만 기대지 않는 이중 장치). */
+    const SCREEN_OUT_PX = 240;        // 송출 한 변. 타일과 같은 크기라 더 키울 이유가 없다
+    const SCREEN_FPS = 2;             // 목표치. 숨김 탭에서는 브라우저가 1fps로 낮춘다(2026-08-12 실측)
+    const SCREEN_BLUR_PX = 8;         // 240px 캔버스 기준 고정값. 사용자가 낮출 수 없게 상수로 못 박는다
+    const SCREEN_MAX_BITRATE = 50000; // 50kbps 하드 상한 — 7명이 동시에 써도 무료 한도 안에 들어오는 값
+
+    /* 공유할 사각형: 화면 대비 비율로 저장한다(창 크기가 바뀌어도 대략 같은 곳을 본다).
+       zoom 1 = 가능한 가장 넓게, 3 = 3배 확대. cx/cy는 그 사각형의 중심. */
+    const SCREEN_CROP_KEY = "mkScreenCropV1";
+    function loadScreenCrop_(){
+      try{
+        const v = JSON.parse(localStorage.getItem(SCREEN_CROP_KEY) || "{}") || {};
+        return {
+          zoom: Math.min(3, Math.max(1, Number(v.zoom) || 1)),
+          cx: Math.min(1, Math.max(0, Number(v.cx ?? 0.5))),
+          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5)))
+        };
+      }catch(e){ return { zoom:1, cx:0.5, cy:0.5 }; }
+    }
+    function saveScreenCrop_(crop){
+      try{ localStorage.setItem(SCREEN_CROP_KEY, JSON.stringify(crop)); }catch(e){}
+    }
+    // 원본 픽셀 기준 잘라낼 정사각형. 화면 밖으로 나가지 않게 가둔다.
+    function screenCropRect_(vw, vh, crop){
+      const s = Math.max(16, Math.min(vw, vh) / (crop.zoom || 1));
+      const sx = Math.min(Math.max(crop.cx * vw - s/2, 0), Math.max(0, vw - s));
+      const sy = Math.min(Math.max(crop.cy * vh - s/2, 0), Math.max(0, vh - s));
+      return { sx, sy, s };
+    }
+
+    /* 시작 전 확인 모달. 왼쪽은 내 원본(나만 봄), 오른쪽은 실제로 나가는 블러 영상.
+       cv는 캡처 소스 그대로를 붙여 보여주므로 "미리보기와 실제가 다를" 여지가 없다.
+       (캔버스는 DOM에서 떼도 captureStream이 계속 동작하므로 닫을 때 그냥 떼면 된다.) */
+    function confirmScreenShare_(vid, cv, crop, draw){
+      return new Promise((resolve)=>{
+        let done = false, uiTimer = 0;
+        const onKey = (ev)=>{ if(ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); finish(false); } };
+        function finish(ok){
+          if(done) return; done = true;
+          try{ clearInterval(uiTimer); }catch(e){}
+          try{ document.removeEventListener("keydown", onKey, true); }catch(e){}
+          try{ vid.remove(); }catch(e){}   // 다시 화면 밖으로(재생은 계속된다)
+          try{ cv.remove(); }catch(e){}
+          try{ ov.remove(); }catch(e){}
+          resolve(ok);
+        }
+
+        const ov = document.createElement("div");
+        ov.id = "mkScreenConfirm";
+        ov.style.cssText = "position:fixed;inset:0;z-index:100200;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:16px;";
+        const card = document.createElement("div");
+        card.style.cssText = "background:#15151c;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:18px;max-width:660px;width:100%;color:#f4eef2;font-family:system-ui,'Malgun Gothic','맑은 고딕',sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.5);";
+        card.innerHTML =
+          '<div style="font-size:16px;font-weight:800;">이렇게 공유됩니다</div>' +
+          '<div style="font-size:12.5px;opacity:.72;line-height:1.65;margin:6px 0 14px;">' +
+            '오른쪽이 다른 작가님들에게 보이는 화면이에요. 원본은 전송되지 않고, 흐리게 처리한 뒤에만 나갑니다.<br>' +
+            '왼쪽 화면을 눌러 보여줄 위치를 정하고, 아래 막대로 확대·축소하세요.' +
+          '</div>' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">' +
+            '<div style="flex:1 1 290px;min-width:250px;">' +
+              '<div id="mkScSrc" style="position:relative;background:#000;border-radius:10px;overflow:hidden;cursor:crosshair;touch-action:none;"></div>' +
+              '<div style="font-size:11.5px;opacity:.58;margin-top:6px;">내 화면 · 나만 보입니다</div>' +
+            '</div>' +
+            '<div style="flex:0 0 auto;">' +
+              '<div id="mkScOut" style="width:200px;height:200px;border-radius:16px;overflow:hidden;background:#000;border:1px solid rgba(255,64,129,.55);"></div>' +
+              '<div style="font-size:11.5px;opacity:.58;margin-top:6px;">남들에게 보이는 화면</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">' +
+            '<span style="font-size:12px;opacity:.7;">넓게</span>' +
+            '<input id="mkScZoom" type="range" min="100" max="300" step="5" style="flex:1;accent-color:#ff4081;">' +
+            '<span style="font-size:12px;opacity:.7;">확대</span>' +
+          '</div>' +
+          '<div style="font-size:11.5px;opacity:.55;margin-top:10px;line-height:1.55;">' +
+            '공유 중에는 그 창을 최소화하지 마세요 — 화면이 멈춘 채로 남습니다.' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">' +
+            '<button id="mkScCancel" type="button" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">취소</button>' +
+            '<button id="mkScOk" type="button" style="background:rgba(255,64,129,.95);color:#fff;border:0;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;">이대로 시작</button>' +
+          '</div>';
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+
+        const srcWrap = card.querySelector("#mkScSrc");
+        const outWrap = card.querySelector("#mkScOut");
+        const zoomEl = card.querySelector("#mkScZoom");
+
+        vid.style.cssText = "display:block;width:100%;height:auto;";
+        srcWrap.appendChild(vid);
+        const box = document.createElement("div");
+        // 바깥을 어둡게 덮어 "여기까지만 나간다"를 한눈에 보이게 한다.
+        box.style.cssText = "position:absolute;border:2px solid #ff4081;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none;border-radius:3px;";
+        srcWrap.appendChild(box);
+
+        cv.style.cssText = "display:block;width:100%;height:100%;";
+        outWrap.appendChild(cv);
+        zoomEl.value = String(Math.round((crop.zoom || 1) * 100));
+
+        const syncBox = ()=>{
+          const vw = vid.videoWidth, vh = vid.videoHeight;
+          if(!vw || !vh) return;
+          const r = screenCropRect_(vw, vh, crop);
+          box.style.left   = (r.sx / vw * 100) + "%";
+          box.style.top    = (r.sy / vh * 100) + "%";
+          box.style.width  = (r.s  / vw * 100) + "%";
+          box.style.height = (r.s  / vh * 100) + "%";
+        };
+        syncBox();
+        uiTimer = setInterval(syncBox, 250); // 공유 중인 창 크기가 바뀌어도 표시가 따라오게
+
+        zoomEl.addEventListener("input", ()=>{
+          crop.zoom = Math.max(1, Math.min(3, Number(zoomEl.value) / 100));
+          syncBox(); draw();
+        });
+
+        let dragging = false;
+        const moveTo = (ev)=>{
+          const rect = srcWrap.getBoundingClientRect();
+          if(!rect.width || !rect.height) return;
+          crop.cx = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+          crop.cy = Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+          syncBox(); draw();
+        };
+        srcWrap.addEventListener("pointerdown", (ev)=>{
+          dragging = true;
+          try{ srcWrap.setPointerCapture(ev.pointerId); }catch(e){}
+          moveTo(ev);
+        });
+        srcWrap.addEventListener("pointermove", (ev)=>{ if(dragging) moveTo(ev); });
+        srcWrap.addEventListener("pointerup", ()=>{ dragging = false; });
+        srcWrap.addEventListener("pointercancel", ()=>{ dragging = false; });
+
+        card.querySelector("#mkScOk").addEventListener("click", ()=>finish(true));
+        card.querySelector("#mkScCancel").addEventListener("click", ()=>finish(false));
+        document.addEventListener("keydown", onKey, true);
+      });
+    }
+
+    async function makeBlurredScreenSource_(onSourceEnded){
+      const src = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "window", frameRate: SCREEN_FPS },
+        monitorTypeSurfaces: "exclude",  // 전체 화면 선택지를 없앤다(창만 고르게)
+        selfBrowserSurface: "exclude",   // 작업방 탭 자기 자신 제외(무한 거울 방지)
+        surfaceSwitching: "exclude",     // 공유 중 소스 바꾸기 버튼 제거
+        audio: false
+      });
+      const vid = document.createElement("video");
+      vid.playsInline = true; vid.muted = true; vid.srcObject = src;
+      try{ await vid.play(); }catch(_e){}
+
+      const crop = loadScreenCrop_();
+      const cv = document.createElement("canvas");
+      cv.width = SCREEN_OUT_PX; cv.height = SCREEN_OUT_PX;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
+
+      const draw = ()=>{
+        try{
+          const vw = vid.videoWidth, vh = vid.videoHeight;
+          if(!vw || !vh) return;
+          const r = screenCropRect_(vw, vh, crop);
+          ctx.filter = `blur(${SCREEN_BLUR_PX}px)`;
+          ctx.drawImage(vid, r.sx, r.sy, r.s, r.s, 0, 0, SCREEN_OUT_PX, SCREEN_OUT_PX);
+          ctx.filter = "none";
+        }catch(_e){}
+      };
+      draw();
+
+      /* 시작 전에 "남들에게 보이는 그대로"를 확인시킨다. 원고가 걸린 기능이라
+         이 확인 없이 켜게 하면 아무도 안 켠다. 취소하면 캡처를 즉시 반납한다. */
+      const okay = await confirmScreenShare_(vid, cv, crop, draw);
+      if(!okay){
+        try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ vid.srcObject = null; }catch(_e){}
+        const err = new Error("screen-share-cancelled");
+        err.__cancelled = true;
+        throw err;
+      }
+      saveScreenCrop_(crop);
+      /* ⚠️ requestAnimationFrame 금지.
+         송출하는 사람의 작업방 탭은 원고를 쓰는 동안 거의 항상 숨김이고, 숨김 탭에서 rAF는
+         아예 실행되지 않는다(2026-08-12 실측: 숨김 시 rAF 0.0fps / rVFC 0.0fps / setInterval 1.0fps).
+         rAF로 짜면 남들 화면에서 내 화면이 얼어붙은 채로 남는다. */
+      const timer = setInterval(draw, Math.round(1000 / SCREEN_FPS));
+
+      const out = cv.captureStream(SCREEN_FPS);
+      /* 브라우저 자체 "공유 중지" 버튼을 누르면 원본 트랙이 끝난다.
+         캔버스 트랙은 stop()해도 ended 이벤트가 나지 않으므로 여기서 직접 상위에 알린다. */
+      try{
+        src.getVideoTracks()[0].addEventListener("ended", ()=>{
+          try{ onSourceEnded && onSourceEnded(); }catch(_e){}
+        }, { once:true });
+      }catch(_e){}
+
+      return {
+        stream: out,
+        stop(){
+          try{ clearInterval(timer); }catch(_e){}
+          try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
+          try{ out.getTracks().forEach(t=>t.stop()); }catch(_e){}
+          try{ vid.srcObject = null; }catch(_e){}
+        }
+      };
+    }
+
+    async function startMyCam(){ return startPublish_("cam"); }
+    async function startMyScreen(){ return startPublish_("screen"); }
+
+    // 손캠과 화면공유는 슬롯·송출·정리 경로를 그대로 공유한다.
+    // 다른 것은 ①소스를 어떻게 얻는가 ②인코딩 상한 ③슬롯에 남기는 kind 세 가지뿐이다.
+    async function startPublish_(kind){
+      const isScreen = (kind === "screen");
+      const LBL = isScreen ? "화면공유" : "손캠";
       if(hc.my || hc.starting) return;
       if(!state.joined || !state.uid || !state.roomId){
-        showToast("입장 후에 손캠을 켤 수 있어요");
+        showToast(`입장 후에 ${LBL}를 켤 수 있어요`);
         return;
       }
       if(!isWorkerUrlReady()){
-        showToast("손캠 Worker 주소가 아직 설정되지 않았어요");
+        showToast(`${LBL} Worker 주소가 아직 설정되지 않았어요`);
+        return;
+      }
+      if(isScreen && !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)){
+        showToast("이 브라우저는 화면공유를 지원하지 않아요 (PC 크롬/엣지를 써주세요)");
         return;
       }
 
       const roomId = String(state.roomId);
       const uid = String(state.uid);
       if(HC_LIVE.size >= HC_MAX && !HC_LIVE.has(uid)){
-        showToast(`손캠 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
+        showToast(`${LBL} 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
         return;
       }
 
@@ -21790,6 +22031,18 @@ joinRoom();
       updateMyBtn();
 
       let stream = null;
+      if(isScreen){
+        try{
+          const srcObj = await makeBlurredScreenSource_(()=>{ stopMyCam(true).catch(()=>{}); });
+          hc.screenSource = srcObj;
+          stream = srcObj.stream;
+        }catch(e){
+          hc.starting = false;
+          updateMyBtn();
+          showToast(e && e.__cancelled ? "화면공유를 취소했어요" : "화면공유를 시작하지 못했어요");
+          return;
+        }
+      }else{
       try{
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -21825,6 +22078,7 @@ joinRoom();
         showToast("카메라 권한을 허용해 주세요");
         return;
       }
+      }
 
       const nickname = normalizeNick(state.nickname || state.currentParticipants?.get?.(uid)?.name || uid);
       const startedAt = Date.now();
@@ -21839,9 +22093,10 @@ joinRoom();
       const stableStartedAt = Number(slotInfo && slotInfo.startedAt || startedAt);
       if(slotId === null || slotId === undefined){
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
         hc.starting = false;
         updateMyBtn();
-        showToast(`손캠 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
+        showToast(`${LBL} 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
         return;
       }
 
@@ -21882,9 +22137,13 @@ joinRoom();
           const params = sender && sender.getParameters ? sender.getParameters() : null;
           if(params){
             params.encodings = params.encodings && params.encodings.length ? params.encodings : [{}];
-            params.encodings[0].maxBitrate = 300000; // 300 kbps
-            params.encodings[0].maxFramerate = 15;
-            params.degradationPreference = "maintain-framerate";
+            /* V186: 화면공유는 훨씬 강하게 묶는다. 요금이 시청자 수만큼 증폭되므로
+               (실측 egress = ingress x 8.6) 이 상한 하나가 월 사용량을 그대로 결정한다.
+               블러 화면은 형태만 보이면 되니 프레임보다 해상도를 지키는 쪽이 유리하다.
+               손캠 maxFramerate는 V185.2에서 카메라를 10fps로 낮춘 뒤 15가 남아 있어 함께 맞춘다. */
+            params.encodings[0].maxBitrate = isScreen ? SCREEN_MAX_BITRATE : 300000;
+            params.encodings[0].maxFramerate = isScreen ? SCREEN_FPS : 10;
+            params.degradationPreference = isScreen ? "maintain-resolution" : "maintain-framerate";
             await sender.setParameters(params);
           }
         }catch(e){
@@ -21948,22 +22207,24 @@ joinRoom();
           sessionId,
           trackName,
           ts: stableStartedAt,
-          ready: true
+          ready: true,
+          kind                       // V186: "cam" | "screen" — 타일 라벨과 시청 쪽 표시에 쓴다
         });
 
-        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname, startedAt: stableStartedAt };
+        hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname, startedAt: stableStartedAt, kind };
         hc.pending = null;
         scheduleMount();
       }catch(e){
         console.warn("[handcam] publish failed:", e);
         hc.pending = null;
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
         try{ pc && pc.close(); }catch(_e){}
         await clearReservedSlot(roomId, slotId);
         hc.starting = false;
         updateMyBtn();
         scheduleMount();
-        showToast(friendlyHandcamError(e, "손캠 연결에 실패했어요. 잠시 후 다시 시도해 주세요"));
+        showToast(friendlyHandcamError(e, `${LBL} 연결에 실패했어요. 잠시 후 다시 시도해 주세요`));
         return;
       }
 
@@ -21971,12 +22232,15 @@ joinRoom();
       updateMyBtn();
       hcResort();
       scheduleMount();
-      showToast("📹 손캠 송출을 시작했어요");
+      showToast(isScreen ? "🖥️ 화면공유를 시작했어요 (블러 처리됨)" : "📹 손캠 송출을 시작했어요");
     }
 
     async function stopMyCam(silent){
       const my = hc.my;
       const pending = hc.pending;
+      const wasScreen = !!(my && my.kind === "screen") || !!hc.screenSource;
+      // V186: 화면공유는 캡처 원본 + 캔버스 그리기 타이머까지 함께 정리해야 한다.
+      try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
       hc.my = null;
       hc.pending = null;
       hc.starting = false;
@@ -22001,7 +22265,7 @@ joinRoom();
       updateMyBtn();
       hcResort();
       scheduleMount();
-      if(!silent && active) showToast("손캠을 껐어요");
+      if(!silent && active) showToast(wasScreen ? "화면공유를 껐어요" : "손캠을 껐어요");
     }
 
     // ---------- 시청(pull) ----------
@@ -22205,7 +22469,7 @@ joinRoom();
               nameEl.textContent = displayName;
               const labelEl = document.createElement("span");
               labelEl.className = "hcLabel";
-              labelEl.textContent = "손캠 LIVE";
+              labelEl.textContent = hcLiveLabel_(liveInfo);   // V186: 손캠/화면공유 구분
               tag.appendChild(nameEl);
               tag.appendChild(labelEl);
               box.appendChild(vd);
@@ -22224,6 +22488,12 @@ joinRoom();
               const liveInfo = HC_LIVE.get(uid) || {};
               const displayName = normalizeNick(liveInfo.name || (isMine && state.nickname) || tile.querySelector(".namePill, .name")?.textContent || "손님");
               nameEl.textContent = displayName;
+              // V186: 손캠 ↔ 화면공유를 갈아탈 때 박스는 그대로 남으므로 라벨을 매번 맞춰준다.
+              const labelEl2 = tag && tag.querySelector(".hcLabel");
+              if(labelEl2){
+                const nextLabel = hcLiveLabel_(liveInfo);
+                if(labelEl2.textContent !== nextLabel) labelEl2.textContent = nextLabel;
+              }
             }
 
             const vd = box.querySelector("video");
@@ -22250,11 +22520,16 @@ joinRoom();
         const host = (els && els.statusBtn && els.statusBtn.parentElement) || document.querySelector(".topCenter");
         if(!host) return;
 
-        let btn = host.querySelector(":scope > .hcBtn");
+        // V186: 화면공유 버튼도 .hcBtn 클래스를 함께 쓰므로 id로 정확히 지목한다.
+        let btn = host.querySelector(":scope > #handcamBtn");
         if(!btn){
           btn = document.createElement("button");
           btn.className = "hcBtn ghost"; btn.type = "button"; btn.id = "handcamBtn";
-          btn.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(hc.my) stopMyCam(false); else startMyCam(); });
+          btn.addEventListener("click", (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            if(hc.my && hc.my.kind !== "screen") stopMyCam(false);
+            else if(!hc.my) startMyCam();
+          });
           // V172_UI: 손캠 버튼을 작업중(statusBtn) "앞"에 둡니다 — 상단 가운데 순서를 📹손캠 → 💗손캠보기 → ✍️작업중으로 통일.
           const statusBtn = els && els.statusBtn;
           if(statusBtn && statusBtn.parentElement === host) host.insertBefore(btn, statusBtn);
@@ -22276,12 +22551,44 @@ joinRoom();
           btn.insertAdjacentElement("afterend", viewBtn);
         }
 
-        const n = HC_LIVE.size, iAmLive = !!hc.my, joined = !!state.joined;
-        btn.classList.toggle("on", iAmLive);
-        btn.textContent = hc.starting ? "📹 연결 중…" : (iAmLive ? "📹 손캠 끄기" : `📹 손캠 ${n}/${HC_MAX}`);
-        btn.disabled = !joined || hc.starting || (!iAmLive && n >= HC_MAX);
-        btn.title = !joined ? "입장 후에 손캠을 켤 수 있어요" : (iAmLive ? "손캠 송출 종료" : `손캠 켜기 (선착순 ${HC_MAX}명)`);
+        /* V186: 화면공유 버튼. 손캠과 슬롯을 공유하므로 둘은 동시에 켤 수 없다
+           (한 사람당 슬롯 하나 = 타일 하나). .hcBtn 클래스를 함께 붙여 기존 스타일과
+           저사양 모드 차단 규칙을 그대로 물려받는다. */
+        let scrBtn = host.querySelector(":scope > #handcamScreenBtn");
+        if(!scrBtn && screenShareUnlocked_()){
+          scrBtn = document.createElement("button");
+          scrBtn.className = "hcBtn hcScreenBtn ghost"; scrBtn.type = "button"; scrBtn.id = "handcamScreenBtn";
+          scrBtn.addEventListener("click", (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            if(hc.my && hc.my.kind === "screen") stopMyCam(false);
+            else if(!hc.my) startMyScreen();
+          });
+          viewBtn.insertAdjacentElement("afterend", scrBtn);
+        }
+
+        const n = HC_LIVE.size, joined = !!state.joined;
+        const screenLive = !!(hc.my && hc.my.kind === "screen");
+        const camLive = !!(hc.my && hc.my.kind !== "screen");
+        const canScreen = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+
+        btn.classList.toggle("on", camLive);
+        btn.textContent = hc.starting ? "📹 연결 중…" : (camLive ? "📹 손캠 끄기" : `📹 손캠 ${n}/${HC_MAX}`);
+        btn.disabled = !joined || hc.starting || screenLive || (!camLive && n >= HC_MAX);
+        btn.title = !joined ? "입장 후에 손캠을 켤 수 있어요"
+                  : screenLive ? "화면공유를 끄면 손캠을 켤 수 있어요"
+                  : camLive ? "손캠 송출 종료" : `손캠 켜기 (선착순 ${HC_MAX}명)`;
         btn.setAttribute("aria-label", btn.title);
+
+        if(scrBtn){
+          scrBtn.classList.toggle("on", screenLive);
+          scrBtn.textContent = hc.starting ? "🖥️ 연결 중…" : (screenLive ? "🖥️ 화면공유 끄기" : "🖥️ 화면공유");
+          scrBtn.disabled = !joined || hc.starting || !canScreen || camLive || (!screenLive && n >= HC_MAX);
+          scrBtn.title = !joined ? "입장 후에 화면공유를 켤 수 있어요"
+                       : !canScreen ? "이 브라우저는 화면공유를 지원하지 않아요 (PC 크롬·엣지)"
+                       : camLive ? "손캠을 끄면 화면공유를 켤 수 있어요"
+                       : screenLive ? "화면공유 종료" : "원고 창을 골라 블러 처리해서 공유해요";
+          scrBtn.setAttribute("aria-label", scrBtn.title);
+        }
 
         viewBtn.classList.toggle("on", hc.viewerEnabled);
         viewBtn.textContent = hc.viewerEnabled ? "💗 손캠 보기 ON" : "💗 손캠 보기 OFF";
@@ -22801,7 +23108,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 16970; // ✅ V185.3: 타일 전원 사라짐 재발 수정 — 구버전 탭이 같은 증상을 계속 겪지 않도록 반드시 올린다.
+  const MK_APP_BUILD = 16980; // ✅ V186: 손캠 슬롯 12 + 화면공유(파일럿 게이트). 옛 탭은 슬롯 9~11을 못 잡으므로 올린다.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
