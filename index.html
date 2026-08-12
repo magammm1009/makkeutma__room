@@ -5889,6 +5889,9 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <!-- V188_MAGICLINK(2026-08-13): 이메일 입력·발송 UI는 입장 전 카드(화면 중앙)로 옮겼다.
      상단바에는 인증 여부 배지만 남긴다 — 인증 후에 이메일 주소를 계속 노출할 이유가 없다. -->
 <span class="meMini" id="authStateHint"></span>
+<!-- V191_ADMINLINK: 관리자에게만 보이는 승인 페이지 바로가기. 일반 작가에게는 숨는다.
+     UI를 숨기는 것은 편의일 뿐이고 실제 차단은 approve.html의 규칙 기반 관리자 판정이 한다. -->
+<button class="ghost" id="approveLink" style="display:none" title="가입 승인 페이지 (관리자 전용)" type="button">🛡️ 승인</button>
 <input id="adminPassJoin" placeholder="관리자비번(선택)" style="width:150px" type="password"/>
 <button class="primary" id="joinBtn">입장</button>
 <button class="primary" disabled="" id="leaveBtn">퇴장</button>
@@ -7886,6 +7889,7 @@ const auth = getAuth(app);
       signinEmail: $("signinEmail"),   // V188_MAGICLINK
       sendLinkBtn: $("sendLinkBtn"),   // V188_MAGICLINK
       authStateHint: $("authStateHint"), // V188_MAGICLINK
+      approveLink: $("approveLink"),     // V191_ADMINLINK
       authBig: $("authBig"),                 // V188_MAGICLINK
       authBigIcon: $("authBigIcon"),         // V188_MAGICLINK
       authBigTitle: $("authBigTitle"),       // V188_MAGICLINK
@@ -19990,6 +19994,7 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       try{ mkRefreshJoinState_(); }catch(_e){}
       try{ walletMaybePull_(); }catch(_e){}   // V189_WALLET: uid가 확정되면 지갑도 맞춘다
       try{ ownedMaybePull_(); }catch(_e){}    // V190_OWNED: 보유 파츠도 함께
+      try{ mkRefreshAdminLink_(); }catch(_e){} // V191_ADMINLINK: 관리자면 승인 바로가기 노출
     }
 
     // 보낸 주소를 칸에 되살리고, 링크로 돌아온 경우엔 입장을 누르기 전에 미리 처리한다
@@ -20213,6 +20218,38 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       });
     }catch(_e){}
     /* ===== /V190_OWNED ===== */
+
+    /* ===== V191_ADMINLINK (2026-08-13): 관리자에게만 승인 페이지 바로가기 =====
+       판정은 서버 값으로만 한다 — settings/ownerUid(전원 읽기 가능) 또는 admins/{내 uid}.
+       (2026-08-13에 admins/$uid에 본인 읽기를 열었다. 명단 '나열'은 여전히 관리자만 가능하다.)
+       방장 이메일을 클라이언트 상수로 두지 않는 이유: 배포 소스는 공개라 이메일이 그대로 노출된다.
+       ⚠️ 버튼을 숨기는 건 편의일 뿐 차단이 아니다. 실제 차단은 approve.html의 규칙 기반 판정이 한다. */
+    let __adminLinkUid = "";
+    async function mkRefreshAdminLink_(){
+      const btn = els?.approveLink; if(!btn) return;
+      const u = auth.currentUser;
+      if(!u || u.isAnonymous || !u.email){ btn.style.display = "none"; __adminLinkUid = ""; return; }
+      if(__adminLinkUid === u.uid) return;        // uid당 1회만 조회한다
+      __adminLinkUid = u.uid;
+      let isAdmin = false;
+      try{
+        const base = rRoomBase(FIXED_ROOM_ID);
+        const owner = await rGet(rRef(rtdb, `${base}/settings/ownerUid`));
+        if(owner.exists() && String(owner.val()) === u.uid) isAdmin = true;   // 방장
+        if(!isAdmin) isAdmin = (await rGet(rRef(rtdb, `${base}/admins/${u.uid}`))).exists();
+      }catch(err){
+        console.warn("[V191_ADMINLINK] 관리자 확인 실패", err);
+        __adminLinkUid = "";                       // 다음 기회에 재시도
+      }
+      btn.style.display = isAdmin ? "" : "none";
+    }
+    if(els.approveLink){
+      els.approveLink.addEventListener("click", ()=>{
+        try{ window.open("./approve.html", "_blank", "noopener"); }
+        catch(_e){ location.href = "./approve.html"; }
+      });
+    }
+    /* ===== /V191_ADMINLINK ===== */
 
     // ✅ Nickname clamp (IME-safe)
     if(els.name){
