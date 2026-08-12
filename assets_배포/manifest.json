@@ -1,5 +1,5 @@
 {
-  "_version": "20260811150403",
+  "_version": "20260812223014",
   "01_body": [
     "01_body_auto_01.png",
     "01_body_auto_02.png",
@@ -48,6 +48,8 @@
     "02_hair_auto_21_back.png",
     "02_hair_auto_22.png",
     "02_hair_auto_22_back.png",
+    "02_hair_auto_23.png",
+    "02_hair_auto_23_back.png",
     "02_hair_auto_24.png",
     "02_hair_auto_24_back.png",
     "02_hair_auto_25.png",
@@ -131,6 +133,8 @@
     "04_look_auto_38.png",
     "04_look_auto_40.png",
     "04_look_auto_41.png",
+    "04_look_auto_42.png",
+    "04_look_auto_43.png",
     "04_look_auto_44.png",
     "04_look_auto_45.png",
     "04_look_auto_46.png",
@@ -593,6 +597,7 @@
     "02_hair/02_hair_auto_19.png": 3000,
     "02_hair/02_hair_auto_21.png": 3000,
     "02_hair/02_hair_auto_22.png": 3000,
+    "02_hair/02_hair_auto_23.png": 3000,
     "02_hair/02_hair_auto_24.png": 3000,
     "02_hair/02_hair_auto_25.png": 3000,
     "02_hair/02_hair_auto_26.png": 3000,
@@ -663,6 +668,8 @@
     "04_look/04_look_auto_38.png": 4000,
     "04_look/04_look_auto_40.png": 4000,
     "04_look/04_look_auto_41.png": 4000,
+    "04_look/04_look_auto_42.png": 4000,
+    "04_look/04_look_auto_43.png": 4000,
     "04_look/04_look_auto_44.png": 4000,
     "04_look/04_look_auto_45.png": 4000,
     "04_look/04_look_auto_46.png": 4000,
@@ -907,6 +914,12 @@
       40,
       533,
       574
+    ],
+    "02_hair/02_hair_auto_23.png": [
+      234,
+      50,
+      564,
+      564
     ],
     "02_hair/02_hair_auto_24.png": [
       234,
@@ -1327,6 +1340,18 @@
       475,
       304,
       514
+    ],
+    "04_look/04_look_auto_42.png": [
+      247,
+      266,
+      528,
+      742
+    ],
+    "04_look/04_look_auto_43.png": [
+      317,
+      487,
+      399,
+      500
     ],
     "04_look/04_look_auto_44.png": [
       329,
