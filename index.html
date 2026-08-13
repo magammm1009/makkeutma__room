@@ -10164,6 +10164,69 @@ function presenceFeedWatchdog_(){
     Promise.resolve(subscribeParticipants()).catch(()=>{});
   }catch(e){}
 }
+
+/* ===== V198_CHATWATCH (2026-08-13): 채팅 수신이 죽어도 아무도 되살리지 않던 문제 =====
+   방장·관리자 실측으로 확정된 증상:
+     · 쓰기는 된다(보낸 메시지가 서버에 정상 도착)
+     · 받기만 죽는다(child_added가 더 이상 안 온다)
+     · .info/connected는 true라 V194 배너가 안 뜬다
+     · 새로고침하면 즉시 정상 — 하루 종일 나온 "새로고침하면 낫는다"의 정체
+     · 새로고침한 사람은 멀쩡하고 안 한 사람만 굳어 있었다
+
+   ★ 왜 "타일은 살아 있는데 채팅만 안 올라오는가"
+     위 presenceFeedWatchdog_이 presence 구독은 되살린다. 그런데 **채팅에는 같은 것이 없었다.**
+     그래서 리스너가 통째로 좀비가 되면 타일만 부활하고 채팅은 영영 멈춘 채로 남는다.
+
+   ★ '조용한 방'과 '죽은 리스너'를 어떻게 구분하나
+     수신이 없다는 것만으로는 판단할 수 없다(작업방이라 몇 십 분 조용한 게 정상이다).
+     그래서 **서버에 가장 최근 메시지 1건만 물어본다.** 서버에는 있는데 우리가 못 받았으면
+     그때만 죽은 것이다. limitToLast(1)이라 1회 ~300바이트, 3분 주기로도 무시할 수준이다. */
+const CHATWATCH_MIN_SILENCE_MS = 4 * 60 * 1000;   // 이만큼 조용할 때만 서버에 물어본다
+const CHATWATCH_COOLDOWN_MS    = 5 * 60 * 1000;   // 재구독 쿨다운(1회 ~80건 재다운로드)
+async function chatFeedWatchdog_(){
+  try{
+    if(!state || !state.joined || !state.roomId) return;
+    if(document.visibilityState !== "visible") return;
+    if(!state.chatDayKey) return;                       // 아직 구독 전
+    const now = Date.now();
+    // 최근에 뭔가 받았으면 멀쩡하다 — 물어볼 필요도 없다
+    const last = Number(state.chatLastRecvMs || state.__chatWatchBaseMs || 0);
+    if(last && now - last < CHATWATCH_MIN_SILENCE_MS) return;
+    if(now - Number(state.__chatWatchAt || 0) < CHATWATCH_MIN_SILENCE_MS) return;
+    state.__chatWatchAt = now;
+
+    const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
+    const snap = await rGet(rQuery(root, rOrderByChild("tsMs"), rLimitToLast(1)));
+    const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+    const ids = Object.keys(val);
+    state.__chatWatchProbeAtMs = now;
+    if(!ids.length) return;                             // 오늘 메시지가 아예 없다 = 조용한 게 맞다
+    const id = ids[0];
+    if(state.chatRollingById && state.chatRollingById[id]) return;   // 이미 갖고 있다 = 정상
+
+    // 우리가 아는 최신보다 새로운가? (놓친 게 확실할 때만 움직인다)
+    const srvTs = Number((val[id] || {}).tsMs || 0);
+    let mineTs = 0;
+    try{
+      for(const m of Object.values(state.chatRollingById || {})) mineTs = Math.max(mineTs, Number(m && m.tsMs || 0));
+    }catch(_e){}
+    if(srvTs && mineTs && srvTs <= mineTs) return;      // 더 새롭지 않다 = 놓친 게 아니다
+
+    if(now - Number(state.__chatResubAt || 0) < CHATWATCH_COOLDOWN_MS){
+      console.warn("[V198_CHATWATCH] 놓친 메시지를 발견했지만 쿨다운 중이라 재구독을 미룹니다.");
+      return;
+    }
+    state.__chatResubAt = now;
+    state.__chatWatchResubCount = Number(state.__chatWatchResubCount || 0) + 1;
+    console.warn("[V198_CHATWATCH] 채팅 수신이 멈춘 것으로 판단해 다시 구독합니다. " +
+      `(서버 최신 ${new Date(srvTs).toLocaleTimeString("ko-KR")} / 내 최신 ` +
+      `${mineTs ? new Date(mineTs).toLocaleTimeString("ko-KR") : "없음"}, 누적 ${state.__chatWatchResubCount}회)`);
+    try{ mkDiag("chat-재구독", `${Math.round((now - last)/1000)}초간 수신 없음 · 서버에 새 메시지 있음`); }catch(_e){}
+    subscribeChat();
+  }catch(err){
+    console.warn("[V198_CHATWATCH] 확인 실패(다음 기회에 재시도)", err);
+  }
+}
     // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 MAC_HELPER_URL/WIN_HELPER_URL 기본 다운로드 상수 삭제.
 
 function openUrl(url){
@@ -12928,6 +12991,7 @@ async function heartbeat(){
     try{ await ensureFocusDayCurrent("heartbeat"); }catch(_e){}
     // V185.3: 구독이 붙어 있는데도 소식이 끊긴 presence를 되살린다(쿨다운 내장).
     try{ presenceFeedWatchdog_(); }catch(_e){}
+    try{ chatFeedWatchdog_(); }catch(_e){}          // V198_CHATWATCH
     const now = Date.now();
     try{
       const meNow = state.currentParticipants?.get?.(state.uid) || null;
@@ -13107,6 +13171,8 @@ window.__MK_CHAT_DEBUG__ = function(){
     타일_수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
     절약모드_꺼짐: !!state.nonChatEnabled,
     구독토큰: Number(state.chatSubSeq || 0),
+    자동재구독_횟수: Number(state.__chatWatchResubCount || 0),   // V198_CHATWATCH
+    마지막_서버확인: state.__chatWatchProbeAtMs ? (Math.round((now - state.__chatWatchProbeAtMs)/1000) + "초 전") : "(아직 없음)",
     서버시각_오차ms: Number(__mkServerTimeOffsetMs) || 0,
     RTDB_연결끊김: !!__connLostSince,
     탭_가시성: (()=>{ try{ return document.visibilityState; }catch(e){ return "?"; } })()
@@ -13533,6 +13599,7 @@ function startRtdbConnectionWatch(){
     window.addEventListener("focus", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ ensureTilesAlive_("focus"); }catch(_e){}   // V197_TILEBACK
+      try{ chatFeedWatchdog_(); }catch(_e){}          // V198_CHATWATCH
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
@@ -15575,6 +15642,10 @@ function subscribeChat(){
         for(const mm of (list || [])){ if(mm && mm.id) state.chatInitialIds.add(mm.id); }
       }catch(e){ state.chatInitialIds = new Set(); }
       state.chatFirstLoadDone = true;
+      // V198_CHATWATCH: 방금 붙었으므로 여기를 '마지막으로 정상 수신한 시각'의 기준으로 삼는다.
+      // 이게 없으면 조용한 방에 막 들어온 사람이 곧바로 죽은 것으로 오판된다.
+      state.__chatWatchBaseMs = Date.now();
+      state.__chatWatchAt = Date.now();
       try{ state.chatUnseen = 0; hideChatNewBar(true); }catch(e){}
       // ensure UI bits
       ensureChatMoreUI();
