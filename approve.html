@@ -216,17 +216,71 @@ async function completeLinkIfAny(){
 /* ===== 권한 판정 =====
    규칙상 admins '컬렉션'은 관리자만 읽을 수 있다 → 읽기 성공 자체가 규칙이 인정한 관리자라는 뜻이다.
    (규칙의 방장 이메일 앵커까지 그대로 반영되므로 클라이언트가 이메일을 알 필요가 없다.)
-   방장 여부는 관리자 임명·해제 UI를 열지 말지에만 쓰므로 settings/ownerUid 일치로 본다. */
+   방장 여부는 관리자 임명·해제 UI를 열지 말지에만 쓰므로 settings/ownerUid 일치로 본다.
+
+   ===== V201_ADMINKEEP (2026-08-13): "관리자 인증이 자꾸 풀린다"의 원인 =====
+   예전 코드는 `catch(_e){ isAdmin = false; }` 하나로 **권한 거부와 네트워크 오류를 똑같이**
+   처리했다. RTDB 읽기가 한 번만 삐끗해도 "이 계정은 관리자가 아닙니다" 배너가 뜨고
+   승인 UI가 통째로 숨겨졌으며, 재시도가 없어 새로고침 전까지 그대로였다.
+
+   ★ 작업방(index.html)은 이 버그를 V197_ADMINKEEP에서 이미 고쳤는데 이 파일에는 반영되지 않았다.
+     그쪽 주석: "조회에 실패한 것뿐인데 '관리자가 아님'으로 처리돼 버튼이 사라졌다.
+     확인하지 못했을 때는 화면을 바꾸지 않고 그대로 두는 것이 맞다."
+
+   ★ 왜 하필 관리자만, 그리고 왜 '자꾸'인가
+     이 페이지와 작업방은 같은 오리진·같은 Firebase 앱이라 Auth가 탭 사이를 동기화하는데,
+     그때 currentUser가 잠깐 비면서 onAuthStateChanged가 울리고 → 역할을 다시 판정한다.
+     관리자는 두 탭을 함께 띄워 두므로 이 왕복이 계속 일어난다.
+     📏 실측(2026-08-13): ownerUid는 admins 명단에 **없다**. 그래서 관리자 6명은
+        `get(admins)` 한 번의 성공에만 매달려 있었다.
+
+   → 판정을 3상태로 바꾼다. "모름"일 때는 화면을 건드리지 않고 잠시 뒤 다시 확인한다. */
 let me = null, isOwner = false, isAdmin = false;
+
+// 규칙이 거부한 것인지(=진짜 권한 없음), 아니면 확인 자체를 못 한 것인지 구분한다.
+function isPermissionDenied_(err){
+  const code = String(err?.code || "").toLowerCase();
+  const msg  = String(err?.message || err || "").toLowerCase();
+  return code.includes("permission") || msg.includes("permission_denied") || msg.includes("permission denied");
+}
+/* ⚠️ Firebase 읽기 Promise는 오프라인·차단 상태에서 resolve도 reject도 하지 않는다.
+   그대로 await하면 아래 onValue 구독 4개가 **아예 걸리지 않아** 화면이 "불러오는 중…"에서 멈춘다.
+   (작업방에서 같은 원인으로 세 번 사고가 났다: CHATLOCK / JOINSTALL / TILEBACK)
+   실패시키는 게 아니라 '기다리기를 그만두는' 것이다 — SDK는 뒤에서 계속 재시도한다. */
+const READ_TIMEOUT_MS = 8000;
+function getWithTimeout_(r, what){
+  let timer = null;
+  return Promise.race([
+    get(r).finally(()=>{ if(timer) clearTimeout(timer); }),
+    new Promise((_, rej)=>{
+      timer = setTimeout(()=>{
+        const e = new Error("read timeout: " + (what || ""));
+        e.code = "mk/timeout";
+        rej(e);
+      }, READ_TIMEOUT_MS);
+    })
+  ]);
+}
+
+const ROLE_UNKNOWN = "unknown";   // 확인 실패 — 화면을 바꾸지 않는다
 async function resolveRole(user){
   isOwner = false; isAdmin = false;
+  // 방장 여부는 임명·해제 UI를 열지 말지에만 쓴다. 확인 못 하면 그 UI만 안 보이고 끝이라 안전하다.
   try{
-    const s = await get(ref(db, `rooms/${ROOM}/settings/ownerUid`));
-    if(s.exists() && String(s.val()) === user.uid) isOwner = true;
-  }catch(_e){}
-  if(isOwner){ isAdmin = true; return; }
-  try{ await get(ref(db, `rooms/${ROOM}/admins`)); isAdmin = true; }
-  catch(_e){ isAdmin = false; }
+    const s = await getWithTimeout_(ref(db, `rooms/${ROOM}/settings/ownerUid`), "ownerUid");
+    if(s.exists() && String(s.val()) === user.uid){ isOwner = true; isAdmin = true; return "owner"; }
+  }catch(err){
+    console.warn("[V201_ADMINKEEP] 방장 확인 실패 — 관리자 판정으로 넘어갑니다", err);
+  }
+  try{
+    await getWithTimeout_(ref(db, `rooms/${ROOM}/admins`), "admins");
+    isAdmin = true;
+    return "admin";
+  }catch(err){
+    if(isPermissionDenied_(err)){ isAdmin = false; return "none"; }   // 규칙이 거부 = 진짜 권한 없음
+    console.warn("[V201_ADMINKEEP] 관리자 확인 실패 — 화면을 유지하고 다시 시도합니다", err);
+    return ROLE_UNKNOWN;                                              // 네트워크·타임아웃은 '모름'
+  }
 }
 
 /* ===== 카페 아이디 앞글자 ↔ 이메일 대조 =====
@@ -453,7 +507,8 @@ function renderArchive(val){
       }
       btn.disabled = true; btn.textContent = "불러오는 중…";
       try{
-        const rec = (await get(ref(db, `rooms/${ROOM}/joinArchive/${uid}`))).val();
+        // V201: 여기도 타임아웃을 건다. 안 걸면 finally가 영영 안 돌아 버튼이 "불러오는 중…"에 굳는다.
+        const rec = (await getWithTimeout_(ref(db, `rooms/${ROOM}/joinArchive/${uid}`), "보관 스크린샷")).val();
         holder.innerHTML = (rec && typeof rec.img === "string" && rec.img.startsWith("data:image/"))
           ? `<img class="shot" src="${esc(rec.img)}" alt="보관된 스크린샷"/>`
           : '<p class="muted">이 기록에는 스크린샷이 없습니다.</p>';
@@ -478,15 +533,72 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
 /* ===== 부팅 ===== */
 (async () => {
   try{ await setPersistence(auth, browserLocalPersistence); }catch(_e){}
-  await completeLinkIfAny();
   try{
     const saved = localStorage.getItem(EMAIL_LS) || "";
     if(saved && !$("email").value) $("email").value = saved;
   }catch(_e){}
 
+  /* ===== V201_SUBLEAK: onValue 구독을 반드시 회수한다 =====
+     예전에는 onAuthStateChanged 콜백 안에서 onValue 4개를 걸기만 하고 떼지 않았다.
+     Auth는 탭 사이 동기화 때마다 이 콜백을 다시 부르므로 **인증 상태가 바뀔 때마다 4개씩
+     영구히 쌓였고**, 리스너는 붙을 때마다 노드를 통째로 다시 받는다.
+     지금은 대기 건이 없어 피해가 작지만(실측 joinRequests 0건 · joinArchiveIndex 7.5KB),
+     승인 대기에는 스크린샷이 base64로 들어 있어 쌓이면 중복 리스너마다 그 전부를 다시 받는다.
+     모듈 SDK의 onValue는 해제 함수를 돌려주므로 off를 import할 필요가 없다. */
+  let __unsubs = [];
+  function detachSubs_(){
+    __unsubs.forEach(u => { try{ u(); }catch(_e){} });
+    __unsubs = [];
+  }
+
+  let __roleRetryTimer = null;
+  function clearRoleRetry_(){ if(__roleRetryTimer){ clearTimeout(__roleRetryTimer); __roleRetryTimer = null; } }
+  function scheduleRoleRetry_(user, ms){
+    clearRoleRetry_();
+    __roleRetryTimer = setTimeout(()=>{ __roleRetryTimer = null; applyRole_(user, true); }, ms);
+  }
+
+  async function applyRole_(user, isRetry){
+    if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;   // 그새 계정이 바뀌었다
+    const role = await resolveRole(user);
+
+    /* ★ 확인하지 못했을 때는 화면을 건드리지 않는다.
+       예전에는 여기서 '권한 없음'으로 떨어뜨려, 읽기 한 번 실패가 곧 권한 상실로 보였다. */
+    if(role === ROLE_UNKNOWN){
+      if(!isRetry) toast("권한을 확인하지 못했습니다 · 잠시 후 다시 확인합니다", 4500);
+      scheduleRoleRetry_(user, 6000);
+      return;
+    }
+    clearRoleRetry_();
+
+    $("mePill").textContent = isOwner ? "방장" : (isAdmin ? "관리자" : "권한 없음");
+    $("mePill").className = "pill " + (isAdmin ? "ok" : "bad");
+    if(!isAdmin){
+      detachSubs_();
+      $("noPerm").classList.remove("hide"); $("adminUI").classList.add("hide");
+      return;
+    }
+    $("noPerm").classList.add("hide"); $("adminUI").classList.remove("hide");
+
+    detachSubs_();   // 재판정으로 다시 들어왔을 수 있다 — 겹치기 전에 반드시 회수
+    const fail = (where) => (err) => {
+      console.warn(where, err);
+      toast(`${where} 읽기 실패: ${err?.code || err?.message || ""}`, 6000);
+    };
+    const sub = (path, render, label) =>
+      __unsubs.push(onValue(ref(db, path), s => render(s.val() || {}), fail(label)));
+    sub(`rooms/${ROOM}/joinRequests`, renderPending, "승인 대기");
+    sub(`rooms/${ROOM}/members`,      renderMembers, "멤버");
+    sub(`rooms/${ROOM}/admins`,       renderAdmins,  "관리자");
+    // 색인만 구독한다(메타 ~150바이트/건). 스크린샷 본체는 버튼을 눌렀을 때만 내려받는다.
+    sub(`rooms/${ROOM}/joinArchiveIndex`, renderArchive, "보관함");
+  }
+
   onAuthStateChanged(auth, async (user) => {
     me = user || null;
+    clearRoleRetry_();
     if(!user){
+      detachSubs_();                       // 로그아웃 = 구독도 함께 회수
       $("loginCard").classList.remove("hide");
       $("meCard").classList.add("hide"); $("adminUI").classList.add("hide"); $("noPerm").classList.add("hide");
       return;
@@ -494,22 +606,14 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     $("loginCard").classList.add("hide");
     $("meCard").classList.remove("hide");
     $("meEmail").textContent = user.email || "(이메일 없음)";
-    await resolveRole(user);
-    $("mePill").textContent = isOwner ? "방장" : (isAdmin ? "관리자" : "권한 없음");
-    $("mePill").className = "pill " + (isAdmin ? "ok" : "bad");
-    if(!isAdmin){ $("noPerm").classList.remove("hide"); $("adminUI").classList.add("hide"); return; }
-    $("noPerm").classList.add("hide"); $("adminUI").classList.remove("hide");
-
-    const fail = (where) => (err) => {
-      console.warn(where, err);
-      toast(`${where} 읽기 실패: ${err?.code || err?.message || ""}`, 6000);
-    };
-    onValue(ref(db, `rooms/${ROOM}/joinRequests`), s => renderPending(s.val() || {}), fail("승인 대기"));
-    onValue(ref(db, `rooms/${ROOM}/members`),      s => renderMembers(s.val() || {}), fail("멤버"));
-    onValue(ref(db, `rooms/${ROOM}/admins`),       s => renderAdmins(s.val() || {}),  fail("관리자"));
-    // 색인만 구독한다(메타 ~150바이트/건). 스크린샷 본체는 버튼을 눌렀을 때만 내려받는다.
-    onValue(ref(db, `rooms/${ROOM}/joinArchiveIndex`), s => renderArchive(s.val() || {}), fail("보관함"));
+    await applyRole_(user, false);
   });
+
+  /* ⚠️ 링크 처리는 리스너를 건 '뒤에' 한다.
+     예전에는 `await completeLinkIfAny()`가 onAuthStateChanged 등록보다 앞에 있어서,
+     이 단계가 어떤 이유로든 멈추면 인증 리스너가 아예 등록되지 않고 페이지가 통째로 죽었다.
+     순서만 바꾸면 링크 처리가 늦어져도 로그인 상태는 정상적으로 따라간다. */
+  await completeLinkIfAny();
 })();
 </script>
 </body>

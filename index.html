@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V201_ADMINKEEP + V201_AUTHBADGE + V201_TILEWATCH + V201_READGUARD: "관리자 인증이 자꾸 풀린다"와 그 계열 수정. ①approve.html의 resolveRole이 `catch(_e){ isAdmin = false; }` 하나로 **권한 거부와 네트워크 오류를 똑같이** 처리했다 — RTDB 읽기가 한 번만 삐끗해도 "이 계정은 관리자가 아닙니다"가 뜨고 승인 UI가 숨겨졌으며 재시도가 없어 새로고침 전까지 그대로였다. 작업방은 같은 버그를 V197_ADMINKEEP에서 이미 고쳤는데 승인 페이지에는 반영되지 않았다. 판정을 3상태(owner/admin/none/unknown)로 바꿔 '모름'이면 화면을 안 바꾸고 6초 뒤 재시도한다. 실측 2026-08-13: ownerUid가 admins 명단에 없어 관리자 6명이 get(admins) 한 번의 성공에만 매달려 있었다. ②승인 페이지 get()에 8초 타임아웃 — 없으면 resolveRole이 멈춰 뒤따르는 onValue 구독 4개가 아예 안 걸리고 화면이 "불러오는 중…"에서 굳는다. 링크 처리(completeLinkIfAny)도 onAuthStateChanged 등록 뒤로 옮겨 그 단계가 멈춰도 페이지가 죽지 않게 했다. ③승인 페이지 onValue 4개를 걸기만 하고 떼지 않아 인증 상태가 바뀔 때마다 영구히 쌓였다 — 해제 함수를 모아 두고 재판정 전에 회수한다(대기 건에는 스크린샷이 base64로 들어 있어 쌓이면 중복 리스너마다 그 전부를 다시 받는다). ④작업방 '⚠️ 미인증' 배지에 5초 유예 — V197이 탭 동기화의 순간적 null을 걸러내려고 만든 유예를 토스트에만 걸고 배지·🛡️버튼에는 안 걸어서, 관리자가 두 탭을 띄워 둘 때마다 인증이 풀린 것처럼 보였다. 표시 경로에만 적용하고 실제 쓰기 게이트는 엄격 판정을 유지한다. ⑤ensureTilesAlive_를 하트비트(3분)에서도 돌린다 — presenceFeedWatchdog_은 구독이 아예 없으면 손을 떼고 ensureTilesAlive_는 탭 이벤트에만 걸려 있어서, 화면을 계속 보고 있으면 아무도 안 고쳐줬다("타일만 죽고 채팅은 올라온다"의 남은 절반). 보이는 중 + 숨김으로 끊은 상태가 아닐 때만 돌려 V179 절감을 지킨다. ⑥readGuard_ 도입 — 로딩 플래그를 쥔 채 멈추면 finally가 영영 안 돌아 기능이 굳던 자리 2곳(쪽지 상대 목록·관리자 프로필 목록)과 관리자 비번 확인에 적용. 빌드 17080 -->
+<!-- V201_GRACE + V201_AUTOLEAVE: "입장 메시지 없는 타일이 생겼다 사라졌다"의 원인 수정. ①원인은 20분 TTL이 아니라 onDisconnect 도장이었다 — 소켓이 끊기는 순간 서버가 disconnectedSessionId를 찍고, isOfflinePresence가 그 한 줄로 유예 0초에 전원의 화면에서 지웠다. 도장은 진짜 퇴장이 아니라 노트북 덮기·와이파이 전환·절전·뒷탭 정리에도 찍힌다(실측: 고구마 님 마지막 하트비트 12초 뒤). 돌아오면 heartbeat이 도장을 지워 타일이 툭 나타나는데 joinRoom을 안 거쳤으니 입장 메시지가 없다. ②실측 2026-08-13: 최근 35분 활동자 20명 중 5명이 아무에게도 안 보였고 그중 4명이 '작업중'이었다(21%). ③유예를 준다 — 작업중 3시간(단 dateKey가 오늘일 때만, 즉 자정이 마감선), 휴식/자리비움 2분, 정상 퇴장(status=off)은 예전처럼 즉시. 판정 순서를 바꿔 off를 먼저 본다(안 그러면 정상 퇴장자도 유예로 남는다). 도장 없이 하트비트만 멎는 경로(실측: 복길 님 35분)도 같은 유예로 흡수. ④★유예만 넣으면 시간이 거짓말을 한다 — 타일 시간은 (누적 + 지금 − 시작시각)이라 하트비트가 멎어도 계속 자란다(실측: 고구마 님 기록 8시간37분 vs 화면 9시간30분). computeDisplayedTotal이 '마지막 생존 증거'를 넘어 자라지 않게 동결. 정상 하트비트 중인 사람은 계산이 1초도 안 바뀐다(실측 15건 검증). ⑤유예 중 타일은 흐리게 + '연결 확인 중'(.tileGrace/.rosterGrace) — 흐려지는 순간 = 시간이 멈추는 순간. ⑥휴식/자리비움 24시간이면 스스로 입장 전 화면으로(V172 관리자 수동 도구의 자동화). 판정은 statusSinceMs + 채팅/버튼, 작업중은 무조건 제외 — 작가는 브라우저가 아니라 한글에서 쓰므로 마우스·키보드·탭 가시성은 부재의 증거가 못 된다. ⚠️ 접속 판정이 바뀌었으므로 구버전 탭과 섞이면 안 된다. 빌드 17080 -->
 <!-- V186.9_SLOTS20: 손캠/화공 슬롯 12 → 20. 공개 후 화공 쪽으로 사람이 몰렸고 손캠은 많아야 5명이라는 판단. 비용을 정하는 것은 총 슬롯 수가 아니라 손캠 인원이다 — 실측 기준 한 자리당 손캠 약 103GB/월, 화공 약 2.8GB/월로 30배 넘게 차이난다(화공 실측 3.3kbps, 손캠은 실제 트래픽에서 역산한 월 610GB 기준). 손캠 5 + 화공 15면 월 약 653GB로 무료 1,000GB 안이지만, 손캠이 8명까지 늘면 약 1,010GB로 한도에 닿으므로 손캠 인원을 지켜봐야 한다. firebase-rules.json의 handcam/live/$slotId 쓰기 규칙도 0~19 허용으로 함께 배포했다(정규식 ^([0-9]|1[0-9])$, 20 이상은 거부). 규칙을 코드보다 먼저 올려야 초과 슬롯 예약이 조용히 거부되는 구간이 안 생긴다. 뷰어 부담은 미측정 — 20타일이면 한 사람이 최대 20개 스트림을 디코딩하므로, 파츠 512 축소로 확보한 메모리 여유(808MB→206MB)와 함께 Chrome 작업 관리자로 지켜볼 것. 빌드 17070 -->
 <!-- V186.8_FULLSCREEN: 스크리브너 몰입 모드 같은 전체화면 집필 기능을 켜면 화면공유가 멈추던 문제. 그런 기능은 기존 창을 키우는 게 아니라 새 창을 띄우기 때문에, 공유 중이던 창이 더 이상 그려지지 않아 캡처가 멎는다. monitorTypeSurfaces:"exclude"로 전체 화면 선택지를 아예 막아 둔 것이 원인이라 그 옵션을 걷어냈다. displaySurface:"window"는 힌트로 남겨 창 탭이 여전히 먼저 열리므로, 전체화면 모드를 안 쓰는 분들에게는 달라지는 것이 없다(기본값 변경이 아니라 선택지 추가). surfaceSwitching도 "include"로 열어 공유를 끊지 않고 소스를 바꿀 수 있게 했다. 프라이버시는 세 겹으로 유지된다 — ①크롬 자체 선택 창에서 무엇을 공유할지 직접 보고 고르고 ②영역 선택으로 고른 사각형 밖은 애초에 전송되지 않으며 ③모자이크가 한 겹 더 가린다. 다만 전체 화면을 고르면 그 사각형 안에서 앱을 전환할 때 그 내용도 (모자이크된 채로) 나가므로, 확인 모달에 언제 전체 화면을 골라야 하는지와 함께 안내한다. 빌드 17060 -->
 <!-- V186.7_OPEN: 화면공유 파일럿 종료 — 전원 공개(screenShareUnlocked_가 항상 true). 실측으로 확인한 것: 송출량 2,700~3,900bps로 상한 50kbps의 1/15(12명이 하루 8시간 써도 월 34GB, 손캠 610GB와 합쳐 무료 1,000GB 안), 송출·수신 양쪽 정상 동작, 창 단위 캡처 + 송출 전 모자이크로 원고 보호. 다시 잠가야 하면 그 함수만 예전 조건(?screen=1 + localStorage 마커)으로 되돌리면 된다. 상단 버튼은 V186.4에서 하나로 합쳐져 있으므로 꺼져 있으면 "📹 캠/공 n/12", 누르면 손캠·화면공유 선택 메뉴가 뜬다. 빌드 17050 -->
@@ -1546,6 +1548,21 @@
       width:100%;
       justify-self:stretch;
       }
+    /* ✅ V201_GRACE: 끊겼지만 유예 안이라 아직 남겨 둔 타일.
+       "있는지 없는지 확인 중"을 정직하게 보여주는 표시다 — 이때 타이머도 멈춰 있다
+       (presenceTimerLiveUntilMs_). 이 표시가 없으면 유예는 그냥 거짓말이 된다.
+       흐리기만 하면 "사라지는 중"으로 보여서, 점선 테두리로 '확인 중'을 함께 준다.
+       라벨은 왼쪽 위 — statusBar/namePill이 가운데 정렬이고 아래는 bottomStack이 쓴다.
+       body.compact는 main을 통째로 숨기므로 좁은 화면 충돌은 고려 대상이 아니다. */
+    .tile.tileGrace{ opacity:.55; border-style:dashed; border-color:rgba(255,255,255,.30); }
+    .tile.tileGrace::after{
+      content:"연결 확인 중";
+      position:absolute; left:5px; top:5px; z-index:6; pointer-events:none;
+      font-size:9px; line-height:1; white-space:nowrap; letter-spacing:.2px;
+      padding:3px 6px; border-radius:999px;
+      background:rgba(0,0,0,.66); color:#fff;
+      border:1px solid rgba(255,255,255,.24);
+      }
     .tile .bg{position:absolute; inset:0; opacity:1;}
     .tile .shade{
       position:absolute; inset:0;
@@ -1657,6 +1674,11 @@
       background: rgba(0,0,0,.22);
       border: 1px solid rgba(255,255,255,.14);
     }
+    /* ✅ V201_GRACE: 목록 보기의 '연결 확인 중'. 타일(.tileGrace)과 같은 의미다. */
+    .gridRosterItem.rosterGrace{ opacity:.55; border-style:dashed; }
+    .gridRosterItem.rosterGrace .gridRosterStatus::after{
+      content:" · 연결 확인 중"; font-size:10px; opacity:.85;
+      }
     .gridRosterLeft{ display:flex; align-items:center; justify-content:center; text-align:center; gap:10px; min-width:0; }
     .gridRosterEmoji{
       width: 40px; height: 40px;
@@ -7792,6 +7814,37 @@ const auth = getAuth(app);
        isAnonymous의 상태에 전혀 의존하지 않는다. */
     function mkAuthDone_(){ const u = auth.currentUser; return !!(u && u.email); }
 
+    /* ===== V201_AUTHBADGE (2026-08-13): 배지가 '⚠️ 미인증'으로 깜빡이던 문제 =====
+       V197_SHAREDAUTH가 이미 적어 둔 사실이 있다(아래 mkWatchSignedOut_ 주석):
+         "승인 페이지를 '열기만' 해도 Firebase Auth가 탭 사이를 동기화하면서
+          이쪽 auth.currentUser가 **아주 잠깐 null**이 된다."
+       그런데 V197은 그 5초 유예를 **토스트에만** 걸고 배지에는 안 걸었다. 그래서
+       onAuthStateChanged가 null로 울릴 때마다 배지가 미인증으로 튀고 🛡️승인 버튼도 사라졌다.
+       관리자는 작업방과 승인 페이지를 함께 띄워 두므로 이 왕복이 계속 일어난다 —
+       "작업하다 보면 인증이 풀린다"의 정체다.
+
+       ⚠️ 표시(배지·버튼)에만 쓴다. 실제 동작 게이트(쪽지 전송·신청 제출 등)는
+          엄격한 mkAuthDone_()을 그대로 써야 한다 — 유예 중에 쓰기를 허용하면
+          규칙(auth != null)에 막혀 조용히 실패한다. */
+    const AUTH_HINT_GRACE_MS = 5000;   // V197의 SIGNED_OUT_CONFIRM_MS와 같은 값
+    let __authOkAtMs = 0, __authGraceTimer = null;
+    function mkAuthDoneStable_(){
+      if(mkAuthDone_()){ __authOkAtMs = Date.now(); return true; }
+      // 방금 전까지 인증돼 있었다면 탭 동기화의 순간적 null일 수 있다 — 유예 안에서는 유지한다.
+      return !!__authOkAtMs && (Date.now() - __authOkAtMs) < AUTH_HINT_GRACE_MS;
+    }
+    // 유예로 판단을 미룬 경우, 유예가 끝나는 시점에 스스로 한 번 더 확인한다.
+    // (진짜 로그아웃이면 그 뒤로 이벤트가 안 올 수도 있어서 이 재확인이 없으면 배지가 굳는다.)
+    function mkScheduleAuthRecheck_(){
+      if(__authGraceTimer || mkAuthDone_() || !__authOkAtMs) return;
+      const left = AUTH_HINT_GRACE_MS - (Date.now() - __authOkAtMs);
+      __authGraceTimer = setTimeout(()=>{
+        __authGraceTimer = null;
+        try{ mkRefreshAuthHint_(); }catch(_e){}
+        try{ mkRefreshAdminLink_(); }catch(_e){}
+      }, Math.max(200, left + 150));
+    }
+
     /* 캐시된 사용자 레코드가 낡아 email이 비어 있는 경우를 대비해 서버에서 1회 다시 받아온다.
        uid당 1회만 — 정상 사용자는 이 경로에 들어오지도 않는다. */
     let __authReloadTried = "", __authWarnedUid = "";
@@ -7822,6 +7875,8 @@ const auth = getAuth(app);
     function mkRefreshAuthHint_(){
       try{
         const el = els?.authStateHint; if(!el) return;
+        // V201_AUTHBADGE: 탭 동기화의 순간적 null에는 배지를 바꾸지 않는다.
+        if(!mkAuthDone_() && mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }
         if(mkAuthDone_()){
           el.textContent = "✅ 인증됨"; el.className = "meMini authOk";
           el.title = "이메일 인증 완료";
@@ -8800,7 +8855,8 @@ function toast(msg, ms=1600){
       state.directProfilesLoading = true;
       if(state.directInboxTab === "contacts") renderDirectMessageList_();
       try{
-        const snap = await rGet(rProfilesRootRef(state.roomId));
+        // V201_READGUARD: 멈추면 directProfilesLoading이 잠긴 채 남아 쪽지 상대 목록이 영영 안 뜬다.
+        const snap = await readGuard_(rGet(rProfilesRootRef(state.roomId)), "작가 목록");
         state.directProfiles = normalizeDirectProfiles_(snap);
         state.directProfilesLoadedAtMs = Date.now();
         if(!state.directProfiles.some(profile=>profile.uid === state.directSelectedContactUid)) state.directSelectedContactUid = null;
@@ -10070,18 +10126,127 @@ function seoulDateKey(){
     // 3분으로 되돌려 여유를 확보하고, 절감은 TTL이 아니라 항목 크기 줄이기로 가져간다.
     const PRESENCE_HEARTBEAT_INTERVAL_MS = 180000; // 3분
     const FOCUS_LOCAL_PERSIST_INTERVAL_MS = 60000; // 로컬 저장 60초
+/* ===== V201_GRACE (2026-08-13): 끊기자마자 사라지던 타일에 유예를 준다 =====
+   방장 제보: "입장 메시지가 없는 타일이 생겼다 사라졌다를 반복한다."
+
+   ★ 원인 (2026-08-13 실서버 실측으로 확정)
+     입장할 때 서버에 "연결이 끊기면 이 도장을 찍어줘"를 예약해 둔다(armPresenceOnDisconnect_).
+     그런데 아래 판정이 그 도장 한 줄로 **유예 0초에 즉시** 오프라인 처리했다.
+     도장은 진짜 퇴장이 아니라 노트북 덮기·와이파이 전환·절전·백그라운드 탭 정리처럼
+     소켓이 잠깐 끊기기만 해도 찍힌다. 실측에서 고구마 님은 마지막 하트비트 **12초 뒤**에
+     찍혔다 — 원고 쓰다 노트북이 잠깐 존 것이다.
+     돌아오면 heartbeat이 도장을 지워(disconnectedSessionId:null) 타일이 툭 나타나는데,
+     joinRoom을 거치지 않았으므로 입장 메시지도 소리도 없다. 그게 목격된 그림이다.
+     📏 실측 스냅샷: 최근 35분 활동자 20명 중 5명이 아무에게도 안 보였고, 그중 4명이 '작업중'.
+
+   ★ 두 번째 경로 — 도장 없이 하트비트만 멎는 경우
+     소켓은 붙어 있는데 브라우저가 뒷탭 타이머를 재워 하트비트만 멈추면 도장이 안 찍힌다.
+     이쪽은 ONLINE_TTL_MS(20분)에 걸려 사라졌다(실측: 복길 님, 작업중 35분째 안 보임).
+     그래서 **두 경로 모두** 유예 안으로 넣는다.
+
+   ★ 왜 작업중만 길게 주나
+     타이머 누적이 방의 재화가 된 뒤로 '작업중'은 사람이 직접 누른 의사표시다.
+     그리고 그 사람들은 컴퓨터를 켜 둔 채라 대개 소켓이 안 끊긴다 — 유예가 실제로
+     필요한 건 원고에 몰입한 몇 시간 동안 탭이 얼거나 절전에 드는 경우다.
+
+   ★ 유령이 영원히 남지 않는 이유 — 자정이 마감선
+     자정(KST)에 각 브라우저가 자기 상태를 휴식중으로 되돌린다(ensureFocusDayCurrent).
+     그런데 노트북이 꺼져 있으면 그 롤오버를 못 돈다. 그래서 유예 조건에 dateKey를 넣었다.
+     dateKey는 **남의 브라우저가 읽어서 판정**하므로 본인 컴퓨터가 꺼져 있어도 확실히 걸린다.
+     → 작업중 유예의 실질 상한은 "3시간" 또는 "오늘 자정" 중 먼저 오는 쪽이다.
+
+   ⚠️ 판정 순서를 바꿨다. 예전에는 세션 대조가 status 검사보다 **앞**에 있었다.
+      그 순서 그대로 유예를 넣으면 **정상 퇴장한 사람까지 유예 동안 남는다**
+      (leaveRoom도 자기 세션 id를 disconnectedSessionId에 쓰기 때문). off를 먼저 본다.
+
+   ⚠️ disconnectedAtMs는 서버 시계(rServerTimestamp), lastSeenAtMs는 보낸 사람 기기 시계다.
+      기기 시계 오차가 조용한 유실을 만든 전례가 있어(V198) 비교는 mkNowMs_로 한다. */
+const WORK_DISCONNECT_GRACE_MS  = 3 * 60 * 60 * 1000; // 작업중 3시간 (2026-08-13 방장 확정)
+const BREAK_DISCONNECT_GRACE_MS = 2 * 60 * 1000;      // 휴식/자리비움 2분 — 짧은 끊김 깜빡임만 흡수
+
+// mkNowMs_는 이 함수보다 아래에 선언된 let을 읽는다. 실제로 그 전에 불릴 일은 없지만
+// (호출부가 전부 렌더/구독 안쪽이다) 판정이 통째로 던지면 방이 비어 보이므로 감싼다.
+function mkGraceNowMs_(){
+  try{ return mkNowMs_(); }catch(_e){ return Date.now(); }
+}
+// 서버가 "이 세션 끊겼다"고 도장을 찍었는가.
+// 이전 페이지의 늦은 종료 표식은 presenceSessionId가 다르므로 여기서 걸러진다(V160).
+function presenceDisconnectStamped_(p){
+  const liveSession = String(p?.presenceSessionId || "");
+  const disconnectedSession = String(p?.disconnectedSessionId || "");
+  return !!(liveSession && disconnectedSession && liveSession === disconnectedSession);
+}
+// 마지막으로 살아 있었다고 확인된 시각. 끊김 도장은 하트비트보다 뒤에 찍히므로 함께 본다.
+function presenceLastAliveMs_(p){
+  const last = Number(p?.lastSeenAtMs || 0);
+  const disc = Number(p?.disconnectedAtMs || 0);
+  let out = (Number.isFinite(last) && last > 0) ? last : 0;
+  if(presenceDisconnectStamped_(p) && Number.isFinite(disc) && disc > out) out = disc;
+  return out;
+}
+// 이 사람에게 허용할 유예 길이.
+function presenceGraceMs_(p){
+  if(String(p?.status || "").toLowerCase() !== "work") return BREAK_DISCONNECT_GRACE_MS;
+  // 자정을 넘긴 '작업중' 기록 = 그 브라우저가 롤오버를 못 돈 유령이다. 유예 없음.
+  if(String(p?.dateKey || "") !== seoulDateKey()) return 0;
+  return WORK_DISCONNECT_GRACE_MS;
+}
+/* 타일에는 남아 있지만 "지금도 거기 있는지" 확인이 안 된 사람 = 흐리게 표시할 대상.
+   isOfflinePresence(보이나 안 보이나)와 일부러 분리했다 — 보이는 것과 확인된 것은 다르고,
+   유예의 정직함이 이 표시에 걸려 있다.
+   ⚠️ 아주 짧은 끊김(HICCUP)은 걸러낸다. 지하철·와이파이 전환처럼 몇 초짜리 끊김마다
+      타일이 흐려졌다 밝아지면 그게 또 다른 깜빡임이 된다. */
+const PRESENCE_HICCUP_MS = 60 * 1000;                              // 1분 안의 끊김은 없던 일로
+const PRESENCE_STALE_MS  = PRESENCE_HEARTBEAT_INTERVAL_MS * 2;     // 하트비트 2회 결석 = 6분
+function presenceInGrace_(p){
+  try{
+    if(!p || isOfflinePresence(p)) return false;    // 이미 안 보이는 사람은 대상이 아니다
+    const now = mkGraceNowMs_();
+    const last = Number(p.lastSeenAtMs || 0);
+    const at = Number(p.disconnectedAtMs || 0);
+    // 끊김 도장이 '마지막 소식'일 때만 그걸 근거로 삼는다.
+    // 돌아온 사람은 heartbeat이 도장을 지우지만, 지워지기 전 3분 동안은 lastSeenAtMs가 더 새롭다.
+    if(presenceDisconnectStamped_(p) && Number.isFinite(at) && at > 0 && at >= last){
+      return (now - at) > PRESENCE_HICCUP_MS;
+    }
+    if(!Number.isFinite(last) || last <= 0) return false;
+    return (now - last) > PRESENCE_STALE_MS;        // 도장 없이 하트비트만 멎은 경우
+  }catch(_e){ return false; }
+}
+/* 이 사람의 '작업중' 시간이 흘러도 된다고 인정할 마지막 시각.
+   ⚠️ 이게 없으면 유예가 거짓말을 한다 — 타일 시간은 (저장된 누적 + 지금 − 작업시작시각)으로
+   매초 계산되므로(computeDisplayedTotal), 하트비트가 멎어도 시간은 계속 자란다.
+   📏 실측 2026-08-13: 고구마 님 서버 기록 8시간37분 vs 화면 계산 9시간30분,
+      복길 님 5시간10분 vs 6시간14분. 유예만 넣고 이걸 안 막으면 부풀려진 시간이
+      타일에 그대로 뜨고, 본인이 돌아와 하트비트를 쓰는 순간 뚝 떨어진다.
+      시간이 방의 재화가 된 지금은 타일이 사라지는 것보다 이쪽이 더 나쁘다.
+   기준을 흐림 표시(PRESENCE_STALE_MS)와 같은 값으로 맞췄다 —
+   "흐려지는 순간이 시간이 멈추는 순간"이라 설명도 한 줄로 끝난다. */
+function presenceTimerLiveUntilMs_(p){
+  const last = Number(p?.lastSeenAtMs || 0);
+  const at = Number(p?.disconnectedAtMs || 0);
+  // 서버가 끊김을 찍었고 그게 마지막 소식이면, 시간은 정확히 그 순간 멈춘 것이다.
+  if(presenceDisconnectStamped_(p) && Number.isFinite(at) && at > 0 && at >= last) return at;
+  if(!Number.isFinite(last) || last <= 0) return 0;
+  // 하트비트가 늦는 것과 멎은 것은 다르다. 2회분(6분)까지는 늦은 것으로 보고 그대로 흘려보낸다.
+  return last + PRESENCE_STALE_MS;
+}
 function isOfflinePresence(p){
   if(!p) return true;
-  // ✅ V160: onDisconnect/pagehide는 세션 표식만 남긴다.
-  // 이전 페이지의 늦은 종료 표식은 현재 presenceSessionId와 다르므로 무시한다.
-  const liveSession = String(p.presenceSessionId || "");
-  const disconnectedSession = String(p.disconnectedSessionId || "");
-  if(liveSession && disconnectedSession && liveSession === disconnectedSession) return true;
+  // ⚠️ 순서 주의: 정상 퇴장을 먼저 걸러야 유예가 그쪽까지 살려두지 않는다.
   const s = String(p.status||"").toLowerCase();
   if(s === "off" || s === "offline") return true;
   const last = Number(p.lastSeenAtMs || 0);
   if(!Number.isFinite(last) || last <= 0) return true;
-  return (Date.now() - last) > ONLINE_TTL_MS;
+
+  const aliveAt = presenceLastAliveMs_(p);
+  const idle = mkGraceNowMs_() - aliveAt;
+  if(idle < 0) return false;                          // 시계 오차로 미래 = 접속 중으로 본다
+  const grace = presenceGraceMs_(p);
+  // V201_GRACE: 끊김 도장이 찍혔으면 유예까지만 살려 둔다(예전에는 유예 0초).
+  if(presenceDisconnectStamped_(p)) return idle > grace;
+  // 도장 없이 하트비트만 멎은 경우. 휴식은 grace(2분) < TTL(20분)이라 기존 동작 그대로다.
+  return idle > Math.max(ONLINE_TTL_MS, grace);
 }
 function isOnlinePresence(p){
   return !isOfflinePresence(p);
@@ -11750,6 +11915,11 @@ function setControlsEnabled(joined){
       // ✅ V167: 공용 뽀모 LIVE 접속 현황 업데이트(대시보드)
       try{ if(joined) startPomoPresenceWatch_(); else stopPomoPresenceWatch_(); }catch(e){}
       state.joined = joined;
+      /* ✅ V201_AUTOLEAVE: 입장은 사람이 누른 것이다 — 시계를 지금으로 맞추고 1회 잠금도 푼다.
+         (잠금을 안 풀면 자동 퇴장된 사람이 다시 들어와도 판정이 영영 잠긴 채로 남는다.) */
+      if(joined){
+        try{ state.__autoLeaveDone = false; markHumanAct_("join"); }catch(_e){}
+      }
       /* 입장 공지/출근 유도 자동 팝업 제거됨 */
       // keep dashboard positioned under ☰
       dockRightRail();
@@ -12993,6 +13163,16 @@ async function heartbeat(){
     // V185.3: 구독이 붙어 있는데도 소식이 끊긴 presence를 되살린다(쿨다운 내장).
     try{ presenceFeedWatchdog_(); }catch(_e){}
     try{ chatFeedWatchdog_(); }catch(_e){}          // V198_CHATWATCH
+    /* ✅ V201_TILEWATCH: 구독이 아예 끊긴 채 남은 경우를 3분마다 되살린다.
+       presenceFeedWatchdog_은 `if(!state.unsubParticipants) return;`으로 손을 떼고,
+       ensureTilesAlive_는 pageshow/focus/online/visibilitychange에만 걸려 있었다.
+       → **화면을 계속 보고 있으면 아무도 안 고쳐준다.** 탭을 한 번 나갔다 와야 돌아왔다.
+       "갑자기 타일이 전부 죽는데 채팅은 올라온다"의 남은 절반이다(채팅은 별도 구독).
+       ⚠️ 보이는 중 + 숨김으로 의도해서 끊은 상태가 아닐 때만 — 안 그러면 백그라운드에서
+          되살아나 V179가 아끼려던 presence 재다운로드(~135KB)를 그대로 유발한다. */
+    try{
+      if(document.visibilityState === "visible" && !state.nonChatPausedByHidden) ensureTilesAlive_("heartbeat");
+    }catch(_e){}
     const now = Date.now();
     try{
       const meNow = state.currentParticipants?.get?.(state.uid) || null;
@@ -13203,6 +13383,25 @@ async function joinStepGuard_(label, promise, ms){
       }, ms); })
     ]);
   }finally{ if(timer) clearTimeout(timer); }
+}
+
+/* ✅ V201_READGUARD: 값을 돌려주는 읽기용 타임아웃.
+   joinStepGuard_는 값을 안 돌려주고 실패를 조용히 삼키므로 '읽어서 쓰는' 자리에는 못 쓴다.
+   ⚠️ 이게 필요한 이유: Firebase 읽기 Promise는 오프라인·차단 상태에서 resolve도 reject도 안 한다.
+      그 자리를 로딩 플래그가 지키고 있으면 **finally가 영영 안 돌아** 기능이 통째로 굳는다
+      (재호출은 `if(...Loading) return;`에 막혀 되살아나지도 않는다).
+      이 파일에서 같은 뿌리로 세 번 사고가 났다: CHATLOCK / JOINSTALL / TILEBACK.
+   거부시키면 기존 catch/finally가 정상적으로 돌아 안내를 띄우고 잠금을 푼다. */
+function readGuard_(promise, label, ms = 8000){
+  let t = null;
+  return Promise.race([
+    Promise.resolve(promise).finally(()=>{ if(t) clearTimeout(t); }),
+    new Promise((_, rej)=>{ t = setTimeout(()=>{
+      const e = new Error((label || "read") + " timeout");
+      e.code = "mk/timeout";
+      rej(e);
+    }, ms); })
+  ]);
 }
 
 function startRtdbConnectionWatch(){
@@ -13454,7 +13653,16 @@ function startRtdbConnectionWatch(){
         // dateKey만 오늘로 바뀌고 시작시각이 전날 값으로 남은 부분 갱신도 방어
         const rawStart = Number(p.sessionStartedAtMs || 0);
         if(!Number.isFinite(rawStart) || rawStart < dayStart) return base;
-        return base + Math.max(0, (now - rawStart)/1000);
+        /* ✅ V201_GRACE: 시간은 "마지막 생존 증거"를 넘어 자라지 않는다.
+           정상 하트비트 중인 사람은 liveUntil이 항상 now보다 미래라 예전과 완전히 같다.
+           끊긴 사람만 그 시점에서 멈춘다. 돌아오면 heartbeat이 진짜 값을 다시 올린다. */
+        let endMs = now;
+        try{
+          const liveUntil = presenceTimerLiveUntilMs_(p);
+          if(liveUntil > 0 && liveUntil < endMs) endMs = liveUntil;
+        }catch(_e){}
+        if(endMs < rawStart) return base;
+        return base + Math.max(0, (endMs - rawStart)/1000);
       }
       return base;
     }
@@ -13564,6 +13772,15 @@ function startRtdbConnectionWatch(){
         }else if(document.visibilityState === "visible"){
           try{ ensureFocusDayCurrent("visible"); }catch(_e){}
           bumpActivity();
+          /* ✅ V201_AUTOLEAVE: 자리를 비운 사이 정리됐다면 그때 띄운 토스트를 아무도 못 봤다.
+             돌아온 지금 한 번만 다시 띄운다. (아래 판정보다 먼저 읽어야 방금 정리된 건과 안 겹친다) */
+          try{
+            const n = state && state.__autoLeaveNotice;
+            if(n){ state.__autoLeaveNotice = ""; setTimeout(()=>{ try{ showToast(n, 9000); }catch(_e){} }, 400); }
+          }catch(_e){}
+          /* 복귀 시점에도 한 번 판정한다. 탭이 얼어 있으면 1분짜리 minuteWatch가 아예 안 돌기 때문에,
+             밤새 재워졌다가 돌아온 탭은 여기서만 잡힌다. */
+          try{ autoLeaveIfIdle_("visible"); }catch(_e){}
         }
       }catch(e){}
     });
@@ -13598,6 +13815,7 @@ function startRtdbConnectionWatch(){
     window.addEventListener("pageshow", ()=>{
       try{ ensureChatDayCurrent_("pageshow"); }catch(_e){}
       try{ ensureTilesAlive_("pageshow"); }catch(_e){}   // V197_TILEBACK
+      try{ autoLeaveIfIdle_("pageshow"); }catch(_e){}    // V201_AUTOLEAVE
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("focus", ()=>{
@@ -13632,6 +13850,78 @@ function startRtdbConnectionWatch(){
     //            — RTDB helperPairs 구독·REST 폴링과 헬퍼 기반 자동 복귀 규칙 전부.
     // RTDB의 helperPairs 노드 데이터는 그대로 두고, 클라이언트가 더 이상 읽지 않는다.
 
+/* ===== V201_AUTOLEAVE (2026-08-13): 하루 넘게 방치된 접속을 스스로 정리 =====
+   V172가 만든 관리자 수동 도구(findGhostSessions_ + mode:"session" kick)를 자동화한 것이다.
+   실사례(2026-08-01~08-08): 한 작가의 탭이 8일간 열려 있어 출근 도장도 입장 알람도 없었다.
+   실측(2026-08-13): 춘식 님이 27.7시간째 '휴식중'인 채로 탭만 살아 있었다.
+
+   ★ 왜 마우스·키보드를 안 보나 (방장 지적, 2026-08-13)
+     작가님들은 브라우저가 아니라 한글·스크리브너에서 원고를 쓴다. 브라우저 입력이 없다는 건
+     "자리에 없다"가 아니라 그냥 "브라우저를 안 만졌다"이다. 그걸 기준으로 잡으면
+     가장 열심히 일하는 사람부터 쫓겨난다. 탭 가시성도 같은 이유로 못 쓴다 —
+     듀얼 모니터로 방을 띄워 둔 사람은 종일 visible이고, 단일 모니터 전체화면은 종일 hidden이다.
+     그래서 **사람이 직접 한 행동**만 본다: 상태 버튼, 채팅 전송, 입장.
+
+   ★ 작업중은 무조건 제외
+     사흘씩 안 자고 쓰는 분들이 있다. 그분들을 지키는 건 유예 길이가 아니라 이 예외다
+     (애초에 컴퓨터를 켜 둔 채라 소켓이 안 끊겨 유예가 발동할 일도 없다).
+
+   ★ 자정 롤오버와의 관계
+     자정에 ensureFocusDayCurrent가 전원을 휴식중으로 되돌리지만 statusSinceMs는 건드리지 않는다.
+     그래서 이 시계는 자정에 초기화되지 않는다 — 그게 맞다. 방장 확인(2026-08-13):
+     "작업중인 사람들도 자정이 되면 코인 모으려고 작업방에 와서 휴식중을 작업중으로 바꾼다."
+     즉 진짜 작업자는 자정마다 버튼을 눌러 시계가 갱신되고, 안 누르는 사람만 쌓인다.
+     (전날 22시에 작업중을 누르고 자정을 넘긴 사람도 다음날 22시까지 22시간 여유가 있다.) */
+    const AUTO_LEAVE_IDLE_MS = 24 * 60 * 60 * 1000; // 24시간 (2026-08-13 방장 확정)
+    // 사람이 직접 뭔가 한 시각. 자정 롤오버처럼 자동으로 일어난 일은 여기 들어오지 않는다.
+    function markHumanAct_(why){
+      try{ state.__lastHumanActMs = Date.now(); state.__lastHumanActWhy = String(why || ""); }catch(_e){}
+    }
+    function autoLeaveClockMs_(){
+      let t = 0;
+      // 1순위: presence의 statusSinceMs — 남들도 보는 값이라 유령 청소와 판정이 어긋나지 않는다.
+      try{
+        const me = state.currentParticipants?.get?.(state.uid) || null;
+        const v = Number(me?.statusSinceMs || 0);
+        if(Number.isFinite(v) && v > 0) t = v;
+      }catch(_e){}
+      // 2순위: 상태를 안 바꿔도 사람이 있었다는 증거(채팅 등). 둘 중 늦은 쪽을 쓴다.
+      const local = Number(state.__lastHumanActMs || 0);
+      if(Number.isFinite(local) && local > t) t = local;
+      return t;
+    }
+    function autoLeaveIfIdle_(reason){
+      try{
+        if(!state.joined) return false;
+        if(state.__autoLeaveDone) return false;                        // 이번 세션에서 이미 처리
+        if(String(state.myStatus || "") === "work") return false;      // 작업중은 절대 안 내보낸다
+        const since = autoLeaveClockMs_();
+        if(!since) return false;         // 근거가 없으면 아무것도 하지 않는다(V172.1과 같은 보수적 태도)
+        const idleMs = Date.now() - since;
+        if(idleMs < AUTO_LEAVE_IDLE_MS) return false;
+        state.__autoLeaveDone = true;
+        const hours = Math.floor(idleMs / 3600000);
+        console.warn(`[V201_AUTOLEAVE] ${hours}시간째 작업중이 아니라 자리를 정리합니다 (${reason})`);
+        try{ mkDiag("자동퇴장", `${hours}시간 방치 · ${reason}`); }catch(_e){}
+        const notice = `🌙 ${hours}시간 넘게 휴식 상태여서 자리를 정리했어요 · 다시 입장해 주세요`;
+        /* ⚠️ 안내를 leaveRoom **뒤에** 띄운다. showToast는 큐가 아니라 덮어쓰기라
+           먼저 띄우면 leaveRoom 끝의 "퇴장!"이 지워 버린다 — 영문도 모르고 튕긴 셈이 된다.
+           그리고 자리를 비운 사이 정리됐다면 이 토스트는 아무도 못 본다. 그래서 문구를
+           남겨 뒀다가 탭으로 돌아왔을 때 한 번 더 띄운다(아래 visibilitychange). */
+        state.__autoLeaveNotice = notice;
+        Promise.resolve(leaveRoom())
+          .catch((e)=>console.warn("[V201_AUTOLEAVE] 퇴장 실패", e))
+          .finally(()=>{
+            try{
+              showToast(notice, 9000);
+              // 화면을 보고 있었다면 방금 읽었을 테니 복귀용 예약분은 지운다(같은 말 두 번 방지).
+              if(document.visibilityState === "visible") state.__autoLeaveNotice = "";
+            }catch(_e){}
+          });
+        return true;
+      }catch(e){ console.warn("[V201_AUTOLEAVE] 판정 실패", e); return false; }
+    }
+
     function startActivityWatch(){
       stopActivityWatch();
       // V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 타이머 누적이 방 재화가 되면서 전원 수동 타이머로 전환, 헬퍼 사용자가 사라져 걷어냄. 상태 변경은 수동 버튼으로만.
@@ -13643,6 +13933,7 @@ function startRtdbConnectionWatch(){
       state._lastDayKey = state._lastDayKey || seoulDateKey();
       state.dayWatchTimer = setInterval(()=>{
         try{ ensureFocusDayCurrent("minuteWatch"); }catch(e){}
+        try{ autoLeaveIfIdle_("minuteWatch"); }catch(e){}   // V201_AUTOLEAVE
       }, 60000);
 
     }
@@ -13650,6 +13941,12 @@ function startRtdbConnectionWatch(){
     
 async function transitionTo(nextStatus, source="manual"){
   if(!state.roomId || !state.uid) return;
+
+  /* ✅ V201_AUTOLEAVE: 상태 버튼을 누른 것 = 사람이 있었다는 증거.
+     현재 호출부는 전부 사람이 누르는 경로다(입장 manualInit / 버튼 manual / 우클릭 메뉴 manual).
+     자정 롤오버는 transitionTo를 거치지 않고 직접 rUpdate하므로 여기 안 들어온다 —
+     혹시 나중에 거치게 되더라도 자동 전환이 시계를 리셋하지 않도록 출처를 걸러 둔다. */
+  if(source !== "manualMidnight" && source !== "midnightRollover") markHumanAct_("status:" + source);
 
   // ✅ V142: 상태를 쓰기 전에 아직 처리하지 않은 초기화/세대 불일치를 먼저 정리한다.
   try{
@@ -14248,10 +14545,11 @@ async function loadAdminProfileCatalog_(){
   renderAdminProfileCatalog_();
   adminProfileSetStatus_("서버 프로필 목록을 불러오는 중…");
   try{
-    const [profileSnap,presenceSnap] = await Promise.all([
+    // V201_READGUARD: 멈추면 adminProfileLoading이 잠긴 채 남아 관리자 프로필 목록이 영영 안 뜬다.
+    const [profileSnap,presenceSnap] = await readGuard_(Promise.all([
       rGet(rProfilesRootRef(state.roomId)),
       rGet(rPresenceRootRef(state.roomId))
-    ]);
+    ]), "관리자 프로필 목록");
     state.adminProfileCatalog = normalizeAdminProfileCatalog_(profileSnap,presenceSnap);
     refreshAdminProfileTargetOptions_();
     renderAdminProfileCatalog_();
@@ -14368,7 +14666,16 @@ const ADMIN_HASH_UNVERIFIED = "__admin_hash_unverified__";
 async function refreshAdminHashFromServer_(){
   if(!state.roomId) return ADMIN_HASH_UNVERIFIED;
   try{
-    const snap = await rGet(rSettingsRef(state.roomId));
+    /* ⚠️ V201: 타임아웃 없이 await하면 [확인] 버튼이 **조용히 멈춘다** — 토스트도 오류도 없이.
+       Firebase 읽기 Promise는 오프라인·차단 상태에서 resolve도 reject도 하지 않기 때문이고,
+       이 파일에서 같은 원인으로 이미 세 번 사고가 났다(CHATLOCK / JOINSTALL / TILEBACK).
+       실패시키는 게 아니라 기다리기를 그만두는 것이다. 못 확인했으면 ADMIN_HASH_UNVERIFIED가
+       돌아가고 호출부가 "잠시 후 다시" 안내를 띄운다 — 등록 분기로는 절대 가지 않는다. */
+    let __t = null;
+    const snap = await Promise.race([
+      rGet(rSettingsRef(state.roomId)).finally(()=>{ if(__t) clearTimeout(__t); }),
+      new Promise((_, rej)=>{ __t = setTimeout(()=>rej(new Error("admin settings read timeout")), 8000); })
+    ]);
     const s = (snap && typeof snap.val === "function" ? snap.val() : null) || {};
     const serverHash = s.adminHash || null;
     state.roomSettings = state.roomSettings || {};
@@ -16490,6 +16797,9 @@ function showJoinTicker(msg){
     async function sendChat(){
       const text = (els.chatInput.value || "").trim();
       if(!text) return;
+      // ✅ V201_AUTOLEAVE: 채팅을 쳤으면 상태를 안 바꿨어도 사람이 있는 것이다.
+      // (statusSinceMs만 보면 휴식중으로 종일 수다 떠는 분이 24시간째에 튕긴다.)
+      try{ markHumanAct_("chat"); }catch(_e){}
 
       // ✅ V160: 이모지 고르기 명령어는 전송하지 않고 보기만 띄운다
       if(emojiPickHandleSend_(text)) return;
@@ -16978,6 +17288,19 @@ t.appendChild(bg);
         const p = state.currentParticipants.get(uid);
         if(!p || !rec || !rec.el) continue;
 
+        /* ✅ V201_GRACE: 생존 확인이 안 된 사람은 흐리게.
+           ⚠️ 타일 생성(renderTile)이 아니라 여기서 처리한다 — 하트비트가 조용히 멎는 경로는
+           presence 이벤트가 아예 안 와서 재렌더가 일어나지 않는다. tick에서 보면
+           끊김 도장 경로와 하트비트 정지 경로가 한 번에 잡힌다.
+           rec에 마지막 값을 캐시해 tick마다 classList를 건드리지 않는다(coinIdle과 같은 방식). */
+        try{
+          const inGrace = presenceInGrace_(p);
+          if(rec.inGrace !== inGrace){
+            rec.inGrace = inGrace;
+            rec.el.classList.toggle("tileGrace", inGrace);
+          }
+        }catch(_e){}
+
         // ✅ cache .time element to avoid querySelector every tick
         let timeEl = rec.timeEl;
         if(!timeEl){
@@ -17236,6 +17559,9 @@ t.appendChild(bg);
         const s = (p.status || "idle");
         item.classList.add(s==="work" ? "isWork" : s==="break" ? "isBreak" : s==="idle" ? "isIdle" : "isOther");
         st.textContent = (s==="work") ? "✍️ 작업중" : (s==="break") ? "☕ 휴식중" : (s==="idle") ? "🌙 자리비움" : "—";
+        // ✅ V201_GRACE: 목록 보기에도 같은 표시를 준다. 여기는 매 렌더마다 새로 만들므로
+        // 타일처럼 tick에서 토글할 필요가 없다(presence 이벤트가 올 때 갱신된다).
+        try{ if(presenceInGrace_(p)) item.classList.add("rosterGrace"); }catch(_e){}
 
         item.appendChild(left);
         item.appendChild(st);
@@ -17337,6 +17663,9 @@ t.appendChild(bg);
         const s = (p.status || "idle");
         item.classList.add(s==="work" ? "isWork" : s==="break" ? "isBreak" : s==="idle" ? "isIdle" : "isOther");
         st.textContent = (s==="work") ? "✍️ 작업중" : (s==="break") ? "☕ 휴식중" : (s==="idle") ? "🌙 자리비움" : "—";
+        // ✅ V201_GRACE: 목록 보기에도 같은 표시를 준다. 여기는 매 렌더마다 새로 만들므로
+        // 타일처럼 tick에서 토글할 필요가 없다(presence 이벤트가 올 때 갱신된다).
+        try{ if(presenceInGrace_(p)) item.classList.add("rosterGrace"); }catch(_e){}
 
         item.appendChild(left);
         item.appendChild(st);
@@ -20801,7 +21130,11 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     async function mkRefreshAdminLink_(){
       const btn = els?.approveLink; if(!btn) return;
       const u = auth.currentUser;
-      if(!mkAuthDone_()){ btn.style.display = "none"; __adminLinkUid = ""; return; }        // V196_AUTHFIX
+      // V201_AUTHBADGE: 탭 동기화의 순간적 null에 버튼을 숨기지 않는다(관리자가 겪던 '권한 사라짐').
+      if(!mkAuthDone_()){
+        if(mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }   // 잠깐 빈 것 — 화면 유지
+        btn.style.display = "none"; __adminLinkUid = ""; return;       // V196_AUTHFIX
+      }
       if(__adminLinkUid === u.uid) return;        // uid당 1회만 조회한다
       __adminLinkUid = u.uid;
       let isAdmin = false;
@@ -25086,7 +25419,10 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17070; // ✅ V186.9: 손캠/화공 슬롯 12 → 20.
+  const MK_APP_BUILD = 17080; // ✅ V201_GRACE/AUTOLEAVE: 끊김 유예 + 타이머 동결 + 24시간 자동 퇴장.
+  // 이 값을 올리면 구버전 탭에 "강력 새로고침" 안내가 뜬다(아래 remoteBuild 비교).
+  // 이번엔 반드시 올려야 한다 — 접속 판정이 바뀌었으므로 구버전 탭은 여전히 사람을 즉시 지운다.
+  // 방 안에 새/구 코드가 섞여 있으면 "나는 보이는데 저 사람은 안 보인다"는 제보가 또 나온다.
   // ✅ V168.9: 관리자 전원 새로고침 — 이 페이지가 로드된 시각(이후에 온 요청만 유효)
   const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
