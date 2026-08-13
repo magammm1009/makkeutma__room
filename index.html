@@ -9521,8 +9521,9 @@ state.ctxTarget = { uid: p.id, name: p.name || p.id };
       return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
     }
     // V186_COIN_TICK: 프로필 타일용 분 단위 표기(초 없음).
-    // 초를 떼면 텍스트가 분당 1회만 바뀌어, 작업중 인원수만큼 매초 발생하던 리페인트가 사라진다.
-    // fmtHMS는 이 변경으로 호출부가 없어졌지만 관리자/디버그에서 다시 쓸 수 있어 남겨 둔다.
+    // V200_ALLSEC(2026-08-13): 타일은 다시 fmtHMS(초 포함)로 돌아갔다 — 리페인트는 표시 형식이
+    // 아니라 tick 주기(일반 2초·경량 5초)로 억제한다. fmtHM은 현재 호출부가 없지만
+    // 부담이 다시 문제가 되면 되돌릴 자리라 남겨 둔다.
     function fmtHM(sec){
       sec = Math.max(0, Math.floor(sec || 0));
       const h = Math.floor(sec/3600);
@@ -16990,11 +16991,12 @@ t.appendChild(bg);
         // ✅ 내 타이머 숨김(개별 프로필 설정)이면 시간 대신 잠금 표시
         // V186_COIN_TICK: fmtHMS → fmtHM. 초를 떼면 텍스트가 분당 1회만 바뀐다.
         // 예전에는 작업중 인원수만큼 매초 이 노드가 다시 그려져 화면이 idle 프레임에 도달하지 못했다.
-        /* V199_MYSEC(2026-08-13): 초시계를 **내 타일에만** 되살린다.
-           전원에게 붙이면 구독 창(60명)만큼 매초 텍스트가 바뀌어 V186에서 뺐던 그 문제가 그대로 돌아온다.
-           내 것만 하면 매초 바뀌는 노드가 1개다 — 남의 타일은 분 단위 그대로다. */
-        const nextText = (p.timerHidden) ? "⌨️"
-          : ((uid === state.uid) ? fmtHMS(__disp) : fmtHM(__disp));
+        /* V200_ALLSEC(2026-08-13): 전원 타일에 초시계를 되살린다(사용자 판단).
+           "화면 부담이 조금 되더라도 초가 움직여야 작업하는 느낌이 든다."
+           V186이 걱정한 리페인트 비용은 **표시 형식이 아니라 tick 주기로** 눌렀다 —
+           restartUiTickV143에서 일반 2초 · 경량/저사양 5초. V186 이전(전원 1초)의 절반 이하다.
+           내 타일만은 별도 1초 tick이 부드럽게 이어 준다(mySecTimer). */
+        const nextText = (p.timerHidden) ? "⌨️" : fmtHMS(__disp);
         if(timeEl.textContent !== nextText) timeEl.textContent = nextText;
 
         // ✅ V186_COIN_TICK: 코인 = "지금 적립 중" 신호
@@ -24743,19 +24745,26 @@ joinRoom();
     try{
       if(!state.joined) return;
       if(state.tickTimer) clearInterval(state.tickTimer);
+      /* V200_ALLSEC(2026-08-13): 전원 타일에 초시계를 되살린다.
+         사용자 판단 — "화면 부담이 조금 되더라도 초가 움직여야 작업하는 느낌이 든다".
+         대신 V186이 걱정했던 비용을 주기로 눌러 절충한다: 일반 2초 · 경량/저사양 5초.
+         (V186 이전은 전원 1초였다. 지금은 그 절반 이하 리페인트다.)
+         ⚠️ 2초 주기라 남의 타일 초는 2씩 건너뛴다 — 정확한 초시계가 아니라 '움직임' 목적이다. */
       const ms = isLowSpecModeV143() ? 5000
-        : ((typeof window.__MK_IS_LIGHT_MODE__ === "function" && window.__MK_IS_LIGHT_MODE__()) ? 2000 : 1000);
-      state.tickTimer = setInterval(()=>{ updateTimersLive(); updateClocks(); }, ms);
+        : ((typeof window.__MK_IS_LIGHT_MODE__ === "function" && window.__MK_IS_LIGHT_MODE__()) ? 5000 : 2000);
+      // 무거운 쪽(타일 60개 훑기)만 느린 주기로 돌린다.
+      state.tickTimer = setInterval(()=>{ updateTimersLive(); }, ms);
       updateTimersLive();
       updateClocks();
 
-      /* V199_MYSEC: 경량(2초)·저사양(5초) 모드에서는 위 tick이 느려 초시계가 건너뛴다.
-         내 타일 하나만 매초 갱신하는 별도 tick을 둔다 — 노드 1개라 비용이 사실상 없고,
-         남의 타일 60개를 훑는 updateTimersLive는 그대로 느린 주기를 유지한다.
-         일반 모드(1초)에서는 위 tick과 같은 리듬이라 중복 계산이 없다. */
+      /* V200_ALLSEC: 벽시계와 내 타일은 1초 그대로 둔다.
+         벽시계가 2초씩 튀면 타일보다 훨씬 거슬리는데, 텍스트 노드 2개라 비용이 사실상 없다.
+         내 타일도 여기 얹어 내가 보는 타이머만은 매초 부드럽게 흐르게 한다(노드 1개 추가).
+         → 1초마다 바뀌는 노드는 3개, 남의 타일 60개는 느린 주기를 유지한다. */
       if(state.mySecTimer){ clearInterval(state.mySecTimer); state.mySecTimer = null; }
-      if(ms > 1000){
+      {
         state.mySecTimer = setInterval(()=>{
+          try{ updateClocks(); }catch(_e){}
           try{
             if(!state.joined || !state.uid) return;
             const rec = state.lastRendered?.get?.(state.uid);
