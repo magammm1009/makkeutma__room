@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V206_MEMBERFALLBACK: "관리자인데 계속 미인증으로 뜨고 승인 버튼이 사라진다"(2026-08-14 복길 님). 📏 00:02 콘솔 — `[V204_AUTHWATCH] 토큰 갱신 — uid NC17u27M… / 이메일 없음` + `[V196_AUTHFIX] 계정 정보 재조회 — email: (없음)` + `identitytoolkit 400`. ★ 계정은 **맞다**: NC17u27M은 본인 uid이고 admins·members 등록도 그대로이며 서버 기록도 그 uid로 정상 누적 중이었다(00:35 기준 오늘 32분). 클라이언트가 들고 있는 user 객체에만 email이 비었고, 그걸 채우려는 authReload가 400으로 실패해 영영 안 채워진다. 그런데 인증 판정이 `mkAuthDone_()` = "이메일이 있는가?" 한 줄이라 배지는 미인증·🛡️승인 버튼은 숨김이 됐다 — 정작 채팅·타일·타이머는 멀쩡했다(규칙은 이메일이 아니라 uid를 보니까). ★ 이 판정이 하루에 두 번 틀렸다: V196에서는 isAnonymous가 낡아서, 이번엔 email이 비어서. **둘 다 클라이언트가 들고 있는 계정 객체를 믿었다가 틀린 것이다.** → 더 단단한 근거를 순서대로 본다: ①ID 토큰 클레임(서버가 방금 발급한 값 — 토큰 갱신 자체는 성공하고 있었다) ②members/{내 uid}(승인 명단에 있다는 건 이메일 인증을 마쳤다는 뜻이고, 규칙상 본인은 자기 레코드를 읽을 수 있다). ⚠️ 이 폴백은 **표시와 권한 노출에만** 쓴다(배지·🛡️승인 버튼·입장 전 화면). 신청서 제출처럼 규칙이 실제로 email_verified를 요구하는 자리는 엄격한 mkAuthDone_()을 그대로 뒀다 — 느슨하게 하면 규칙에 막혀 조용히 실패한다. 실패 시 1분 뒤 재시도하고, 확인되면 스스로 배지·버튼·입장 화면을 다시 그린다. 빌드 17084 -->
 <!-- V205_TILEPROBE: "다른 작가님들 타일이 안 보이는데 새로고침해야만 돌아온다"(2026-08-13 방장 직접 겪음). 📏 진단 근거 — `__MK_CHAT_DEBUG__()`에서 자동재구독_횟수 1(V198이 11:09에 죽은 채팅을 11:20:35에 잡아 되살림), RTDB_연결끊김 false(소켓은 멀쩡하고 리스너만 죽는 그 패턴), 복구 뒤 타일 12·presence 33. ★ 채팅과 타일이 **같은 순간에 좀비가 됐는데 채팅만 살아났다** — 두 워치독의 판정 방식이 달라서다. 채팅(V198)은 **서버에 최신 1건을 물어본다**(서버엔 있는데 내가 못 받았으면 죽은 것). 타일(presenceFeedWatchdog_)은 **조용한 것으로만** 판단하는데, '조용한 방'과 '죽은 구독'은 겉보기가 같아 확신이 안 서니 안전 조건을 겹겹이 달아 뒀다: visible일 때만 + 10분 쿨다운 + 3분 하트비트에서만 호출. 그 셋이 겹쳐 **정작 필요한 순간에 아무도 안 돌았다.** 결정적으로 원고를 쓰거나 다른 창을 보는 동안 탭은 계속 hidden이라 visible 가드에 걸려 한 번도 실행되지 않았고, 돌아와도 3분+10분을 기다려야 했다. → 채팅과 같은 무기를 준다: presence도 서버에 최신 1건(limitToLast(1) ≈ 300B)을 물어보고, 내 구독이 못 받았으면 다시 건다. **탭이 보이는 순간 즉시** 확인하는 것이 핵심이다 — ensureTilesAlive_는 핸들이 아예 없는 경우만 고치고 이번 사고인 '핸들은 있는데 데이터가 안 오는' 좀비는 못 잡았다. 절약모드·숨김으로 의도해서 끊은 상태는 건드리지 않아 V179 절감은 그대로다. 콘솔 손잡이 window.__MK_TILES_FIX__()도 넣었다(새로고침 없이 즉시 복구·확인). __MK_CHAT_DEBUG__에는 타일_마지막수신·타일_재구독_횟수를 더해 채팅 계열과 나란히 보게 했다. 빌드 17083 -->
 <!-- V204_AUTHRECOVER + V204_PERSIST + V204_AUTHWATCH: "작업만 하는데 인증이 풀리고 채팅·타일이 죽는다"(2026-08-13 복길 님, 하루 종일 반복). ①세 증상은 하나다 — 로그인이 사라지면 RTDB·Firestore 구독이 전부 권한을 잃어 타일과 채팅이 동시에 멈추고 배지가 미인증이 된다. 그런데 **복구 코드가 없었다**: mkWatchSignedOut_이 토스트 한 줄만 띄우고 끝이라 새로고침 전까지 영영 죽어 있었고, ensureMainAuthReady_는 페이지 로드 때 1회만 도는 메모이즈라 다시 붙지 않았다. 게다가 그 문구가 "승인 페이지에서 로그아웃하면…"이라 엉뚱한 범인을 지목해서, 승인 페이지를 열지도 로그아웃을 누르지도 않은 제보자의 원인 추적이 계속 헛돌았다. → 화면 중앙에 정확히 알리고 [새로고침]·[다시 인증하기]를 준다(#authLostOverlay, V194 카드 재사용). 스스로 돌아오면 자동으로 걷힌다. ⚠️⚠️ signInAnonymously 자동 복구는 절대 금지 — 새 uid가 생겨 프로필·관리자 권한·누적이 다른 계정이 된다(2026-08-13 루체 님이 하루에 uid 3개로 갈라져 6시간 기록이 고아가 된 실사고). 매직링크는 메일을 눌러야 복구되므로 자동 재로그인은 애초에 불가능하다. ②원인 후보 셋 중 둘은 이 방의 전례다 — 광고차단 확장이 securetoken.googleapis.com(1시간마다 도는 토큰 갱신)을 막는 경우, 그리고 브라우저의 저장소 삭제. 후자를 막으려 navigator.storage.persist()를 요청한다: 로그인 세션은 IndexedDB, 보유 파츠·코인·오늘 작업시간은 localStorage에 있어 비워지면 둘 다 무너진다(같은 날 루체 님 '브라우저 초기화'와 같은 뿌리로 보인다). ③onIdTokenChanged로 토큰 갱신·소실을 콘솔과 mkDiag에 남기고, __MK_CHAT_DEBUG__ 맨 앞에 로그인됨/이메일인증/내uid/입장한uid를 넣었다 — 채팅 멈춤으로 접수된 건이 실은 로그인 해제였던 이번 사례를 다시 겪지 않기 위해서다. 빌드 17082 -->
 <!-- V203_TABCLOSE_COMMIT + V203_PRUNE_OFF + V203_EMPTYGUARD: 전체 코드 점검 후 3건 수정(2026-08-13). ①**탭을 닫으면 진행 중이던 작업 세션이 서버 기록에서 통째로 사라지고 있었다.** V202_TRUST가 pagehide에서 status를 off로 내렸는데 누적 시간은 커밋하지 않은 것이 원인 — heartbeat은 일부러 '기준 누적 = 라이브 − 세션경과'를 저장하고(두 탭 2배 계산 방지) computeDisplayedTotal은 status가 work일 때만 그 경과분을 되더하므로, off로 내리는 순간 세션 전체가 계산에서 빠진다. 📏 재현: 09시 작업중 시작 → 12시에 X로 닫기 = 서버 기록 3.00시간 → 0.00시간. **V202_TRUST 주석이 남긴 실측('도리 님 타일 9.17시간인데 서버 기록 0.00시간', '축춘 님 11.57시간인데 0.00시간')이 바로 이 버그의 흔적이다** — 타일이 부풀었던 게 아니라 서버 쪽이 비어 있었다. 같은 브라우저 재입장은 localStorage의 Math.max 병합이 살려내지만 폰·다른 브라우저로 그날 다시 들어오면 그대로 잃는다. → leaveRoom처럼 라이브 값을 커밋하고 세션을 닫은 뒤 off로 내린다(dateKey가 오늘일 때만 — 자정 넘겨 잠든 탭이 어제 누적을 오늘로 되살리지 않게). ②자동 청소(prunePresenceOnce_) 중단 — 방장 결정. 매직링크 이관이 끝나면 members 명단만 남기고 일괄 청소한 뒤 그 명단 기준으로 규칙을 새로 짠다. 지금 판정을 그대로 두면 안 되는 이유: V202_TRUST가 탭 닫을 때마다 lastSeenAtMs를 0으로 쓰기 시작해서, 60칸 구독 창(orderByChild lastSeenAtMs) 밖으로 밀려난 레코드를 청소기가 아예 못 본다. 호출부만 제거하고 본체·출석부 헬퍼는 재설계용으로 남겼다. ③보유 목록(mk_chara_owned_v2)을 잃은 브라우저가 **빈 캐릭터를 서버에 덮어쓰던** 문제 — filterOwnedParts는 fail-closed인데 buildCharaV1이 lc의 null만 봐서, 입장 4초 뒤 maybeJoinSync가 빈 파츠를 발행하고 V184_OWNEDFIX가 복구에 쓸 charaV1 원본까지 지웠다. 파츠가 비면 발행하지 않는다. ⚠️ 짝 수정: 그 null을 프로필 저장 경로(rSet 전체 덮어쓰기)가 그대로 받으면 charaV1이 아예 삭제되므로, 서버에 있던 값을 다시 실어 보존한다. ④빌드 17080 → 17081 — V202가 접속 판정을 바꾸고도 번호를 안 올려 V201 탭이 새로고침 안내를 못 받고 있었다. -->
@@ -2708,28 +2709,30 @@ body::before{
 /* V204_AUTHLOST(2026-08-13): 로그인이 풀렸을 때도 같은 모양으로 알린다.
    연결 끊김과 증상이 똑같아 보이지만(채팅·타일 정지) 원인도 대처도 달라서 카드를 따로 둔다.
    스타일은 V194와 공유하고 아이콘·문구·버튼만 다르다. */
-#connLostOverlay, #authLostOverlay{
+#connLostOverlay, #authLostOverlay, #tilesLostOverlay{
   position:fixed; inset:0; z-index:2147483100;
   display:none; align-items:center; justify-content:center;
   background:rgba(0,0,0,.55); backdrop-filter:blur(2px);
   pointer-events:none;
 }
-#connLostOverlay.show, #authLostOverlay.show{ display:flex; }
-#connLostOverlay .connLostCard, #authLostOverlay .connLostCard{
+#connLostOverlay.show, #authLostOverlay.show, #tilesLostOverlay.show{ display:flex; }
+#connLostOverlay .connLostCard, #authLostOverlay .connLostCard, #tilesLostOverlay .connLostCard{
   pointer-events:auto;
   max-width:min(92vw, 460px); padding:30px 26px; border-radius:18px; text-align:center;
   background:#241b22; color:#fff; border:2px solid #ff6b8a;
   box-shadow:0 24px 70px rgba(0,0,0,.6);
 }
-#connLostOverlay .connLostIcon, #authLostOverlay .connLostIcon{ font-size:48px; line-height:1; }
-#connLostOverlay .connLostTitle, #authLostOverlay .connLostTitle{ font-size:25px; font-weight:1000; margin-top:10px; letter-spacing:-.5px; }
-#connLostOverlay .connLostDesc, #authLostOverlay .connLostDesc{ font-size:14px; opacity:.92; margin-top:12px; line-height:1.65; }
-#connLostOverlay .connLostMeta, #authLostOverlay .connLostMeta{ font-size:13px; opacity:.75; margin-top:14px; }
-#connLostOverlay .connLostBtns, #authLostOverlay .connLostBtns{ display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+#connLostOverlay .connLostIcon, #authLostOverlay .connLostIcon, #tilesLostOverlay .connLostIcon{ font-size:48px; line-height:1; }
+#connLostOverlay .connLostTitle, #authLostOverlay .connLostTitle, #tilesLostOverlay .connLostTitle{ font-size:25px; font-weight:1000; margin-top:10px; letter-spacing:-.5px; }
+#connLostOverlay .connLostDesc, #authLostOverlay .connLostDesc, #tilesLostOverlay .connLostDesc{ font-size:14px; opacity:.92; margin-top:12px; line-height:1.65; }
+#connLostOverlay .connLostMeta, #authLostOverlay .connLostMeta, #tilesLostOverlay .connLostMeta{ font-size:13px; opacity:.75; margin-top:14px; }
+#connLostOverlay .connLostBtns, #authLostOverlay .connLostBtns, #tilesLostOverlay .connLostBtns{ display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
 /* ⚠️ 이 줄은 위 공통 규칙 **뒤에** 와야 한다 — 공통 규칙이 border 단축 속성을 쓰므로
    앞에 두면 border-color가 덮여 두 카드가 똑같은 분홍으로 보인다(미리보기로 확인한 실수).
    색을 나누는 이유: 연결 끊김(분홍)과 로그인 풀림(주황)은 증상이 같아 보여도 대처가 다르다. */
 #authLostOverlay .connLostCard{ border-color:#ffc861; }
+/* 타일 정지는 파랑 — 연결끊김(분홍)·로그인풀림(주황)과 한눈에 구분되게. */
+#tilesLostOverlay .connLostCard{ border-color:#7fb2ff; }
 #preJoinCard h3{ margin:0; font-size:16px; }
 #preJoinCard .hint{ margin-top:8px; opacity:.86; font-size:13px; line-height:1.35; }
 #preJoinCard .prePills{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -6954,6 +6957,21 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 </div>
+<!-- V207_TILEESCALATE: 타일 실시간 수신이 죽었고 자동 복구 2단계까지 실패했을 때.
+     화면은 마지막 정상 명단을 계속 보여주므로(가드) 겉보기엔 멀쩡하다 — 그래서 알려야 한다. -->
+<div aria-live="assertive" id="tilesLostOverlay" role="alert">
+<div class="connLostCard">
+<div class="connLostIcon">🧊</div>
+<div class="connLostTitle">타일이 멈춰 있어요</div>
+<div class="connLostDesc">지금 보이는 <b>접속 현황은 옛 화면</b>입니다.<br/>자동 복구를 두 번 시도했지만 되살아나지 않았어요.</div>
+<div class="connLostMeta" id="tilesLostWhy"></div>
+<div class="connLostBtns">
+<button class="primary" id="tilesLostReload" type="button">🔄 새로고침</button>
+<button class="ghost" id="tilesLostRetry" type="button">한 번 더 시도</button>
+<button class="ghost" id="tilesLostClose" type="button">닫기</button>
+</div>
+</div>
+</div>
 <!-- Mission Modal -->
 <div aria-hidden="true" class="modalOverlay" id="missionModal">
 <div aria-modal="true" class="modal" role="dialog">
@@ -7931,6 +7949,76 @@ const auth = getAuth(app);
        isAnonymous의 상태에 전혀 의존하지 않는다. */
     function mkAuthDone_(){ const u = auth.currentUser; return !!(u && u.email); }
 
+    /* ===== V206_MEMBERFALLBACK (2026-08-14): 인증 판정을 이메일 한 줄에만 매달지 않는다 =====
+       📏 실측 2026-08-14 00:02 복길 님(관리자) 콘솔:
+            [V204_AUTHWATCH] 토큰 갱신 — uid NC17u27M… / 이메일 없음
+            [V196_AUTHFIX]  계정 정보 재조회 — email: (없음)
+            Failed to load resource: identitytoolkit… 400
+          계정은 **맞다** — NC17u27M은 본인 uid이고 admins·members 등록도 그대로이며,
+          서버 기록도 그 uid로 정상 누적되고 있었다(00:35 기준 오늘 32분).
+          그런데 클라이언트가 들고 있는 user 객체에만 email이 비었고, 그걸 채우려는
+          재조회(authReload)가 400으로 실패해 영영 안 채워진다.
+          → 배지는 '미인증', 🛡️승인 버튼은 숨김. 정작 채팅·타일·타이머는 멀쩡했다(규칙은 uid를 보니까).
+
+       ★ 이 판정이 하루에 두 번 틀렸다 — V196에서는 isAnonymous가 낡아서, 지금은 email이 비어서.
+         둘 다 **클라이언트가 들고 있는 계정 객체를 믿었다가** 틀린 것이다. 더 단단한 근거를 순서대로 본다:
+           ① ID 토큰 클레임 — 서버가 방금 발급한 값이다(토큰 갱신 자체는 성공하고 있었다).
+           ② members/{내 uid} — 승인 명단에 있다는 건 이메일 인증을 마쳤다는 뜻이다.
+              규칙상 본인은 자기 레코드를 읽을 수 있다(members/$uid의 .read에 auth.uid === $uid).
+       ⚠️ 이 폴백은 **표시와 권한 노출에만** 쓴다. 신청서 제출처럼 규칙이 실제로 email_verified를
+          요구하는 자리는 엄격한 mkAuthDone_()을 그대로 둔다 — 안 그러면 규칙에 막혀 조용히 실패한다. */
+    let __memberVerifyUid = "", __memberVerified = false, __memberVerifyAtMs = 0, __memberVerifyBusy = false;
+    function mkMemberVerified_(){
+      try{
+        const u = auth.currentUser;
+        return !!(u && __memberVerified && __memberVerifyUid === String(u.uid));
+      }catch(_e){ return false; }
+    }
+    // 표시·권한 노출용 판정(쓰기 게이트에는 쓰지 않는다)
+    function mkAuthUsable_(){ return mkAuthDone_() || mkMemberVerified_(); }
+
+    async function mkVerifyMemberOnce_(){
+      try{
+        const u = auth.currentUser;
+        if(!u || !u.uid || u.email) return;              // 이메일이 있으면 확인할 이유가 없다
+        const uid = String(u.uid);
+        // 확인됐으면 끝. 실패했으면 1분 뒤에 다시(영구 잠금 방지).
+        if(__memberVerifyUid === uid && (__memberVerified || (Date.now() - __memberVerifyAtMs) < 60000)) return;
+        if(__memberVerifyBusy) return;
+        __memberVerifyBusy = true;
+        __memberVerifyUid = uid; __memberVerifyAtMs = Date.now(); __memberVerified = false;
+        try{
+          // ① 토큰 클레임
+          try{
+            const r = await u.getIdTokenResult();
+            const c = (r && r.claims) || {};
+            const ids = (c.firebase && c.firebase.identities) || {};
+            if(c.email || (Array.isArray(ids.email) && ids.email.length)){
+              __memberVerified = true;
+              console.info("[V206_MEMBERFALLBACK] 토큰 클레임에 이메일이 있어 인증으로 봅니다.");
+              return;
+            }
+          }catch(err){ console.warn("[V206_MEMBERFALLBACK] 토큰 클레임 확인 실패", err); }
+          // ② members/{내 uid}
+          const pr = rGet(rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/members/${uid}`));
+          const snap = await ((typeof readGuard_ === "function") ? readGuard_(pr, "명단 확인", 8000) : pr);
+          __memberVerified = !!(snap && typeof snap.exists === "function" && snap.exists());
+          if(__memberVerified){
+            console.info("[V206_MEMBERFALLBACK] members 명단에 있어 인증으로 봅니다 — 배지·승인 버튼을 되살립니다.");
+            try{ mkDiag("명단폴백", "members로 인증 인정"); }catch(_e){}
+          }
+        }finally{
+          __memberVerifyBusy = false;
+          // 되살아났을 때만 다시 그린다(무한 되풀이 방지 — 위 가드가 두 번째 호출을 막는다).
+          if(__memberVerified){
+            try{ mkRefreshAuthHint_(); }catch(_e){}
+            try{ mkRefreshAdminLink_(); }catch(_e){}
+            try{ mkRefreshJoinState_(); }catch(_e){}
+          }
+        }
+      }catch(err){ console.warn("[V206_MEMBERFALLBACK] 확인 실패", err); }
+    }
+
     /* ===== V201_AUTHBADGE (2026-08-13): 배지가 '⚠️ 미인증'으로 깜빡이던 문제 =====
        V197_SHAREDAUTH가 이미 적어 둔 사실이 있다(아래 mkWatchSignedOut_ 주석):
          "승인 페이지를 '열기만' 해도 Firebase Auth가 탭 사이를 동기화하면서
@@ -7984,8 +8072,13 @@ const auth = getAuth(app);
         로그인됨: true, uid: u.uid, email: u.email || "(없음)",
         emailVerified: u.emailVerified, isAnonymous: u.isAnonymous,
         providers: (u.providerData || []).map(p => p && p.providerId),
-        최종판정: mkAuthDone_()
-      } : { 로그인됨: false, 최종판정: false };
+        /* V206: 판정을 셋으로 나눠 보여준다. 하나로 뭉치면 "배지는 ✅인증됨인데
+           최종판정은 false"처럼 서로 어긋나 보여서 진단하는 사람이 헷갈린다.
+           복길 님 건이 정확히 이 모양이었다 — 이메일만 비고 계정·권한은 멀쩡. */
+        엄격판정_이메일있음: mkAuthDone_(),      // 신청서 제출 등 규칙이 요구하는 자리의 기준
+        명단으로_확인됨: mkMemberVerified_(),    // V206 폴백(members/{내 uid})
+        최종판정_표시용: mkAuthUsable_()         // 배지·🛡️승인 버튼이 쓰는 기준
+      } : { 로그인됨: false, 최종판정_표시용: false };
       console.info("[MK_AUTH] 현재 인증 상태", info);
       return info;
     };
@@ -7993,8 +8086,9 @@ const auth = getAuth(app);
       try{
         const el = els?.authStateHint; if(!el) return;
         // V201_AUTHBADGE: 탭 동기화의 순간적 null에는 배지를 바꾸지 않는다.
-        if(!mkAuthDone_() && mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }
-        if(mkAuthDone_()){
+        // V206: 이메일이 비어 있어도 명단(members)으로 확인됐으면 인증으로 본다.
+        if(!mkAuthUsable_() && mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }
+        if(mkAuthUsable_()){
           el.textContent = "✅ 인증됨"; el.className = "meMini authOk";
           el.title = "이메일 인증 완료";
           el.style.cursor = ""; el.style.textDecoration = "";
@@ -10516,6 +10610,9 @@ function stampPresenceFeed_(uid){
   try{
     if(!uid || String(uid) === String((state && state.uid) || "")) return;
     state.__presenceFeedAtMs = Date.now();
+    /* V207: 소식이 다시 오면 복구 단계를 처음으로 되돌린다.
+       이게 없으면 한 번 3단계까지 갔던 탭이 그 뒤로 멀쩡해져도 계속 새로고침을 조른다. */
+    if(state.__tilesRecoverStep){ state.__tilesRecoverStep = 0; }
   }catch(e){}
 }
 function presenceFeedLive_(){
@@ -10580,8 +10677,13 @@ function presenceFeedWatchdog_(){
      비용은 채팅과 같은 급이다(limitToLast(1) 1회 ≈ 300B).
    ⚠️ 절약모드/숨김으로 **의도해서** 끊은 상태는 건드리지 않는다(V179 절감을 되돌리지 않기 위해).
    ⚠️ 쿨다운 도장은 await **앞**에 찍는다 — 응답이 안 오면 다음 회차까지 막히기 때문이다. */
-const TILEPROBE_MIN_SILENCE_MS = PRESENCE_FEED_DEAD_MS;   // 6분간 소식이 없을 때만 물어본다
-const TILEPROBE_COOLDOWN_MS    = 4 * 60 * 1000;           // 확인 주기(채팅 워치독과 같은 급)
+/* ⚠️ V207(2026-08-14): 임계값을 6분 → 90초로 낮춘다. 방장 실측 — 서버엔 9명이 하트비트를
+   보내고 있는데 화면은 286초째 한 건도 못 받고 있었다. 6분은 "죽었다"를 확신하기엔 안전하지만
+   그동안 화면이 얼어 있는다. 확인 비용은 300바이트짜리 읽기 하나뿐이라 자주 물어봐도 된다.
+   ⚠️ PRESENCE_FEED_DEAD_MS(표시 가드용 6분)는 건드리지 않는다 — 그건 "화면을 얼려서라도
+      전원 사라짐을 막는" 별개 판정이고, 여기서 낮추면 정상 상태에서도 가드가 먼저 발동한다. */
+const TILEPROBE_MIN_SILENCE_MS = 90 * 1000;               // 90초 조용하면 서버에 물어본다
+const TILEPROBE_COOLDOWN_MS    = 60 * 1000;               // 확인 주기
 async function presenceProbeWatchdog_(reason){
   try{
     if(!state || !state.joined || !state.roomId || !state.nonChatEnabled) return;
@@ -10623,20 +10725,87 @@ async function presenceProbeWatchdog_(reason){
     if(serverNewest > mineNewest + 1000){
       const gap = Math.round((serverNewest - mineNewest) / 1000);
       state.__presenceProbeResubCount = Number(state.__presenceProbeResubCount || 0) + 1;
-      console.warn("[V205_TILEPROBE] 서버 presence가 " + gap + "초 더 최신인데 내 구독엔 안 왔습니다 — 다시 겁니다 (" + reason + ")");
-      try{ mkDiag("타일-재구독", `서버가 ${gap}초 최신 · ${reason}`); }catch(_e){}
-      Promise.resolve(subscribeParticipants()).catch(()=>{});
+      /* ===== V207_TILEESCALATE (2026-08-14): 안 들으면 더 세게 =====
+         📏 방장 실측 — `__MK_TILES_FIX__()`(=부드러운 재구독)를 눌러도 화면이 그대로였다.
+            즉 **다시 붙이는 것만으로는 안 살아나는 경우가 있다.** 그런데 예전 코드는
+            같은 방법만 무한히 되풀이했다 — 안 듣는 약을 계속 먹인 셈이다.
+         → 단계를 올린다: ①부드러운 재구독 ②캐시까지 비우는 강제 재구축
+           ③그래도 안 되면 새로고침을 권한다(이 방에서 **확실히 듣는다고 확인된 유일한 방법**).
+         소식이 다시 오면 stampPresenceFeed_가 단계를 0으로 되돌린다. */
+      const step = Number(state.__tilesRecoverStep || 0) + 1;
+      state.__tilesRecoverStep = step;
+      console.warn("[V207_TILEESCALATE] 서버 presence가 " + gap + "초 더 최신인데 안 왔습니다 — " +
+        step + "단계 복구 (" + reason + ")");
+      try{ mkDiag("타일-재구독", `${step}단계 · 서버가 ${gap}초 최신 · ${reason}`); }catch(_e){}
+      if(step === 1){
+        Promise.resolve(subscribeParticipants()).catch(()=>{});
+      }else if(step === 2){
+        tilesHardRebuild_("probe:" + reason);
+      }else{
+        try{ mkShowTilesLost_(gap); }catch(_e){}
+      }
     }
   }catch(e){ console.warn("[V205_TILEPROBE] 확인 실패", e); }
 }
+/* ===== V207_TILEHARD: 캐시까지 비우고 처음부터 다시 붙인다 =====
+   부드러운 재구독은 기존 맵·DOM·명단 보관본을 **일부러 유지한다**(재구독 중 깜빡임 방지, V158).
+   그런데 그 보관본이야말로 화면을 얼려 두는 주체다 — presenceDisplayList_가 피드가 죽은 동안
+   `__presenceGoodArr`를 계속 되돌려주기 때문이다. 그래서 재구독만으로는 그림이 안 바뀔 수 있다.
+   여기서는 그 보관본까지 걷어내 **새로고침 직후와 같은 상태**로 되돌린다.
+   ⚠️ 잠깐 방이 비어 보일 수 있다. 첫 스냅샷이 1초 안에 다시 채우므로 감수한다 —
+      "얼어붙은 옛 그림"보다 "잠깐 비었다가 진짜 명단"이 낫다. */
+function tilesHardRebuild_(reason){
+  try{
+    console.warn("[V207_TILEHARD] 부드러운 재구독이 듣지 않아 캐시를 비우고 다시 붙입니다 (" + reason + ")");
+    try{ mkDiag("타일-강제재구축", String(reason || "")); }catch(_e){}
+    try{ if(state.unsubParticipants) state.unsubParticipants(); }catch(_e){}
+    state.unsubParticipants = null;
+    try{ state.currentParticipants = new Map(); }catch(_e){}
+    try{ state.__presenceGoodArr = null; }catch(_e){}     // 얼어붙은 명단 래치 해제
+    try{ state.lastRendered?.clear?.(); }catch(_e){}
+    state.__presenceFeedAtMs = 0;
+    Promise.resolve(subscribeParticipants()).catch(()=>{});
+  }catch(e){ console.warn("[V207_TILEHARD] 실패", e); }
+}
+
+/* 2단계까지 갔는데도 안 살아나면 사람에게 알린다.
+   이 방에서 **확실히 듣는다고 확인된 유일한 복구는 새로고침**이다. 얼어붙은 화면을
+   정상인 줄 알고 계속 보시는 것보다, 정직하게 알리고 버튼을 드리는 편이 낫다. */
+let __tilesLostBound = false;
+function mkShowTilesLost_(gapSec){
+  try{
+    const el = document.getElementById("tilesLostOverlay"); if(!el) return;
+    const why = document.getElementById("tilesLostWhy");
+    if(why) why.textContent = gapSec ? ("다른 분들 소식이 " + gapSec + "초째 안 들어오고 있어요") : "";
+    if(!__tilesLostBound){
+      __tilesLostBound = true;
+      const rl = document.getElementById("tilesLostReload");
+      if(rl) rl.addEventListener("click", ()=>{ try{ location.reload(); }catch(_e){} });
+      const rt = document.getElementById("tilesLostRetry");
+      if(rt) rt.addEventListener("click", ()=>{
+        el.classList.remove("show");
+        state.__tilesRecoverStep = 0;
+        tilesHardRebuild_("manual");
+      });
+      const cl = document.getElementById("tilesLostClose");
+      if(cl) cl.addEventListener("click", ()=>{ el.classList.remove("show"); });
+    }
+    el.classList.add("show");
+  }catch(_e){}
+}
+
 /* 콘솔에서 즉시 되살리는 손잡이. 타일이 안 보인다는 제보를 받았을 때
    새로고침을 부탁하지 않고 이 한 줄로 복구·확인할 수 있다. */
 try{
   window.__MK_TILES_FIX__ = function(){
     try{
+      /* V207: 부드러운 재구독은 방장 실측에서 듣지 않았다(눌러도 화면 그대로).
+         손으로 부르는 자리는 애초에 "이미 이상하다"는 뜻이므로 곧장 강제 재구축으로 간다. */
       state.__presenceProbeAtMs = 0;                 // 쿨다운 해제
-      Promise.resolve(subscribeParticipants()).catch(()=>{});
-      return "참가자 구독을 다시 걸었습니다. 몇 초 뒤 타일을 확인해 주세요.";
+      state.__tilesRecoverStep = 0;                  // 단계도 초기화(다시 처음부터 올라가게)
+      tilesHardRebuild_("manual");
+      return "캐시를 비우고 다시 붙였습니다. 5초 뒤 __MK_CHAT_DEBUG__()의 타일_마지막수신이 " +
+             "갱신되는지 확인해 주세요(갱신되면 복구, 그대로면 연결 자체가 막힌 것입니다).";
     }catch(e){ return "실패: " + (e && e.message ? e.message : e); }
   };
 }catch(_e){}
@@ -14188,18 +14357,21 @@ function startRtdbConnectionWatch(){
     window.addEventListener("pageshow", ()=>{
       try{ ensureChatDayCurrent_("pageshow"); }catch(_e){}
       try{ ensureTilesAlive_("pageshow"); }catch(_e){}   // V197_TILEBACK
+      try{ presenceProbeWatchdog_("pageshow"); }catch(_e){}   // V207: 좀비 구독도 함께 본다
       try{ autoLeaveIfIdle_("pageshow"); }catch(_e){}    // V201_AUTOLEAVE
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("focus", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ ensureTilesAlive_("focus"); }catch(_e){}   // V197_TILEBACK
+      try{ presenceProbeWatchdog_("focus"); }catch(_e){}   // V207: 좀비 구독도 함께 본다
       try{ chatFeedWatchdog_(); }catch(_e){}          // V198_CHATWATCH
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
       try{ ensureChatDayCurrent_("online"); }catch(_e){}
       try{ ensureTilesAlive_("online"); }catch(_e){}   // V197_TILEBACK
+      try{ presenceProbeWatchdog_("online"); }catch(_e){}   // V207: 좀비 구독도 함께 본다
       try{ Promise.resolve(ensureFocusDayCurrent("online")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
 
@@ -21065,7 +21237,8 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     }
     // 상단바 '⚠️ 미인증' 배지 → 방 안에서도 재인증할 수 있는 유일한 통로
     if(els.authStateHint){
-      els.authStateHint.addEventListener("click", ()=>{ if(!mkAuthDone_()) mkOpenReauth_(); });
+      // V206: 명단으로 확인된 분에게는 재인증 창을 띄우지 않는다(이미 정상 계정이다).
+      els.authStateHint.addEventListener("click", ()=>{ if(!mkAuthUsable_()) mkOpenReauth_(); });
     }
     /* --- 가입 신청(글담 카페 활동내역 스샷) ---
        규칙 제약: joinRequests/{uid}는 본인이 status:'pending'으로만 쓸 수 있고,
@@ -21205,7 +21378,8 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       };
       mkPaintShotPreview_();
 
-      if(!mkAuthDone_()){
+      // V206: 명단으로 확인된 분은 아래 members 분기에서 "승인 완료"로 떨어진다.
+      if(!mkAuthUsable_()){
         set("need", "🔒", "이메일 인증이 필요합니다",
           mkGetStashedShot_()
             ? "스크린샷을 확인했습니다. 이제 <b>2단계</b>에서 카페 아이디와 같은 네이버 메일을 입력해 주세요."
@@ -21341,6 +21515,9 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
 
     function mkRefreshAll_(){
       try{ mkWatchSignedOut_(); }catch(_e){}   // V197_SHAREDAUTH
+      // V206_MEMBERFALLBACK: 이메일이 비어 있으면 서버 근거로 한 번 확인한다(uid당 1회).
+      // 결과가 나오면 스스로 배지·승인 버튼·입장 전 화면을 다시 그린다.
+      try{ mkVerifyMemberOnce_(); }catch(_e){}
       try{ mkRefreshAuthHint_(); }catch(_e){}
       try{ mkRefreshJoinState_(); }catch(_e){}
       try{ walletMaybePull_(); }catch(_e){}   // V189_WALLET: uid가 확정되면 지갑도 맞춘다
@@ -21585,7 +21762,8 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       const btn = els?.approveLink; if(!btn) return;
       const u = auth.currentUser;
       // V201_AUTHBADGE: 탭 동기화의 순간적 null에 버튼을 숨기지 않는다(관리자가 겪던 '권한 사라짐').
-      if(!mkAuthDone_()){
+      // V206: 이메일이 비어도 명단으로 확인됐으면 버튼을 숨기지 않는다(복길 님 건).
+      if(!mkAuthUsable_()){
         if(mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }   // 잠깐 빈 것 — 화면 유지
         btn.style.display = "none"; __adminLinkUid = ""; return;       // V196_AUTHFIX
       }
@@ -25877,7 +26055,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17083; // ✅ V204/V205: 로그인 풀림 복구 + 타일 좀비 구독 자동 복구.
+  const MK_APP_BUILD = 17085; // ✅ V207: 타일 좀비 탐지 90초 + 단계별 복구(재구독→강제재구축→새로고침 안내).
   // ⚠️ V202(탭 닫힘 판정·강퇴 수신 변경)가 빌드를 안 올려서 V201 탭이 새로고침 안내를 못 받고 있었다.
   //    V201 탭은 탭을 닫아도 status=off를 안 남겨 자정까지 유령으로 남는다 — 여기서 함께 올린다.
   // 이 값을 올리면 구버전 탭에 "강력 새로고침" 안내가 뜬다(아래 remoteBuild 비교).
