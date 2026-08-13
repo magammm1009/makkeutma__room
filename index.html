@@ -2660,7 +2660,17 @@ body::before{
 /* ✅ PRE-JOIN LOCK: 입장 전에는 어떤 정보도 보이지 않게 */
 /* V188_MAGICLINK: .wrap이 [1fr 340px] 그리드라 예전엔 왼쪽 칸 안에서만 가운데 정렬됐다.
    두 칸을 모두 차지하게 해서 화면 기준으로 가운데 오게 하고, 가독성을 위해 폭도 넓혔다. */
-#preJoinCard{ display:none; grid-column: 1 / -1; max-width: 860px; margin: 22px auto 0; padding: 22px 26px; }
+/* V193_PREJOIN_SCROLL(2026-08-13): .wrap이 height:calc(100vh - 92px) + overflow:hidden 이라
+   카드가 길어지면 넘친 부분이 그냥 잘려나가고 스크롤할 방법이 없었다.
+   스크린샷 미리보기가 붙는 순간 2단계(이메일)가 화면 밖으로 밀려 인증메일 버튼을 못 눌렀다.
+   available = (100vh - 92px) - .wrap 패딩 14px×2 - 카드 위 margin 22px - .wrap 행 gap 10px
+             = 100vh - 152px   (gap은 카드 행과 본문 행 사이에 붙는다 — 빼먹으면 10px 넘친다) */
+#preJoinCard{
+  display:none; grid-column: 1 / -1; max-width: 860px; margin: 22px auto 0; padding: 22px 26px;
+  max-height: calc(100vh - 152px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 #preJoinCard h3{ margin:0; font-size:16px; }
 #preJoinCard .hint{ margin-top:8px; opacity:.86; font-size:13px; line-height:1.35; }
 #preJoinCard .prePills{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
