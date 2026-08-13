@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V202_FORCEOFF: 타일 우클릭 → '🚪 로그아웃 처리'가 살아 있는 사람은 못 내보내던 문제. presence의 status만 off로 바꾸고 **상대에게 아무 신호도 보내지 않아서**, 상대 브라우저는 로그아웃된 걸 모른 채 3분 뒤 하트비트가 status를 원래대로 되돌렸다(heartbeat은 joined인 동안 매번 status를 쓴다) → 타일이 다시 나타남. 주석대로 '고스트 타일 정리'로는 맞았지만 메뉴 이름이 '로그아웃 처리'인 이상 살아 있는 사람도 실제로 나가야 한다. → kicks에 mode:"session"을 함께 남겨 상대 탭이 leaveRoom을 돌게 한다(V202_KICKFIX로 강퇴 수신이 숨김에도 안 끊기므로 즉시 전달된다). 재입장 차단은 걸지 않는다 — 강퇴가 아니라 로그아웃이라 바로 다시 들어올 수 있어야 한다. presenceSessionId를 모르면(=이미 죽은 고스트) 신호는 생략하고 타일 정리만 한다. ⚠️ lastSeenAtMs를 현재 시각으로 쓰던 것도 걷어냈다 — 죽은 레코드를 '방금 본 것'으로 만들어 60칸 목록(limitToLast)을 차지하고 14일 청소 시계까지 되감고 있었다. 빌드 17080 -->
 <!-- V202_KICKFIX: 관리자 '내보내기'가 정작 필요한 사람에게만 전달되지 않던 문제. pauseNonChatSubscriptions가 탭을 90초 넘게 숨기면 강퇴 수신(unsubKick)까지 함께 끊고 있었다("1문서라 가볍지만, 원하면 같이 끊기"). 그런데 내보내야 할 대상이 바로 '탭을 숨겨둔 사람'이라, 신호가 필요한 쪽에만 안 가는 구조였다. 📏 실측 2026-08-13 — 토리 님: 관리자가 세션 정리로 status=off를 내렸는데 6분 뒤 본인 하트비트가 break로 되돌려 놓았고 leaveRoom은 한 번도 돌지 않았다. kick 레코드는 2시간(KICK_BLOCK_MS)이면 만료되므로 그 안에 탭으로 돌아오지 않으면 그 강퇴는 영영 전달되지 않는다. → 강퇴 수신은 숨김에도 절대 끊지 않는다(kicks/{내 uid} 한 노드뿐이고 내가 강퇴당할 때만 발화하므로 비용은 사실상 0). resumeNonChatSubscriptions는 이미 붙어 있으면 다시 걸지 않는다. 빌드 17080 -->
 <!-- V202_TRUST: 방침 전환 — "확인 안 되면 흐리게"(V201) → **"작업중이면 믿는다"**. 방장 확정: "탭이 완전히 닫히는 게 아닌 이상 작업 중이면 활성 상태로 타이머가 움직이게 하고 싶다. 탭이 완전히 닫히면 로그아웃, 휴식 24시간이면 강퇴, 그 외에는 전부 프로필이 살아 있게." ①V201은 백그라운드 탭의 하트비트 지연(실측 7~14분)을 "확인 불가"로 읽어 원고만 쓰시는 분들을 계속 '연결 확인 중'으로 잡았다(루체·복길 님 제보). 임계값을 6분→15분→17분으로 두 번 올려도 안 맞았다 — 지연 폭이 들쭉날쭉해서 어떤 값으로도 "원고 쓰는 사람"과 "자리 뜬 사람"을 가를 수 없다. 가르려 한 것 자체가 틀린 접근이었다. ②그래서 **탭을 닫은 것과 소켓이 끊긴 것을 서버 흔적에서 구분**한다. 예전에는 pagehide(탭 닫힘)와 onDisconnect(소켓 끊김)가 똑같은 두 필드만 남겨서 구분이 불가능했고, 구분이 안 되니 모든 끊김을 의심할 수밖에 없었다 — 근본 원인이 여기다. 이제 pagehide는 status를 off로 확실히 내린다(leaveRoom과 같은 모양). 모바일 앱 전환 오탐은 ev.persisted 제외 + 복귀 시 heartbeat/joinRoom의 off→break 복구로 자가 치유된다. ③판정은 셋뿐이다: 탭 닫힘(status=off) → 즉시 퇴장 / 작업중 + 오늘 기록 → 자정까지 무조건 생존(presenceGraceMs_ = Infinity, dateKey가 유일한 마감선) / 휴식·자리비움 → 끊김 도장 2분·TTL 20분, 그리고 24시간 자동 퇴장. ④'연결 확인 중' 흐림 표시를 껐다(presenceInGrace_ → false). 알릴 내용 자체가 없어졌다. 판정 틀·CSS(.tileGrace)·정렬 키는 남겨 뒀으므로 되살리려면 false만 걷어내면 된다. ⑤⚠️ 타이머 상한은 없애지 않고 1시간으로 뒀다 — 상한을 완전히 풀어 보니 유령이 시간을 크게 부풀렸다(실측: 도리 님 마지막 신호 5.1시간 전인데 타일 9.17시간·서버 기록 0.00시간, 축춘 님 9.1시간 전인데 11.57시간·기록 0.00시간). 시간이 재화인 방에서 일하지 않은 시간이 쌓이는 건 타일이 사라지는 것만큼 나쁘다. 정상 작업자의 하트비트는 아무리 밀려도 14분이라 1시간 상한에 절대 안 걸리고, 떠난 사람의 부풀림만 최대 1시간으로 묶인다. 타일 생존 여부와는 별개 판정이라 프로필은 그대로 자정까지 남는다. 빌드 17080 -->
 <!-- V201_ADMINKEEP + V201_AUTHBADGE + V201_TILEWATCH + V201_READGUARD: "관리자 인증이 자꾸 풀린다"와 그 계열 수정. ①approve.html의 resolveRole이 `catch(_e){ isAdmin = false; }` 하나로 **권한 거부와 네트워크 오류를 똑같이** 처리했다 — RTDB 읽기가 한 번만 삐끗해도 "이 계정은 관리자가 아닙니다"가 뜨고 승인 UI가 숨겨졌으며 재시도가 없어 새로고침 전까지 그대로였다. 작업방은 같은 버그를 V197_ADMINKEEP에서 이미 고쳤는데 승인 페이지에는 반영되지 않았다. 판정을 3상태(owner/admin/none/unknown)로 바꿔 '모름'이면 화면을 안 바꾸고 6초 뒤 재시도한다. 실측 2026-08-13: ownerUid가 admins 명단에 없어 관리자 6명이 get(admins) 한 번의 성공에만 매달려 있었다. ②승인 페이지 get()에 8초 타임아웃 — 없으면 resolveRole이 멈춰 뒤따르는 onValue 구독 4개가 아예 안 걸리고 화면이 "불러오는 중…"에서 굳는다. 링크 처리(completeLinkIfAny)도 onAuthStateChanged 등록 뒤로 옮겨 그 단계가 멈춰도 페이지가 죽지 않게 했다. ③승인 페이지 onValue 4개를 걸기만 하고 떼지 않아 인증 상태가 바뀔 때마다 영구히 쌓였다 — 해제 함수를 모아 두고 재판정 전에 회수한다(대기 건에는 스크린샷이 base64로 들어 있어 쌓이면 중복 리스너마다 그 전부를 다시 받는다). ④작업방 '⚠️ 미인증' 배지에 5초 유예 — V197이 탭 동기화의 순간적 null을 걸러내려고 만든 유예를 토스트에만 걸고 배지·🛡️버튼에는 안 걸어서, 관리자가 두 탭을 띄워 둘 때마다 인증이 풀린 것처럼 보였다. 표시 경로에만 적용하고 실제 쓰기 게이트는 엄격 판정을 유지한다. ⑤ensureTilesAlive_를 하트비트(3분)에서도 돌린다 — presenceFeedWatchdog_은 구독이 아예 없으면 손을 떼고 ensureTilesAlive_는 탭 이벤트에만 걸려 있어서, 화면을 계속 보고 있으면 아무도 안 고쳐줬다("타일만 죽고 채팅은 올라온다"의 남은 절반). 보이는 중 + 숨김으로 끊은 상태가 아닐 때만 돌려 V179 절감을 지킨다. ⑥readGuard_ 도입 — 로딩 플래그를 쥔 채 멈추면 finally가 영영 안 돌아 기능이 굳던 자리 2곳(쪽지 상대 목록·관리자 프로필 목록)과 관리자 비번 확인에 적용. ⑦V201_GRACE_SORT(방장 요청): '연결 확인 중'인 사람을 두 정렬 모드 모두에서 맨 아래로 내린다. 기존 규칙 앞에 키 하나만 얹어 같은 그룹 안 순서는 그대로다. 비교 함수가 일관되도록 유예 여부는 정렬 전에 한 번 계산해 고정한다(임계값을 정렬 도중에 넘기면 비교가 모순된다). 내 타일·손캠 송출자·고정 타일은 applyPinnedOrder가 뒤에 돌며 무조건 위로 올리므로 영향 없음 — 셋 다 사용자가 정한 우선순위라 일부러 그대로 뒀다. 화면 표시만 바뀌므로 빌드 번호는 올리지 않는다(또 새로고침을 부탁하지 않기 위해). ⑧V201_STALE_FIX: 원고만 쓰시는 분들이 '연결 확인 중'으로 뜨던 것 수정(루체·복길 님 직접 확인). 원인은 백그라운드 탭의 setInterval 지연 — 실측 2026-08-13 복길 님 하트비트 13.8분 전인데 끊김 도장은 없었다(소켓은 멀쩡, 3분 주기가 13분까지 밀림). 이 파일의 V166 주석이 이미 "4분 주기가 8분(494초)까지 밀려서 유령처럼 사라진다"고 적어 뒀는데도 흐림 기준만 하트비트 2배(6분)로 잡아 같은 함정에 다시 빠졌다. 두 신호의 무게가 다르다는 것이 핵심 — 끊김 도장은 서버가 소켓 닫힘을 직접 확인한 강한 증거이고, 하트비트 나이는 백그라운드 지연이 섞이는 약한 증거다. 그래서 흐림은 도장을 주된 근거로 삼고(도장 뒤 3분=재연결 대기), 하트비트 나이는 onDisconnect가 아예 못 돈 경우(전원 차단·강제 종료)를 위한 안전망으로만 ONLINE_TTL_MS−하트비트(17분)에 둔다. 정상 사용자는 사실상 도장 없이는 흐려지지 않는다. 빌드 17080 -->
@@ -9831,14 +9832,45 @@ async function requestForceOff(targetUid, targetName){
     showToast("🚪 로그아웃 처리는 관리자만 가능해");
     return;
   }
+  /* ===== V202_FORCEOFF (2026-08-13): 살아 있는 사람은 못 내보내던 문제 =====
+     예전에는 presence의 status만 off로 바꾸고 **상대에게 아무 신호도 보내지 않았다.**
+     그래서 상대 브라우저는 자기가 로그아웃된 걸 모르고, 3분 뒤 하트비트가
+     status를 원래대로 되돌려 타일이 다시 나타났다(heartbeat은 joined인 동안 매번 status를 쓴다).
+     주석대로 '고스트 타일 정리'로는 맞았지만, 메뉴 이름이 '로그아웃 처리'인 이상
+     살아 있는 사람도 실제로 나가야 한다.
+     → kicks에 mode:"session"을 함께 남겨 상대 탭이 leaveRoom을 돌게 한다.
+       (V202_KICKFIX로 강퇴 수신이 숨김에도 안 끊기므로 이제 즉시 전달된다.)
+       재입장 차단은 걸지 않는다 — '강퇴'가 아니라 '로그아웃'이라 바로 다시 들어올 수 있어야 한다.
+
+     ⚠️ lastSeenAtMs를 현재 시각으로 쓰던 것도 걷어낸다. 죽은 레코드를 '방금 본 것'으로
+        만들어 60칸 목록(limitToLast)을 차지하고 14일 청소 시계까지 되감고 있었다.
+        건드리지 않으면 기존 값이 그대로 남아 청소 판단 근거가 유지된다(V172와 같은 이유). */
   try{
-    // 고스트(비활성) 타일 정리 목적: status만 off로 바꿔도 UI에서 즉시 숨김/오프라인 처리됨
-    const patch = {
+    // ① 상대 탭에 "나가라" 신호. 어느 탭인지 특정할 수 있을 때만 보낸다(엉뚱한 세션을 끊지 않게).
+    try{
+      const targetSid = String(state.currentParticipants?.get?.(String(targetUid))?.presenceSessionId || "");
+      if(targetSid){
+        const now = Date.now();
+        await rSet(rKickRef(state.roomId, targetUid), {
+          kickedAtMs: now,
+          expiresAtMs: now + KICK_BLOCK_MS,
+          byUid: state.uid,
+          byName: (els.meHint?.textContent || "관리자"),
+          targetName: targetName || "",
+          mode: "session",
+          sessionId: targetSid
+        });
+      }else{
+        console.warn("[forceOff] presenceSessionId를 몰라 퇴장 신호는 생략 — 타일 정리만 합니다", targetUid);
+      }
+    }catch(err){ console.warn("[forceOff] 퇴장 신호 전송 실패 — 타일 정리는 계속합니다", err); }
+
+    // ② 타일 즉시 정리. 이미 죽은 고스트는 ①이 닿지 않으므로 이 쓰기가 유일한 처리다.
+    await rUpdate(rMePresenceRef(state.roomId, targetUid), {
       status: "off",
-      // 마지막으로 관리자가 손댄 시간 기록
-      lastSeenAtMs: rServerTimestamp(),
-    };
-    await rUpdate(rMePresenceRef(state.roomId, targetUid), patch);
+      statusSource: "adminForceOff",
+      updatedAt: Date.now()
+    });
     showToast(`🚪 ${targetName || targetUid} 로그아웃 처리 완료`);
   }catch(e){
     console.warn("[forceOff] failed", e);
