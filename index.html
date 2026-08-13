@@ -7701,7 +7701,8 @@ function loadLocalProfile(){
     , enableIndexedDbPersistence, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence,
-      sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, EmailAuthProvider, linkWithCredential } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, EmailAuthProvider, linkWithCredential,
+      reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
@@ -7739,7 +7740,41 @@ const auth = getAuth(app);
     }
 
     // 상단바에는 인증 여부만 배지로 남긴다(이메일 주소는 노출하지 않는다 — 입장 후엔 볼 이유가 없다).
-    function mkAuthDone_(){ const u = auth.currentUser; return !!(u && !u.isAnonymous && u.email); }
+    /* V196_AUTHFIX(2026-08-13): 인증했는데 계속 '미인증'으로 뜨는 문제.
+       예전 판정은 `!u.isAnonymous && u.email`이었는데, linkWithCredential로 승격된 계정은
+       세션을 복원했을 때 **isAnonymous가 낡은 값(true)으로 남아 있을 수 있다.**
+       (auth:export에서 두 계정 모두 providerUserInfo가 비어 있던 것도 같은 맥락.)
+       → 판정을 **이메일 존재 여부 하나로** 바꾼다. 익명 계정에는 이메일이 없으므로 이것으로 충분하고
+       isAnonymous의 상태에 전혀 의존하지 않는다. */
+    function mkAuthDone_(){ const u = auth.currentUser; return !!(u && u.email); }
+
+    /* 캐시된 사용자 레코드가 낡아 email이 비어 있는 경우를 대비해 서버에서 1회 다시 받아온다.
+       uid당 1회만 — 정상 사용자는 이 경로에 들어오지도 않는다. */
+    let __authReloadTried = "", __authWarnedUid = "";
+    async function mkEnsureFreshUser_(){
+      const u = auth.currentUser;
+      if(!u || u.email) return;
+      if(__authReloadTried === u.uid) return;
+      __authReloadTried = u.uid;
+      try{
+        await authReload(u);
+        console.info("[V196_AUTHFIX] 계정 정보 재조회 — email:", auth.currentUser?.email || "(없음)");
+        mkRefreshAll_();
+      }catch(err){ console.warn("[V196_AUTHFIX] 계정 정보 재조회 실패", err); }
+    }
+
+    /* 진단용 — 작가님께 콘솔에서 __MK_AUTH_DEBUG__() 실행을 부탁하면 원인이 바로 나온다. */
+    window.__MK_AUTH_DEBUG__ = function(){
+      const u = auth.currentUser;
+      const info = u ? {
+        로그인됨: true, uid: u.uid, email: u.email || "(없음)",
+        emailVerified: u.emailVerified, isAnonymous: u.isAnonymous,
+        providers: (u.providerData || []).map(p => p && p.providerId),
+        최종판정: mkAuthDone_()
+      } : { 로그인됨: false, 최종판정: false };
+      console.info("[MK_AUTH] 현재 인증 상태", info);
+      return info;
+    };
     function mkRefreshAuthHint_(){
       try{
         const el = els?.authStateHint; if(!el) return;
@@ -7749,6 +7784,16 @@ const auth = getAuth(app);
         }else{
           el.textContent = "⚠️ 미인증"; el.className = "meMini";
           el.title = "입장 전 화면에서 스크린샷과 이메일 인증을 진행해 주세요.";
+          // V196_AUTHFIX: 로그인은 돼 있는데 미인증으로 판정되면 캐시가 낡았을 수 있다 → 1회 재조회.
+          const u = auth.currentUser;
+          if(u){
+            if(__authWarnedUid !== u.uid){
+              __authWarnedUid = u.uid;
+              console.warn("[V196_AUTHFIX] 로그인 상태인데 미인증 판정 — 계정 정보를 다시 받아옵니다.",
+                { uid: u.uid, email: u.email || "(없음)", isAnonymous: u.isAnonymous, emailVerified: u.emailVerified });
+            }
+            mkEnsureFreshUser_();
+          }
         }
       }catch(_e){}
     }
@@ -7780,7 +7825,10 @@ const auth = getAuth(app);
       const cur = auth.currentUser;
       let user = null;
 
-      if(cur && cur.isAnonymous){
+      // V196_AUTHFIX: isAnonymous 대신 '이메일이 아직 없다'로 판단한다.
+      // isAnonymous는 승격 후에도 낡은 true로 남을 수 있어 신뢰할 수 없다.
+      // 이메일이 없다 = 아직 승격 전 = linkWithCredential로 uid를 지켜야 하는 경우.
+      if(cur && !cur.email){
         try{
           const r = await linkWithCredential(cur, cred);   // ★ uid 유지 경로
           user = r.user;
@@ -20050,7 +20098,7 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     async function mkSubmitStashed_(){
       if(__mkSubmitting) return;
       const u = auth.currentUser;
-      if(!u || u.isAnonymous || !u.email){ showToast("먼저 이메일 인증을 마쳐 주세요.", 4000); return; }
+      if(!mkAuthDone_()){ showToast("먼저 이메일 인증을 마쳐 주세요.", 4000); return; }   // V196_AUTHFIX
       const img = mkGetStashedShot_();
       if(!img){ showToast("스크린샷을 먼저 올려 주세요.", 4000); return; }
       __mkSubmitting = true;
@@ -20387,7 +20435,7 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     async function mkRefreshAdminLink_(){
       const btn = els?.approveLink; if(!btn) return;
       const u = auth.currentUser;
-      if(!u || u.isAnonymous || !u.email){ btn.style.display = "none"; __adminLinkUid = ""; return; }
+      if(!mkAuthDone_()){ btn.style.display = "none"; __adminLinkUid = ""; return; }        // V196_AUTHFIX
       if(__adminLinkUid === u.uid) return;        // uid당 1회만 조회한다
       __adminLinkUid = u.uid;
       let isAdmin = false;
