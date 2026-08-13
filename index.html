@@ -19593,14 +19593,28 @@ function pauseNonChatSubscriptions(reason){
    → 채팅은 멀쩡한데 타일만 영영 안 돌아온다. 콘솔에도 아무것도 안 남는다.
    게다가 __nonChatPausedByTimer가 이미 false로 꺼져 있어서 다음 탭 전환에도 재시도하지 않는다.
    앞의 V197_JOINSTALL과 같은 계열이다 — 한 단계의 실패가 뒤 단계를 통째로 삼키는 구조. */
+/* ⚠️ 즉시 재구독하지 않고 '지연 확인'한다. 창을 다시 볼 때 focus와 visibilitychange가
+   둘 다 발화하는데, focus가 먼저 오면 여기서 구독하고 곧이어 resumeNonChatSubscriptions가
+   subscribeParticipants를 또 부른다 → presence 전체(~95KB)를 두 번 내려받는다.
+   V179가 아끼려던 바로 그 비용이라, 정상 복귀 경로가 먼저 처리하도록 1.5초 양보하고
+   그래도 안 붙어 있을 때만(=진짜 고장) 되살린다. */
+let __tilesAliveTimer = null;
 function ensureTilesAlive_(reason){
   try{
     if(!state.joined || !state.roomId || !state.nonChatEnabled) return false;
     if(state.unsubParticipants) return false;            // 이미 붙어 있다
-    console.warn("[V197_TILEBACK] 참가자 구독이 끊긴 채로 남아 있어 다시 겁니다 (" + reason + ")");
-    subscribeParticipants();
+    if(__tilesAliveTimer) return false;                  // 이미 확인 예약됨
+    __tilesAliveTimer = setTimeout(()=>{
+      __tilesAliveTimer = null;
+      try{
+        if(!state.joined || !state.roomId || !state.nonChatEnabled) return;
+        if(state.unsubParticipants) return;              // 정상 복귀 경로가 이미 붙였다 = 정상
+        console.warn("[V197_TILEBACK] 참가자 구독이 끊긴 채로 남아 있어 다시 겁니다 (" + reason + ")");
+        subscribeParticipants();
+      }catch(e){ console.warn("[V197_TILEBACK] 타일 복구 실패", e); }
+    }, 1500);
     return true;
-  }catch(e){ console.warn("[V197_TILEBACK] 타일 복구 실패", e); return false; }
+  }catch(e){ console.warn("[V197_TILEBACK] 타일 복구 예약 실패", e); return false; }
 }
 
 function resumeNonChatSubscriptions(){
@@ -20422,7 +20436,29 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       }
     }
 
+    /* ===== V197_SHAREDAUTH (2026-08-13): 다른 탭에서 로그아웃되면 여기도 함께 끊긴다 =====
+       approve.html은 같은 오리진·같은 Firebase 앱이라 로그인 상태를 공유한다.
+       거기서 로그아웃하면 이 탭도 즉시 로그아웃되는데, 예전에는 배지만 조용히 '⚠️ 미인증'으로
+       바뀌어서 관리자는 "작업하다 보니 권한이 풀렸다"고만 느꼈다. 그 뒤 채팅·프레즌스 쓰기는
+       규칙(auth != null)에 막혀 전부 실패한다 — 방이 반쯤 죽은 채로 눈치채지 못하는 상태다.
+       로그인돼 있다가 사라졌을 때만 크게 알린다(처음부터 미로그인인 경우는 정상 흐름이라 제외). */
+    let __hadAuthUser = false;
+    function mkWatchSignedOut_(){
+      try{
+        const u = auth.currentUser;
+        if(u){ __hadAuthUser = true; return; }
+        if(!__hadAuthUser) return;                 // 원래 로그인한 적 없다 = 정상
+        __hadAuthUser = false;
+        console.warn("[V197_SHAREDAUTH] 로그인이 해제됐습니다 — 다른 탭(승인 페이지)에서 로그아웃했을 수 있습니다.");
+        try{
+          showToast("⚠️ 로그인이 풀렸습니다. 승인 페이지에서 로그아웃하면 작업방도 함께 로그아웃됩니다. " +
+                    "새로고침한 뒤 다시 인증해 주세요.", 12000);
+        }catch(_e){}
+      }catch(_e){}
+    }
+
     function mkRefreshAll_(){
+      try{ mkWatchSignedOut_(); }catch(_e){}   // V197_SHAREDAUTH
       try{ mkRefreshAuthHint_(); }catch(_e){}
       try{ mkRefreshJoinState_(); }catch(_e){}
       try{ walletMaybePull_(); }catch(_e){}   // V189_WALLET: uid가 확정되면 지갑도 맞춘다
@@ -20676,8 +20712,13 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
         if(owner.exists() && String(owner.val()) === u.uid) isAdmin = true;   // 방장
         if(!isAdmin) isAdmin = (await rGet(rRef(rtdb, `${base}/admins/${u.uid}`))).exists();
       }catch(err){
-        console.warn("[V191_ADMINLINK] 관리자 확인 실패", err);
+        /* V197_ADMINKEEP: 예전에는 여기서 return하지 않아 아래 줄이 그대로 실행됐다.
+           isAdmin은 false인 채라 **조회에 실패한 것뿐인데 '관리자가 아님'으로 처리**돼
+           버튼이 사라졌다. RTDB 읽기 한 번 실패(연결 끊김·한도)로 관리자 권한이 풀린 것처럼 보인다.
+           확인하지 못했을 때는 화면을 바꾸지 않고 그대로 두는 것이 맞다. */
+        console.warn("[V197_ADMINKEEP] 관리자 확인 실패 — 버튼 상태를 유지하고 다음 기회에 다시 확인합니다", err);
         __adminLinkUid = "";                       // 다음 기회에 재시도
+        return;                                    // ★ 화면을 건드리지 않는다
       }
       btn.style.display = isAdmin ? "" : "none";
     }

@@ -77,7 +77,9 @@
   <section class="card hide" id="meCard">
     <div class="row" style="justify-content:space-between">
       <div><span class="pill ok" id="mePill">로그인</span> <span class="mono" id="meEmail"></span></div>
-      <button id="logoutBtn" type="button">로그아웃</button>
+      <!-- V197_SHAREDAUTH: 이 페이지와 작업방은 같은 오리진·같은 Firebase 앱이라 로그인 상태를 공유한다.
+           여기서 로그아웃하면 작업방 탭도 함께 로그아웃된다. 버튼 이름으로 먼저 알린다. -->
+      <button id="logoutBtn" type="button" title="작업방 탭에서도 함께 로그아웃됩니다">로그아웃 (작업방도 함께)</button>
     </div>
   </section>
 
@@ -174,7 +176,24 @@ $("sendBtn").addEventListener("click", async () => {
     toast("발송 실패: " + (err?.code || err?.message || ""), 6000);
   }finally{ btn.disabled = false; btn.textContent = label; }
 });
-$("logoutBtn").addEventListener("click", async () => { await signOut(auth); location.reload(); });
+/* ===== V197_SHAREDAUTH (2026-08-13) — 관리자가 "조금 작업하다 보면 미인증이 된다"의 원인 =====
+   이 페이지는 작업방과 **같은 오리진 + 같은 Firebase 기본 앱**을 쓰고 persistence도 browserLocal이다.
+   Firebase Auth는 (apiKey, appName) 단위로 로그인 상태를 저장하고 **탭 사이에 동기화**하므로,
+   여기서 signOut()을 부르면 열려 있는 작업방 탭도 즉시 로그아웃된다.
+   → 작업방 배지가 '⚠️ 미인증'으로 바뀌고 🛡️승인 버튼이 사라진다(둘 다 mkAuthDone_ 하나로 판정).
+   관리자만 이 증상을 겪은 이유가 이것이다 — 승인 페이지를 여는 사람이 관리자뿐이라서다.
+   버튼을 없애지는 않는다(공용 PC에서 필요). 대신 결과를 먼저 알리고 확인을 받는다. */
+$("logoutBtn").addEventListener("click", async () => {
+  const ok = confirm(
+    "로그아웃하면 열려 있는 작업방 탭에서도 함께 로그아웃됩니다.\n" +
+    "(작업방이 '⚠️ 미인증'으로 바뀌고 채팅·타일이 멈춥니다)\n\n" +
+    "승인 작업만 끝내려는 것이라면 로그아웃하지 마시고 이 탭을 닫아 주세요.\n\n" +
+    "그래도 로그아웃할까요?"
+  );
+  if(!ok) return;
+  await signOut(auth);
+  location.reload();
+});
 
 async function completeLinkIfAny(){
   if(!isSignInWithEmailLink(auth, location.href)) return;
