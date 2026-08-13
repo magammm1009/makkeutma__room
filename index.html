@@ -7478,11 +7478,37 @@ function sortPresenceArr(arr){
      ⚠️ 내 타일·손캠 송출자·고정 타일은 뒤이어 도는 applyPinnedOrder가 무조건 위로 올린다.
         일부러 그대로 뒀다 — 셋 다 사용자가 정한 우선순위이고, 고정은 "이 사람을 지켜보겠다"는 뜻이라
         연결이 흔들린다고 내리는 게 오히려 의도에 어긋난다. */
+  /* ⚠️ presenceInGrace_는 모듈 안쪽 블록(깊이 1)에 있고 이 함수는 최상위(깊이 0)라 직접 못 부른다.
+     모듈은 strict mode여서 블록 안 함수 선언이 블록 스코프이기 때문이다.
+     처음엔 직접 불렀다가 ReferenceError가 나고 catch가 삼켜 **정렬만 조용히 안 먹었다**
+     (흐림 표시는 깊이 1에서 돌아 멀쩡했으므로 증상이 "표시는 되는데 순서만 그대로"였다).
+     → window 브리지로 받고, 못 받으면 **조용히 넘어가지 말고 콘솔에 남긴다.** */
+  const graceFn = (typeof window !== "undefined" && typeof window.__MK_PRESENCE_GRACE__ === "function")
+    ? window.__MK_PRESENCE_GRACE__ : null;
+  if(!graceFn){
+    try{
+      if(!window.__MK_GRACE_SORT_WARNED__){
+        window.__MK_GRACE_SORT_WARNED__ = true;
+        console.warn("[V201_GRACE_SORT] 유예 판정을 못 찾아 정렬에서 제외합니다 (window.__MK_PRESENCE_GRACE__ 미노출)");
+      }
+    }catch(_e){}
+  }
   const graceOf = new Map();
-  for(const p of arr){
-    let g = 0;
-    try{ g = presenceInGrace_(p) ? 1 : 0; }catch(_e){ g = 0; }
-    graceOf.set(p, g);
+  if(graceFn){
+    for(const p of arr){
+      let g = 0;
+      try{ g = graceFn(p) ? 1 : 0; }
+      catch(err){
+        try{
+          if(!window.__MK_GRACE_SORT_ERRED__){
+            window.__MK_GRACE_SORT_ERRED__ = true;
+            console.warn("[V201_GRACE_SORT] 유예 판정 중 오류 — 이번 정렬에서는 제외합니다", err);
+          }
+        }catch(_e){}
+        g = 0;
+      }
+      graceOf.set(p, g);
+    }
   }
   const g = (p)=> graceOf.get(p) || 0;
   if(mode === "status"){
@@ -10229,6 +10255,15 @@ function presenceInGrace_(p){
     return (now - last) > PRESENCE_STALE_MS;        // 도장 없이 하트비트만 멎은 경우
   }catch(_e){ return false; }
 }
+/* ⚠️ V201_GRACE_SORT 버그(2026-08-13, 배포 후 방장 제보로 발견):
+   이 함수는 **깊이 1**(모듈 안쪽 블록)에 있는데 sortPresenceArr는 **깊이 0**(모듈 최상위)에 있다.
+   모듈은 strict mode라 블록 안 함수 선언이 블록 스코프여서, 거기서는 이 이름이 아예 안 보인다.
+   그래서 흐림 표시(updateTimersLive·깊이 1)는 되는데 정렬(깊이 0)만 조용히 실패했다 —
+   호출이 ReferenceError로 죽고 정렬 쪽 try/catch가 그걸 삼켜 전원 '유예 아님'이 됐다.
+   📏 깊이 0에 사는 것: getTileSortMode(7452) · statusRank(7465) · sortPresenceArr(7471)
+      깊이 1에 사는 것: seoulDateKey · isOfflinePresence · applyPinnedOrder · updateTimersLive · mkNowMs_
+   → 이 파일에서 이미 쓰는 window 브리지로 넘긴다(__MK_WALLET_SYNC__ 등과 같은 방식). */
+try{ window.__MK_PRESENCE_GRACE__ = presenceInGrace_; }catch(_e){}
 /* 이 사람의 '작업중' 시간이 흘러도 된다고 인정할 마지막 시각.
    ⚠️ 이게 없으면 유예가 거짓말을 한다 — 타일 시간은 (저장된 누적 + 지금 − 작업시작시각)으로
    매초 계산되므로(computeDisplayedTotal), 하트비트가 멎어도 시간은 계속 자란다.
