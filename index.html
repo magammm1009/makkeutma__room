@@ -2671,6 +2671,30 @@ body::before{
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* V194_CONNLOST(2026-08-13): RTDB 연결이 끊기면 화면 정중앙에 크게 알린다.
+   기존에도 .info/connected를 감시하고 있었지만(startRtdbConnectionWatch) 화면에 아무것도
+   띄우지 않아서, 작가님들은 채팅이 멈춘 줄도 모르고 그대로 계셨다(2026-08-13 제보).
+   캐릭터 애니메이션은 로컬이라 연결과 무관하게 계속 움직이는 게 함정 — 정상으로 보인다.
+   화면을 막지는 않는다(pointer-events:none). 채팅 내용을 복사하거나 다른 조작을 막지 않기 위해서다. */
+#connLostOverlay{
+  position:fixed; inset:0; z-index:2147483100;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(2px);
+  pointer-events:none;
+}
+#connLostOverlay.show{ display:flex; }
+#connLostOverlay .connLostCard{
+  pointer-events:auto;
+  max-width:min(92vw, 460px); padding:30px 26px; border-radius:18px; text-align:center;
+  background:#241b22; color:#fff; border:2px solid #ff6b8a;
+  box-shadow:0 24px 70px rgba(0,0,0,.6);
+}
+#connLostOverlay .connLostIcon{ font-size:48px; line-height:1; }
+#connLostOverlay .connLostTitle{ font-size:25px; font-weight:1000; margin-top:10px; letter-spacing:-.5px; }
+#connLostOverlay .connLostDesc{ font-size:14px; opacity:.92; margin-top:12px; line-height:1.65; }
+#connLostOverlay .connLostMeta{ font-size:13px; opacity:.75; margin-top:14px; }
+#connLostOverlay .connLostBtns{ display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
 #preJoinCard h3{ margin:0; font-size:16px; }
 #preJoinCard .hint{ margin-top:8px; opacity:.86; font-size:13px; line-height:1.35; }
 #preJoinCard .prePills{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -6828,6 +6852,19 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 <div class="toast" id="toast">저장했어!</div>
+<!-- V194_CONNLOST: 연결이 끊겼을 때 화면 정중앙에 크게 띄운다 -->
+<div aria-live="assertive" id="connLostOverlay" role="alert">
+<div class="connLostCard">
+<div class="connLostIcon">📡</div>
+<div class="connLostTitle">연결이 끊겼어요</div>
+<div class="connLostDesc">채팅과 접속 현황이 <b>갱신되지 않고 있어요.</b><br/>잠시 기다려도 그대로면 새로고침해 주세요.</div>
+<div class="connLostMeta">끊긴 지 <b id="connLostSec">0</b>초</div>
+<div class="connLostBtns">
+<button class="primary" id="connLostReload" type="button">🔄 새로고침</button>
+<button class="ghost" id="connLostClose" type="button">닫기</button>
+</div>
+</div>
+</div>
 <!-- Mission Modal -->
 <div aria-hidden="true" class="modalOverlay" id="missionModal">
 <div aria-modal="true" class="modal" role="dialog">
@@ -12866,6 +12903,65 @@ async function heartbeat(){
   }
 }
 
+/* ===== V194_CONNLOST (2026-08-13): 연결 끊김을 화면 정중앙에 크게 알린다 =====
+   .info/connected 감시는 원래 있었지만(아래 startRtdbConnectionWatch) 화면 표시가 없어서
+   끊겨도 아무도 몰랐다. 채팅·입장이 안 보이는데 캐릭터는 계속 움직여서 정상처럼 보인다.
+   짧은 끊김은 SDK가 금방 되살리므로 6초 이상 이어질 때만 띄운다(깜빡임 방지).
+   콘솔에도 남겨서 방장이 원인을 바로 추적할 수 있게 한다. */
+const CONN_LOST_SHOW_AFTER_MS = 6000;
+let __connLostSince = 0, __connLostTimer = null, __connLostDismissed = false, __connLostBound = false;
+
+function connLostEl_(){ try{ return document.getElementById("connLostOverlay"); }catch(_e){ return null; } }
+function connLostBind_(){
+  if(__connLostBound) return;
+  __connLostBound = true;
+  try{
+    const rl = document.getElementById("connLostReload");
+    if(rl) rl.addEventListener("click", ()=>{ try{ location.reload(); }catch(_e){} });
+    const cl = document.getElementById("connLostClose");
+    if(cl) cl.addEventListener("click", ()=>{
+      __connLostDismissed = true;                 // 이번 끊김 동안만 숨긴다(카운트는 계속)
+      const el = connLostEl_(); if(el) el.classList.remove("show");
+    });
+  }catch(_e){}
+}
+function connLostHide_(){
+  const el = connLostEl_(); if(el) el.classList.remove("show");
+  if(__connLostTimer){ clearInterval(__connLostTimer); __connLostTimer = null; }
+  __connLostSince = 0; __connLostDismissed = false;
+}
+function connLostTick_(){
+  if(!__connLostSince) return;
+  const ms = Date.now() - __connLostSince;
+  try{
+    const s = document.getElementById("connLostSec");
+    if(s) s.textContent = String(Math.floor(ms / 1000));
+  }catch(_e){}
+  if(!__connLostDismissed && ms >= CONN_LOST_SHOW_AFTER_MS){
+    const el = connLostEl_(); if(el) el.classList.add("show");
+  }
+}
+function connLostMark_(connected){
+  if(connected){
+    if(__connLostSince){
+      console.info("[V194_CONNLOST] 연결 복구됨 — 끊겨 있던 시간 " +
+        Math.round((Date.now() - __connLostSince) / 1000) + "초");
+      try{ showToast("연결이 복구됐어요!", 3000); }catch(_e){}
+    }
+    connLostHide_();
+    return;
+  }
+  if(__connLostSince) return;                     // 이미 세고 있다
+  __connLostSince = Date.now();
+  console.warn("[V194_CONNLOST] RTDB 연결이 끊겼습니다 — 채팅·프레즌스 갱신이 멈춥니다. (" +
+    new Date().toLocaleTimeString("ko-KR") + ")");
+  connLostBind_();
+  if(__connLostTimer) clearInterval(__connLostTimer);
+  __connLostTimer = setInterval(connLostTick_, 1000);
+  connLostTick_();
+}
+/* ===== /V194_CONNLOST ===== */
+
 function startRtdbConnectionWatch(){
   try{
     if(state._infoConnUnsub) return;
@@ -12873,6 +12969,9 @@ function startRtdbConnectionWatch(){
     let prev = null;
     const onC = (snap)=>{
       const connected = !!(snap && snap.val && snap.val());
+      // V194_CONNLOST: prev 전이와 무관하게 항상 반영한다.
+      // (첫 콜백이 이미 끊긴 상태일 수도 있어서 prev===null에서 return하기 전에 처리해야 한다)
+      try{ connLostMark_(connected); }catch(_e){}
       if(prev === null){ prev = connected; return; }
 
       // false → true (재연결)
