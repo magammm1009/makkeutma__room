@@ -212,11 +212,16 @@ async function resolveRole(user){
 
 /* ===== 카페 아이디 앞글자 ↔ 이메일 대조 =====
    네이버 아이디 abcd1234 → abcd1234@naver.com 이므로 이메일 로컬파트의 앞부분과 비교한다.
-   카페 마스킹 자릿수가 4가 아닐 수도 있어 startsWith로 유연하게 본다(3글자 이상일 때만 판정). */
+   ⚠️ 네이버 카페의 마스킹 자릿수는 아이디 길이에 따라 다르다 — 긴 아이디는 4글자(redf****),
+   짧은 아이디는 2글자(ab****)만 노출된다(2026-08-13 실측). 그래서 최소 2글자부터 판정한다.
+   다만 2~3글자 일치는 우연히 겹칠 수 있으므로 화면에 '근거가 약함'을 표시해 관리자가
+   닉네임·가입일·활동량을 함께 보도록 한다. */
+const HEAD_MIN = 2;      // 판정 가능한 최소 글자 수
+const HEAD_WEAK = 4;     // 이 미만이면 약한 근거로 표시
 function headMatch(email, typed){
   const local = String(email || "").split("@")[0].toLowerCase();
   const t = String(typed || "").trim().toLowerCase();
-  if(t.length < 3) return null;
+  if(t.length < HEAD_MIN) return null;
   return local.startsWith(t);
 }
 
@@ -259,7 +264,7 @@ function renderPending(snapVal){
               : `<p class="pill bad">스크린샷 없음</p>`}
       <div class="row">
         <label class="muted" for="head-${esc(uid)}">스샷의 카페 아이디 앞글자</label>
-        <input id="head-${esc(uid)}" class="head" placeholder="예: redf" style="width:120px" maxlength="20" autocapitalize="off" spellcheck="false"/>
+        <input id="head-${esc(uid)}" class="head" placeholder="예: redf / ab" style="width:120px" maxlength="20" autocapitalize="off" spellcheck="false"/>
         <span class="verdict muted">입력하시면 대조됩니다</span>
       </div>
       <p class="muted" style="margin:8px 0 10px">
@@ -277,17 +282,33 @@ function renderPending(snapVal){
     const input = card.querySelector(".head");
     const verdict = card.querySelector(".verdict");
     const paint = () => {
-      const r = headMatch(v.email, input.value);
-      verdict.className = "verdict " + (r === null ? "muted" : (r ? "pill ok" : "pill bad"));
-      verdict.textContent = r === null ? "3글자 이상 입력" : (r ? "✅ 이메일과 일치" : "❌ 불일치 — 승인하지 마세요");
+      const t = input.value.trim();
+      const r = headMatch(v.email, t);
+      if(r === null){
+        verdict.className = "verdict muted";
+        verdict.textContent = `${HEAD_MIN}글자 이상 입력하시면 대조됩니다`;
+      }else if(!r){
+        verdict.className = "verdict pill bad";
+        verdict.textContent = "❌ 불일치 — 승인하지 마세요";
+      }else if(t.length < HEAD_WEAK){
+        verdict.className = "verdict pill warn";
+        verdict.textContent = `⚠️ 일치하지만 ${t.length}글자뿐 — 닉네임·가입일도 함께 확인하세요`;
+      }else{
+        verdict.className = "verdict pill ok";
+        verdict.textContent = "✅ 이메일과 일치";
+      }
     };
     input.addEventListener("input", paint); paint();
 
     card.querySelector(".approve").addEventListener("click", async () => {
       const typed = input.value.trim();
       const r = headMatch(v.email, typed);
-      if(r === null){ toast("스샷의 카페 아이디 앞글자를 3글자 이상 입력해 주세요.", 4000); input.focus(); return; }
-      if(!r && !confirm("이메일과 아이디가 일치하지 않아요.\n그래도 승인할까요?")) return;
+      // 막지는 않는다 — 아이디가 아주 짧아 노출 글자가 부족한 경우가 있다. 대신 한 번 더 확인한다.
+      if(r === null){
+        if(!confirm(`아이디 앞글자를 ${HEAD_MIN}글자 이상 입력하지 않았습니다.\n대조 없이 승인할까요?`)) { input.focus(); return; }
+      }else if(!r){
+        if(!confirm("이메일과 아이디가 일치하지 않습니다.\n그래도 승인할까요?")) return;
+      }
       if(!confirm(`${v.nick || uid} 님을 승인할까요?\n스크린샷은 보관함에 남습니다.`)) return;
       const now = Date.now(), who = me?.email || me?.uid || "", head = typed.toLowerCase();
       try{
