@@ -13831,6 +13831,10 @@ window.__MK_CHAT_DEBUG__ = function(){
   const last = Number(state.chatLastRecvMs || 0);
   const info = {
     입장함: !!state.joined,
+    /* V208: 버전 확인. 소스보기(Ctrl+U)는 이미 로드된 문서를 보여줘서 새로고침 전에는
+       옛 버전이 나온다 — 배포 여부를 그걸로 판단하면 안 된다. 둘이 다르면 내 탭이 낡은 것이다. */
+    내_빌드: (()=>{ try{ return window.__MK_BUILD__ ?? "?"; }catch(e){ return "?"; } })(),
+    방_빌드: (()=>{ try{ return window.__MK_ROOM_BUILD__ ?? "(아직 확인 전)"; }catch(e){ return "?"; } })(),
     /* V204_AUTHWATCH: 인증 상태를 맨 앞에 둔다 — 로그인이 풀리면 채팅과 타일이 **함께** 죽으므로,
        아래 채팅 항목들을 보기 전에 이것부터 확인해야 헛다리를 짚지 않는다.
        (2026-08-13 복길 님 건: 채팅 멈춤으로 접수됐지만 실제 원인은 로그인 해제였다.) */
@@ -26055,7 +26059,15 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17085; // ✅ V207: 타일 좀비 탐지 90초 + 단계별 복구(재구독→강제재구축→새로고침 안내).
+  const MK_APP_BUILD = 17086; // ✅ V208: 콘솔에서 내 빌드 확인(__MK_BUILD__).
+  /* ⚠️ V208(2026-08-14): "지금 이 탭이 몇 번 빌드인가"를 확인할 방법이 없었다.
+     소스보기(Ctrl+U)는 **이미 로드된 문서**를 보여줘서 새로고침 전에는 옛 버전이 나오고,
+     그래서 배포가 됐는지 안 됐는지를 놓고 계속 헷갈렸다.
+     📏 실제 대가: 복길 님이 몇 시간 동안 옛 코드로 돌고 있었는데 아무도 몰랐다
+        (그 사이 고쳐 놓은 인증 수정이 정작 당사자에게 닿지 않았다).
+     → window에 노출해 `__MK_BUILD__` 한 줄로 확인한다. 방 공유값과 비교하려면
+       __MK_CHAT_DEBUG__()의 내_빌드/방_빌드를 함께 본다. */
+  try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   // ⚠️ V202(탭 닫힘 판정·강퇴 수신 변경)가 빌드를 안 올려서 V201 탭이 새로고침 안내를 못 받고 있었다.
   //    V201 탭은 탭을 닫아도 status=off를 안 남겨 자정까지 유령으로 남는다 — 여기서 함께 올린다.
   // 이 값을 올리면 구버전 탭에 "강력 새로고침" 안내가 뜬다(아래 remoteBuild 비교).
@@ -27040,6 +27052,9 @@ joinRoom();
         // ✅ V168.7: 구버전 탭 감지 — 내 빌드가 더 높으면 방 기준을 올리고, 낮으면 새로고침을 안내한다.
         // (V168.7 이전 탭에는 이 코드가 없어 소급 적용은 안 되지만, 다음 배포부터는 옛 탭이 스스로 알게 된다.)
         const remoteBuild=Number(summary.appBuild)||0;
+        // V208: 방 기준 빌드도 콘솔에서 볼 수 있게. 내 빌드와 나란히 놓으면
+        // "내 탭이 낡았나"를 새로고침 없이 바로 판단할 수 있다.
+        try{ window.__MK_ROOM_BUILD__ = remoteBuild; }catch(_e){}
         if(remoteBuild<MK_APP_BUILD){
           rUpdate(rWorldTreeSummaryRef(state.roomId),{appBuild:MK_APP_BUILD}).catch(()=>{});
           worldTreeS2Runtime.summary.appBuild=MK_APP_BUILD;
