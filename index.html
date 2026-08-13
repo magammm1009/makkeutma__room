@@ -8123,7 +8123,27 @@ const auth = getAuth(app);
           try{ history.replaceState(null, "", location.origin + location.pathname); }catch(_e){}
         }
         if(restoredUser) return restoredUser;
+        /* ===== V205_SESSIONLOST (2026-08-13): 익명으로 조용히 내려앉는 것을 막는다 =====
+           여기 도달했다는 건 **저장된 로그인 세션을 못 찾았다**는 뜻이다.
+           처음 오신 분이면 정상이지만, 전에 이메일 인증을 마친 브라우저라면 사고다 —
+           익명으로 내려앉으면 새 uid가 생겨 프로필·관리자 권한·오늘 누적이 전부 남남이 된다.
+           📏 실측 2026-08-13 — 복길 님(관리자): 새로고침할 때마다 이 경로로 떨어져
+              "관리자가 풀렸다 → 인증도 풀렸다"가 반복됐다. 콘솔의 V196_AUTHFIX가
+              `계정 정보 재조회 — email: (없음)`을 찍은 것이 그 증거다(=익명 계정이라는 뜻).
+              루체 님은 같은 원인으로 하루에 uid 3개로 갈라져 6시간 기록이 고아가 됐다.
+           ⚠️ 익명 로그인 자체는 막지 않는다 — 규칙이 auth != null이라 이게 없으면 화면이 통째로 빈다.
+              대신 **즉시 알리고 재인증 길을 준다.** 입장하기 전에 되돌리는 것이 핵심이다
+              (입장해 버리면 그때부터 익명 uid로 기록이 쌓여 되돌리기가 어려워진다). */
+        let __lastEmail = "";
+        try{ __lastEmail = mkLastEmail_() || ""; }catch(_e){}
         const cred = await signInAnonymously(auth);
+        if(__lastEmail){
+          console.warn("[V205_SESSIONLOST] 전에 " + __lastEmail +
+            " 로 인증한 브라우저인데 세션이 사라져 익명으로 시작했습니다 — 재인증 전에는 입장하지 마세요.");
+          try{ mkDiag("세션소실", __lastEmail); }catch(_e){}
+          // 화면이 준비된 뒤에 띄운다(이 함수는 초기화 도중에 돈다).
+          try{ setTimeout(()=>{ try{ mkShowAuthLost_(); }catch(_e){} }, 1200); }catch(_e){}
+        }
         return cred && cred.user ? cred.user : auth.currentUser;
       })().catch((err)=>{
         __mainAuthReadyPromise = null;
