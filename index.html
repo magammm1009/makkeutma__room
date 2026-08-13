@@ -13102,6 +13102,10 @@ window.__MK_CHAT_DEBUG__ = function(){
     날짜버킷_일치: String(state.chatDayKey || "") === (()=>{ try{ return __seoulDateKeyFromMs(mkNowMs_()); }catch(e){ return ""; } })(),
     마지막_수신: last ? (Math.round((now - last) / 1000) + "초 전") : "(이번 세션에 수신 없음)",
     화면_메시지수: (state.chatDisplayIds || []).length,
+    // V197_TILEBACK: 타일(참가자 구독)이 살아 있는지도 같이 본다 — 채팅과 별개로 죽을 수 있다.
+    타일_구독중: !!state.unsubParticipants,
+    타일_수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
+    절약모드_꺼짐: !!state.nonChatEnabled,
     구독토큰: Number(state.chatSubSeq || 0),
     서버시각_오차ms: Number(__mkServerTimeOffsetMs) || 0,
     RTDB_연결끊김: !!__connLostSince,
@@ -13523,14 +13527,17 @@ function startRtdbConnectionWatch(){
     // ✅ V134: macOS 잠자기·모바일 백그라운드·BFCache 복귀에서 자정 누락 즉시 복구
     window.addEventListener("pageshow", ()=>{
       try{ ensureChatDayCurrent_("pageshow"); }catch(_e){}
+      try{ ensureTilesAlive_("pageshow"); }catch(_e){}   // V197_TILEBACK
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("focus", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
+      try{ ensureTilesAlive_("focus"); }catch(_e){}   // V197_TILEBACK
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
       try{ ensureChatDayCurrent_("online"); }catch(_e){}
+      try{ ensureTilesAlive_("online"); }catch(_e){}   // V197_TILEBACK
       try{ Promise.resolve(ensureFocusDayCurrent("online")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
 
@@ -19576,12 +19583,33 @@ function pauseNonChatSubscriptions(reason){
     state.nonChatPausedByHidden = (reason === "hidden");
   }catch(e){}
 }
+/* ===== V197_TILEBACK (2026-08-13): 타일이 하나도 안 보인 채 안 돌아오던 문제 =====
+   방장 제보: "입장 상태인 타일이 하나도 안 보이는 상황이었어."
+
+   탭을 90초 넘게 벗어나면 V179_TAB_DEBOUNCE가 참가자·방설정 구독을 끊는다(다운로드 절감).
+   돌아오면 resumeNonChatSubscriptions가 다시 걸어야 하는데, 예전 코드는 구독 셋을
+   **try 하나로 묶어** 두었다. 그래서 subscribeRoom()이 어떤 이유로든 던지면
+   그 뒤의 subscribeParticipants()가 **아예 실행되지 않고**, 바깥 catch(e){}가 조용히 삼킨다.
+   → 채팅은 멀쩡한데 타일만 영영 안 돌아온다. 콘솔에도 아무것도 안 남는다.
+   게다가 __nonChatPausedByTimer가 이미 false로 꺼져 있어서 다음 탭 전환에도 재시도하지 않는다.
+   앞의 V197_JOINSTALL과 같은 계열이다 — 한 단계의 실패가 뒤 단계를 통째로 삼키는 구조. */
+function ensureTilesAlive_(reason){
+  try{
+    if(!state.joined || !state.roomId || !state.nonChatEnabled) return false;
+    if(state.unsubParticipants) return false;            // 이미 붙어 있다
+    console.warn("[V197_TILEBACK] 참가자 구독이 끊긴 채로 남아 있어 다시 겁니다 (" + reason + ")");
+    subscribeParticipants();
+    return true;
+  }catch(e){ console.warn("[V197_TILEBACK] 타일 복구 실패", e); return false; }
+}
+
 function resumeNonChatSubscriptions(){
   try{
     if(!state.nonChatEnabled) return;
-    subscribeRoom();
-    subscribeParticipants();
-    subscribeKicks();
+    // V197_TILEBACK: 하나가 실패해도 나머지는 반드시 붙도록 개별로 감싼다.
+    try{ subscribeRoom(); }catch(e){ console.warn("[V197_TILEBACK] subscribeRoom 실패 — 계속 진행합니다", e); }
+    try{ subscribeParticipants(); }catch(e){ console.warn("[V197_TILEBACK] subscribeParticipants 실패 — 타일이 안 보일 수 있습니다", e); }
+    try{ subscribeKicks(); }catch(e){ console.warn("[V197_TILEBACK] subscribeKicks 실패 — 계속 진행합니다", e); }
     state.nonChatPausedByHidden = false;
 
     // ✅ V158: 숨김/최소화 복귀 직후 stale/off presence를 기다리지 않고 즉시 되살림
@@ -19635,7 +19663,9 @@ document.addEventListener("visibilitychange", ()=>{
     if(__nonChatPauseTimer){ clearTimeout(__nonChatPauseTimer); __nonChatPauseTimer = null; }
     // ⚠️ 실제로 끊었을 때만 재구독한다. 안 끊었는데 부르면 subscribeParticipants가
     // 기존 구독을 해제하고 다시 붙어서, 아끼려던 전체 재다운로드가 그대로 일어난다.
-    if(!__nonChatPausedByTimer) return;
+    // V197_TILEBACK: 단, 어떤 이유로든 구독이 끊긴 채 남아 있으면(=타일 안 보임) 되살린다.
+    // 이 안전망이 없으면 한 번 놓친 뒤로는 새로고침 전까지 영영 안 붙는다.
+    if(!__nonChatPausedByTimer){ ensureTilesAlive_("visible"); return; }
     __nonChatPausedByTimer = false;
     // 돌아오면, 사용자가 nonChatEnabled를 꺼두지 않은 경우만 재구독
     if(state.nonChatEnabled) resumeNonChatSubscriptions();
