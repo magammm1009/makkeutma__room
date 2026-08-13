@@ -13168,7 +13168,10 @@ window.__MK_CHAT_DEBUG__ = function(){
     화면_메시지수: (state.chatDisplayIds || []).length,
     // V197_TILEBACK: 타일(참가자 구독)이 살아 있는지도 같이 본다 — 채팅과 별개로 죽을 수 있다.
     타일_구독중: !!state.unsubParticipants,
-    타일_수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
+    // 화면 타일 수가 아니라 presence 구독 창(limitToLast 60) 안의 항목 수다.
+    // 이 중 실제 접속자만 걸러서 타일로 그린다 — 두 숫자가 다른 게 정상이다.
+    구독중_presence수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
+    화면_타일수: (()=>{ try{ return state.lastRendered?.size ?? "?"; }catch(e){ return "?"; } })(),
     절약모드_꺼짐: !!state.nonChatEnabled,
     구독토큰: Number(state.chatSubSeq || 0),
     자동재구독_횟수: Number(state.__chatWatchResubCount || 0),   // V198_CHATWATCH
@@ -16987,7 +16990,11 @@ t.appendChild(bg);
         // ✅ 내 타이머 숨김(개별 프로필 설정)이면 시간 대신 잠금 표시
         // V186_COIN_TICK: fmtHMS → fmtHM. 초를 떼면 텍스트가 분당 1회만 바뀐다.
         // 예전에는 작업중 인원수만큼 매초 이 노드가 다시 그려져 화면이 idle 프레임에 도달하지 못했다.
-        const nextText = (p.timerHidden) ? "⌨️" : fmtHM(__disp);
+        /* V199_MYSEC(2026-08-13): 초시계를 **내 타일에만** 되살린다.
+           전원에게 붙이면 구독 창(60명)만큼 매초 텍스트가 바뀌어 V186에서 뺐던 그 문제가 그대로 돌아온다.
+           내 것만 하면 매초 바뀌는 노드가 1개다 — 남의 타일은 분 단위 그대로다. */
+        const nextText = (p.timerHidden) ? "⌨️"
+          : ((uid === state.uid) ? fmtHMS(__disp) : fmtHM(__disp));
         if(timeEl.textContent !== nextText) timeEl.textContent = nextText;
 
         // ✅ V186_COIN_TICK: 코인 = "지금 적립 중" 신호
@@ -19588,8 +19595,10 @@ try{
 
       if(state.tickTimer) clearInterval(state.tickTimer);
       if(state.hbTimer) clearInterval(state.hbTimer);
+      if(state.mySecTimer) clearInterval(state.mySecTimer);   // V199_MYSEC
       state.tickTimer = null;
       state.hbTimer = null;
+      state.mySecTimer = null;
 
       els.meHint.textContent = "—";
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
@@ -24739,6 +24748,26 @@ joinRoom();
       state.tickTimer = setInterval(()=>{ updateTimersLive(); updateClocks(); }, ms);
       updateTimersLive();
       updateClocks();
+
+      /* V199_MYSEC: 경량(2초)·저사양(5초) 모드에서는 위 tick이 느려 초시계가 건너뛴다.
+         내 타일 하나만 매초 갱신하는 별도 tick을 둔다 — 노드 1개라 비용이 사실상 없고,
+         남의 타일 60개를 훑는 updateTimersLive는 그대로 느린 주기를 유지한다.
+         일반 모드(1초)에서는 위 tick과 같은 리듬이라 중복 계산이 없다. */
+      if(state.mySecTimer){ clearInterval(state.mySecTimer); state.mySecTimer = null; }
+      if(ms > 1000){
+        state.mySecTimer = setInterval(()=>{
+          try{
+            if(!state.joined || !state.uid) return;
+            const rec = state.lastRendered?.get?.(state.uid);
+            const p = state.currentParticipants?.get?.(state.uid);
+            if(!rec || !p || p.timerHidden) return;
+            const el = rec.timeEl || (rec.el && rec.el.querySelector ? rec.el.querySelector(".time") : null);
+            if(!el) return;
+            const txt = fmtHMS(computeDisplayedTotal(p));
+            if(el.textContent !== txt) el.textContent = txt;
+          }catch(_e){}
+        }, 1000);
+      }
     }catch(e){}
   }
 
