@@ -20442,18 +20442,35 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
        바뀌어서 관리자는 "작업하다 보니 권한이 풀렸다"고만 느꼈다. 그 뒤 채팅·프레즌스 쓰기는
        규칙(auth != null)에 막혀 전부 실패한다 — 방이 반쯤 죽은 채로 눈치채지 못하는 상태다.
        로그인돼 있다가 사라졌을 때만 크게 알린다(처음부터 미로그인인 경우는 정상 흐름이라 제외). */
-    let __hadAuthUser = false;
+    /* ⚠️ 바로 알리면 안 된다(2026-08-13 오탐 수정).
+       승인 페이지를 '열기만' 해도 Firebase Auth가 탭 사이를 동기화하면서
+       이쪽 auth.currentUser가 **아주 잠깐 null**이 된다. 곧바로 되돌아오는데,
+       그 순간을 로그아웃으로 오해해 "로그인이 풀렸습니다"를 띄웠다 — 실제로는 멀쩡한데.
+       V194_CONNLOST가 짧은 끊김을 6초 유예로 걸러내는 것과 같은 처리를 한다:
+       비어 있으면 잠시 기다렸다가 **그래도 비어 있을 때만** 진짜 로그아웃으로 본다. */
+    const SIGNED_OUT_CONFIRM_MS = 5000;
+    let __hadAuthUser = false, __signedOutTimer = null;
     function mkWatchSignedOut_(){
       try{
         const u = auth.currentUser;
-        if(u){ __hadAuthUser = true; return; }
+        if(u){
+          __hadAuthUser = true;
+          if(__signedOutTimer){ clearTimeout(__signedOutTimer); __signedOutTimer = null; }  // 돌아왔다 = 오탐
+          return;
+        }
         if(!__hadAuthUser) return;                 // 원래 로그인한 적 없다 = 정상
-        __hadAuthUser = false;
-        console.warn("[V197_SHAREDAUTH] 로그인이 해제됐습니다 — 다른 탭(승인 페이지)에서 로그아웃했을 수 있습니다.");
-        try{
-          showToast("⚠️ 로그인이 풀렸습니다. 승인 페이지에서 로그아웃하면 작업방도 함께 로그아웃됩니다. " +
-                    "새로고침한 뒤 다시 인증해 주세요.", 12000);
-        }catch(_e){}
+        if(__signedOutTimer) return;               // 이미 확인 대기 중
+        __signedOutTimer = setTimeout(()=>{
+          __signedOutTimer = null;
+          if(auth.currentUser){ __hadAuthUser = true; return; }   // 잠깐 비었을 뿐이었다
+          __hadAuthUser = false;
+          console.warn("[V197_SHAREDAUTH] 로그인이 해제됐습니다(" + (SIGNED_OUT_CONFIRM_MS/1000) +
+            "초 뒤에도 비어 있음) — 다른 탭에서 로그아웃했을 수 있습니다.");
+          try{
+            showToast("⚠️ 로그인이 풀렸습니다. 승인 페이지에서 로그아웃하면 작업방도 함께 로그아웃됩니다. " +
+                      "새로고침한 뒤 다시 인증해 주세요.", 12000);
+          }catch(_e){}
+        }, SIGNED_OUT_CONFIRM_MS);
       }catch(_e){}
     }
 
