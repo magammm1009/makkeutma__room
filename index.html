@@ -16293,6 +16293,29 @@ function showJoinTicker(msg){
       saveChatQueue(q);
     }
 
+    /* ===== V195_CHATLOCK (2026-08-13): 채팅 전송 잠금이 영구히 걸리는 문제 =====
+       RTDB 쓰기 Promise는 **오프라인이면 재연결까지 resolve되지 않는다.** 그대로 await하면
+       sendChatCore의 finally가 실행되지 않아 __chatSending 잠금이 풀리지 않고,
+       그 뒤 모든 메시지는 대기열로만 쌓인다. flushChatQueue()도 첫 줄에서 잠금에 막힌다.
+       → 새로고침 전까지 한 글자도 못 나간다(2026-08-13 방장 직접 재현:
+         "새로고침을 했더니 채팅이 올라가는 중이었어" = 쌓여 있던 큐가 그제야 나간 것).
+
+       쓰기 자체는 SDK가 로컬에 즉시 반영하고 재연결 시 알아서 보낸다.
+       그래서 일정 시간이 지나면 '보낸 것으로 치고' 잠금만 푼다.
+       ⚠️ 큐에 다시 넣으면 SDK 전송분과 겹쳐 중복이 되므로 절대 재큐잉하지 않는다. */
+    const CHAT_WRITE_TIMEOUT_MS = 8000;
+    function chatWriteWithTimeout_(p){
+      let t = null;
+      const timeout = new Promise((res)=>{
+        t = setTimeout(()=>{
+          console.warn("[V195_CHATLOCK] 쓰기 응답이 " + (CHAT_WRITE_TIMEOUT_MS/1000) +
+            "초 안에 오지 않아 잠금을 풉니다(연결 복구 시 SDK가 보냅니다).");
+          res("__timeout__");
+        }, CHAT_WRITE_TIMEOUT_MS);
+      });
+      return Promise.race([Promise.resolve(p), timeout]).finally(()=>{ if(t) clearTimeout(t); });
+    }
+
     async function flushChatQueue(){
       if(__chatSending) return;
       // 플러시 도중 사용자가 또 입력하면 큐에 새로 쌓이므로, 비워질 때까지 몇 번 더 돈다.
@@ -16371,17 +16394,17 @@ async function sendChatCore(text, isFlush=false){
       const msgId = newRef && newRef.key ? newRef.key : null;
       if(!msgId){
         // fallback
-        await rPush(rMessagesRootRef(roomId), payload);
+        await chatWriteWithTimeout_(rPush(rMessagesRootRef(roomId), payload));   // V195_CHATLOCK
       }else{
         const dayKey = __seoulDateKeyFromMs(payload.tsMs || Date.now());
         const updates = {};
         updates[`${rRoomBase(roomId)}/messages/${msgId}`] = payload;
         updates[`${rRoomBase(roomId)}/messagesByDate/${dayKey}/${msgId}`] = payload;
-        await rUpdate(rRef(rtdb), updates);
+        await chatWriteWithTimeout_(rUpdate(rRef(rtdb), updates));               // V195_CHATLOCK
       }
     }catch(e){
       // fan-out 실패 시에도 기존 경로로는 최소 보장
-      await rPush(rMessagesRootRef(state.roomId), payload);
+      await chatWriteWithTimeout_(rPush(rMessagesRootRef(state.roomId), payload)); // V195_CHATLOCK
     }
     // ✅ V158: 절전/백그라운드 때문에 자정 타이머가 늦었어도 첫 전송 직후 즉시 새 버킷을 구독
     try{
@@ -20134,12 +20157,17 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
       if(saved && els.signinEmail && !els.signinEmail.value) els.signinEmail.value = saved;
     }catch(_e){}
     try{
+      /* V195_AUTHBADGE(2026-08-13): "인증했는데 미인증으로 뜬다" 제보 수정.
+         예전에는 authStateReady()/ensureMainAuthReady_() **한 번**으로 끝냈다. 둘 다 1회성이라
+         세션 복원이 늦거나(IndexedDB 지연) 그 사이 토큰이 갱신되면 배지가 '미인증'에 멈춘 채
+         영영 되돌아오지 않았다 — 실제로는 인증된 상태인데도.
+         onAuthStateChanged를 **항상 상시 등록**해서 이후 변화를 계속 따라가게 한다.
+         (mkRefreshAll_은 uid당 1회 가드가 있어 중복 호출돼도 서버 조회가 늘지 않는다.) */
+      onAuthStateChanged(auth, ()=>mkRefreshAll_());
       if(isSignInWithEmailLink(auth, location.href)){
         ensureMainAuthReady_().then(()=>mkRefreshAll_(), ()=>mkRefreshAll_());
       }else if(typeof auth.authStateReady === "function"){
         auth.authStateReady().then(()=>mkRefreshAll_(), ()=>{});
-      }else{
-        onAuthStateChanged(auth, ()=>mkRefreshAll_());
       }
     }catch(_e){}
     /* ===== /V188_MAGICLINK ===== */
