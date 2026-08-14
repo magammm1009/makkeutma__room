@@ -49,7 +49,20 @@ let roomVerifiedWriterKey = null;
 function isRoomVerified() { return Boolean(roomVerifiedWriterKey); }
 function gateAllows(user = state.user) { return isRoomVerified() || isAdmin(user); }
 
-const app = initializeApp(firebaseConfig);
+/* ═══ V34_AUTH_ISOLATE (2026-08-14): Firebase 앱에 이름을 붙여 인증 저장소를 분리한다 ═══
+   숙제장은 작업방과 **같은 오리진 + 같은 프로젝트**다. 기본 앱(이름 없음)으로 getAuth를 쓰면
+   인증 세션 저장소(IndexedDB의 firebase:authUser:{apiKey}:{appName})를 작업방과 **공유**한다.
+   그 상태에서 아래 signInWriterWithName의 `signOut(auth)` + `signInAnonymously(auth)`가
+   ★ 작업방·승인 페이지의 매직링크 인증 세션을 통째로 지우고 새 익명 계정으로 갈아치웠다. ★
+   📏 실사고(2026-08-13~14): 복길 님(관리자)의 "작업만 하는데 인증이 풀린다" 반복,
+      익명 계정 폭증(3일간 114개 — 인증 사용자가 숙제장을 열 때마다 새 익명 생성),
+      "숙제장 관리자 인증이 안 되던" 방치 문제까지 전부 이 공유가 원인이었다.
+   → 앱 이름을 "homeworkApp"으로 분리하면 저장소 키가 달라져, 숙제장이 뭘 하든
+     (signOut·익명·관리자 로그인) 작업방 세션에 절대 닿지 않는다.
+   숙제 데이터는 무사하다: 프로필 정본은 닉네임 키(profilePath(writerKey))이고 uid는
+   writerSessions 포인터뿐이라, 새 uid가 생겨도 기존 로그인 흐름이 포인터를 다시 만든다
+   (버그 시절에는 열 때마다 새 uid였으니 오히려 지금부터는 브라우저당 하나로 안정된다). */
+const app = initializeApp(firebaseConfig, "homeworkApp");
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
