@@ -62,7 +62,7 @@
   <h1>🌸 마끝마 작업방 · 가입 승인</h1>
   <p class="sub">글담 카페 활동내역 스크린샷과 인증 이메일을 대조해 입장을 승인합니다.</p>
 
-  <!-- 로그인 -->
+  
   <section class="card" id="loginCard">
     <div class="row">
       <input id="email" type="email" placeholder="관리자 네이버 이메일" style="flex:1;min-width:220px" autocomplete="email"/>
@@ -73,17 +73,16 @@
     </p>
   </section>
 
-  <!-- 로그인 후 -->
+  
   <section class="card hide" id="meCard">
     <div class="row" style="justify-content:space-between">
       <div><span class="pill ok" id="mePill">로그인</span> <span class="mono" id="meEmail"></span></div>
-      <!-- V197_SHAREDAUTH: 이 페이지와 작업방은 같은 오리진·같은 Firebase 앱이라 로그인 상태를 공유한다.
-           여기서 로그아웃하면 작업방 탭도 함께 로그아웃된다. 버튼 이름으로 먼저 알린다. -->
+      
       <button id="logoutBtn" type="button" title="작업방 탭에서도 함께 로그아웃됩니다">로그아웃 (작업방도 함께)</button>
     </div>
   </section>
 
-  <!-- V210A_CONNWATCH: RTDB 연결 감시 배너. 인증과 무관하게 항상 상태만 반영한다(show/hide 토글). -->
+  
   <div class="banner hide" id="connBanner">🔌 실시간 연결이 끊겼습니다 — 목록이 갱신되지 않습니다. 잠시 기다려도 그대로면 새로고침해 주세요.</div>
 
   <div class="banner hide" id="noPerm">
@@ -114,7 +113,7 @@
       <p class="muted" id="adminNote">관리자 임명·해제는 방장만 할 수 있습니다.</p>
       <div id="adminList"><p class="muted">불러오는 중…</p></div>
 
-      <!-- V212A_NEWBIECFG: 뉴비(신입) 새싹 테두리 설정. index.html 작업자와 공유하는 스키마라 필드명은 고정. -->
+      
       <div class="card" id="newbieCfgCard">
         <div style="font-weight:600;margin-bottom:8px">🌱 뉴비 테두리</div>
         <div class="row">
@@ -135,7 +134,7 @@
         </div>
         <p class="muted" id="newbieStatus" style="margin:10px 0 0">현재 상태: 불러오는 중…</p>
 
-        <!-- V213A_NEWBIEPICK: 수동 지정 목록. 비어 있으면 빈 채로 둔다(카드가 길어지지 않게). -->
+        
         <div id="newbieOverrideList" style="margin:6px 0 0"></div>
 
         <p class="muted" style="margin:4px 0 0">
@@ -175,9 +174,8 @@ const firebaseConfig = {
   databaseURL: "https://magamm00-5baee-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 const ROOM = "magamm";
-// 방장 이메일은 클라이언트에 두지 않는다 — 이 파일은 공개 배포되므로 이메일이 그대로 노출된다.
-// 판정은 서버 값(settings/ownerUid)과 규칙(admins 컬렉션 읽기 가능 여부)으로만 한다.
-const EMAIL_LS = "mk_signin_email_v1";        // 작업방(index.html)과 같은 키 — 왕복이 이어진다
+
+const EMAIL_LS = "mk_signin_email_v1";        
 const DOMAIN = "@naver.com";
 
 const app = initializeApp(firebaseConfig);
@@ -194,11 +192,6 @@ const fmt = (ms) => { try{ return new Date(Number(ms)).toLocaleString("ko-KR",{t
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim().toLowerCase())
                     && String(e).trim().toLowerCase().endsWith(DOMAIN);
 
-/* ===== V210A_DIAG: 진단 링버퍼 =====
-   승인 페이지는 관리자가 오래 열어 두는 페이지인데 목록이 얼거나 인증이 풀려도 알 방법이 없었다.
-   본체(index.html)의 mkDiag와 달리 여기는 localStorage에 남기지 않는다 — 승인 화면에는 신청자
-   이메일·닉네임 같은 개인정보가 로그에 섞이기 쉬워, 새로고침하면 사라지는 메모리 링버퍼로 최소화한다.
-   콘솔에서 window.__MK_APPROVE_DEBUG__()로 꺼내 본다(아래 부팅 IIFE에서 노출). */
 const __diag = [];
 function diag(tag, detail){
   try{
@@ -207,7 +200,6 @@ function diag(tag, detail){
   }catch(_e){}
 }
 
-/* ===== 로그인 ===== */
 $("sendBtn").addEventListener("click", async () => {
   const e = ($("email").value || "").trim().toLowerCase();
   if(!emailOk(e)){ toast("네이버 메일(@naver.com)로 입력해 주세요.", 4000); $("email").focus(); return; }
@@ -222,13 +214,7 @@ $("sendBtn").addEventListener("click", async () => {
     toast("발송 실패: " + (err?.code || err?.message || ""), 6000);
   }finally{ btn.disabled = false; btn.textContent = label; }
 });
-/* ===== V197_SHAREDAUTH (2026-08-13) — 관리자가 "조금 작업하다 보면 미인증이 된다"의 원인 =====
-   이 페이지는 작업방과 **같은 오리진 + 같은 Firebase 기본 앱**을 쓰고 persistence도 browserLocal이다.
-   Firebase Auth는 (apiKey, appName) 단위로 로그인 상태를 저장하고 **탭 사이에 동기화**하므로,
-   여기서 signOut()을 부르면 열려 있는 작업방 탭도 즉시 로그아웃된다.
-   → 작업방 배지가 '⚠️ 미인증'으로 바뀌고 🛡️승인 버튼이 사라진다(둘 다 mkAuthDone_ 하나로 판정).
-   관리자만 이 증상을 겪은 이유가 이것이다 — 승인 페이지를 여는 사람이 관리자뿐이라서다.
-   버튼을 없애지는 않는다(공용 PC에서 필요). 대신 결과를 먼저 알리고 확인을 받는다. */
+
 $("logoutBtn").addEventListener("click", async () => {
   const ok = confirm(
     "로그아웃하면 열려 있는 작업방 탭에서도 함께 로그아웃됩니다.\n" +
@@ -259,40 +245,14 @@ async function completeLinkIfAny(){
   }
 }
 
-/* ===== 권한 판정 =====
-   규칙상 admins '컬렉션'은 관리자만 읽을 수 있다 → 읽기 성공 자체가 규칙이 인정한 관리자라는 뜻이다.
-   (규칙의 방장 이메일 앵커까지 그대로 반영되므로 클라이언트가 이메일을 알 필요가 없다.)
-   방장 여부는 관리자 임명·해제 UI를 열지 말지에만 쓰므로 settings/ownerUid 일치로 본다.
-
-   ===== V201_ADMINKEEP (2026-08-13): "관리자 인증이 자꾸 풀린다"의 원인 =====
-   예전 코드는 `catch(_e){ isAdmin = false; }` 하나로 **권한 거부와 네트워크 오류를 똑같이**
-   처리했다. RTDB 읽기가 한 번만 삐끗해도 "이 계정은 관리자가 아닙니다" 배너가 뜨고
-   승인 UI가 통째로 숨겨졌으며, 재시도가 없어 새로고침 전까지 그대로였다.
-
-   ★ 작업방(index.html)은 이 버그를 V197_ADMINKEEP에서 이미 고쳤는데 이 파일에는 반영되지 않았다.
-     그쪽 주석: "조회에 실패한 것뿐인데 '관리자가 아님'으로 처리돼 버튼이 사라졌다.
-     확인하지 못했을 때는 화면을 바꾸지 않고 그대로 두는 것이 맞다."
-
-   ★ 왜 하필 관리자만, 그리고 왜 '자꾸'인가
-     이 페이지와 작업방은 같은 오리진·같은 Firebase 앱이라 Auth가 탭 사이를 동기화하는데,
-     그때 currentUser가 잠깐 비면서 onAuthStateChanged가 울리고 → 역할을 다시 판정한다.
-     관리자는 두 탭을 함께 띄워 두므로 이 왕복이 계속 일어난다.
-     📏 실측(2026-08-13): ownerUid는 admins 명단에 **없다**. 그래서 관리자 6명은
-        `get(admins)` 한 번의 성공에만 매달려 있었다.
-
-   → 판정을 3상태로 바꾼다. "모름"일 때는 화면을 건드리지 않고 잠시 뒤 다시 확인한다. */
 let me = null, isOwner = false, isAdmin = false;
 
-// 규칙이 거부한 것인지(=진짜 권한 없음), 아니면 확인 자체를 못 한 것인지 구분한다.
 function isPermissionDenied_(err){
   const code = String(err?.code || "").toLowerCase();
   const msg  = String(err?.message || err || "").toLowerCase();
   return code.includes("permission") || msg.includes("permission_denied") || msg.includes("permission denied");
 }
-/* ⚠️ Firebase 읽기 Promise는 오프라인·차단 상태에서 resolve도 reject도 하지 않는다.
-   그대로 await하면 아래 onValue 구독 4개가 **아예 걸리지 않아** 화면이 "불러오는 중…"에서 멈춘다.
-   (작업방에서 같은 원인으로 세 번 사고가 났다: CHATLOCK / JOINSTALL / TILEBACK)
-   실패시키는 게 아니라 '기다리기를 그만두는' 것이다 — SDK는 뒤에서 계속 재시도한다. */
+
 const READ_TIMEOUT_MS = 8000;
 function getWithTimeout_(r, what){
   let timer = null;
@@ -308,10 +268,10 @@ function getWithTimeout_(r, what){
   ]);
 }
 
-const ROLE_UNKNOWN = "unknown";   // 확인 실패 — 화면을 바꾸지 않는다
+const ROLE_UNKNOWN = "unknown";   
 async function resolveRole(user){
   isOwner = false; isAdmin = false;
-  // 방장 여부는 임명·해제 UI를 열지 말지에만 쓴다. 확인 못 하면 그 UI만 안 보이고 끝이라 안전하다.
+  
   try{
     const s = await getWithTimeout_(ref(db, `rooms/${ROOM}/settings/ownerUid`), "ownerUid");
     if(s.exists() && String(s.val()) === user.uid){ isOwner = true; isAdmin = true; return "owner"; }
@@ -323,20 +283,14 @@ async function resolveRole(user){
     isAdmin = true;
     return "admin";
   }catch(err){
-    if(isPermissionDenied_(err)){ isAdmin = false; return "none"; }   // 규칙이 거부 = 진짜 권한 없음
+    if(isPermissionDenied_(err)){ isAdmin = false; return "none"; }   
     console.warn("[V201_ADMINKEEP] 관리자 확인 실패 — 화면을 유지하고 다시 시도합니다", err);
-    return ROLE_UNKNOWN;                                              // 네트워크·타임아웃은 '모름'
+    return ROLE_UNKNOWN;                                              
   }
 }
 
-/* ===== 카페 아이디 앞글자 ↔ 이메일 대조 =====
-   네이버 아이디 abcd1234 → abcd1234@naver.com 이므로 이메일 로컬파트의 앞부분과 비교한다.
-   ⚠️ 네이버 카페의 마스킹 자릿수는 아이디 길이에 따라 다르다 — 긴 아이디는 4글자(redf****),
-   짧은 아이디는 2글자(ab****)만 노출된다(2026-08-13 실측). 그래서 최소 2글자부터 판정한다.
-   다만 2~3글자 일치는 우연히 겹칠 수 있으므로 화면에 '근거가 약함'을 표시해 관리자가
-   닉네임·가입일·활동량을 함께 보도록 한다. */
-const HEAD_MIN = 2;      // 판정 가능한 최소 글자 수
-const HEAD_WEAK = 4;     // 이 미만이면 약한 근거로 표시
+const HEAD_MIN = 2;      
+const HEAD_WEAK = 4;     
 function headMatch(email, typed){
   const local = String(email || "").split("@")[0].toLowerCase();
   const t = String(typed || "").trim().toLowerCase();
@@ -344,10 +298,6 @@ function headMatch(email, typed){
   return local.startsWith(t);
 }
 
-/* ===== 보관함 기록 만들기 =====
-   스크린샷은 파기하지 않고 남긴다. 다만 본체(joinArchive)와 목록용 색인(joinArchiveIndex)을 나눈다 —
-   한 노드에 몰아두면 목록을 열 때마다 보관된 스크린샷 전부를 내려받게 되어(52건이면 5MB) 한도가 샌다.
-   규칙에서도 joinArchive는 컬렉션 읽기를 주지 않아 한 건씩만 열람하게 막아 두었다. */
 function archivePaths_(uid, v, status, head, who, now){
   const meta = {
     email: v.email || "", nick: v.nick || "", cafeIdHead: head || "",
@@ -362,30 +312,15 @@ function archivePaths_(uid, v, status, head, who, now){
   };
 }
 
-/* ===== V212A_NEWBIECFG + V213A_NEWBIEPICK: 뉴비 테두리 설정 =====
-   매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 approvedAtMs가 전부 그 날짜다.
-   "기준일 이후 승인자만" 조건이 없으면 켜는 순간 이관 대상자 전원이 뉴비로 표시된다 —
-   그래서 cutoffMs는 선택이 아니라 필수이고, 처음 켤 때도 항상 오늘 날짜를 기본으로 채운다.
-   rooms/${ROOM}/settings/newbie는 index.html 작업자와 공유하는 스키마이므로 필드명(enabled/
-   cutoffMs/durationDays/updatedAtMs/updatedBy, overrides/{uid}.untilMs/nick/grantedAtMs/grantedBy)을
-   임의로 바꾸지 않는다.
-
-   ⚠️ V213A에서 이 블록을 부팅 IIFE 밖(모듈 최상단)으로 옮겼다. 원래(V212A)는 IIFE 안에 있었는데,
-   [멤버] 탭의 "🌱 뉴비" 버튼은 renderMembers(IIFE보다 먼저 정의되는 모듈 스코프 함수)의 카드별
-   클릭 핸들러에서 loadNewbieCfg_ · clampDuration_ · NEWBIE_PATH를 직접 불러야 한다. IIFE 안에
-   갇혀 있으면 그 밖의 renderMembers에서는 안 보여 ReferenceError가 난다 — 그래서 renderPending/
-   renderMembers 같은 다른 렌더 함수들처럼 모듈 스코프로 끌어올렸다. 동작은 그대로다. */
 const NEWBIE_PATH = `rooms/${ROOM}/settings/newbie`;
 
-// 날짜 input(YYYY-MM-DD) ↔ ms 변환. UTC 자정이 아니라 KST 자정으로 고정한다 — 관리자가
-// 화면에서 고른 "그 날짜"와 서버에 저장되는 cutoffMs가 어긋나면 기준일이 하루 밀릴 수 있다.
 function newbieDateInputToMs_(v){
   if(!v) return null;
   const t = new Date(v + "T00:00:00+09:00").getTime();
   return Number.isFinite(t) ? t : null;
 }
 function newbieMsToDateInput_(ms){
-  try{ return new Date(Number(ms)).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); } // en-CA = YYYY-MM-DD
+  try{ return new Date(Number(ms)).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); } 
   catch(_e){ return ""; }
 }
 const clampDuration_ = (n) => Math.min(365, Math.max(1, Math.round(Number(n)) || 14));
@@ -397,9 +332,6 @@ function paintNewbieStatus_(v){
   $("newbieStatus").textContent = `현재 상태: ${on ? "켜짐" : "꺼짐"} · 기준일 ${cutoffTxt} · ${days}일`;
 }
 
-/* ===== V213A_NEWBIEPICK: 수동 지정 목록 렌더 =====
-   기준일 규칙과 무관하게 켜지는 개별 지정이라, 만료(untilMs 경과) 여부를 따로 표시하지 않으면
-   관리자가 "지정했는데 왜 안 보이지"를 겪는다. */
 function renderNewbieOverrides_(overrides){
   const box = $("newbieOverrideList");
   if(!box) return;
@@ -424,12 +356,11 @@ function renderNewbieOverrides_(overrides){
       const label = btn.textContent;
       btn.disabled = true; btn.textContent = "해제 중…";
       try{
-        // ⚠️ update(ref(db, NEWBIE_PATH + "/overrides/" + uid), null)은 삭제가 아니라 오류다.
-        // 부모 경로(NEWBIE_PATH)에서 자식 키를 null로 주는 멀티패스 update만 실제 삭제로 동작한다.
-        await update(ref(db, NEWBIE_PATH), { ["overrides/" + uid]: null });
+
+await update(ref(db, NEWBIE_PATH), { ["overrides/" + uid]: null });
         diag("뉴비지정", "해제 uid=" + uid.slice(0,8));
         toast("뉴비 지정을 해제했습니다.", 3500);
-        loadNewbieCfg_();   // 성공 시 목록 전체가 다시 그려져 이 버튼 노드는 사라진다 — finally는 실패 경로에서만 의미가 있다
+        loadNewbieCfg_();   
       }catch(err){
         console.warn("[V213A_NEWBIEPICK] 해제 실패", err);
         diag("뉴비지정", "해제 실패 " + (err?.code || err?.message || ""));
@@ -456,10 +387,10 @@ async function loadNewbieCfg_(){
     console.warn("[V212A_NEWBIECFG] 설정 로드 실패", err);
     diag("뉴비설정", "로드 실패 " + (err?.code || err?.message || ""));
     $("newbieStatus").textContent = "설정을 불러오지 못했습니다 · 저장 전에 새로고침해 주세요";
-    // 로드는 실패해도 "처음 켠다" 시나리오는 막지 않는다 — 폼이 비어 있을 때만 기본값을 채운다.
+    
     if(!$("newbieCutoff").value) $("newbieCutoff").value = newbieMsToDateInput_(Date.now());
     if(!$("newbieDuration").value) $("newbieDuration").value = 14;
-    // overrides 목록은 실패 시 손대지 않는다 — 직전에 그려진 목록이 스크린 밖으로 사라지지 않게.
+    
   }
 }
 
@@ -469,7 +400,7 @@ $("newbieSaveBtn").addEventListener("click", async () => {
   const cutoffMs = newbieDateInputToMs_(cutoffVal);
   if(cutoffMs == null){ toast("기준일 형식이 올바르지 않습니다.", 4000); return; }
   const durationDays = clampDuration_($("newbieDuration").value);
-  $("newbieDuration").value = durationDays;   // 클램프된 값을 화면에도 그대로 반영
+  $("newbieDuration").value = durationDays;   
   const payload = {
     enabled: !!$("newbieEnabled").checked, cutoffMs, durationDays,
     updatedAtMs: Date.now(), updatedBy: me?.email || me?.uid || ""
@@ -477,10 +408,8 @@ $("newbieSaveBtn").addEventListener("click", async () => {
   const btn = $("newbieSaveBtn"), label = btn.textContent;
   btn.disabled = true; btn.textContent = "저장 중…";
   try{
-    // ⚠️ V213A 재확인: 여기는 update()이지 set()이 아니다 — payload에 overrides가 없어도
-    // update는 명시한 필드(enabled/cutoffMs/durationDays/updatedAtMs/updatedBy)만 덮어쓰고
-    // 나머지 형제 키(overrides/*)는 그대로 남는다. set이었다면 수동 지정이 전부 날아갔을 것이다.
-    await update(ref(db, NEWBIE_PATH), payload);
+
+await update(ref(db, NEWBIE_PATH), payload);
     paintNewbieStatus_(payload);
     diag("뉴비설정", "저장 enabled=" + payload.enabled + " cutoff=" + cutoffVal + " days=" + durationDays);
     toast("뉴비 설정을 저장했습니다. 각자 다음 입장부터 반영됩니다.", 4500);
@@ -493,7 +422,6 @@ $("newbieSaveBtn").addEventListener("click", async () => {
   }
 });
 
-/* ===== 승인 대기 ===== */
 function renderPending(snapVal){
   const box = $("pendingList");
   const items = Object.entries(snapVal || {})
@@ -553,7 +481,7 @@ function renderPending(snapVal){
     card.querySelector(".approve").addEventListener("click", async () => {
       const typed = input.value.trim();
       const r = headMatch(v.email, typed);
-      // 막지는 않는다 — 아이디가 아주 짧아 노출 글자가 부족한 경우가 있다. 대신 한 번 더 확인한다.
+      
       if(r === null){
         if(!confirm(`아이디 앞글자를 ${HEAD_MIN}글자 이상 입력하지 않았습니다.\n대조 없이 승인할까요?`)) { input.focus(); return; }
       }else if(!r){
@@ -587,7 +515,6 @@ function renderPending(snapVal){
   });
 }
 
-/* ===== 멤버 / 관리자 ===== */
 function renderMembers(val){
   const box = $("memberList");
   const items = Object.entries(val || {}).sort((a, b) => Number(b[1]?.approvedAtMs || 0) - Number(a[1]?.approvedAtMs || 0));
@@ -625,9 +552,8 @@ function renderMembers(val){
         toast("관리자로 임명했습니다.", 3500);
       }catch(err){ toast("실패: " + (err?.code || ""), 5000); }
     });
-    // V213A_NEWBIEPICK: 방장 제한 없이(isOwner 무관) 관리자 전원이 지정할 수 있다.
-    // 기준일 자동 규칙과 별개로 동작하는 개별 지정이라, [관리자] 탭의 켜기 체크박스 상태를 보지 않는다.
-    card.querySelector(".newbiePick").addEventListener("click", async () => {
+
+card.querySelector(".newbiePick").addEventListener("click", async () => {
       const days = clampDuration_($("newbieDuration").value);
       if(!confirm(`${v.nick || uid} 님에게 뉴비 테두리를 ${days}일 동안 표시할까요?\n(본인이 다음에 입장할 때부터 보입니다)`)) return;
       const now = Date.now();
@@ -641,7 +567,7 @@ function renderMembers(val){
         await update(ref(db, NEWBIE_PATH + "/overrides/" + uid), payload);
         diag("뉴비지정", "지정 uid=" + uid.slice(0,8) + " days=" + days);
         toast(`${v.nick || uid} 님에게 뉴비 테두리를 지정했습니다.`, 4000);
-        loadNewbieCfg_();   // [관리자] 탭의 수동 지정 목록도 즉시 갱신
+        loadNewbieCfg_();   
       }catch(err){
         console.warn("[V213A_NEWBIEPICK] 지정 실패", err);
         diag("뉴비지정", "지정 실패 " + (err?.code || err?.message || ""));
@@ -679,8 +605,6 @@ function renderAdmins(val){
   });
 }
 
-/* ===== 보관함 =====
-   목록은 색인(메타만)으로 그리고, 스크린샷은 누른 항목 하나만 그때 내려받는다. */
 function renderArchive(val){
   const box = $("archiveList");
   const items = Object.entries(val || {}).sort((a, b) => Number(b[1]?.reviewedAtMs || 0) - Number(a[1]?.reviewedAtMs || 0));
@@ -705,12 +629,12 @@ function renderArchive(val){
   box.querySelectorAll(".showShot").forEach(btn => {
     btn.addEventListener("click", async () => {
       const card = btn.closest(".card"), uid = card.dataset.uid, holder = card.querySelector(".shotHolder");
-      if(holder.dataset.loaded === "1"){        // 접기 — 다시 누르면 메모리에서도 내려간다
+      if(holder.dataset.loaded === "1"){        
         holder.innerHTML = ""; holder.dataset.loaded = ""; btn.textContent = "🖼️ 스크린샷 보기"; return;
       }
       btn.disabled = true; btn.textContent = "불러오는 중…";
       try{
-        // V201: 여기도 타임아웃을 건다. 안 걸면 finally가 영영 안 돌아 버튼이 "불러오는 중…"에 굳는다.
+        
         const rec = (await getWithTimeout_(ref(db, `rooms/${ROOM}/joinArchive/${uid}`), "보관 스크린샷")).val();
         holder.innerHTML = (rec && typeof rec.img === "string" && rec.img.startsWith("data:image/"))
           ? `<img class="shot" src="${esc(rec.img)}" alt="보관된 스크린샷"/>`
@@ -725,7 +649,6 @@ function renderArchive(val){
   });
 }
 
-/* ===== 탭 ===== */
 document.querySelectorAll('[role="tab"]').forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll('[role="tab"]').forEach(b => b.setAttribute("aria-selected", String(b === btn)));
@@ -733,7 +656,6 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
   });
 });
 
-/* ===== 부팅 ===== */
 (async () => {
   try{ await setPersistence(auth, browserLocalPersistence); }catch(_e){}
   try{
@@ -741,12 +663,7 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     if(saved && !$("email").value) $("email").value = saved;
   }catch(_e){}
 
-  /* ===== V210A_CONNWATCH: RTDB 연결 감시 + 배너 =====
-     인증 여부와 무관하게 항상 건다(로그인 전에도 소켓 자체는 붙어 있을 수 있다).
-     .info/connected는 소켓이 끊기면 즉시 false가 되지만, 네트워크 전환 같은 짧은 끊김은
-     금방 되살아난다 — 매번 배너를 띄우면 깜빡임만 남는다(본체 V194_CONNLOST와 같은 이유로
-     6초 유예를 둔다). setTimeout 핸들을 변수에 쥐고 있다가 재연결되면 바로 지운다. */
-  let __rtdbConnected = true;
+let __rtdbConnected = true;
   let __connBannerTimer = null;
   onValue(ref(db, ".info/connected"), (snap) => {
     const connected = snap.val() === true;
@@ -769,19 +686,12 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     }
   });
 
-  /* ===== V201_SUBLEAK: onValue 구독을 반드시 회수한다 =====
-     예전에는 onAuthStateChanged 콜백 안에서 onValue 4개를 걸기만 하고 떼지 않았다.
-     Auth는 탭 사이 동기화 때마다 이 콜백을 다시 부르므로 **인증 상태가 바뀔 때마다 4개씩
-     영구히 쌓였고**, 리스너는 붙을 때마다 노드를 통째로 다시 받는다.
-     지금은 대기 건이 없어 피해가 작지만(실측 joinRequests 0건 · joinArchiveIndex 7.5KB),
-     승인 대기에는 스크린샷이 base64로 들어 있어 쌓이면 중복 리스너마다 그 전부를 다시 받는다.
-     모듈 SDK의 onValue는 해제 함수를 돌려주므로 off를 import할 필요가 없다. */
-  let __unsubs = [];
+let __unsubs = [];
   function detachSubs_(){
     __unsubs.forEach(u => { try{ u(); }catch(_e){} });
     __unsubs = [];
   }
-  // V210A_FRESH: 구독별 마지막 수신 시각. diag 링버퍼에는 안 남긴다 — 수신마다 쌓이면 80줄이 금방 찬다.
+  
   const __lastRecv = {};
 
   let __roleRetryTimer = null;
@@ -792,12 +702,10 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
   }
 
   async function applyRole_(user, isRetry){
-    if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;   // 그새 계정이 바뀌었다
+    if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;   
     const role = await resolveRole(user);
 
-    /* ★ 확인하지 못했을 때는 화면을 건드리지 않는다.
-       예전에는 여기서 '권한 없음'으로 떨어뜨려, 읽기 한 번 실패가 곧 권한 상실로 보였다. */
-    if(role === ROLE_UNKNOWN){
+if(role === ROLE_UNKNOWN){
       if(!isRetry) toast("권한을 확인하지 못했습니다 · 잠시 후 다시 확인합니다", 4500);
       scheduleRoleRetry_(user, 6000);
       return;
@@ -812,28 +720,25 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
       return;
     }
     $("noPerm").classList.add("hide"); $("adminUI").classList.remove("hide");
-    // V212A_NEWBIECFG: adminUI를 열 때마다(재판정·복귀 재구독 포함) 서버 최신값으로 폼을 다시 채운다.
-    // getWithTimeout_로 가드된 읽기라 여기서 기다리지 않아도(await 없이 호출해도) 화면이 멈추지 않는다.
-    loadNewbieCfg_();
 
-    detachSubs_();   // 재판정으로 다시 들어왔을 수 있다 — 겹치기 전에 반드시 회수
+loadNewbieCfg_();
+
+    detachSubs_();   
     const fail = (where) => (err) => {
       console.warn(where, err);
       toast(`${where} 읽기 실패: ${err?.code || err?.message || ""}`, 6000);
     };
-    // V210A_FRESH: render 앞에서 수신 시각을 찍는다 — 실패해도(render가 던져도) 기록은 남게 순서를 고정한다.
+    
     const sub = (path, render, label) =>
       __unsubs.push(onValue(ref(db, path), s => { __lastRecv[label] = Date.now(); render(s.val() || {}); }, fail(label)));
     sub(`rooms/${ROOM}/joinRequests`, renderPending, "승인 대기");
     sub(`rooms/${ROOM}/members`,      renderMembers, "멤버");
     sub(`rooms/${ROOM}/admins`,       renderAdmins,  "관리자");
-    // 색인만 구독한다(메타 ~150바이트/건). 스크린샷 본체는 버튼을 눌렀을 때만 내려받는다.
+    
     sub(`rooms/${ROOM}/joinArchiveIndex`, renderArchive, "보관함");
   }
 
-  /* ===== V210A_DIAG: 콘솔 손잡이 =====
-     문제가 생겼을 때 새로고침 없이 콘솔에서 window.__MK_APPROVE_DEBUG__()로 상태를 바로 본다. */
-  window.__MK_APPROVE_DEBUG__ = function(){
+window.__MK_APPROVE_DEBUG__ = function(){
     const u = auth.currentUser;
     const info = {
       uid: u ? String(u.uid).slice(0, 8) : null,
@@ -848,14 +753,7 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     return info;
   };
 
-  /* ===== V210A_FRESH: 복귀 시 재구독 =====
-     onValue는 값이 바뀔 때만 울리므로 "조용함"과 "죽음"을 구분할 수 없다.
-     본체(index.html)는 서버에 최신 1건을 직접 물어보는 워치독(V205_TILEPROBE)까지 갔지만,
-     승인 페이지는 대기 건이 적고 관리자가 돌아온 순간에만 최신이면 충분하므로
-     "탭이 다시 보일 때 구독을 통째로 갈아끼운다"는 더 싼 방법을 쓴다.
-     applyRole_ 안에는 이미 detachSubs_()가 있어(재판정 대비) 재호출해도 구독이 중복으로 쌓이지 않는다.
-     joinRequests 재다운로드는 대기 건의 스샷 base64를 통째로 다시 받는 비용이라 5분 쿨다운을 둔다. */
-  let __hiddenAtMs = 0;
+let __hiddenAtMs = 0;
   let __lastResubAtMs = 0;
   document.addEventListener("visibilitychange", () => {
     if(document.hidden){ __hiddenAtMs = Date.now(); return; }
@@ -869,10 +767,7 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     }
   });
 
-  /* ===== V210A_AUTHWATCH: 인증 상태 관측 (본체 V204_AUTHWATCH와 같은 형식) =====
-     토큰이 사라지는 순간을 콘솔·diag에 바로 남겨, "작업만 하는데 권한이 풀린다"는 제보가 오면
-     당사자 콘솔에서 이 로그만으로 원인을 좁힐 수 있게 한다. */
-  onIdTokenChanged(auth, (u) => {
+onIdTokenChanged(auth, (u) => {
     if(!u){
       console.warn("[V210A_AUTHWATCH] 토큰 없음 — 로그아웃 상태");
       diag("토큰", "사라짐");
@@ -887,7 +782,7 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     me = user || null;
     clearRoleRetry_();
     if(!user){
-      detachSubs_();                       // 로그아웃 = 구독도 함께 회수
+      detachSubs_();                       
       $("loginCard").classList.remove("hide");
       $("meCard").classList.add("hide"); $("adminUI").classList.add("hide"); $("noPerm").classList.add("hide");
       return;
@@ -898,11 +793,7 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     await applyRole_(user, false);
   });
 
-  /* ⚠️ 링크 처리는 리스너를 건 '뒤에' 한다.
-     예전에는 `await completeLinkIfAny()`가 onAuthStateChanged 등록보다 앞에 있어서,
-     이 단계가 어떤 이유로든 멈추면 인증 리스너가 아예 등록되지 않고 페이지가 통째로 죽었다.
-     순서만 바꾸면 링크 처리가 늦어져도 로그인 상태는 정상적으로 따라간다. */
-  await completeLinkIfAny();
+await completeLinkIfAny();
 })();
 </script>
 </body>
