@@ -134,8 +134,13 @@
           <button class="primary" id="newbieSaveBtn" type="button">저장</button>
         </div>
         <p class="muted" id="newbieStatus" style="margin:10px 0 0">현재 상태: 불러오는 중…</p>
+
+        <!-- V213A_NEWBIEPICK: 수동 지정 목록. 비어 있으면 빈 채로 둔다(카드가 길어지지 않게). -->
+        <div id="newbieOverrideList" style="margin:6px 0 0"></div>
+
         <p class="muted" style="margin:4px 0 0">
-          설정 변경은 각자 다음 입장부터 반영됩니다. 2026-08-13 일괄 이관 승인자는 기준일 이전이라 대상이 아닙니다.
+          설정 변경은 각자 다음 입장부터 반영됩니다. 2026-08-13 일괄 이관 승인자는 기준일 이전이라 대상이 아닙니다.<br/>
+          수동 지정은 켜기 여부와 관계없이 동작하며, 역시 다음 입장부터 표시됩니다.
         </p>
       </div>
     </section>
@@ -357,6 +362,137 @@ function archivePaths_(uid, v, status, head, who, now){
   };
 }
 
+/* ===== V212A_NEWBIECFG + V213A_NEWBIEPICK: 뉴비 테두리 설정 =====
+   매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 approvedAtMs가 전부 그 날짜다.
+   "기준일 이후 승인자만" 조건이 없으면 켜는 순간 이관 대상자 전원이 뉴비로 표시된다 —
+   그래서 cutoffMs는 선택이 아니라 필수이고, 처음 켤 때도 항상 오늘 날짜를 기본으로 채운다.
+   rooms/${ROOM}/settings/newbie는 index.html 작업자와 공유하는 스키마이므로 필드명(enabled/
+   cutoffMs/durationDays/updatedAtMs/updatedBy, overrides/{uid}.untilMs/nick/grantedAtMs/grantedBy)을
+   임의로 바꾸지 않는다.
+
+   ⚠️ V213A에서 이 블록을 부팅 IIFE 밖(모듈 최상단)으로 옮겼다. 원래(V212A)는 IIFE 안에 있었는데,
+   [멤버] 탭의 "🌱 뉴비" 버튼은 renderMembers(IIFE보다 먼저 정의되는 모듈 스코프 함수)의 카드별
+   클릭 핸들러에서 loadNewbieCfg_ · clampDuration_ · NEWBIE_PATH를 직접 불러야 한다. IIFE 안에
+   갇혀 있으면 그 밖의 renderMembers에서는 안 보여 ReferenceError가 난다 — 그래서 renderPending/
+   renderMembers 같은 다른 렌더 함수들처럼 모듈 스코프로 끌어올렸다. 동작은 그대로다. */
+const NEWBIE_PATH = `rooms/${ROOM}/settings/newbie`;
+
+// 날짜 input(YYYY-MM-DD) ↔ ms 변환. UTC 자정이 아니라 KST 자정으로 고정한다 — 관리자가
+// 화면에서 고른 "그 날짜"와 서버에 저장되는 cutoffMs가 어긋나면 기준일이 하루 밀릴 수 있다.
+function newbieDateInputToMs_(v){
+  if(!v) return null;
+  const t = new Date(v + "T00:00:00+09:00").getTime();
+  return Number.isFinite(t) ? t : null;
+}
+function newbieMsToDateInput_(ms){
+  try{ return new Date(Number(ms)).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); } // en-CA = YYYY-MM-DD
+  catch(_e){ return ""; }
+}
+const clampDuration_ = (n) => Math.min(365, Math.max(1, Math.round(Number(n)) || 14));
+
+function paintNewbieStatus_(v){
+  const on = !!(v && v.enabled);
+  const cutoffTxt = v && v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : "-";
+  const days = (v && v.durationDays) || "-";
+  $("newbieStatus").textContent = `현재 상태: ${on ? "켜짐" : "꺼짐"} · 기준일 ${cutoffTxt} · ${days}일`;
+}
+
+/* ===== V213A_NEWBIEPICK: 수동 지정 목록 렌더 =====
+   기준일 규칙과 무관하게 켜지는 개별 지정이라, 만료(untilMs 경과) 여부를 따로 표시하지 않으면
+   관리자가 "지정했는데 왜 안 보이지"를 겪는다. */
+function renderNewbieOverrides_(overrides){
+  const box = $("newbieOverrideList");
+  if(!box) return;
+  const items = Object.entries(overrides || {});
+  if(!items.length){ box.innerHTML = ""; return; }
+  const now = Date.now();
+  box.innerHTML = items.map(([uid, o]) => {
+    const expired = Number(o?.untilMs) < now;
+    return `
+    <div class="row" data-uid="${esc(uid)}" style="justify-content:space-between;margin:6px 0">
+      <span><b>${esc(o?.nick || uid)}</b>
+        <span class="muted">~${esc(newbieMsToDateInput_(o?.untilMs))}까지</span>
+        ${expired ? '<span class="pill bad">만료</span>' : ''}
+      </span>
+      <button class="danger newbieUnpick" type="button">해제</button>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".newbieUnpick").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const uid = btn.closest("[data-uid]").dataset.uid;
+      if(!confirm("이 멤버의 뉴비 지정을 해제할까요?")) return;
+      const label = btn.textContent;
+      btn.disabled = true; btn.textContent = "해제 중…";
+      try{
+        // ⚠️ update(ref(db, NEWBIE_PATH + "/overrides/" + uid), null)은 삭제가 아니라 오류다.
+        // 부모 경로(NEWBIE_PATH)에서 자식 키를 null로 주는 멀티패스 update만 실제 삭제로 동작한다.
+        await update(ref(db, NEWBIE_PATH), { ["overrides/" + uid]: null });
+        diag("뉴비지정", "해제 uid=" + uid.slice(0,8));
+        toast("뉴비 지정을 해제했습니다.", 3500);
+        loadNewbieCfg_();   // 성공 시 목록 전체가 다시 그려져 이 버튼 노드는 사라진다 — finally는 실패 경로에서만 의미가 있다
+      }catch(err){
+        console.warn("[V213A_NEWBIEPICK] 해제 실패", err);
+        diag("뉴비지정", "해제 실패 " + (err?.code || err?.message || ""));
+        toast("해제 실패: " + (err?.code || err?.message || ""), 5000);
+      }finally{
+        btn.disabled = false; btn.textContent = label;
+      }
+    });
+  });
+}
+
+async function loadNewbieCfg_(){
+  $("newbieStatus").textContent = "현재 상태: 불러오는 중…";
+  try{
+    const snap = await getWithTimeout_(ref(db, NEWBIE_PATH), "뉴비 설정");
+    const v = snap.exists() ? (snap.val() || {}) : {};
+    $("newbieEnabled").checked = !!v.enabled;
+    $("newbieCutoff").value = v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : newbieMsToDateInput_(Date.now());
+    $("newbieDuration").value = v.durationDays ? clampDuration_(v.durationDays) : 14;
+    paintNewbieStatus_(v);
+    renderNewbieOverrides_(v.overrides);
+    diag("뉴비설정", "로드 enabled=" + !!v.enabled + " overrides=" + Object.keys(v.overrides || {}).length);
+  }catch(err){
+    console.warn("[V212A_NEWBIECFG] 설정 로드 실패", err);
+    diag("뉴비설정", "로드 실패 " + (err?.code || err?.message || ""));
+    $("newbieStatus").textContent = "설정을 불러오지 못했습니다 · 저장 전에 새로고침해 주세요";
+    // 로드는 실패해도 "처음 켠다" 시나리오는 막지 않는다 — 폼이 비어 있을 때만 기본값을 채운다.
+    if(!$("newbieCutoff").value) $("newbieCutoff").value = newbieMsToDateInput_(Date.now());
+    if(!$("newbieDuration").value) $("newbieDuration").value = 14;
+    // overrides 목록은 실패 시 손대지 않는다 — 직전에 그려진 목록이 스크린 밖으로 사라지지 않게.
+  }
+}
+
+$("newbieSaveBtn").addEventListener("click", async () => {
+  const cutoffVal = $("newbieCutoff").value;
+  if(!cutoffVal){ toast("기준일을 입력해 주세요.", 4000); $("newbieCutoff").focus(); return; }
+  const cutoffMs = newbieDateInputToMs_(cutoffVal);
+  if(cutoffMs == null){ toast("기준일 형식이 올바르지 않습니다.", 4000); return; }
+  const durationDays = clampDuration_($("newbieDuration").value);
+  $("newbieDuration").value = durationDays;   // 클램프된 값을 화면에도 그대로 반영
+  const payload = {
+    enabled: !!$("newbieEnabled").checked, cutoffMs, durationDays,
+    updatedAtMs: Date.now(), updatedBy: me?.email || me?.uid || ""
+  };
+  const btn = $("newbieSaveBtn"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "저장 중…";
+  try{
+    // ⚠️ V213A 재확인: 여기는 update()이지 set()이 아니다 — payload에 overrides가 없어도
+    // update는 명시한 필드(enabled/cutoffMs/durationDays/updatedAtMs/updatedBy)만 덮어쓰고
+    // 나머지 형제 키(overrides/*)는 그대로 남는다. set이었다면 수동 지정이 전부 날아갔을 것이다.
+    await update(ref(db, NEWBIE_PATH), payload);
+    paintNewbieStatus_(payload);
+    diag("뉴비설정", "저장 enabled=" + payload.enabled + " cutoff=" + cutoffVal + " days=" + durationDays);
+    toast("뉴비 설정을 저장했습니다. 각자 다음 입장부터 반영됩니다.", 4500);
+  }catch(err){
+    console.warn("[V212A_NEWBIECFG] 저장 실패", err);
+    diag("뉴비설정", "저장 실패 " + (err?.code || err?.message || ""));
+    toast("저장 실패: " + (err?.code || err?.message || ""), 6000);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+});
+
 /* ===== 승인 대기 ===== */
 function renderPending(snapVal){
   const box = $("pendingList");
@@ -467,6 +603,7 @@ function renderMembers(val){
         </div>
         <div class="row">
           ${isOwner ? '<button class="mkadmin" type="button">관리자 임명</button>' : ""}
+          <button class="newbiePick" type="button">🌱 뉴비</button>
           <button class="danger rm" type="button">명단에서 제거</button>
         </div>
       </div>
@@ -487,6 +624,31 @@ function renderMembers(val){
           { email: v.email || "", nick: v.nick || "", addedAtMs: Date.now() } });
         toast("관리자로 임명했습니다.", 3500);
       }catch(err){ toast("실패: " + (err?.code || ""), 5000); }
+    });
+    // V213A_NEWBIEPICK: 방장 제한 없이(isOwner 무관) 관리자 전원이 지정할 수 있다.
+    // 기준일 자동 규칙과 별개로 동작하는 개별 지정이라, [관리자] 탭의 켜기 체크박스 상태를 보지 않는다.
+    card.querySelector(".newbiePick").addEventListener("click", async () => {
+      const days = clampDuration_($("newbieDuration").value);
+      if(!confirm(`${v.nick || uid} 님에게 뉴비 테두리를 ${days}일 동안 표시할까요?\n(본인이 다음에 입장할 때부터 보입니다)`)) return;
+      const now = Date.now();
+      const payload = {
+        untilMs: now + days * 24 * 60 * 60 * 1000,
+        nick: v.nick || "", grantedAtMs: now, grantedBy: me?.email || me?.uid || ""
+      };
+      const btn = card.querySelector(".newbiePick"), label = btn.textContent;
+      btn.disabled = true; btn.textContent = "지정 중…";
+      try{
+        await update(ref(db, NEWBIE_PATH + "/overrides/" + uid), payload);
+        diag("뉴비지정", "지정 uid=" + uid.slice(0,8) + " days=" + days);
+        toast(`${v.nick || uid} 님에게 뉴비 테두리를 지정했습니다.`, 4000);
+        loadNewbieCfg_();   // [관리자] 탭의 수동 지정 목록도 즉시 갱신
+      }catch(err){
+        console.warn("[V213A_NEWBIEPICK] 지정 실패", err);
+        diag("뉴비지정", "지정 실패 " + (err?.code || err?.message || ""));
+        toast("지정 실패: " + (err?.code || err?.message || ""), 6000);
+      }finally{
+        btn.disabled = false; btn.textContent = label;
+      }
     });
   });
 }
@@ -628,81 +790,6 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     clearRoleRetry_();
     __roleRetryTimer = setTimeout(()=>{ __roleRetryTimer = null; applyRole_(user, true); }, ms);
   }
-
-  /* ===== V212A_NEWBIECFG: 뉴비 테두리 설정 =====
-     매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 approvedAtMs가 전부 그 날짜다.
-     "기준일 이후 승인자만" 조건이 없으면 켜는 순간 이관 대상자 전원이 뉴비로 표시된다 —
-     그래서 cutoffMs는 선택이 아니라 필수이고, 처음 켤 때도 항상 오늘 날짜를 기본으로 채운다.
-     rooms/${ROOM}/settings/newbie는 index.html 작업자와 공유하는 스키마이므로 필드명(enabled/
-     cutoffMs/durationDays/updatedAtMs/updatedBy)을 임의로 바꾸지 않는다. */
-  const NEWBIE_PATH = `rooms/${ROOM}/settings/newbie`;
-
-  // 날짜 input(YYYY-MM-DD) ↔ ms 변환. UTC 자정이 아니라 KST 자정으로 고정한다 — 관리자가
-  // 화면에서 고른 "그 날짜"와 서버에 저장되는 cutoffMs가 어긋나면 기준일이 하루 밀릴 수 있다.
-  function newbieDateInputToMs_(v){
-    if(!v) return null;
-    const t = new Date(v + "T00:00:00+09:00").getTime();
-    return Number.isFinite(t) ? t : null;
-  }
-  function newbieMsToDateInput_(ms){
-    try{ return new Date(Number(ms)).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); } // en-CA = YYYY-MM-DD
-    catch(_e){ return ""; }
-  }
-  const clampDuration_ = (n) => Math.min(365, Math.max(1, Math.round(Number(n)) || 14));
-
-  function paintNewbieStatus_(v){
-    const on = !!(v && v.enabled);
-    const cutoffTxt = v && v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : "-";
-    const days = (v && v.durationDays) || "-";
-    $("newbieStatus").textContent = `현재 상태: ${on ? "켜짐" : "꺼짐"} · 기준일 ${cutoffTxt} · ${days}일`;
-  }
-
-  async function loadNewbieCfg_(){
-    $("newbieStatus").textContent = "현재 상태: 불러오는 중…";
-    try{
-      const snap = await getWithTimeout_(ref(db, NEWBIE_PATH), "뉴비 설정");
-      const v = snap.exists() ? (snap.val() || {}) : {};
-      $("newbieEnabled").checked = !!v.enabled;
-      $("newbieCutoff").value = v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : newbieMsToDateInput_(Date.now());
-      $("newbieDuration").value = v.durationDays ? clampDuration_(v.durationDays) : 14;
-      paintNewbieStatus_(v);
-      diag("뉴비설정", "로드 enabled=" + !!v.enabled);
-    }catch(err){
-      console.warn("[V212A_NEWBIECFG] 설정 로드 실패", err);
-      diag("뉴비설정", "로드 실패 " + (err?.code || err?.message || ""));
-      $("newbieStatus").textContent = "설정을 불러오지 못했습니다 · 저장 전에 새로고침해 주세요";
-      // 로드는 실패해도 "처음 켠다" 시나리오는 막지 않는다 — 폼이 비어 있을 때만 기본값을 채운다.
-      if(!$("newbieCutoff").value) $("newbieCutoff").value = newbieMsToDateInput_(Date.now());
-      if(!$("newbieDuration").value) $("newbieDuration").value = 14;
-    }
-  }
-
-  $("newbieSaveBtn").addEventListener("click", async () => {
-    const cutoffVal = $("newbieCutoff").value;
-    if(!cutoffVal){ toast("기준일을 입력해 주세요.", 4000); $("newbieCutoff").focus(); return; }
-    const cutoffMs = newbieDateInputToMs_(cutoffVal);
-    if(cutoffMs == null){ toast("기준일 형식이 올바르지 않습니다.", 4000); return; }
-    const durationDays = clampDuration_($("newbieDuration").value);
-    $("newbieDuration").value = durationDays;   // 클램프된 값을 화면에도 그대로 반영
-    const payload = {
-      enabled: !!$("newbieEnabled").checked, cutoffMs, durationDays,
-      updatedAtMs: Date.now(), updatedBy: me?.email || me?.uid || ""
-    };
-    const btn = $("newbieSaveBtn"), label = btn.textContent;
-    btn.disabled = true; btn.textContent = "저장 중…";
-    try{
-      await update(ref(db, NEWBIE_PATH), payload);
-      paintNewbieStatus_(payload);
-      diag("뉴비설정", "저장 enabled=" + payload.enabled + " cutoff=" + cutoffVal + " days=" + durationDays);
-      toast("뉴비 설정을 저장했습니다. 각자 다음 입장부터 반영됩니다.", 4500);
-    }catch(err){
-      console.warn("[V212A_NEWBIECFG] 저장 실패", err);
-      diag("뉴비설정", "저장 실패 " + (err?.code || err?.message || ""));
-      toast("저장 실패: " + (err?.code || err?.message || ""), 6000);
-    }finally{
-      btn.disabled = false; btn.textContent = label;
-    }
-  });
 
   async function applyRole_(user, isRetry){
     if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;   // 그새 계정이 바뀌었다
