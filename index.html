@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- V211_AUTOREJOIN: "몇 시간 작업했는데 적립이 0이다"의 조용한 원인 — 크롬 메모리 세이버·엣지 절전 탭의 **탭 폐기(discard)**(2026-08-14). 폐기는 pagehide 없이 페이지를 통째로 내리므로 V203의 라이브 시간 커밋조차 못 돌고, 사용자가 탭을 누르면 처음부터 리로드되는데 이 방의 입장은 수동이라 **입장 전 화면**이 뜬다. ★ 조용한 실패인 이유: 원고에 몰입한 작가는 그 화면을 못 본다 → 그 순간부터 작업시간 적립이 멈춘다(시간이 곧 코인인 방이다). 게다가 V202_TRUST 덕에 타일은 자정까지 남아 있어 본인도 남들도 이상을 눈치채지 못한다. 작가들의 사용 패턴(탭을 몇 시간씩 백그라운드에 두고 한글·스크리브너에서 집필)이 정확히 폐기 1순위 조건이다. ★ 폐기된 탭은 **사용자가 클릭해야만** 리로드된다 = 리로드 시점엔 반드시 사람이 보고 있다. 그래서 그 순간 조건 다섯 개가 모두 맞을 때만 자동으로 다시 입장시킨다: ①탭이 실제로 보이는 중(재시작 복원은 hidden으로 뜰 수 있어 visible이 될 때까지 기다린다 — 아무도 안 보는 탭이 혼자 시간을 적립하면 그건 유령 시간이다) ②오늘 이 브라우저로 입장한 적이 있음(자정을 넘겼으면 안 한다 — 누적이 새로 시작하는 날이라 롤오버 정책과 맞춘다) ③닉네임이 프리필돼 있고 '익명'이 아님 ④입장키가 이 브라우저에 남아 있음 ⑤서버의 내 presence가 살아 있고 status가 off가 아님. ⑤가 핵심 지문이다 — X로 닫기·정상 퇴장·관리자 세션 정리·강퇴는 전부 status=off를 남기지만 폐기만은 pagehide가 안 돌아 status가 그대로 살아 있다. 비용은 내 presence 1건 읽기뿐이고, 그 await는 readGuard_(8초)로 감쌌다(맨 rGet await는 settle 안 되는 Promise 사고 5회의 함정이다). 로그인 세션까지 사라진 갈래에서는 익명 uid를 자동으로 만들지 않고 joinRoom을 불러 V210_SESSIONGUARD가 재인증 오버레이를 띄우게 한다 — 그 갈래의 목적은 입장이 아니라 "오늘 입장했던 사람에게 세션이 죽었음을 즉시 알리는 것"이다. ⚠️ 입장 공지는 억제한다(효과음·입장 인사 생략, 토스트만 "🛌 절전에서 돌아와 이어서 입장했어요") — V202 관점에서 이 사람은 떠난 적이 없고, 몇 시간마다 입장 인사가 다시 울리면 그게 새 소음이다. ⚠️ 자동 재시도는 없다(로드당 1회) — 멈춘 입장을 되풀이하다 사고가 난 JOINSTALL 계열 이력 때문에 루프는 금지다. 부수 효과로 F5 실수와 같은 날 브라우저 재시작 복원도 매끄러워진다. 빌드 17091 -->
+<!-- V210_SESSIONGUARD + V210_LINKMSG + V210_ENTERFIX: "세션이 사라지면 익명으로 내려앉는다"를 실제로 막는다(2026-08-14). ①V205_SESSIONLOST는 경고만 하고 입장을 진행시켰다 — 주석 스스로 "입장해 버리면 그때부터 익명 uid로 기록이 쌓여 되돌리기가 어려워진다"고 적어 놓고도 그대로 들여보냈다. 📏 실측 2026-08-14 — **최근 3일간 익명 계정 114개가 새로 생겼다**(auth:export 574계정 중 이메일 보유는 42개뿐). 익명 폴백이 예외가 아니라 상시 발화 중이라는 뜻이다. 게다가 이 익명 로그인은 같은 오리진의 승인 페이지(approve.html) 탭까지 동기화되어 관리자 권한이 통째로 풀려 보였다(복길 님 반복, 루체 님 하루 uid 3개 분화로 6시간 기록 고아). → 전에 인증한 흔적(mkLastEmail_)이 있으면 signInAnonymously를 **아예 호출하지 않고** mk/session-lost를 던져 입장을 멈춘다. 익명 uid가 생기지 않으므로 되돌릴 것도 없다. 오버레이(#authLostOverlay)를 재사용해 [✉️ 다시 인증하기]를 먼저 권하고, 정 급하면 [그래도 게스트로 시작]을 명시로 고르게 한다(새 uid가 생겨 오늘 기록이 남남이 되므로 기본 경로가 아니다). ensureMainAuthReady_의 .catch가 메모이즈를 null로 되돌리므로 재인증·게스트 선택 뒤 재시도가 깨끗하게 된다. 처음 오신 브라우저는 예전 그대로 익명으로 시작한다 — 규칙이 auth != null이라 막으면 신규 화면이 통째로 빈다. ②V210_LINKMSG: 소진된 링크(auth/invalid-action-code)로 돌아오면 토스트만 뜨고 다음 행동이 없어 막다른 길이었다 — 재발송 입력창(mkOpenReauth_)을 자동으로 연다. ③V210_ENTERFIX: 비번칸 Enter 핸들러 안에 V169 초기화 블록이 잘못 붙여넣어져 다섯 버전을 건너뛰며 살아 있었다. 세미콜론 없이 줄이 바뀌어 `if(!els.joinBtn.disabled)`의 몸통이 try 블록이 되는 바람에 ⑴입장 버튼이 disabled여도 Enter면 joinRoom()이 무조건 실행됐고 ⑵"절약모드 갇힘 구제"가 부팅 시가 아니라 비번칸 Enter 시에만 돌았다. 핸들러를 한 줄로 되돌리고 초기화는 부팅 경로로 옮겼다. 빌드 17090 -->
 <!-- V206_MEMBERFALLBACK: "관리자인데 계속 미인증으로 뜨고 승인 버튼이 사라진다"(2026-08-14 복길 님). 📏 00:02 콘솔 — `[V204_AUTHWATCH] 토큰 갱신 — uid NC17u27M… / 이메일 없음` + `[V196_AUTHFIX] 계정 정보 재조회 — email: (없음)` + `identitytoolkit 400`. ★ 계정은 **맞다**: NC17u27M은 본인 uid이고 admins·members 등록도 그대로이며 서버 기록도 그 uid로 정상 누적 중이었다(00:35 기준 오늘 32분). 클라이언트가 들고 있는 user 객체에만 email이 비었고, 그걸 채우려는 authReload가 400으로 실패해 영영 안 채워진다. 그런데 인증 판정이 `mkAuthDone_()` = "이메일이 있는가?" 한 줄이라 배지는 미인증·🛡️승인 버튼은 숨김이 됐다 — 정작 채팅·타일·타이머는 멀쩡했다(규칙은 이메일이 아니라 uid를 보니까). ★ 이 판정이 하루에 두 번 틀렸다: V196에서는 isAnonymous가 낡아서, 이번엔 email이 비어서. **둘 다 클라이언트가 들고 있는 계정 객체를 믿었다가 틀린 것이다.** → 더 단단한 근거를 순서대로 본다: ①ID 토큰 클레임(서버가 방금 발급한 값 — 토큰 갱신 자체는 성공하고 있었다) ②members/{내 uid}(승인 명단에 있다는 건 이메일 인증을 마쳤다는 뜻이고, 규칙상 본인은 자기 레코드를 읽을 수 있다). ⚠️ 이 폴백은 **표시와 권한 노출에만** 쓴다(배지·🛡️승인 버튼·입장 전 화면). 신청서 제출처럼 규칙이 실제로 email_verified를 요구하는 자리는 엄격한 mkAuthDone_()을 그대로 뒀다 — 느슨하게 하면 규칙에 막혀 조용히 실패한다. 실패 시 1분 뒤 재시도하고, 확인되면 스스로 배지·버튼·입장 화면을 다시 그린다. 빌드 17084 -->
 <!-- V205_TILEPROBE: "다른 작가님들 타일이 안 보이는데 새로고침해야만 돌아온다"(2026-08-13 방장 직접 겪음). 📏 진단 근거 — `__MK_CHAT_DEBUG__()`에서 자동재구독_횟수 1(V198이 11:09에 죽은 채팅을 11:20:35에 잡아 되살림), RTDB_연결끊김 false(소켓은 멀쩡하고 리스너만 죽는 그 패턴), 복구 뒤 타일 12·presence 33. ★ 채팅과 타일이 **같은 순간에 좀비가 됐는데 채팅만 살아났다** — 두 워치독의 판정 방식이 달라서다. 채팅(V198)은 **서버에 최신 1건을 물어본다**(서버엔 있는데 내가 못 받았으면 죽은 것). 타일(presenceFeedWatchdog_)은 **조용한 것으로만** 판단하는데, '조용한 방'과 '죽은 구독'은 겉보기가 같아 확신이 안 서니 안전 조건을 겹겹이 달아 뒀다: visible일 때만 + 10분 쿨다운 + 3분 하트비트에서만 호출. 그 셋이 겹쳐 **정작 필요한 순간에 아무도 안 돌았다.** 결정적으로 원고를 쓰거나 다른 창을 보는 동안 탭은 계속 hidden이라 visible 가드에 걸려 한 번도 실행되지 않았고, 돌아와도 3분+10분을 기다려야 했다. → 채팅과 같은 무기를 준다: presence도 서버에 최신 1건(limitToLast(1) ≈ 300B)을 물어보고, 내 구독이 못 받았으면 다시 건다. **탭이 보이는 순간 즉시** 확인하는 것이 핵심이다 — ensureTilesAlive_는 핸들이 아예 없는 경우만 고치고 이번 사고인 '핸들은 있는데 데이터가 안 오는' 좀비는 못 잡았다. 절약모드·숨김으로 의도해서 끊은 상태는 건드리지 않아 V179 절감은 그대로다. 콘솔 손잡이 window.__MK_TILES_FIX__()도 넣었다(새로고침 없이 즉시 복구·확인). __MK_CHAT_DEBUG__에는 타일_마지막수신·타일_재구독_횟수를 더해 채팅 계열과 나란히 보게 했다. 빌드 17083 -->
 <!-- V204_AUTHRECOVER + V204_PERSIST + V204_AUTHWATCH: "작업만 하는데 인증이 풀리고 채팅·타일이 죽는다"(2026-08-13 복길 님, 하루 종일 반복). ①세 증상은 하나다 — 로그인이 사라지면 RTDB·Firestore 구독이 전부 권한을 잃어 타일과 채팅이 동시에 멈추고 배지가 미인증이 된다. 그런데 **복구 코드가 없었다**: mkWatchSignedOut_이 토스트 한 줄만 띄우고 끝이라 새로고침 전까지 영영 죽어 있었고, ensureMainAuthReady_는 페이지 로드 때 1회만 도는 메모이즈라 다시 붙지 않았다. 게다가 그 문구가 "승인 페이지에서 로그아웃하면…"이라 엉뚱한 범인을 지목해서, 승인 페이지를 열지도 로그아웃을 누르지도 않은 제보자의 원인 추적이 계속 헛돌았다. → 화면 중앙에 정확히 알리고 [새로고침]·[다시 인증하기]를 준다(#authLostOverlay, V194 카드 재사용). 스스로 돌아오면 자동으로 걷힌다. ⚠️⚠️ signInAnonymously 자동 복구는 절대 금지 — 새 uid가 생겨 프로필·관리자 권한·누적이 다른 계정이 된다(2026-08-13 루체 님이 하루에 uid 3개로 갈라져 6시간 기록이 고아가 된 실사고). 매직링크는 메일을 눌러야 복구되므로 자동 재로그인은 애초에 불가능하다. ②원인 후보 셋 중 둘은 이 방의 전례다 — 광고차단 확장이 securetoken.googleapis.com(1시간마다 도는 토큰 갱신)을 막는 경우, 그리고 브라우저의 저장소 삭제. 후자를 막으려 navigator.storage.persist()를 요청한다: 로그인 세션은 IndexedDB, 보유 파츠·코인·오늘 작업시간은 localStorage에 있어 비워지면 둘 다 무너진다(같은 날 루체 님 '브라우저 초기화'와 같은 뿌리로 보인다). ③onIdTokenChanged로 토큰 갱신·소실을 콘솔과 mkDiag에 남기고, __MK_CHAT_DEBUG__ 맨 앞에 로그인됨/이메일인증/내uid/입장한uid를 넣었다 — 채팅 멈춤으로 접수된 건이 실은 로그인 해제였던 이번 사례를 다시 겪지 않기 위해서다. 빌드 17082 -->
@@ -5963,7 +5965,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <!-- V172_UI: 상단 가운데는 손캠·손캠보기·작업중·내프로필만 노출.
      동기화 pill과 앱설치는 요소·id·바인딩을 유지한 채 legacyHide로 화면에서만 뺀다.
      접속 인원(#onlineBtn)은 대시보드 헤더로 이사했다(아래 .dashHeadRight).
-     V179_UI(2026-08-11): 💌쪽지함은 타일 위 헤더(.gridHead .right)로, ✨캐꾸✨는 대시보드
+     V179_UI(2026-08-11): 💌쪽지함은 타일 위 헤더(.gridHead .right)로, ✨캐꾸는 대시보드
      바로가기(#dashShortcuts)로 이사했다 — 요소·id·바인딩은 그대로 두고 자리만 옮겼다. -->
 <div class="topPills legacyHide">
 <div class="pill miniPill">🕒 <span id="lastSync">-</span></div>
@@ -6165,11 +6167,11 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div class="btnRow" id="dashShortcuts">
 <!-- V171: 로컬 헬퍼(하트비트) 연동 제거 — 2026-08-09. 헬퍼 사용자가 사라져 Mac/Win 헬퍼 다운로드 바로가기 삭제. -->
-<!-- V179_UI(2026-08-11): 상단바에서 옮겨 온 ✨캐꾸✨(V176_BINDER 캐릭터 도감). id·클릭 바인딩은 그대로 두고,
+<!-- V179_UI(2026-08-11): 상단바에서 옮겨 온 ✨캐꾸(V176_BINDER 캐릭터 도감). id·클릭 바인딩은 그대로 두고,
      라벨만 형제 버튼과 같은 <span class="btnLabel"> 구조로 맞췄다(모바일 아이콘 압축 바 규칙을 함께 타야 하므로).
      📎뽀모도로는 먼슬리가 공용 뽀모 앱 안으로 들어가면서 삭제 — 시트 주소(d.sheetUrl) 설정값은 남겨 둔다. -->
-<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">✨캐꾸✨</span></button>
-<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥출근도장</span></button>
+<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">✨캐꾸</span></button>
+<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥공지&출석</span></button>
 <button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
 </div>
 </div>
@@ -6953,6 +6955,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="connLostBtns">
 <button class="primary" id="authLostReload" type="button">🔄 새로고침</button>
 <button class="ghost" id="authLostReauth" type="button" style="display:none">✉️ 다시 인증하기</button>
+<button class="ghost" id="authLostGuest" type="button" style="display:none">그래도 게스트로 시작</button>
 <button class="ghost" id="authLostClose" type="button">닫기</button>
 </div>
 </div>
@@ -8215,6 +8218,12 @@ const auth = getAuth(app);
           console.warn("[V188_MAGICLINK] 링크 처리 실패", err);
           try{ showToast(msg, 6000); }catch(_e){}
           try{ history.replaceState(null, "", location.origin + location.pathname); }catch(_e){}
+          /* V210_LINKMSG: 링크가 소진된 채 도착하면(링크 두 번 클릭, linkWithCredential 실패 후 재사용 등)
+             토스트만으로는 다음 행동을 모른다. 재발송 입력창을 바로 열어 막다른 길을 없앤다.
+             (mkOpenReauth_는 아래쪽에 선언된 함수 선언이라 호이스팅으로 여기서 호출 가능) */
+          if(code === "auth/invalid-action-code"){
+            try{ setTimeout(()=>{ try{ mkOpenReauth_(); }catch(_e){} }, 800); }catch(_e){}
+          }
         }
         if(restoredUser) return restoredUser;
         /* ===== V205_SESSIONLOST (2026-08-13): 익명으로 조용히 내려앉는 것을 막는다 =====
@@ -8228,15 +8237,45 @@ const auth = getAuth(app);
            ⚠️ 익명 로그인 자체는 막지 않는다 — 규칙이 auth != null이라 이게 없으면 화면이 통째로 빈다.
               대신 **즉시 알리고 재인증 길을 준다.** 입장하기 전에 되돌리는 것이 핵심이다
               (입장해 버리면 그때부터 익명 uid로 기록이 쌓여 되돌리기가 어려워진다). */
+        /* ===== V210_SESSIONGUARD (2026-08-14): V205는 알리기만 했고, 여기서 실제로 막는다 =====
+           V205 주석은 스스로 "입장해 버리면 그때부터 익명 uid로 기록이 쌓여 되돌리기가 어려워진다"고
+           적어 놓고도 정작 입장을 진행시켰다 — 경고 토스트가 뜬 채로 방에 들어가진 것이다.
+           📏 실측 2026-08-14 — 최근 3일간 **익명 계정이 114개 새로 생겼다**(auth:export 574계정 중
+              이메일 보유는 42개뿐). 익명 폴백이 예외가 아니라 상시 발화 중이라는 뜻이다.
+              게다가 이 익명 로그인은 같은 오리진의 승인 페이지(approve.html) 탭까지 동기화되어
+              관리자 권한이 통째로 풀려 보였다(복길 님 반복, 루체 님 하루 uid 3개 분화).
+           → 전에 인증한 흔적(mkLastEmail_)이 있으면 **signInAnonymously를 아예 호출하지 않고**
+             입장을 멈춘다. 익명 uid가 생기지 않으므로 되돌릴 것도 없다.
+           ⚠️ 처음 오신 브라우저(__lastEmail 없음)는 예전 그대로 익명으로 시작한다 —
+              규칙이 auth != null이라 이걸 막으면 신규 유입 화면이 통째로 빈다.
+           ⚠️ 여기서 던지면 이 함수 끝의 .catch가 __mainAuthReadyPromise = null로 되돌리므로,
+              재인증이나 게스트 선택 뒤 joinRoom을 다시 부르면 처음부터 깨끗하게 재시도된다
+              (메모이즈에 실패가 눌어붙지 않는다). */
         let __lastEmail = "";
         try{ __lastEmail = mkLastEmail_() || ""; }catch(_e){}
+        if(__lastEmail && window.__MK_GUEST_OK__ !== true){
+          console.warn("[V210_SESSIONGUARD] 전에 " + __lastEmail +
+            " 로 인증한 브라우저인데 세션이 사라졌습니다 — 익명 강하를 막고 입장을 멈춥니다.");
+          try{ mkDiag("세션소실차단", __lastEmail); }catch(_e){}
+          // 화면이 준비된 뒤에 띄운다(이 함수는 초기화 도중에 돈다).
+          // V205의 1.2초보다 앞당긴다 — 여기서는 입장이 실제로 멈추므로 이유를 즉시 보여줘야 한다.
+          try{ setTimeout(()=>{ try{ mkShowAuthLost_({ guestOffer:true }); }catch(_e){} }, 300); }catch(_e){}
+          const e = new Error("SESSION_LOST");
+          e.code = "mk/session-lost";
+          throw e;
+        }
+        /* 여기 오는 경로는 둘뿐이다: ①처음 온 브라우저(정상 신규 흐름)
+           ②사용자가 위 오버레이에서 '그래도 게스트로 시작'을 명시로 고른 경우(__MK_GUEST_OK__).
+           ②는 새 uid가 생기는 걸 본인이 감수한 것이므로 막지 않되, V205와 같은 흔적은 반드시 남긴다. */
         const cred = await signInAnonymously(auth);
         if(__lastEmail){
           console.warn("[V205_SESSIONLOST] 전에 " + __lastEmail +
             " 로 인증한 브라우저인데 세션이 사라져 익명으로 시작했습니다 — 재인증 전에는 입장하지 마세요.");
           try{ mkDiag("세션소실", __lastEmail); }catch(_e){}
-          // 화면이 준비된 뒤에 띄운다(이 함수는 초기화 도중에 돈다).
-          try{ setTimeout(()=>{ try{ mkShowAuthLost_(); }catch(_e){} }, 1200); }catch(_e){}
+          /* ⚠️ V210_SESSIONGUARD: V205가 여기서 띄우던 오버레이(setTimeout 1.2초)는 뺐다.
+             위 차단이 생긴 뒤로 이 분기에 닿는 경우는 **게스트 진행을 방금 직접 고른 사람뿐**이라,
+             그대로 두면 본인이 닫은 안내가 1.2초 뒤 혼자 다시 떠오른다(게다가 guestOffer가 아니라
+             "채팅과 타일이 멈춰 있습니다"라는 엉뚱한 문구로). 흔적은 콘솔·mkDiag에 그대로 남는다. */
         }
         return cred && cred.user ? cred.user : auth.currentUser;
       })().catch((err)=>{
@@ -20072,7 +20111,112 @@ t.appendChild(bg);
 
 
     // Join / Leave
-    
+
+/* ===== V211_AUTOREJOIN (2026-08-14): 절전 폐기로 리로드된 탭을 이어서 입장시킨다 =====
+   크롬 메모리 세이버·엣지 절전 탭은 백그라운드 탭을 **폐기(discard)**한다. 이때 pagehide가
+   돌지 않아 V203의 라이브 시간 커밋도 못 하고 페이지가 통째로 내려간다. 사용자가 탭을 누르는
+   순간 처음부터 리로드되는데, 이 방의 입장은 수동이라 **입장 전 화면**이 뜬다.
+   ★ 이게 조용한 실패인 이유: 원고에 몰입한 작가는 그 화면을 못 본다 → 그 순간부터 작업시간
+     적립이 멈춘다(시간이 곧 코인인 방이다). 게다가 V202_TRUST 덕에 타일은 자정까지 남아 있어
+     본인도 남들도 이상을 눈치채지 못한다. 작가들의 사용 패턴(탭을 몇 시간씩 백그라운드에 두고
+     한글·스크리브너에서 집필)이 정확히 폐기 1순위 조건이다.
+   ★ 폐기된 탭은 **사용자가 클릭해야만** 리로드된다 = 리로드 시점엔 반드시 사람이 보고 있다.
+     그래서 그 순간 조건이 맞으면 자동으로 다시 입장시킨다. F5 실수와 같은 날 브라우저 재시작
+     복원도 덤으로 매끄러워진다.
+   ⚠️ 선언 위치가 중요하다: 이 `let`들은 joinBtn 클릭 바인딩(아래쪽)보다 **소스에서 앞**에 있어야
+      한다. IIFE가 문장을 순서대로 실행하므로 바인딩·호출 시점엔 이미 초기화돼 있어 TDZ가 없다. */
+let __mkAutoRejoinFired = false;      // 로드당 1회만 시도(재시도 루프 금지)
+let __mkAutoRejoinActive = false;     // joinRoom이 읽는 입장 공지 억제 플래그
+let __mkAutoRejoinVisWait = false;    // visibilitychange 리스너 중복 등록 방지
+
+async function mkAutoRejoinMaybe_(trigger){
+  try{
+    if(__mkAutoRejoinFired) return;
+    if(state.joined){ __mkAutoRejoinFired = true; return; }
+
+    /* ①화면이 보일 때만 한다. 폐기 복귀는 항상 visible이지만 브라우저 재시작 복원은
+       hidden으로 로드될 수 있다 — 사람이 실제로 보고 있을 때만 입장시키는 것이 정직하다
+       (아무도 안 보는 탭이 혼자 입장해 시간을 적립하면 그건 유령 시간이다). */
+    if(document.visibilityState !== "visible"){
+      if(__mkAutoRejoinVisWait) return;
+      __mkAutoRejoinVisWait = true;
+      const onVis = ()=>{
+        if(document.visibilityState !== "visible") return;
+        try{ document.removeEventListener("visibilitychange", onVis); }catch(_e){}
+        __mkAutoRejoinVisWait = false;
+        try{ mkAutoRejoinMaybe_("visible"); }catch(_e){}
+      };
+      try{ document.addEventListener("visibilitychange", onVis); }catch(_e){}
+      return;
+    }
+
+    /* ②오늘 이 브라우저로 입장한 적이 있어야 한다. 자정을 넘겼으면 자동 입장하지 않는다 —
+       날짜가 바뀌면 누적도 새로 시작하므로 자정 롤오버 정책과 어긋나지 않게 맞춘다. */
+    let lastJoinDay = "";
+    try{ lastJoinDay = localStorage.getItem("mk_last_join_day_" + FIXED_ROOM_ID) || ""; }catch(_e){}
+    if(!lastJoinDay || lastJoinDay !== seoulDateKey()) return;
+
+    // ③닉네임(부팅 시 프리필된다). 비었거나 '익명'이면 사람이 직접 정하게 둔다.
+    let nick = "";
+    try{ nick = normalizeNick((els.name && els.name.value) || ""); }catch(_e){}
+    if(!nick || nick === "익명") return;
+
+    // ④입장키가 이 브라우저에 남아 있어야 한다(통과 캐시 또는 저장된 키).
+    let passReady = false;
+    try{ passReady = !!loadPassOK(); }catch(_e){}
+    if(!passReady){
+      let cachedPass = "";
+      try{ cachedPass = (localStorage.getItem(LS_PASS) || "").trim(); }catch(_e){}
+      if(!cachedPass) return;
+    }
+
+    /* ⑤세션과 presence 확인 — 두 갈래다. */
+    const cur = auth.currentUser;
+    if(cur && cur.uid){
+      /* 로그인은 살아 있다 → 서버에 남아 있는 내 presence 1건만 확인한다.
+         레코드가 없거나 status가 off면 **자동 입장하지 않는다**: X로 탭을 닫았거나(V203이 off를 커밋)
+         정상 퇴장·관리자 세션 정리·강퇴된 경우가 전부 여기로 걸러진다. 폐기는 pagehide가 안 돌아
+         status가 그대로 살아 있다는 점이 정확히 이 둘을 가르는 지문이다.
+         ⚠️ await는 반드시 readGuard_로 감싼다 — 맨 rGet await는 오프라인·차단 상태에서 settle되지
+            않아 이 파일에서 다섯 번 사고가 난 함정이다(CHATLOCK/JOINSTALL/TILEBACK 계열).
+         비용은 내 presence 1건 읽기뿐이다. */
+      let snap = null;
+      try{
+        snap = await readGuard_(rGet(rMePresenceRef(FIXED_ROOM_ID, String(cur.uid))), "자동재입장 presence 확인", 8000);
+      }catch(_e){
+        return;   // mk/timeout 포함 — 확신이 없으면 자동으로 아무것도 하지 않는다
+      }
+      let st = "";
+      try{
+        if(!snap || typeof snap.exists !== "function" || !snap.exists()) return;
+        const v = snap.val() || {};
+        st = String(v.status || "");
+      }catch(_e){ return; }
+      // status를 못 읽었으면(빈 값) 역시 모르는 것으로 본다 — 모르면 하지 않는다.
+      if(!st || st === "off" || st === "offline") return;
+    }else{
+      /* 로그인 세션이 사라진 갈래. 익명 세션조차 없는 브라우저에 **새 uid를 자동으로 만들지 않는다**
+         (V210_SESSIONGUARD가 막는 그 사고를 자동화로 되살리면 안 된다).
+         전에 인증한 흔적이 있을 때만 presence 확인 없이 joinRoom을 부른다 —
+         ★이 갈래의 목적은 입장이 아니라 **"오늘 입장했던 사람에게 세션이 죽었음을 즉시 알리는 것"**이다.
+           joinRoom이 ensureMainAuthReady_에서 V210 차단에 걸려 재인증 오버레이를 띄워 준다. */
+      let lastEmail = "";
+      try{ lastEmail = mkLastEmail_() || ""; }catch(_e){}
+      if(!lastEmail) return;
+    }
+
+    __mkAutoRejoinFired = true;
+    __mkAutoRejoinActive = true;
+    const wasDiscarded = (()=>{ try{ return document.wasDiscarded === true; }catch(_e){ return false; } })();
+    console.info("[V211_AUTOREJOIN] 이어서 입장합니다 (" + trigger + ", wasDiscarded=" + wasDiscarded + ")");
+    try{ mkDiag("자동재입장", trigger + " wasDiscarded=" + wasDiscarded); }catch(_e){}
+    /* 강퇴 확인은 joinRoom 내부에 그대로 있으므로 강퇴 상태면 스스로 막힌다.
+       ⚠️ 자동 재시도는 넣지 않는다 — 실패하면 입장 전 화면 그대로 두는 것이 맞다.
+          멈춘 입장을 자동으로 되풀이하다 사고가 난 이력(JOINSTALL 계열)이 있어 루프는 금지다. */
+    Promise.resolve(joinRoom()).catch(()=>{}).finally(()=>{ __mkAutoRejoinActive = false; });
+  }catch(_e){}
+}
+
 async function joinRoom(){
       try{
         state.__presenceLeaving = false;
@@ -20350,18 +20494,30 @@ try{
       /* 출근 버튼 UI 갱신 제거됨 */
       // ✅ 출근 팝업(iframe) 미리 웜업해서 버튼 반응 체감 속도 올리기
       /* 출근 팝업 iframe 웜업 제거됨 */
-      showToast("입장!");
+      /* V211_AUTOREJOIN: 자동 재입장이면 문구를 바꾼다 — 본인은 누른 적이 없으므로
+         그냥 "입장!"이 뜨면 무슨 일이 일어난 건지 알 수 없다. */
+      showToast(__mkAutoRejoinActive ? "🛌 절전에서 돌아와 이어서 입장했어요" : "입장!");
       // ✅ 출근(출석) 자동 팝업: 입장 UI가 안정된 뒤(클릭 이벤트 종료 후) 열기 + 1회 재시도
       /* 출근/출석 자동 팝업 제거됨 */
       // ✅ 30초마다 로컬에 집중시간 저장(예기치 않은 종료 대비)
       try{ if(state.focusPersistTimer) clearInterval(state.focusPersistTimer); }catch(e){}
       try{ state.focusPersistTimer = setInterval(()=>{ try{ if(state.joined) persistMyFocusToLocal(); }catch(e){} }, FOCUS_LOCAL_PERSIST_INTERVAL_MS); }catch(e){}
       // ✅ 입장 사운드(모두에게): 나는 즉시 재생, 다른 사람은 sfx 이벤트로 재생
-      try{ playSfx("enter"); }catch(e){}
-      try{ emitSfx("enter"); }catch(e){}
-      try{ emitSys(`❣️ ${state.nickname} 입장 🥰`); }catch(e){}
+      /* V211_AUTOREJOIN: 자동 재입장에서는 효과음·입장 인사를 내지 않는다.
+         V202_TRUST 관점에서 이 사람은 **떠난 적이 없다** — 절전이 탭을 껐다 켰을 뿐이다.
+         몇 시간마다 입장 인사가 다시 울리면 그 자체가 새로운 소음이고,
+         V201의 "입장 메시지 없는 타일" 미스터리를 정확히 뒤집은 재판(타일은 그대로인데
+         입장 인사만 반복)이 된다. 사이에 있는 초기화(focusPersistTimer 등)는 그대로 돈다. */
+      if(!__mkAutoRejoinActive){
+        try{ playSfx("enter"); }catch(e){}
+        try{ emitSfx("enter"); }catch(e){}
+        try{ emitSys(`❣️ ${state.nickname} 입장 🥰`); }catch(e){}
+      }
       }catch(e){
         console.error(e);
+        /* V210_SESSIONGUARD: 세션 소실 차단은 실패가 아니라 의도된 멈춤이다.
+           오버레이(재인증/게스트 선택)가 이미 떠 있으므로 "입장 실패" 토스트로 겁주지 않는다. */
+        if(String(e?.code || "") === "mk/session-lost"){ return; }
         if(state.__joinProfileReady !== true){
           try{ setControlsEnabled(false); }catch(_e){}
         }
@@ -21462,15 +21618,32 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     function mkHideAuthLost_(){
       try{ const el = document.getElementById("authLostOverlay"); if(el) el.classList.remove("show"); }catch(_e){}
     }
-    function mkShowAuthLost_(){
+    /* V210_SESSIONGUARD: 이 오버레이를 두 상황이 공유한다 —
+       ①입장 중에 로그인이 풀림(V204, 기존) ②입장 전에 세션이 없어 아예 멈춤(V210, guestOffer).
+       둘은 사용자가 할 일이 다르므로 본문 문구와 버튼 구성을 **매번 다시 세팅**한다.
+       (한 번 guestOffer로 띄운 뒤 그냥 두면 다음에 ①로 떠도 "입장을 멈췄습니다"가 남는다.) */
+    function mkShowAuthLost_(opts){
       try{
         const el = document.getElementById("authLostOverlay"); if(!el) return;
+        const guestOffer = !!(opts && opts.guestOffer);
         let last = "";
         try{ last = mkLastEmail_() || ""; }catch(_e){}
         const why = document.getElementById("authLostWhy");
         if(why) why.textContent = last ? ("전에 인증하신 주소: " + last) : "";
+        const desc = el.querySelector(".connLostDesc");
+        if(desc){
+          desc.innerHTML = guestOffer
+            ? "이 브라우저의 로그인 정보가 사라져 <b>입장을 잠시 멈췄습니다.</b><br/>다시 인증하시면 기존 프로필·기록·권한이 그대로 이어집니다."
+            : "그래서 <b>채팅과 타일이 멈춰 있습니다.</b><br/>대부분 새로고침 한 번이면 그대로 이어집니다.";
+        }
         const reauthBtn = document.getElementById("authLostReauth");
         if(reauthBtn) reauthBtn.style.display = last ? "" : "none";
+        /* ⚠️ 게스트 진행은 **기본 경로가 아니다.** 새 uid가 생기므로 오늘 쌓은 기록·프로필·관리자
+           권한이 전부 남남이 되고, 나중에 재인증해도 그 사이 익명 uid로 쌓인 것은 따라오지 않는다.
+           그래서 입장 전 차단(guestOffer)일 때만 보이고, 문구도 "그래도"로 시작한다 —
+           먼저 권하는 길은 언제나 [✉️ 다시 인증하기]다. */
+        const guestBtn = document.getElementById("authLostGuest");
+        if(guestBtn) guestBtn.style.display = guestOffer ? "" : "none";
         if(!__authLostBound){
           __authLostBound = true;
           const rl = document.getElementById("authLostReload");
@@ -21481,6 +21654,13 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
             mkHideAuthLost_();
             try{ mkOpenReauth_(); }catch(err){ console.warn("[V204_AUTHRECOVER] 재인증 창 열기 실패", err); }
           });
+          if(guestBtn) guestBtn.addEventListener("click", ()=>{
+            window.__MK_GUEST_OK__ = true;
+            mkHideAuthLost_();
+            try{ joinRoom(); }catch(err){ console.warn("[V210_SESSIONGUARD] 게스트 재입장 실패", err); }
+          });
+          /* 이 플래그는 되돌리지 않는다 — 한 번 "그래도 게스트로" 를 고른 탭에서 매번 다시 묻는 것은
+             이미 익명 uid가 생긴 뒤라 의미가 없다. 새로고침하면 플래그가 사라져 다시 차단된다. */
         }
         el.classList.add("show");
       }catch(_e){}
@@ -21604,17 +21784,51 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
     let __walletPushTimer = null;
     let __walletPushing = false;
 
+    /* ===== V209_WALLETGUARD (2026-08-14): 지갑에도 펫과 같은 단조 보장을 준다 =====
+       📏 실사고 — 복길 님이 캐시를 지운 뒤 지갑 `totalSec`이 6,820초(1.9시간)로 남았다.
+          그런데 **어제 하루 작업만 33,857초(9.4시간)**다. totalSec은 한 번도 차감되지 않는
+          순수 누적값이라 하루치보다 적을 수가 없다 → 서버의 진짜 값이 지워진 것이다.
+
+       ★ 원인은 두 겹이었다:
+         ① 여기(walletPush_)가 검사 없이 rSet으로 **통째로 덮어썼다.**
+         ② walletMaybePull_이 "로컬 도장이 더 최신이면 로컬을 올린다"라서,
+            캐시를 지우면 0짜리 새 지갑이 '최신'이 되어 서버를 지웠다.
+       ★ 펫은 같은 사고를 안 당했다 — petCloudBackupNow가 트랜잭션 안에서 단조 검사를 하고
+         낮으면 쓰기를 거부한 뒤 오히려 서버 값을 로컬로 되돌리기 때문이다(복길 님 펫 395시간 무사).
+         그 패턴을 그대로 옮긴다. 새 발명이 아니라 이미 검증된 방식이다.
+
+       ⚠️ 코인은 단조가 아니다(상점에서 쓰면 줄어든다). 그래서 **판단은 totalSec으로만** 한다 —
+          totalSec은 누적이라 절대 줄지 않는다. 거부할 때는 코인도 서버 값으로 함께 되돌린다
+          (그래야 "코인만 남고 누적은 서버 값"인 뒤섞인 상태가 안 생긴다). */
     async function walletPush_(){
       const u = auth.currentUser; if(!u || !u.uid) return;
       const local = walletReadLocal_(); if(!local) return;
       if(__walletPushing) return;
       __walletPushing = true;
       try{
-        await rSet(walletRef_(u.uid), {
-          coins: local.coins, totalSec: local.totalSec,
+        const localTotal = Math.max(0, Math.floor(Number(local.totalSec) || 0));
+        const stamp = walletLocalStampMs_() || Date.now();
+        const payload = {
+          coins: local.coins, totalSec: localTotal,
           coinCarrySec: local.coinCarrySec,
-          updatedAtMs: walletLocalStampMs_() || Date.now()
+          updatedAtMs: stamp
+        };
+        const res = await rRunTransaction(walletRef_(u.uid), (cur)=>{
+          // 서버에 아직 없다 = 첫 백업. (⚠️ 여기서 undefined를 돌려주면 V168.3처럼 조용히 중단된다)
+          if(cur === null || typeof cur !== "object") return payload;
+          const remoteTotal = Math.max(0, Math.floor(Number(cur.totalSec) || 0));
+          if(remoteTotal > localTotal) return;    // 서버가 더 쌓였다 = 이 기기가 초기화됐다 → 중단
+          return payload;
         });
+        if(res && res.committed === false){
+          const remote = (res.snapshot && typeof res.snapshot.val === "function") ? res.snapshot.val() : null;
+          if(remote && Number.isFinite(Number(remote.totalSec))){
+            console.warn("[V209_WALLETGUARD] 서버 누적(" + remote.totalSec + "초)이 이 기기(" + localTotal +
+              "초)보다 많아 덮어쓰지 않았습니다 — 서버 값을 되살립니다.");
+            try{ mkDiag("지갑보호", `로컬 ${localTotal}초 < 서버 ${remote.totalSec}초 → 복원`); }catch(_e){}
+            walletApplyLocal_(remote, Number(remote.updatedAtMs) || Date.now());
+          }
+        }
       }catch(err){ console.warn("[V189_WALLET] 백업 실패", err); }
       finally{ __walletPushing = false; }
     }
@@ -21645,7 +21859,18 @@ window.addEventListener("scroll", dockRightRail, {passive:true});
           console.info("[V189_WALLET] 새 브라우저 — 코인 " + remote.coins + " 복원");
           return;
         }
-        if(Number(remote.updatedAtMs) > walletLocalStampMs_()){
+        /* ⚠️ V209_WALLETGUARD: 도장(시각)보다 누적(totalSec)이 먼저다.
+           캐시를 지우면 0짜리 새 지갑의 도장이 '지금'이 되어 서버보다 최신으로 보인다 —
+           그 판정 그대로 두면 아래 else로 빠져 **서버의 진짜 잔액을 0으로 덮는다**(복길 님 사고).
+           누적은 절대 줄지 않는 값이므로, 서버가 더 많으면 그쪽이 정본이다. */
+        const remoteTotal = Math.max(0, Math.floor(Number(remote.totalSec) || 0));
+        const localTotal  = Math.max(0, Math.floor(Number(local.totalSec) || 0));
+        if(remoteTotal > localTotal){
+          walletApplyLocal_(remote, Number(remote.updatedAtMs) || Date.now());
+          console.info("[V209_WALLETGUARD] 서버 누적이 더 많아 복원 — 코인 " + remote.coins +
+            " (서버 " + remoteTotal + "초 > 이 기기 " + localTotal + "초)");
+          try{ mkDiag("지갑복원", `서버 ${remoteTotal}초 > 로컬 ${localTotal}초`); }catch(_e){}
+        }else if(Number(remote.updatedAtMs) > walletLocalStampMs_()){
           walletApplyLocal_(remote, Number(remote.updatedAtMs));
           console.info("[V189_WALLET] 서버 쪽이 최신 — 코인 " + remote.coins + " 적용");
         }else{
@@ -23449,7 +23674,22 @@ try{
       els.roomPass.addEventListener("keydown", (e)=>{
         if(e.key === "Enter"){
           e.preventDefault();
-          if(!els.joinBtn.disabled) 
+          if(!els.joinBtn.disabled) joinRoom();
+        }
+      });
+    }
+
+/* V210_ENTERFIX (2026-08-14): 아래 V169 초기화 블록이 원래 **비번칸 Enter 핸들러 안에** 들어가 있었다.
+   잘못 붙여넣기 한 번이 V169부터 V209까지 다섯 버전을 그대로 건너뛰며 살아남은 자리다.
+   `if(!els.joinBtn.disabled)` 뒤에 세미콜론 없이 줄이 바뀌면서 **첫 try 블록이 그 if의 몸통**이 됐고,
+   그 결과 두 가지가 조용히 어긋나 있었다:
+     ① 조건이 걸리는 대상이 joinRoom()이 아니라 try 블록이라, 입장 버튼이 disabled여도
+        Enter를 치면 joinRoom()이 무조건 실행됐다(입장 조건 검사를 우회하는 뒷문).
+     ② "mk_nonchat_enabled=0 구제"가 부팅 시가 아니라 **비번칸에서 Enter를 칠 때만** 돌았다.
+        비번칸을 안 쓰거나 마우스로 입장하는 사람에게는 한 번도 실행되지 않아,
+        절약 상태에 갇힌 브라우저를 구제한다는 V169의 목적 자체가 반쯤 죽어 있었다.
+   → 핸들러는 `if(!els.joinBtn.disabled) joinRoom();` 한 줄로 되돌리고,
+     초기화는 여기(부팅 경로)로 옮겨 1회만 돌게 한다. 블록 내용 자체는 손대지 않았다. */
 // restore read-saver preference
 // ✅ V169: 절약 모드 은퇴 — 저장된 선호를 더 이상 복원하지 않는다.
 // (버튼이 숨겨진 상태에서 과거 "0"이 복원되면 절약 상태(채팅만 실시간)에 갇혀 빠져나올 수 없음.
@@ -23464,13 +23704,15 @@ try{
   if(b){ b.textContent = state.nonChatEnabled ? "절약모드" : "실시간 켜기"; }
 }catch(e){}
 
-joinRoom();
-        }
-      });
-    }
-
     setControlsEnabled(false);
     updateClocks();
+    /* V211_AUTOREJOIN: 모든 초기화(닉네임 프리필 포함)가 끝난 뒤에만 판정한다.
+       authStateReady보다 먼저 부르면 세션 복원 전이라 '세션 없음' 갈래로 오판한다. */
+    try{
+      Promise.resolve(typeof auth.authStateReady === "function" ? auth.authStateReady() : null)
+        .then(()=>{ try{ mkAutoRejoinMaybe_("boot"); }catch(_e){} })
+        .catch(()=>{});
+    }catch(_e){}
     // ✅ V160: 예전 무조건 pagehide/off 핸들러 제거.
     // 위의 BFCache 예외 + 세션 표식 종료 처리와 onDisconnect 한 경로만 사용한다.
 
@@ -26059,7 +26301,7 @@ joinRoom();
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17086; // ✅ V208: 콘솔에서 내 빌드 확인(__MK_BUILD__).
+  const MK_APP_BUILD = 17091; // ✅ V211: 절전 폐기로 리로드된 탭 자동 재입장(같은 날+presence 생존+공지 억제).
   /* ⚠️ V208(2026-08-14): "지금 이 탭이 몇 번 빌드인가"를 확인할 방법이 없었다.
      소스보기(Ctrl+U)는 **이미 로드된 문서**를 보여줘서 새로고침 전에는 옛 버전이 나오고,
      그래서 배포가 됐는지 안 됐는지를 놓고 계속 헷갈렸다.

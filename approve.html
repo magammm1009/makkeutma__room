@@ -83,6 +83,9 @@
     </div>
   </section>
 
+  <!-- V210A_CONNWATCH: RTDB 연결 감시 배너. 인증과 무관하게 항상 상태만 반영한다(show/hide 토글). -->
+  <div class="banner hide" id="connBanner">🔌 실시간 연결이 끊겼습니다 — 목록이 갱신되지 않습니다. 잠시 기다려도 그대로면 새로고침해 주세요.</div>
+
   <div class="banner hide" id="noPerm">
     이 계정은 관리자가 아닙니다. 방장에게 관리자 임명을 요청해 주세요.
   </div>
@@ -126,7 +129,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut,
+import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, onIdTokenChanged, signOut,
          sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getDatabase, ref, get, onValue, update }
@@ -160,6 +163,19 @@ function toast(msg, ms = 3000){
 const fmt = (ms) => { try{ return new Date(Number(ms)).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"}); }catch(_e){ return "-"; } };
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim().toLowerCase())
                     && String(e).trim().toLowerCase().endsWith(DOMAIN);
+
+/* ===== V210A_DIAG: 진단 링버퍼 =====
+   승인 페이지는 관리자가 오래 열어 두는 페이지인데 목록이 얼거나 인증이 풀려도 알 방법이 없었다.
+   본체(index.html)의 mkDiag와 달리 여기는 localStorage에 남기지 않는다 — 승인 화면에는 신청자
+   이메일·닉네임 같은 개인정보가 로그에 섞이기 쉬워, 새로고침하면 사라지는 메모리 링버퍼로 최소화한다.
+   콘솔에서 window.__MK_APPROVE_DEBUG__()로 꺼내 본다(아래 부팅 IIFE에서 노출). */
+const __diag = [];
+function diag(tag, detail){
+  try{
+    __diag.push(new Date().toLocaleTimeString("ko-KR",{hour12:false}) + " [" + tag + "] " + String(detail ?? ""));
+    if(__diag.length > 80) __diag.shift();
+  }catch(_e){}
+}
 
 /* ===== 로그인 ===== */
 $("sendBtn").addEventListener("click", async () => {
@@ -538,6 +554,34 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     if(saved && !$("email").value) $("email").value = saved;
   }catch(_e){}
 
+  /* ===== V210A_CONNWATCH: RTDB 연결 감시 + 배너 =====
+     인증 여부와 무관하게 항상 건다(로그인 전에도 소켓 자체는 붙어 있을 수 있다).
+     .info/connected는 소켓이 끊기면 즉시 false가 되지만, 네트워크 전환 같은 짧은 끊김은
+     금방 되살아난다 — 매번 배너를 띄우면 깜빡임만 남는다(본체 V194_CONNLOST와 같은 이유로
+     6초 유예를 둔다). setTimeout 핸들을 변수에 쥐고 있다가 재연결되면 바로 지운다. */
+  let __rtdbConnected = true;
+  let __connBannerTimer = null;
+  onValue(ref(db, ".info/connected"), (snap) => {
+    const connected = snap.val() === true;
+    __rtdbConnected = connected;
+    if(connected){
+      if(__connBannerTimer){ clearTimeout(__connBannerTimer); __connBannerTimer = null; }
+      $("connBanner").classList.add("hide");
+      diag("연결", "복구됨");
+      console.info("[V210A_CONNWATCH] RTDB 연결 복구");
+    }else{
+      diag("연결", "끊김 감지 — 6초 유예");
+      console.warn("[V210A_CONNWATCH] RTDB 연결 끊김 감지 — 6초 유예");
+      if(__connBannerTimer) clearTimeout(__connBannerTimer);
+      __connBannerTimer = setTimeout(() => {
+        __connBannerTimer = null;
+        $("connBanner").classList.remove("hide");
+        diag("연결", "6초 이상 끊김 — 배너 표시");
+        console.warn("[V210A_CONNWATCH] 6초 이상 끊김 — 배너 표시");
+      }, 6000);
+    }
+  });
+
   /* ===== V201_SUBLEAK: onValue 구독을 반드시 회수한다 =====
      예전에는 onAuthStateChanged 콜백 안에서 onValue 4개를 걸기만 하고 떼지 않았다.
      Auth는 탭 사이 동기화 때마다 이 콜백을 다시 부르므로 **인증 상태가 바뀔 때마다 4개씩
@@ -550,6 +594,8 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     __unsubs.forEach(u => { try{ u(); }catch(_e){} });
     __unsubs = [];
   }
+  // V210A_FRESH: 구독별 마지막 수신 시각. diag 링버퍼에는 안 남긴다 — 수신마다 쌓이면 80줄이 금방 찬다.
+  const __lastRecv = {};
 
   let __roleRetryTimer = null;
   function clearRoleRetry_(){ if(__roleRetryTimer){ clearTimeout(__roleRetryTimer); __roleRetryTimer = null; } }
@@ -585,8 +631,9 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
       console.warn(where, err);
       toast(`${where} 읽기 실패: ${err?.code || err?.message || ""}`, 6000);
     };
+    // V210A_FRESH: render 앞에서 수신 시각을 찍는다 — 실패해도(render가 던져도) 기록은 남게 순서를 고정한다.
     const sub = (path, render, label) =>
-      __unsubs.push(onValue(ref(db, path), s => render(s.val() || {}), fail(label)));
+      __unsubs.push(onValue(ref(db, path), s => { __lastRecv[label] = Date.now(); render(s.val() || {}); }, fail(label)));
     sub(`rooms/${ROOM}/joinRequests`, renderPending, "승인 대기");
     sub(`rooms/${ROOM}/members`,      renderMembers, "멤버");
     sub(`rooms/${ROOM}/admins`,       renderAdmins,  "관리자");
@@ -594,7 +641,59 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     sub(`rooms/${ROOM}/joinArchiveIndex`, renderArchive, "보관함");
   }
 
+  /* ===== V210A_DIAG: 콘솔 손잡이 =====
+     문제가 생겼을 때 새로고침 없이 콘솔에서 window.__MK_APPROVE_DEBUG__()로 상태를 바로 본다. */
+  window.__MK_APPROVE_DEBUG__ = function(){
+    const u = auth.currentUser;
+    const info = {
+      uid: u ? String(u.uid).slice(0, 8) : null,
+      email: u ? !!u.email : null,
+      isOwner, isAdmin,
+      구독개수: __unsubs.length,
+      마지막수신: Object.assign({}, __lastRecv),
+      rtdb연결: __rtdbConnected,
+      diag: __diag.slice()
+    };
+    console.info("[V210A_DIAG]", info);
+    return info;
+  };
+
+  /* ===== V210A_FRESH: 복귀 시 재구독 =====
+     onValue는 값이 바뀔 때만 울리므로 "조용함"과 "죽음"을 구분할 수 없다.
+     본체(index.html)는 서버에 최신 1건을 직접 물어보는 워치독(V205_TILEPROBE)까지 갔지만,
+     승인 페이지는 대기 건이 적고 관리자가 돌아온 순간에만 최신이면 충분하므로
+     "탭이 다시 보일 때 구독을 통째로 갈아끼운다"는 더 싼 방법을 쓴다.
+     applyRole_ 안에는 이미 detachSubs_()가 있어(재판정 대비) 재호출해도 구독이 중복으로 쌓이지 않는다.
+     joinRequests 재다운로드는 대기 건의 스샷 base64를 통째로 다시 받는 비용이라 5분 쿨다운을 둔다. */
+  let __hiddenAtMs = 0;
+  let __lastResubAtMs = 0;
+  document.addEventListener("visibilitychange", () => {
+    if(document.hidden){ __hiddenAtMs = Date.now(); return; }
+    const hiddenMs = __hiddenAtMs ? (Date.now() - __hiddenAtMs) : 0;
+    const sinceResub = Date.now() - __lastResubAtMs;
+    if(auth.currentUser && isAdmin && hiddenMs >= 5*60*1000 && sinceResub >= 5*60*1000){
+      __lastResubAtMs = Date.now();
+      diag("복귀", "탭 재활성 " + Math.round(hiddenMs/1000) + "초 만 — 구독 재연결");
+      console.info("[V210A_FRESH] 탭 재활성 " + Math.round(hiddenMs/1000) + "초 만 — 구독 재연결");
+      applyRole_(auth.currentUser, true);
+    }
+  });
+
+  /* ===== V210A_AUTHWATCH: 인증 상태 관측 (본체 V204_AUTHWATCH와 같은 형식) =====
+     토큰이 사라지는 순간을 콘솔·diag에 바로 남겨, "작업만 하는데 권한이 풀린다"는 제보가 오면
+     당사자 콘솔에서 이 로그만으로 원인을 좁힐 수 있게 한다. */
+  onIdTokenChanged(auth, (u) => {
+    if(!u){
+      console.warn("[V210A_AUTHWATCH] 토큰 없음 — 로그아웃 상태");
+      diag("토큰", "사라짐");
+    }else{
+      console.info("[V210A_AUTHWATCH] 토큰 갱신 uid=" + String(u.uid).slice(0,8) + " email=" + (u.email ? "O" : "X"));
+      diag("토큰", "갱신 uid=" + String(u.uid).slice(0,8) + " email=" + (u.email ? "O" : "X"));
+    }
+  });
+
   onAuthStateChanged(auth, async (user) => {
+    diag("인증", user ? ("로그인 uid=" + String(user.uid).slice(0,8)) : "로그아웃/빈 상태");
     me = user || null;
     clearRoleRetry_();
     if(!user){
