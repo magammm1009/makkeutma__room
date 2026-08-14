@@ -51,6 +51,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -18176,7 +18177,15 @@ async redeemAwardCode(code){
       renderTileForTest(p){ try{ return renderTile(p); }catch(e){ return null; } }
     };
 
-window.__MK_BINDER_BRIDGE_V176__ = {
+function mkBinderForgetCharaLocal_(uid){
+      try{
+        const pp = state.publicProfiles?.get?.(String(uid));
+        if(pp && pp.charaV1) delete pp.charaV1;
+      }catch(_e){}
+      try{ window.__MK_CHARA_TILE_BRIDGE__?.rerenderTiles?.(String(uid)); }catch(_e){}
+    }
+
+    window.__MK_BINDER_BRIDGE_V176__ = {
       joined(){ try{ return !!state.joined; }catch(e){ return false; } },
       selfUid(){ try{ return String(state.uid || ""); }catch(e){ return ""; } },
       
@@ -18212,6 +18221,42 @@ window.__MK_BINDER_BRIDGE_V176__ = {
         updates[`${rRoomBase(state.roomId)}/playground/charaIndexV1/${state.uid}/o`] = String(owner || "");
         await rUpdate(rRef(rtdb), updates);
         return true;
+      },
+
+canAdminDelete(){ try{ return mkCanForceOffViewer_(); }catch(e){ return false; } },
+
+async adminDeleteChara(uid){
+        const target = String(uid || "").trim();
+        if(!target) return "fail";
+        if(!state.joined || !state.roomId) return "fail";
+        
+        if(target === String(state.uid || "")) return "fail";
+        if(!mkCanForceOffViewer_()) return "fail";
+
+        const base = rRoomBase(state.roomId);
+        
+        try{
+          const updates = {};
+          updates[`${base}/playground/charaIndexV1/${target}`] = null;
+          updates[`${base}/profiles/${target}/charaV1`] = null;
+          updates[`${base}/profiles/${target}/updatedAtMs`] = Date.now();
+          await rUpdate(rRef(rtdb), updates);
+          mkBinderForgetCharaLocal_(target);
+          return "full";
+        }catch(err){
+          console.warn("[V218_BINDERDELETE] 정본 포함 삭제가 거부됐습니다 — 인덱스만 지웁니다(ownerUid가 다른 관리자일 수 있음)", err);
+        }
+        
+        try{
+          const only = {};
+          only[`${base}/playground/charaIndexV1/${target}`] = null;
+          await rUpdate(rRef(rtdb), only);
+          mkBinderForgetCharaLocal_(target);
+          return "indexOnly";
+        }catch(err2){
+          console.warn("[V218_BINDERDELETE] 인덱스 삭제도 실패했습니다", err2);
+          return "fail";
+        }
       }
     };
 
@@ -24407,7 +24452,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17097; 
+const MK_APP_BUILD = 17098; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32882,6 +32927,17 @@ window.__MK_CHARA_TILE_V169__ = {
     margin-top:1px; color:var(--text-soft, #9b8a93); opacity:.85;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  
+  .binderDel{
+    position:absolute; right:4px; top:4px; z-index:2;
+    width:22px; height:22px; padding:0; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; font-family:inherit;
+    border-radius:8px; border:1px solid rgba(255,140,160,.5);
+    background:rgba(40,10,16,.72); color:#ffd6de;
+  }
+  .binderDel:hover{ background:rgba(120,20,40,.85); }
+  .binderDel:disabled{ opacity:.45; cursor:default; }
   @media (max-width:560px){
     .binderGrid{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
     .binderCard{ padding:6px 6px 5px; border-radius:12px; }
@@ -33018,7 +33074,39 @@ function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = 
       el.textContent = '마지막 갱신 ' + d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
     }catch(e){ el.textContent = ''; }
   }
-  function cardOf(it, mine){
+  
+  var deletedUids = Object.create(null);
+  function onAdminDelete(card, it, btn){
+    var b = bridge();
+    if(!b || typeof b.adminDeleteChara !== 'function') return;
+    var who = it.owner ? ('(' + it.owner + ')') : '';
+    var msg = '『' + (it.name || '이름 없음') + '』' + who + '을 도감과 프로필에서 삭제할까요?\n'
+            + '본인이 캐릭터를 다시 저장하면 재등록될 수 있습니다.';
+    if(!window.confirm(msg)) return;
+    btn.disabled = true;
+    Promise.resolve().then(function(){ return b.adminDeleteChara(it.uid); }).then(function(res){
+      if(res !== 'full' && res !== 'indexOnly'){
+        btn.disabled = false;
+        toast('삭제하지 못했어요 — 권한이나 네트워크를 확인해 주세요', 3600);
+        return;
+      }
+      deletedUids[it.uid] = 1;
+      try{ if(card && card.parentNode) card.parentNode.removeChild(card); }catch(e){}
+      items = items.filter(function(x){ return x.uid !== it.uid; });
+      try{ writeCache(items); }catch(e){}     
+      stats.cardCount = items.length;
+      if(res === 'full'){
+        toast('🗑 삭제했어요', 2600);
+      }else{
+        toast('🗑 도감에서만 삭제됐어요 — 프로필 쪽은 방장 권한이라 남아 있어 다음 저장 때 재등록될 수 있어요', 5200);
+      }
+    }).catch(function(e){
+      btn.disabled = false;
+      try{ console.warn('[binder v218] 삭제 실패', e); }catch(_e){}
+      toast('삭제하지 못했어요', 3200);
+    });
+  }
+  function cardOf(it, mine, canAdmin){
     var card = document.createElement('div');
     card.className = 'binderCard' + (mine ? ' mine' : '');
     card.setAttribute('data-uid', it.uid);
@@ -33037,6 +33125,21 @@ function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = 
       ow.title = it.owner;
       card.appendChild(ow);
     }
+    
+    if(canAdmin && !mine){
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'binderDel';
+      del.textContent = '🗑';
+      del.title = '도감에서 삭제 (관리자)';
+      del.setAttribute('aria-label', (it.name || '이름 없음') + ' 삭제');
+      del.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();      
+        onAdminDelete(card, it, del);
+      });
+      card.appendChild(del);
+    }
     return card;
   }
   function render(arr){
@@ -33045,7 +33148,8 @@ function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = 
     teardownRender();                         
     var me = '';
     try{ me = bridge() ? bridge().selfUid() : ''; }catch(e){}
-    var list = arr.slice().sort(function(x, y){
+    
+    var list = (arr || []).filter(function(x){ return x && !deletedUids[x.uid]; }).sort(function(x, y){
       if(me){                                  
         if(x.uid === me && y.uid !== me) return -1;
         if(y.uid === me && x.uid !== me) return 1;
@@ -33053,7 +33157,10 @@ function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = 
       return (y.charaV1.updatedAtMs || 0) - (x.charaV1.updatedAtMs || 0);   
     });
     grid.textContent = '';
-    list.forEach(function(it){ grid.appendChild(cardOf(it, !!me && it.uid === me)); });
+    
+    var canAdmin = false;
+    try{ var bb = bridge(); canAdmin = !!(bb && typeof bb.canAdminDelete === 'function' && bb.canAdminDelete()); }catch(e){}
+    list.forEach(function(it){ grid.appendChild(cardOf(it, !!me && it.uid === me, canAdmin)); });
     stats.renderCount++; stats.cardCount = list.length;
     var cnt = $('charaBinderCount');
     if(cnt) cnt.textContent = list.length + '명';
