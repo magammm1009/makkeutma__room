@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V215_COINCOUPON: 관리자가 코인 쿠폰(3,000/5,000/10,000)을 발급하고, 작가님은 기존 코드 등록 칸(V215_RENAME으로 "🎖️ 쿠폰 코드"가 됐다)에 그대로 등록해 코인을 충전한다(2026-08-14). ★ 규칙(firebase-rules.json) 수정 0건 — 기존 V170_AWARD 인프라를 그대로 재사용했다. awardCodes/$code 스키마가 item(문자열 ≤120)+createdAtMs를 요구하고 label/note/createdBy/usedBy/usedName/usedAtMs만 허용($other:false)하므로, **금액을 item 문자열에 인코딩**하면(item="coin:3000") 스키마를 그대로 통과한다. 그래서 공짜로 얻는 것이 크다: 비소유자 쓰기가 "item·createdAtMs 불변 + usedBy=본인 + 미사용(또는 본인)" 전이만 허용되므로 **1회용 보장·동시 등록 경합 방지·본인 재조회가 이미 규칙에 박혀 있다.** 새 노드를 팠다면 이 보증을 처음부터 다시 만들고 규칙도 새로 배포해야 했다. 브리지(redeemAwardCode)도 item을 그대로 돌려주므로 한 글자도 고치지 않았다 — 사용 쪽에서 "coin:"으로 시작하는지만 보고 갈라진다. ⚠️⚠️ 가장 중요한 안전선: **again(재등록) 경로에서는 재충전하지 않는다.** 파츠는 두 번 받아도 결과가 같지만(멱등) 코인은 멱등이 아니라, 같은 쿠폰을 다시 등록할 때마다 잔액이 늘면 무한 발권기가 된다. again은 원래 "브라우저를 초기화해 파츠를 잃은 사람의 복구" 경로인데 코인은 그 역할을 지갑 서버 백업(V189_WALLET/V209 단조 보장)이 이미 맡고 있으므로, 안내 문구로 그 사실을 알리고 충전은 막는다. ⚠️ 잔여 위험(설계상 남김): 브리지가 서버에 usedBy를 먼저 찍고 돌아온 뒤 로컬 충전이 실행되므로, 그 사이 수 ms에 탭이 죽으면 쿠폰은 소진됐는데 충전이 안 된 상태가 된다. again이 재충전을 막으니 자동 복구는 없고, 구제 경로는 관리자가 발급 내역에서 usedBy(사용자·시각이 이미 표시된다)를 확인하고 새 쿠폰을 한 장 더 발급하는 것이다. 충전은 구매(spendCoins)와 같은 이유로 markDirty(true) 즉시 백업하고, spendCoins가 떨어뜨리던 coinCarrySec(5초=1코인 이월분)은 새 코드에서 보존한다(기존 버그는 범위 밖이라 손대지 않음). 발급 권한은 기존 개근상과 동일(규칙상 ownerUid). ★ V215_RENAME: 이 칸이 더 이상 개근상 전용이 아니게 되어 **사용자에게 보이는 문자열만** "개근상 코드"→"쿠폰 코드"로 바꿨다(캐꾸 창 제목·접기 힌트, 특수 파츠 미리보기 안내·배지, 장바구니 툴팁, 관리자 발급 섹션 제목). 내부 식별자는 전부 그대로 둔다 — mkAward* id, els.award*, V170_AWARD 마커, console.warn 태그('[chara v170]' 등), awardCodes 경로까지 바꾸면 diff가 불필요하게 커지고 무엇보다 **콘솔 로그 검색 연속성이 끊긴다**(예전 제보 로그와 새 로그를 같은 키워드로 못 찾게 된다). 빌드 17095 -->
 <!-- V214_NEWBIE_FRONT: 뉴비 덩쿨·🌱라벨을 타일 안 모든 요소 제일 앞으로(2026-08-14 방장 확정). V212는 글자 가림을 피하려 z-index 없이 .content 아래 깔았는데, 손캠·화공 LIVE의 영상 상자(.handcamBox z20)가 타일을 통째로 덮어 뉴비 표시가 사라졌다. 덩쿨 z21·라벨 z22로 올려 영상 위에도 보이게 한다(액자는 위에 얹는 것). pointer-events:none이라 손캠 클릭·우클릭 강퇴 메뉴는 그대로 통과. 잎이 배지·타이머 글자 가장자리를 스치는 건 수용(거슬리면 z-index 두 줄을 .tile.hcLiveTile 한정으로 좁혀 V212 동작 복귀). 빌드 17094 -->
 <!-- V213_NEWBIEPICK: 관리자가 특정 멤버를 직접 뉴비로 지정(2026-08-14). 승인 페이지 [멤버] 탭의 🌱 버튼이 settings/newbie/overrides/{uid}에 {untilMs,…}를 쓰면, 그 멤버의 브라우저가 다음 입장 때 설정 읽기(이미 하던 1건)에 실려 온 override를 보고 자기 presence에 도장을 찍는다 — 추가 읽기 0건. ⚠️ 수동 지정은 enabled(자동 기준일 규칙 스위치)와 무관하게 동작한다: 지정 자체가 관리자의 명시적 의사표시이고, 해제는 승인 페이지 [해제] 버튼(overrides 삭제)으로 한다. 그래서 mkNewbieSelfStamp_의 최종 isNewbie 판정에서 enabled 게이트를 뺐다(자동 규칙 계산은 여전히 enabled 안쪽이라 의미 불변). 자동 규칙과 겹치면 더 늦게 끝나는 쪽(max)을 쓴다. 빌드 17093 -->
 <!-- V212_BTNROW + V212_NEWBIE: 바로가기 줄바꿈 수정 + 신입 작가 새싹 덩쿨 테두리(2026-08-14). ①V212_BTNROW — ✨캐꾸/🔥공지&출석/📚숙제장 중 가운데만 두 줄로 꺾이던 문제. ⚠️ 처음 의심한 "그리드가 4열이라 빈 칸이 남는다"는 데스크톱에서 원인이 아니었다: 기본 .btnRow의 repeat(4)와 V113의 #dashShortcuts repeat(4)!important는 둘 다 뒤쪽 V119 블록에 덮여 있고, 그쪽이 grid-template-columns:none + grid-auto-flow:column + grid-auto-columns:minmax(0,1fr)로 다시 깔아 실제로는 버튼 수(3개)만큼 균등 분할 중이었다(V179에서 📎뽀모도로가 빠진 흔적이 repeat(4)로 남아 있을 뿐). 진짜 원인은 ⑴균등 1/3이라 라벨 길이 차이를 못 받아 주고 ⑵같은 V119 블록이 `white-space:normal !important`로 줄바꿈을 일부러 다시 켠 것(기본 .btnRow button은 nowrap)이 겹친 것이다. → 트랙을 auto 3개로 바꿔 내용만큼 확보한 뒤 남는 공간을 나눠 갖게 했다. ⚠️ 반드시 V119보다 뒤에 놓아야 이긴다(같은 특이도+!important라 순서로만 갈린다) — 앞에 두면 조용히 무시된다. 모바일(≤760px) 입장 후는 V107/V120이 body.joined로 display:flex를 걸어 두어 영향 없음. ②V212_NEWBIE — 새로 승인된 참여자의 타일에 새싹 덩쿨 테두리(SVG 오버레이 + 잎 12장 살랑임)와 오른쪽 위 🌱 뉴비 라벨. V203_미리보기_뉴비테두리.html의 시안 B 확정안이고, 덩쿨 SVG는 그 파일의 buildVineSVG()를 1회 실행해 뽑은 **정적 문자열 상수**다(런타임 생성 안 함). 판정의 진실은 각자 자기 presence에 찍는 도장(newbieUntilMs) 하나뿐 — 입장 시 settings/newbie와 자기 members/{uid}만 읽어 계산하고, 렌더러는 그 도장만 본다(남의 members는 규칙상 읽을 수도 없고 타일마다 서버를 왕복할 수도 없다). ⚠️ approvedAtMs 함정: 매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 승인일이 전부 같다 — cutoffMs 비교가 없으면 방 전체가 뉴비가 된다. 그래서 approvedAtMs >= cutoffMs만 대상이다. 읽기 2건은 모두 readGuard_(8초)로 감쌌고(맨 await 금지 — settle 안 되는 Promise 사고 5회), 실패하면 도장 없이 조용히 넘어가 다음 입장에 자연히 재시도된다. 쓰기는 값이 실제로 달라질 때만 하므로 뉴비가 아닌 대다수는 **쓰기가 아예 일어나지 않는다**(기존 값은 ensureMeDoc이 이미 하던 rGet에서 주워 읽기 추가 0건). tileKey에 뉴비 여부(불리언)를 넣어 기간이 끝나면 스스로 사라진다. ★ 이 기능은 관리자가 settings/newbie.enabled를 켜기 전에는 **완전 무동작**이다 — 도장을 찍는 쪽이 아무것도 쓰지 않으므로 렌더러도 그릴 것이 없고, 배포해도 화면은 그대로다. 빌드 17092 -->
@@ -6855,8 +6856,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div id="ghostSweepStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">[대상 찾기]를 누르면 24시간 넘게 방치된 접속을 보여줘요.</div>
 <!-- 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급 (코인 구매 불가 · 코드 1개당 1명) -->
 <div class="hr"></div>
-<div class="hint">🎖️ 특수 아이템 코드 발급</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">개근하신 작가님께 드리는 코드예요. 이 파츠는 코인으로는 살 수 없고 코드로만 받을 수 있어요. 코드 1개당 한 분만 쓸 수 있으니, 인원수만큼 발급해서 한 줄씩 나눠 주세요. 작가님이 기기나 브라우저를 바꿔서 파츠가 사라졌다면, 새 코드를 하나 더 발급해 드리면 돼요.</div>
+<div class="hint">🎖️ 쿠폰 코드 발급</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">개근하신 작가님께 드리는 특수 파츠 코드예요. 이 파츠는 코인으로는 살 수 없고 코드로만 받을 수 있어요. 코드 1개당 한 분만 쓸 수 있으니, 인원수만큼 발급해서 한 줄씩 나눠 주세요. 작가님이 기기나 브라우저를 바꿔서 파츠가 사라졌다면, 새 코드를 하나 더 발급해 드리면 돼요. 💰 코인 쿠폰은 아래 버튼으로 따로 발급하고, 이쪽은 <b>다시 등록해도 재충전되지 않아요</b>(잔액은 서버에 백업돼요).</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <select aria-label="발급할 특수 아이템" id="awardItemSelect" style="flex:1 1 220px; min-width:180px; border-radius:12px; padding:10px 12px;">
 <option value="">관리자 인증 후 목록을 불러와요</option>
@@ -6871,6 +6872,15 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="primary" id="awardIssue" type="button">🎁 코드 발급</button>
 <button class="ghost" id="awardRefresh" type="button">🔄 내역 새로고침</button>
 <button class="ghost" id="awardCopy" type="button">📋 발급 코드 복사</button>
+</div>
+<!-- V215_COINCOUPON: 코인 쿠폰 발급. 위 특수 아이템과 같은 awardCodes 인프라를 그대로 쓰므로
+     발급 코드도 아래 같은 칸(#awardCodeOut)에 쌓인다. 위 [개수]·[아이템 선택]과는 무관하고,
+     [메모]는 함께 쓴다(발급 내역에서 "8월 이벤트" 같은 표시를 남길 수 있게). -->
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<span class="tiny" style="opacity:.82;">💰 코인 쿠폰:</span>
+<button class="ghost awardCoinBtn" data-amount="3000" type="button">3,000</button>
+<button class="ghost awardCoinBtn" data-amount="5000" type="button">5,000</button>
+<button class="ghost awardCoinBtn" data-amount="10000" type="button">10,000</button>
 </div>
 <textarea id="awardCodeOut" readonly aria-label="방금 발급한 코드 목록" placeholder="발급한 코드가 여기에 한 줄씩 나와요" rows="4" style="width:100%; margin-top:8px; border-radius:12px; padding:9px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.5px; resize:vertical;"></textarea>
 <div class="tiny" id="awardListBox" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">발급 내역은 [🔄 내역 새로고침]을 누르면 보여요.</div>
@@ -15602,6 +15612,68 @@ async function issueAwardCodes_(){
     if(els.awardIssue) els.awardIssue.disabled = false;
   }
 }
+/* ═══ V215_COINCOUPON (2026-08-14): 코인 쿠폰(3천/5천/1만) 발급 ═══
+   ★ 규칙(firebase-rules.json)은 한 글자도 고치지 않았다. awardCodes/$code 스키마가
+     item(문자열 ≤120) + createdAtMs를 요구하고 label/note/createdBy/usedBy/usedName/usedAtMs만
+     허용하며 $other:false이므로, **코인 금액을 item 문자열에 인코딩**하면 그대로 통과한다:
+       item = "coin:3000"
+   ★ 그래서 얻는 것: 1회용 보장·경합 방지·본인 재조회가 **이미 규칙에 박혀 있다.**
+     비소유자 쓰기는 "item·createdAtMs 불변 + usedBy=본인 + 미사용(또는 본인)" 전이만 허용되므로,
+     두 사람이 같은 코드를 동시에 등록해도 한 명만 성공한다. 새 노드를 팠다면 이 보증을
+     처음부터 다시 만들어야 했다.
+   ★ 브리지(redeemAwardCode)도 수정할 필요가 없다 — item을 그대로 돌려주므로
+     사용 쪽에서 "coin:"으로 시작하는지만 보면 된다.
+   발급 권한은 기존 개근상과 동일하다(규칙상 ownerUid, 관리자 비번 언락이 ownerUid를 재클레임한다). */
+async function issueCoinCoupon_(amount){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  if(!state.roomId){ showToast("방 정보를 확인하지 못했어요"); return; }
+  const amt = Math.floor(Number(amount));
+  // 금액은 화이트리스트로만 받는다 — data-amount가 조작돼도 임의 금액 쿠폰이 나오지 않게.
+  if([3000, 5000, 10000].indexOf(amt) < 0){ showToast("코인 쿠폰 금액이 올바르지 않아요"); return; }
+  const note = String(els.awardNote?.value || "").trim().slice(0, 30);
+  const btn = document.querySelector('.awardCoinBtn[data-amount="' + amt + '"]');
+  if(btn) btn.disabled = true;   // 연타 방지(같은 금액 버튼만 잠근다)
+  try{
+    let code = "";
+    for(let tries = 0; tries < 5; tries++){ // 키 충돌 방지 — issueAwardCodes_와 같은 로직
+      const cand = genAwardCode_(12);
+      const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+      if(!(snap && snap.exists())){ code = cand; break; }
+    }
+    if(!code) throw new Error("코드 생성 실패(중복)");
+    const payload = {
+      item: "coin:" + amt,
+      label: "코인 " + amt.toLocaleString("ko-KR"),   // 발급 내역이 label을 그대로 보여준다
+      createdAtMs: Date.now(),
+      createdBy: String(state.uid || "")
+    };
+    if(note) payload.note = note;
+    await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+    /* ⚠️ 여기는 issueAwardCodes_와 달리 출력칸을 **덮어쓰지 않고 한 줄씩 쌓는다.**
+       그쪽은 [개수]만큼 한 번에 N장을 만들어 결과가 곧 전체 목록이지만,
+       코인 쿠폰은 버튼을 눌러 한 장씩 만드는 구조라 덮어쓰면 방금 만든 앞 코드가
+       화면에서 사라진다(아직 아무 데도 적어 두지 않았는데 사라지면 그대로 유실이다). */
+    if(els.awardCodeOut){
+      /* ⚠️ 주석에 아라비아 숫자를 쓰면 안 된다(V215 검수에서 잡은 함정).
+         작가가 이 줄을 통째로 복사해 등록칸에 붙여넣으면 normAwardCode가 영숫자만 남기는데,
+         "(코인 3,000)"의 3000이 살아남아 코드 뒤에 붙는다 → 형식(4~24자)은 통과하고
+         "코드를 찾을 수 없어요"로만 떨어져 원인을 알 수 없게 된다.
+         한글 숫자(삼천/오천/일만)면 통째로 붙여넣어도 정확히 코드 12자만 남아 오히려 잘 동작한다. */
+      const amtKo = ({ 3000:"삼천", 5000:"오천", 10000:"일만" })[amt] || "";
+      const line = fmtAwardCode_(code) + "  (코인 " + amtKo + ")";
+      const prev = String(els.awardCodeOut.value || "");
+      els.awardCodeOut.value = prev ? (prev + "\n" + line) : line;
+      try{ els.awardCodeOut.scrollTop = els.awardCodeOut.scrollHeight; }catch(_e){}
+    }
+    showToast(`💰 코인 ${amt.toLocaleString("ko-KR")} 쿠폰 발급 완료! 아래에서 복사해 주세요`, 3600);
+    refreshAwardCodeList_().catch(()=>{});
+  }catch(e){
+    console.warn("[V215_COINCOUPON] 코인 쿠폰 발급 실패", e);
+    showToast("코인 쿠폰 발급에 실패했어요 · 관리자 인증과 네트워크를 확인해 주세요", 4200);
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
 async function refreshAwardCodeList_(){
   const box = els.awardListBox;
   if(!box) return;
@@ -23367,6 +23439,14 @@ try{
     if(els.adminResetAllTimers) els.adminResetAllTimers.addEventListener("click", ()=>{ adminResetAllTimers().catch(()=>{}); });
     // 🎖️ V170_AWARD: 개근상 특수 아이템 코드 발급
     if(els.awardIssue) els.awardIssue.addEventListener("click", ()=>{ issueAwardCodes_().catch(()=>{}); });
+    /* V215_COINCOUPON: 코인 쿠폰 버튼 3개. 금액은 data-amount로 넘기고 화이트리스트로 다시 검증한다.
+       els에 담지 않고 querySelectorAll을 쓰는 이유 — 셋이 같은 동작에 금액만 다른 형제라
+       id를 셋 만들어 els에 등록하는 것보다 클래스 하나로 도는 편이 붙이고 떼기 쉽다. */
+    try{
+      document.querySelectorAll(".awardCoinBtn").forEach((b)=>{
+        b.addEventListener("click", ()=>{ issueCoinCoupon_(Number(b.dataset.amount || 0)).catch(()=>{}); });
+      });
+    }catch(_e){}
     if(els.awardRefresh) els.awardRefresh.addEventListener("click", ()=>{ refreshAwardCodeList_().catch(()=>{}); });
     if(els.awardCopy) els.awardCopy.addEventListener("click", ()=>{ copyAwardCodes_().catch(()=>{}); });
     if(els.adminProfileRefresh) els.adminProfileRefresh.addEventListener("click",()=>{ loadAdminProfileCatalog_().catch(()=>{}); });
@@ -26460,7 +26540,7 @@ try{
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17094; // ✅ V214: 뉴비 덩쿨·라벨을 타일 최전면으로(손캠·화공 영상 위에도 표시 — 방장 확정).
+  const MK_APP_BUILD = 17095; // ✅ V215: 코인 쿠폰(3천/5천/1만) — awardCodes 재사용, item="coin:N", again 재충전 금지.
   /* ⚠️ V208(2026-08-14): "지금 이 탭이 몇 번 빌드인가"를 확인할 방법이 없었다.
      소스보기(Ctrl+U)는 **이미 로드된 문서**를 보여줘서 새로고침 전에는 옛 버전이 나오고,
      그래서 배포가 됐는지 안 됐는지를 놓고 계속 헷갈렸다.
@@ -31789,7 +31869,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   #mkAwardToggle:hover{ color:#ffe9b8; }
   #mkAwardToggle:focus-visible{ outline:2px solid rgba(255,216,92,.55); outline-offset:3px; border-radius:8px; }
   .mkAwardCaret{ flex:0 0 auto; font-weight:1100; color:rgba(255,216,92,.85); }
-  #mkAwardBox .petSectionTitle > span:first-child{ flex:0 0 auto; white-space:nowrap; } /* 캐럿이 끼어도 "개근상 코드"는 안 쪼개지게 */
+  #mkAwardBox .petSectionTitle > span:first-child{ flex:0 0 auto; white-space:nowrap; } /* 캐럿이 끼어도 "쿠폰 코드"(V215_RENAME 전 "개근상 코드")는 안 쪼개지게 */
   /* 접힌 상태: 제목 한 줄만 남긴다 — 아래 여백을 걷고 안내문은 한 줄로 잘라 높이를 40px대로 붙든다 */
   #mkAwardBox.mkAwardCollapsed .petSectionTitle{ margin-bottom:0; }
   #mkAwardBox.mkAwardCollapsed .mkAwardHint{ min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:right; }
@@ -32756,7 +32836,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     var sp = specialTryOnItems(); // V170_AWARD2: 결제되지 않는 안내 행
     var spTail = sp.length ? ' · 🎖️ ' + sp.length + '개는 코드로 받아요' : '';
     var spHtml = sp.map(function(it){
-      return '<div class="mkCartItem mkCartSpecial" data-award="1" role="button" tabindex="0" title="개근상 파츠라 코인으로는 살 수 없어요 — 눌러서 코드 등록칸으로 가기">'
+      return '<div class="mkCartItem mkCartSpecial" data-award="1" role="button" tabindex="0" title="특별 파츠라 코인으로는 살 수 없어요 — 눌러서 쿠폰 코드 등록칸으로 가기">'
         + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
         + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
         + '<span class="mkCartPrice mkCartCodeNeed">🎖️ 코드 필요</span>'
@@ -32853,9 +32933,56 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     try{ var box = $id('mkAwardBox'); if(box && box.scrollIntoView) box.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){}
     try{ inp.focus({ preventScroll:true }); }catch(e){ try{ inp.focus(); }catch(e2){} }
   }
+  /* ═══ V215_COINCOUPON: 코인 쿠폰 사용 ═══
+     발급 쪽이 item에 "coin:3000"처럼 금액을 인코딩해 두었다(규칙 변경 0건을 위해).
+     ⚠️⚠️ 이 함수의 가장 중요한 안전선은 **again 경로에서 재충전하지 않는 것**이다.
+        파츠는 두 번 받아도 결과가 같지만(멱등) **코인은 멱등이 아니다** — 같은 쿠폰을
+        다시 등록할 때마다 잔액이 늘면 무한 발권기가 된다.
+        again은 원래 "브라우저를 초기화해 파츠를 잃은 사람의 복구" 경로인데,
+        코인은 그 역할을 지갑 서버 백업(V189_WALLET/V209)이 이미 맡고 있다.
+     ⚠️ 잔여 위험(설계상 남겨 둔 것): 브리지는 서버에 usedBy를 먼저 찍고(rSet) 돌아온 뒤에야
+        여기서 로컬 충전을 한다. 그 사이 수 ms 안에 탭이 죽으면 **쿠폰은 소진됐는데
+        충전은 안 된** 상태가 된다. again이 재충전을 막으므로 자동 복구는 없다 —
+        구제 경로는 관리자가 발급 내역에서 usedBy(사용자·시각이 이미 표시된다)를 확인하고
+        새 쿠폰을 한 장 더 발급하는 것이다. */
+  function applyCoinCoupon(res, item){
+    var amount = Math.floor(Number(item.slice(5)));
+    var inp = $id('mkAwardCodeInput');
+    if(!isFinite(amount) || amount < 1 || amount > 1000000){
+      setAwardMsg('쿠폰 정보가 이상해요 — 관리자님께 알려 주세요 🥺', 'err');
+      toast('💰 쿠폰 정보가 이상해요 — 관리자님께 알려 주세요', 3400);
+      return;
+    }
+    if(res && res.again === true){
+      setAwardMsg('이미 등록한 쿠폰이에요 — 코인은 지갑 서버 백업으로 복구되므로 다시 충전되지 않아요. 충전을 못 받으셨다면 관리자님께 알려 주세요 🙏', 'err');
+      toast('💰 이미 등록한 쿠폰이에요 — 다시 충전되지 않아요', 3800);
+      if(inp) inp.value = '';
+      return;
+    }
+    /* ⚠️ coinCarrySec(5초=1코인 이월분)을 반드시 **보존**한다.
+       바로 위 spendCoins는 totalSec/coins만 다시 써서 이월분을 떨어뜨리는 사소한 버그가 있는데,
+       이번 범위가 아니라 일부러 손대지 않았다(surgical). 새 코드만 올바르게 쓴다. */
+    var d = {};
+    try{ d = JSON.parse(localStorage.getItem(STATS_KEY) || 'null') || {}; }catch(e){ d = {}; }
+    var s = {
+      totalSec: Math.max(0, Math.floor(Number(d.totalSec) || 0)),
+      coins: Math.max(0, Math.floor(Number(d.coins) || 0)) + amount,
+      coinCarrySec: Math.max(0, Math.floor(Number(d.coinCarrySec) || 0))
+    };
+    try{ localStorage.setItem(STATS_KEY, JSON.stringify(s)); }catch(e){}
+    // V189_WALLET: 충전도 구매와 같은 이유로 즉시 백업한다 — 디바운스를 기다리다 이탈하면
+    // 서버에 옛 잔액이 남고, 그 값이 다음 기기에서 방금 받은 코인을 덮어쓴다.
+    try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
+    refreshWalletPill();
+    if(inp) inp.value = '';
+    setAwardMsg('💰 코인 ' + amount.toLocaleString('ko-KR') + ' 충전 완료!', 'ok');
+    toast('💰 코인 ' + amount.toLocaleString('ko-KR') + ' 충전 완료!', 3400);
+  }
   /* 등록 성공 → 보유 부여(localStorage) + 해당 탭으로 이동 + 타일 재합성 트리거 */
   function applyAwardItem(res){
     var item = String((res && res.item) || '');
+    // V215_COINCOUPON: 코인 쿠폰은 파츠가 아니므로 아래 "cat/name" 파싱 전에 갈라진다.
+    if(item.indexOf('coin:') === 0){ applyCoinCoupon(res, item); return; }
     var i = item.indexOf('/');
     if(i <= 0 || i >= item.length - 1){
       setAwardMsg('코드는 확인했는데 파츠 정보가 이상해요 — 관리자님께 알려 주세요 🥺', 'err');
@@ -32881,7 +33008,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
       toast('🎖️ 이미 등록한 코드예요 — 파츠를 다시 찾아왔어요!', 3400);
     }else{
       setAwardMsg('🎖️ ' + label + ' 을(를) 받았어요! 착용하고 [💾 저장]을 눌러 주세요 ✨', 'ok');
-      toast('🎖️ 개근상 파츠를 받았어요! 착용하고 [💾 저장]을 눌러 주세요 ✨', 3800);
+      toast('🎖️ 특별 파츠를 받았어요! 착용하고 [💾 저장]을 눌러 주세요 ✨', 3800);
     }
   }
   function redeemAward(){
@@ -33116,10 +33243,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         var sTry = isOn && !has; // 미보유인데 착장 중 = 미리보기
         var sTitle = esc(p.name)+' — '+esc(tag.label)+(has
           ? ' · 보유 중'
-          : (sTry ? ' · 미리보기 중 — 개근상 코드를 등록하면 내 것이 돼요' : ' · 눌러서 미리보기 · 개근상 코드로 받을 수 있어요'));
+          : (sTry ? ' · 미리보기 중 — 쿠폰 코드를 등록하면 내 것이 돼요' : ' · 눌러서 미리보기 · 쿠폰 코드로 받을 수 있어요'));
         return '<div class="mkCharaThumb'+(isOn?' on':'')+(sTry?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" data-special="1" title="'+sTitle+'">'
           + thumbImgHtml(cat.key, p.name, p.url, '')
-          + '<span class="mkCharaPrice mkSpecialBadge">'+esc(tag.emoji)+' '+(has?'보유 ✓':(sTry?'미리보기':'개근상'))+'</span>'
+          + '<span class="mkCharaPrice mkSpecialBadge">'+esc(tag.emoji)+' '+(has?'보유 ✓':(sTry?'미리보기':'쿠폰'))+'</span>'
           + '</div>';
       }
       var price = partPrice(cat.key, p.name);
@@ -33144,7 +33271,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
         var onNow = function(){ return isMultiCat(cat.key) ? selArr(cat.key).indexOf(nm)>=0 : chara.sel[cat.key]===nm; }; // V172_GEAR
         var wasOn = isSp && onNow();
         selectPart(cat.key, nm); // V169_SHOP: 미보유도 즉시 착장(입어보기) — 결제는 장바구니에서
-        if(isSp && !wasOn && onNow()) toast('🎖️ 미리보기예요 — 개근상 코드를 등록하면 내 것이 돼요', 2600);
+        if(isSp && !wasOn && onNow()) toast('🎖️ 미리보기예요 — 쿠폰 코드를 등록하면 내 것이 돼요', 2600);
       });
     });
   }
@@ -33446,13 +33573,13 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
        한 달에 한 번 몇 분만 쓰는 칸이라 기본은 접어 두고(제목 줄만) 남는 높이를 미리보기 무대에 양보한다.
        접힘 상태는 저장하지 않는다 — 모달을 닫으면 다시 접힌다. */
     +   '<div class="mkCharaSection mkAwardBox mkAwardCollapsed" id="mkAwardBox">'
-    +     '<div class="petSectionTitle" id="mkAwardToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mkAwardPanel"><span>🎖️ 개근상 코드</span><span class="tiny mkAwardHint">관리자님께 받은 코드를 입력하면 특별 파츠가 열려요</span><span class="mkAwardCaret" aria-hidden="true">▾</span></div>'
+    +     '<div class="petSectionTitle" id="mkAwardToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mkAwardPanel"><span>🎖️ 쿠폰 코드</span><span class="tiny mkAwardHint">관리자님께 받은 코드를 입력하면 특별 파츠·코인이 열려요</span><span class="mkAwardCaret" aria-hidden="true">▾</span></div>'
     +     '<div id="mkAwardPanel" style="display:none">'
     +       '<div class="mkAwardRow">'
     +         '<input id="mkAwardCodeInput" type="text" placeholder="코드 입력 (예: ABCD-1234-EFGH)" autocomplete="off" spellcheck="false" maxlength="24">'
     +         '<button type="button" id="mkAwardBtn">🎁 등록</button>'
     +       '</div>'
-    +       '<div class="tiny" id="mkAwardMsg">코드 하나는 한 분만 쓸 수 있어요. 같은 브라우저에서라면 다시 등록해 파츠를 되찾을 수 있고, 기기나 브라우저를 바꿔서 파츠가 사라졌다면 관리자님께 새 코드를 요청해 주세요.</div>'
+    +       '<div class="tiny" id="mkAwardMsg">코드 하나는 한 분만 쓸 수 있어요. 같은 브라우저에서라면 다시 등록해 파츠를 되찾을 수 있고, 기기나 브라우저를 바꿔서 파츠가 사라졌다면 관리자님께 새 코드를 요청해 주세요. 💰 코인 쿠폰도 이 칸에 등록해요(코인은 한 번만 충전되고, 잔액은 서버에 백업돼요).</div>'
     +     '</div>'
     +   '</div>'
     /* V169_SHOP2: 저장 바 — 캐릭터 이름(≤5자) + 명시적 [💾 저장] (결제와 분리, 저장해야 확정) */
