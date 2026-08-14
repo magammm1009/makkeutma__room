@@ -95,6 +95,8 @@
       <button role="tab" aria-selected="false" data-tab="members" type="button">멤버 <span id="cntMembers">0</span></button>
       <button role="tab" aria-selected="false" data-tab="admins"  type="button">관리자 <span id="cntAdmins">0</span></button>
       <button role="tab" aria-selected="false" data-tab="archive" type="button">보관함 <span id="cntArchive">0</span></button>
+      
+      <button role="tab" aria-selected="false" data-tab="news" type="button">📰 동향</button>
     </div>
 
     <section id="tab-pending">
@@ -152,6 +154,39 @@
       </p>
       <div id="archiveList"><p class="muted">불러오는 중…</p></div>
     </section>
+
+    
+    <section id="tab-news" class="hide">
+      <h2>📰 업계 동향</h2>
+      <p class="muted">기사·투고·공모전 소식을 등록하면 작업방에 알림 티커가 뜹니다.</p>
+
+      <div class="card" id="newsFormCard">
+        <div class="row">
+          <select id="newsType">
+            <option value="article">기사</option>
+            <option value="submit">투고</option>
+            <option value="contest">공모전</option>
+          </select>
+          <input id="newsTitle" type="text" placeholder="제목" maxlength="120" style="flex:1;min-width:180px"/>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="newsUrl" type="url" placeholder="https://..." style="flex:1;min-width:220px"/>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="newsMemo" type="text" placeholder="메모(선택)" maxlength="240" style="flex:1;min-width:180px"/>
+        </div>
+        
+        <div class="row hide" id="newsDeadlineRow" style="margin-top:8px">
+          <label class="muted" for="newsDeadline" style="min-width:64px">마감일</label>
+          <input id="newsDeadline" type="date"/>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="newsSubmitBtn" type="button">등록</button>
+        </div>
+      </div>
+
+      <div id="newsList"><p class="muted">이 탭을 열면 목록을 불러옵니다.</p></div>
+    </section>
   </div>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -161,7 +196,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, onIdTokenChanged, signOut,
          sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, get, onValue, update }
+import { getDatabase, ref, get, onValue, update, push, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
@@ -246,6 +281,8 @@ async function completeLinkIfAny(){
 }
 
 let me = null, isOwner = false, isAdmin = false;
+
+let __adminsCache = {};
 
 function isPermissionDenied_(err){
   const code = String(err?.code || "").toLowerCase();
@@ -422,6 +459,166 @@ await update(ref(db, NEWBIE_PATH), payload);
   }
 });
 
+const NEWS_PATH = `rooms/${ROOM}/news`;
+const NEWS_STALE_MS = 90 * 24 * 60 * 60 * 1000;   
+                                                   
+const NEWS_TYPE_KO = { article: "기사", submit: "투고", contest: "공모전" };
+
+function __seoulDateKeyFromMs_(ms){
+  try{
+    const t = Number(ms || Date.now());
+    const kst = new Date(t + 9 * 3600000);
+    const y = kst.getUTCFullYear();
+    const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(kst.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }catch(_e){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+}
+
+function myNick_(){
+  try{
+    const rec = me && __adminsCache ? __adminsCache[me.uid] : null;
+    if(rec && rec.nick) return String(rec.nick).slice(0, 40);
+  }catch(_e){}
+  const local = String(me?.email || "").split("@")[0];
+  return (local || me?.uid || "").slice(0, 40);
+}
+
+function renderNews_(val){
+  const box = $("newsList");
+  const items = Object.entries(val || {}).sort((a, b) => Number(b[1]?.createdAtMs || 0) - Number(a[1]?.createdAtMs || 0));
+  if(!items.length){ box.innerHTML = '<p class="muted">등록된 동향이 없습니다.</p>'; return; }
+  const now = Date.now();
+  box.innerHTML = items.map(([id, v]) => {
+    const stale = (now - Number(v?.createdAtMs || 0)) > NEWS_STALE_MS;
+    return `
+    <div class="card" data-id="${esc(id)}">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span class="pill ok">${esc(NEWS_TYPE_KO[v?.type] || v?.type || "?")}</span>
+          ${stale ? '<span class="pill warn">오래됨</span>' : ''}
+          <b><a href="${esc(v?.url || "#")}" target="_blank" rel="noopener">${esc(v?.title || "(제목 없음)")}</a></b>
+          ${v?.memo ? `<div class="muted">${esc(v.memo)}</div>` : ''}
+          ${v?.deadlineMs ? `<div class="muted">마감 ${esc(newbieMsToDateInput_(v.deadlineMs))}</div>` : ''}
+          <div class="muted">${esc(v?.byNick || "")} · ${esc(fmt(v?.createdAtMs))}</div>
+        </div>
+        <button class="danger newsDelete" type="button">삭제</button>
+      </div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".newsDelete").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest("[data-id]").dataset.id;
+      if(!confirm("이 동향을 삭제할까요?")) return;
+      const label = btn.textContent;
+      btn.disabled = true; btn.textContent = "삭제 중…";
+      try{
+        
+        await update(ref(db, NEWS_PATH), { [id]: null });
+        diag("동향", "삭제 id=" + id);
+        toast("삭제했습니다.", 3000);
+        loadNews_();
+      }catch(err){
+        console.warn("[V219A_NEWS] 삭제 실패", err);
+        diag("동향", "삭제 실패 " + (err?.code || err?.message || ""));
+        toast("삭제 실패: " + (err?.code || err?.message || ""), 5000);
+      }finally{
+        btn.disabled = false; btn.textContent = label;
+      }
+    });
+  });
+}
+
+async function loadNews_(){
+  const box = $("newsList");
+  box.innerHTML = '<p class="muted">불러오는 중…</p>';
+  try{
+    const snap = await getWithTimeout_(ref(db, NEWS_PATH), "동향");
+    const val = snap.exists() ? snap.val() : {};
+    renderNews_(val);
+    diag("동향", "로드 완료 " + Object.keys(val || {}).length + "건");
+  }catch(err){
+    console.warn("[V219A_NEWS] 목록 로드 실패", err);
+    diag("동향", "로드 실패 " + (err?.code || err?.message || ""));
+    
+    box.innerHTML = '<p class="muted">동향을 불러오지 못했습니다 · 잠시 후 다시 시도해 주세요.</p>';
+  }
+}
+
+$("newsType").addEventListener("change", () => {
+  $("newsDeadlineRow").classList.toggle("hide", $("newsType").value !== "contest");
+});
+
+$("newsSubmitBtn").addEventListener("click", async () => {
+  const type = $("newsType").value;
+  const title = $("newsTitle").value.trim();
+  const url = $("newsUrl").value.trim();
+  const memo = $("newsMemo").value.trim();
+  const deadlineVal = $("newsDeadline").value;
+
+  if(!title){ toast("제목을 입력해 주세요.", 4000); $("newsTitle").focus(); return; }
+  if(title.length > 120){ toast("제목은 120자 이내로 입력해 주세요.", 4000); $("newsTitle").focus(); return; }
+  if(!/^https?:\/\//i.test(url)){ toast("링크는 http(s)://로 시작해야 합니다.", 4000); $("newsUrl").focus(); return; }
+  if(url.length > 500){ toast("링크가 너무 깁니다(500자 이내로 줄여 주세요).", 4000); $("newsUrl").focus(); return; }
+  if(memo.length > 240){ toast("메모는 240자 이내로 입력해 주세요.", 4000); $("newsMemo").focus(); return; }
+
+  let deadlineMs = null;
+  if(type === "contest" && deadlineVal){
+    deadlineMs = newbieDateInputToMs_(deadlineVal);   
+  }else if(type === "contest" && !deadlineVal){
+    
+    if(!confirm("공모전인데 마감일을 입력하지 않았습니다. 마감일 없이 등록할까요?")){ $("newsDeadline").focus(); return; }
+  }
+
+  const now = Date.now();
+  const payload = { type, title, url, createdAtMs: now, byUid: me?.uid || "", byNick: myNick_() };
+  if(memo) payload.memo = memo;                 
+  if(deadlineMs != null) payload.deadlineMs = deadlineMs;
+
+  const btn = $("newsSubmitBtn"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "등록 중…";
+  try{
+
+const newsRef = push(ref(db, NEWS_PATH));
+    await update(ref(db, `${NEWS_PATH}/${newsRef.key}`), payload);
+    diag("동향", "등록 id=" + newsRef.key + " type=" + type);
+    toast("동향을 등록했습니다.", 4000);
+
+    $("newsTitle").value = ""; $("newsUrl").value = ""; $("newsMemo").value = ""; $("newsDeadline").value = "";
+    $("newsType").value = "article"; $("newsDeadlineRow").classList.add("hide");
+    loadNews_();
+
+try{
+      const typeKo = NEWS_TYPE_KO[type] || type;
+      const tickerNow = Date.now();   
+      const dayKey = __seoulDateKeyFromMs_(tickerNow);
+      const tickerPayload = {
+        type: "ticker", kind: "join", uid: me?.uid || null,
+        text: ("📰 새 업계 동향 — [" + typeKo + "] " + title).slice(0, 120),
+        tsMs: tickerNow, serverTs: serverTimestamp()
+      };
+      const msgRef = push(ref(db, `rooms/${ROOM}/messages`));
+      await update(ref(db), {
+        [`rooms/${ROOM}/messages/${msgRef.key}`]: tickerPayload,
+        [`rooms/${ROOM}/messagesByDate/${dayKey}/${msgRef.key}`]: tickerPayload
+      });
+      diag("동향", "티커 전송 완료");
+    }catch(tickerErr){
+      console.warn("[V219A_NEWS] 티커 알림 실패(부가 기능이라 등록 자체는 유지)", tickerErr);
+      diag("동향", "티커 실패 " + (tickerErr?.code || tickerErr?.message || ""));
+    }
+  }catch(err){
+    console.warn("[V219A_NEWS] 등록 실패", err);
+    diag("동향", "등록 실패 " + (err?.code || err?.message || ""));
+    toast("등록 실패: " + (err?.code || err?.message || ""), 6000);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+});
+
 function renderPending(snapVal){
   const box = $("pendingList");
   const items = Object.entries(snapVal || {})
@@ -580,6 +777,7 @@ card.querySelector(".newbiePick").addEventListener("click", async () => {
 }
 
 function renderAdmins(val){
+  __adminsCache = val || {};   
   const box = $("adminList");
   const items = Object.entries(val || {});
   $("cntAdmins").textContent = String(items.length);
@@ -652,7 +850,9 @@ function renderArchive(val){
 document.querySelectorAll('[role="tab"]').forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll('[role="tab"]').forEach(b => b.setAttribute("aria-selected", String(b === btn)));
-    ["pending","members","admins","archive"].forEach(t => $("tab-" + t).classList.toggle("hide", t !== btn.dataset.tab));
+    ["pending","members","admins","archive","news"].forEach(t => $("tab-" + t).classList.toggle("hide", t !== btn.dataset.tab));
+    
+    if(btn.dataset.tab === "news") loadNews_();
   });
 });
 

@@ -52,6 +52,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -725,6 +726,47 @@
       font-size:12px; font-weight:1000;
       display:inline-flex; align-items:center; gap:8px;
     }
+    
+    .newsFilters{ display:flex; gap:6px; flex-wrap:wrap; }
+    .newsFilter{ cursor:pointer; font-family:inherit; padding:6px 12px; }
+    .newsFilter.on{
+      background:rgba(255,119,184,.18);
+      border-color:rgba(255,182,214,.55);
+      color:var(--pink2);
+    }
+    .newsList{ display:flex; flex-direction:column; gap:8px; }
+    .newsItem{
+      display:block; width:100%; text-align:left; font-family:inherit; cursor:pointer;
+      padding:10px 12px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(255,255,255,.05);
+      color:var(--text);
+    }
+    .newsItem:hover{ background:rgba(255,255,255,.09); border-color:rgba(255,182,214,.40); }
+    .newsItemTop{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:5px; }
+    .newsBadge{
+      flex:0 0 auto; font-size:10.5px; font-weight:1000; line-height:1;
+      padding:4px 8px; border-radius:999px; border:1px solid transparent;
+    }
+    .newsBadge.article{ background:rgba(130,190,255,.16); border-color:rgba(130,190,255,.44); color:#cfe8ff; }
+    .newsBadge.submit { background:rgba(120,230,190,.16); border-color:rgba(120,230,190,.44); color:#c9f7e6; }
+    .newsBadge.contest{ background:rgba(198,150,255,.18); border-color:rgba(214,166,255,.48); color:#e8d6ff; }
+    .newsDday{
+      flex:0 0 auto; font-size:10.5px; font-weight:1000; line-height:1;
+      padding:4px 8px; border-radius:999px;
+      background:rgba(255,119,184,.18); border:1px solid rgba(255,182,214,.5); color:var(--pink2);
+    }
+    .newsDday.over{ background:rgba(255,255,255,.06); border-color:var(--line); color:var(--muted); }
+    .newsTitle{ font-size:13px; font-weight:1000; line-height:1.4; word-break:break-all; }
+    .newsMemo{ font-size:11.5px; line-height:1.5; color:var(--muted); margin-top:4px; white-space:pre-wrap; }
+    .newsMeta{ font-size:10.5px; line-height:1.4; color:rgba(255,255,255,.45); margin-top:5px; }
+    
+    #goNews{ position:relative; }
+    .newsDot{
+      position:absolute; right:5px; top:5px; width:7px; height:7px; border-radius:50%;
+      background:var(--pink3); box-shadow:0 0 0 2px rgba(0,0,0,.35);
+      display:none; pointer-events:none;
+    }
+    #goNews.hasNew .newsDot{ display:block; }
     .grid{
       display:grid;
       gap:8px;
@@ -4096,6 +4138,8 @@ body.joined #preJoinCard{ display:none; }
   body.joined #goChool .btnLabel::before{content:"🔥"; font-size:14px;}
   
   body.joined #charaBinderBtn .btnLabel::before{content:"✨"; font-size:14px;}
+  
+  body.joined #goNews .btnLabel::before{content:"📰"; font-size:14px;}
 
   
   body.joined #chatCard,
@@ -6071,6 +6115,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">✨캐꾸</span></button>
 <button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥공지&출석</span></button>
 <button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
+
+<button class="ghost" id="goNews" title="업계 동향 (기사·투고·공모전)"><span class="btnLabel">📰동향</span><span class="newsDot" id="newsDot" aria-hidden="true"></span></button>
 </div>
 </div>
 </div>
@@ -6391,6 +6437,27 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 ⚠️ 네이버는 인증 메일을 <b>스팸함</b>으로 보낼 수 있습니다.<br/>
 ⚠️ 링크는 반드시 <b>지금 이 브라우저</b>에서 열어 주세요.
 </div>
+</div>
+</div>
+</div>
+
+
+<div aria-hidden="true" class="modalOverlay" id="newsModal">
+<div aria-modal="true" class="modal" role="dialog" aria-labelledby="newsModalTitle">
+<div class="modalHeader">
+<div class="t" id="newsModalTitle">📰 업계 동향</div>
+<button class="ghost" id="newsClose" type="button" style="border:1px solid rgba(255,255,255,.30); background:rgba(255,255,255,.12); font-weight:900; min-width:74px;">✕ 닫기</button>
+</div>
+<div class="modalBody">
+<div class="newsFilters" id="newsFilters">
+<button class="pill newsFilter on" data-type="" type="button">전체</button>
+<button class="pill newsFilter" data-type="article" type="button">📄 기사</button>
+<button class="pill newsFilter" data-type="submit" type="button">✍️ 투고</button>
+<button class="pill newsFilter" data-type="contest" type="button">🏆 공모전</button>
+</div>
+<div class="tiny" id="newsState" style="opacity:.82; line-height:1.6;">불러오는 중… ⏳</div>
+<div class="newsList" id="newsList"></div>
+<div class="tiny" id="newsFoot" style="opacity:.6; line-height:1.55;">최근 90일 글만 보여요 · 관리자가 승인 페이지에서 올립니다</div>
 </div>
 </div>
 </div>
@@ -8136,6 +8203,14 @@ const $ = (id) => document.getElementById(id);
       goChool: $("goChool"),
       
       goHomework: $("goHomework"),
+      
+      goNews: $("goNews"),
+      newsDot: $("newsDot"),
+      newsModal: $("newsModal"),
+      newsClose: $("newsClose"),
+      newsFilters: $("newsFilters"),
+      newsState: $("newsState"),
+      newsList: $("newsList"),
 
 chatList: $("chatList"),
       chatNewBar: $("chatNewBar"),
@@ -11706,6 +11781,8 @@ if(els.goPomo) els.goPomo.disabled = !joined;
 
 if(els.goChool) els.goChool.disabled = !joined;
       if(els.goHomework) els.goHomework.disabled = !joined;
+      
+      if(els.goNews) els.goNews.disabled = !joined;
 
 document.body.classList.toggle("joined", joined);
       
@@ -12387,6 +12464,8 @@ try{ window.ChatMsgRef = rChatMsgRef; }catch(e){}
 function rMissionsRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId)}/missions/${dayKey}`); }
 
 function rProfilesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles`); }
+
+function rNewsRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/news`); }
 function rProfileRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles/${uid}`); }
 
 function profileNickKey_(nick){
@@ -19017,6 +19096,8 @@ await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId
       
       try{ Promise.resolve(mkNewbieSelfStamp_()).catch(()=>{}); }catch(_e){}
       
+      try{ Promise.resolve(mkNewsCheckDot_()).catch(()=>{}); }catch(_e){}
+      
       try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){}
       
       try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }); }catch(_e){}
@@ -19991,6 +20072,200 @@ function mkOpenReauth_(){
       
       els.authStateHint.addEventListener("click", ()=>{ if(!mkAuthUsable_()) mkOpenReauth_(); });
     }
+
+const MK_NEWS_SEEN_LS = "mk_news_seen_ms";
+    const MK_NEWS_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;   
+    let __mkNewsItems = [];
+    let __mkNewsFilter = "";
+
+    function mkNewsSeenMs_(){
+      try{ return Number(localStorage.getItem(MK_NEWS_SEEN_LS) || 0) || 0; }catch(_e){ return 0; }
+    }
+    function mkNewsSetSeen_(ms){
+      try{ localStorage.setItem(MK_NEWS_SEEN_LS, String(Math.max(0, Math.floor(Number(ms) || 0)))); }catch(_e){}
+    }
+    function mkNewsShowDot_(on){
+      try{ if(els.goNews) els.goNews.classList.toggle("hasNew", !!on); }catch(_e){}
+    }
+    
+    function mkNewsRowsFromSnap_(snap){
+      const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+      const now = Date.now();
+      const out = [];
+      Object.keys(val).forEach((id)=>{
+        const v = val[id] || {};
+        const createdAtMs = Number(v.createdAtMs || 0);
+        if(!createdAtMs) return;
+        if((now - createdAtMs) > MK_NEWS_MAX_AGE_MS) return;   
+        out.push({
+          id: String(id),
+          type: String(v.type || "article"),
+          title: String(v.title || "").slice(0, 120),
+          url: String(v.url || "").slice(0, 500),
+          memo: String(v.memo || "").slice(0, 240),
+          deadlineMs: Number(v.deadlineMs || 0),
+          createdAtMs,
+          byNick: String(v.byNick || "").slice(0, 40)
+        });
+      });
+      out.sort((a, b)=> b.createdAtMs - a.createdAtMs);
+      return out;
+    }
+    function mkNewsTypeLabel_(t){
+      if(t === "submit") return "✍️ 투고";
+      if(t === "contest") return "🏆 공모전";
+      return "📄 기사";
+    }
+    function mkNewsDateText_(ms){
+      try{ const d = new Date(Number(ms) || 0); return `${d.getMonth() + 1}/${d.getDate()}`; }catch(_e){ return ""; }
+    }
+    
+    function mkNewsDdayText_(deadlineMs){
+      const dl = Number(deadlineMs || 0);
+      if(!dl) return null;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const end = new Date(dl); end.setHours(0, 0, 0, 0);
+      const days = Math.round((end.getTime() - today.getTime()) / 86400000);
+      if(days < 0) return { text: "마감", over: true };
+      if(days === 0) return { text: "D-DAY", over: false };
+      return { text: "D-" + days, over: false };
+    }
+    function mkNewsRender_(){
+      const box = els.newsList;
+      if(!box) return;
+      box.textContent = "";
+      const list = __mkNewsFilter
+        ? __mkNewsItems.filter((it)=> it.type === __mkNewsFilter)
+        : __mkNewsItems.slice();
+      if(!list.length){
+        if(els.newsState) els.newsState.textContent = __mkNewsItems.length
+          ? "이 유형은 아직 없어요."
+          : "아직 올라온 소식이 없어요 🌱";
+        return;
+      }
+      if(els.newsState) els.newsState.textContent = "";
+      list.forEach((it)=>{
+        
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "newsItem";
+        const top = document.createElement("div");
+        top.className = "newsItemTop";
+        const badge = document.createElement("span");
+        badge.className = "newsBadge " + (["article", "submit", "contest"].indexOf(it.type) >= 0 ? it.type : "article");
+        badge.textContent = mkNewsTypeLabel_(it.type);
+        top.appendChild(badge);
+        const dd = (it.type === "contest") ? mkNewsDdayText_(it.deadlineMs) : null;
+        if(dd){
+          const dEl = document.createElement("span");
+          dEl.className = "newsDday" + (dd.over ? " over" : "");
+          dEl.textContent = dd.text;
+          top.appendChild(dEl);
+        }
+        row.appendChild(top);
+        const ttl = document.createElement("div");
+        ttl.className = "newsTitle";
+        ttl.textContent = it.title || "(제목 없음)";
+        row.appendChild(ttl);
+        if(it.memo){
+          const memo = document.createElement("div");
+          memo.className = "newsMemo";
+          memo.textContent = it.memo;
+          row.appendChild(memo);
+        }
+        const meta = document.createElement("div");
+        meta.className = "newsMeta";
+        meta.textContent = (it.byNick ? it.byNick + " · " : "") + mkNewsDateText_(it.createdAtMs);
+        row.appendChild(meta);
+        row.addEventListener("click", ()=>{
+          
+          const u = String(it.url || "");
+          if(!/^https?:\/\//i.test(u)){ showToast("링크 주소가 올바르지 않아요", 2600); return; }
+          try{ window.open(u, "_blank", "noopener"); }catch(_e){}
+        });
+        box.appendChild(row);
+      });
+    }
+    function mkNewsSyncFilterUI_(){
+      try{
+        const btns = els.newsFilters ? els.newsFilters.querySelectorAll(".newsFilter") : [];
+        btns.forEach((b)=>{ b.classList.toggle("on", String(b.dataset.type || "") === __mkNewsFilter); });
+      }catch(_e){}
+    }
+    async function mkNewsLoad_(){
+      if(!state.joined || !state.roomId){
+        if(els.newsState) els.newsState.textContent = "입장 후에 볼 수 있어요.";
+        return;
+      }
+      if(els.newsState) els.newsState.textContent = "불러오는 중… ⏳";
+      let snap = null;
+      try{
+        snap = await readGuard_(
+          rGet(rQuery(rNewsRootRef(state.roomId), rOrderByChild("createdAtMs"), rLimitToLast(50))),
+          "업계 동향 목록", 8000);
+      }catch(err){
+        
+        console.warn("[V219_NEWS] 목록을 불러오지 못했습니다", err);
+        if(els.newsList) els.newsList.textContent = "";
+        if(els.newsState) els.newsState.textContent = "아직 준비 중이에요 — 잠시 뒤 다시 열어 주세요 🙏";
+        return;
+      }
+      __mkNewsItems = mkNewsRowsFromSnap_(snap);
+      mkNewsRender_();
+      
+      const newest = __mkNewsItems.length ? Number(__mkNewsItems[0].createdAtMs || 0) : 0;
+      if(newest) mkNewsSetSeen_(newest);
+      mkNewsShowDot_(false);
+    }
+    function mkOpenNewsModal_(){
+      const m = els.newsModal;
+      if(!m) return;
+      __mkNewsFilter = "";
+      mkNewsSyncFilterUI_();
+      if(els.newsList) els.newsList.textContent = "";
+      try{ showModal(m); }catch(_e){}
+      mkNewsLoad_().catch(()=>{});
+    }
+    
+    async function mkNewsCheckDot_(){
+      try{
+        if(!state.joined || !state.roomId) return;
+        const snap = await readGuard_(
+          rGet(rQuery(rNewsRootRef(state.roomId), rOrderByChild("createdAtMs"), rLimitToLast(1))),
+          "업계 동향 새 글 확인", 8000);
+        const rows = mkNewsRowsFromSnap_(snap);
+        const newest = rows.length ? Number(rows[0].createdAtMs || 0) : 0;
+        mkNewsShowDot_(!!newest && newest > mkNewsSeenMs_());
+      }catch(err){
+        
+        console.warn("[V219_NEWS] 새 글 확인 실패(무시)", err);
+      }
+    }
+    if(els.goNews) els.goNews.addEventListener("click", ()=>{ mkOpenNewsModal_(); });
+    if(els.newsClose) els.newsClose.addEventListener("click", ()=>{ try{ hideModal(els.newsModal); }catch(_e){} });
+    if(els.newsModal){
+      els.newsModal.addEventListener("click", (ev)=>{ if(ev.target === els.newsModal){ try{ hideModal(els.newsModal); }catch(_e){} } });
+    }
+    if(els.newsFilters){
+      
+      els.newsFilters.addEventListener("click", (ev)=>{
+        const b = ev.target && ev.target.closest ? ev.target.closest(".newsFilter") : null;
+        if(!b) return;
+        __mkNewsFilter = String(b.dataset.type || "");
+        mkNewsSyncFilterUI_();
+        mkNewsRender_();
+      });
+    }
+    
+    try{
+      window.__MK_NEWS_TEST__ = {
+        inject(rows){ __mkNewsItems = Array.isArray(rows) ? rows : []; mkNewsRender_(); return __mkNewsItems.length; },
+        setFilter(t){ __mkNewsFilter = String(t || ""); mkNewsSyncFilterUI_(); mkNewsRender_(); },
+        open: mkOpenNewsModal_,
+        rowsFromSnap: mkNewsRowsFromSnap_,
+        dday: mkNewsDdayText_
+      };
+    }catch(_e){}
     
     const MK_IMG_MAX_CHARS = 380000;   
 
@@ -24452,7 +24727,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17098; 
+const MK_APP_BUILD = 17099; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -28677,7 +28952,11 @@ if(now - petRenderThrottleMs > 5000){
 
 <style id="v212ShortcutRowSingleLine">
 
-#dashShortcuts{ grid-template-columns: auto auto auto !important; }
+
+#dashShortcuts{ grid-template-columns: auto auto auto auto !important; }
+
+#dashShortcuts > button{ padding-left:3px !important; padding-right:3px !important; }
+#dashShortcuts .btnLabel{ font-size:11.5px !important; letter-spacing:-.85px !important; }
 </style>
 
 
