@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V212_BTNROW + V212_NEWBIE: 바로가기 줄바꿈 수정 + 신입 작가 새싹 덩쿨 테두리(2026-08-14). ①V212_BTNROW — ✨캐꾸/🔥공지&출석/📚숙제장 중 가운데만 두 줄로 꺾이던 문제. ⚠️ 처음 의심한 "그리드가 4열이라 빈 칸이 남는다"는 데스크톱에서 원인이 아니었다: 기본 .btnRow의 repeat(4)와 V113의 #dashShortcuts repeat(4)!important는 둘 다 뒤쪽 V119 블록에 덮여 있고, 그쪽이 grid-template-columns:none + grid-auto-flow:column + grid-auto-columns:minmax(0,1fr)로 다시 깔아 실제로는 버튼 수(3개)만큼 균등 분할 중이었다(V179에서 📎뽀모도로가 빠진 흔적이 repeat(4)로 남아 있을 뿐). 진짜 원인은 ⑴균등 1/3이라 라벨 길이 차이를 못 받아 주고 ⑵같은 V119 블록이 `white-space:normal !important`로 줄바꿈을 일부러 다시 켠 것(기본 .btnRow button은 nowrap)이 겹친 것이다. → 트랙을 auto 3개로 바꿔 내용만큼 확보한 뒤 남는 공간을 나눠 갖게 했다. ⚠️ 반드시 V119보다 뒤에 놓아야 이긴다(같은 특이도+!important라 순서로만 갈린다) — 앞에 두면 조용히 무시된다. 모바일(≤760px) 입장 후는 V107/V120이 body.joined로 display:flex를 걸어 두어 영향 없음. ②V212_NEWBIE — 새로 승인된 참여자의 타일에 새싹 덩쿨 테두리(SVG 오버레이 + 잎 12장 살랑임)와 오른쪽 위 🌱 뉴비 라벨. V203_미리보기_뉴비테두리.html의 시안 B 확정안이고, 덩쿨 SVG는 그 파일의 buildVineSVG()를 1회 실행해 뽑은 **정적 문자열 상수**다(런타임 생성 안 함). 판정의 진실은 각자 자기 presence에 찍는 도장(newbieUntilMs) 하나뿐 — 입장 시 settings/newbie와 자기 members/{uid}만 읽어 계산하고, 렌더러는 그 도장만 본다(남의 members는 규칙상 읽을 수도 없고 타일마다 서버를 왕복할 수도 없다). ⚠️ approvedAtMs 함정: 매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 승인일이 전부 같다 — cutoffMs 비교가 없으면 방 전체가 뉴비가 된다. 그래서 approvedAtMs >= cutoffMs만 대상이다. 읽기 2건은 모두 readGuard_(8초)로 감쌌고(맨 await 금지 — settle 안 되는 Promise 사고 5회), 실패하면 도장 없이 조용히 넘어가 다음 입장에 자연히 재시도된다. 쓰기는 값이 실제로 달라질 때만 하므로 뉴비가 아닌 대다수는 **쓰기가 아예 일어나지 않는다**(기존 값은 ensureMeDoc이 이미 하던 rGet에서 주워 읽기 추가 0건). tileKey에 뉴비 여부(불리언)를 넣어 기간이 끝나면 스스로 사라진다. ★ 이 기능은 관리자가 settings/newbie.enabled를 켜기 전에는 **완전 무동작**이다 — 도장을 찍는 쪽이 아무것도 쓰지 않으므로 렌더러도 그릴 것이 없고, 배포해도 화면은 그대로다. 빌드 17092 -->
 <!-- V211_AUTOREJOIN: "몇 시간 작업했는데 적립이 0이다"의 조용한 원인 — 크롬 메모리 세이버·엣지 절전 탭의 **탭 폐기(discard)**(2026-08-14). 폐기는 pagehide 없이 페이지를 통째로 내리므로 V203의 라이브 시간 커밋조차 못 돌고, 사용자가 탭을 누르면 처음부터 리로드되는데 이 방의 입장은 수동이라 **입장 전 화면**이 뜬다. ★ 조용한 실패인 이유: 원고에 몰입한 작가는 그 화면을 못 본다 → 그 순간부터 작업시간 적립이 멈춘다(시간이 곧 코인인 방이다). 게다가 V202_TRUST 덕에 타일은 자정까지 남아 있어 본인도 남들도 이상을 눈치채지 못한다. 작가들의 사용 패턴(탭을 몇 시간씩 백그라운드에 두고 한글·스크리브너에서 집필)이 정확히 폐기 1순위 조건이다. ★ 폐기된 탭은 **사용자가 클릭해야만** 리로드된다 = 리로드 시점엔 반드시 사람이 보고 있다. 그래서 그 순간 조건 다섯 개가 모두 맞을 때만 자동으로 다시 입장시킨다: ①탭이 실제로 보이는 중(재시작 복원은 hidden으로 뜰 수 있어 visible이 될 때까지 기다린다 — 아무도 안 보는 탭이 혼자 시간을 적립하면 그건 유령 시간이다) ②오늘 이 브라우저로 입장한 적이 있음(자정을 넘겼으면 안 한다 — 누적이 새로 시작하는 날이라 롤오버 정책과 맞춘다) ③닉네임이 프리필돼 있고 '익명'이 아님 ④입장키가 이 브라우저에 남아 있음 ⑤서버의 내 presence가 살아 있고 status가 off가 아님. ⑤가 핵심 지문이다 — X로 닫기·정상 퇴장·관리자 세션 정리·강퇴는 전부 status=off를 남기지만 폐기만은 pagehide가 안 돌아 status가 그대로 살아 있다. 비용은 내 presence 1건 읽기뿐이고, 그 await는 readGuard_(8초)로 감쌌다(맨 rGet await는 settle 안 되는 Promise 사고 5회의 함정이다). 로그인 세션까지 사라진 갈래에서는 익명 uid를 자동으로 만들지 않고 joinRoom을 불러 V210_SESSIONGUARD가 재인증 오버레이를 띄우게 한다 — 그 갈래의 목적은 입장이 아니라 "오늘 입장했던 사람에게 세션이 죽었음을 즉시 알리는 것"이다. ⚠️ 입장 공지는 억제한다(효과음·입장 인사 생략, 토스트만 "🛌 절전에서 돌아와 이어서 입장했어요") — V202 관점에서 이 사람은 떠난 적이 없고, 몇 시간마다 입장 인사가 다시 울리면 그게 새 소음이다. ⚠️ 자동 재시도는 없다(로드당 1회) — 멈춘 입장을 되풀이하다 사고가 난 JOINSTALL 계열 이력 때문에 루프는 금지다. 부수 효과로 F5 실수와 같은 날 브라우저 재시작 복원도 매끄러워진다. 빌드 17091 -->
 <!-- V210_SESSIONGUARD + V210_LINKMSG + V210_ENTERFIX: "세션이 사라지면 익명으로 내려앉는다"를 실제로 막는다(2026-08-14). ①V205_SESSIONLOST는 경고만 하고 입장을 진행시켰다 — 주석 스스로 "입장해 버리면 그때부터 익명 uid로 기록이 쌓여 되돌리기가 어려워진다"고 적어 놓고도 그대로 들여보냈다. 📏 실측 2026-08-14 — **최근 3일간 익명 계정 114개가 새로 생겼다**(auth:export 574계정 중 이메일 보유는 42개뿐). 익명 폴백이 예외가 아니라 상시 발화 중이라는 뜻이다. 게다가 이 익명 로그인은 같은 오리진의 승인 페이지(approve.html) 탭까지 동기화되어 관리자 권한이 통째로 풀려 보였다(복길 님 반복, 루체 님 하루 uid 3개 분화로 6시간 기록 고아). → 전에 인증한 흔적(mkLastEmail_)이 있으면 signInAnonymously를 **아예 호출하지 않고** mk/session-lost를 던져 입장을 멈춘다. 익명 uid가 생기지 않으므로 되돌릴 것도 없다. 오버레이(#authLostOverlay)를 재사용해 [✉️ 다시 인증하기]를 먼저 권하고, 정 급하면 [그래도 게스트로 시작]을 명시로 고르게 한다(새 uid가 생겨 오늘 기록이 남남이 되므로 기본 경로가 아니다). ensureMainAuthReady_의 .catch가 메모이즈를 null로 되돌리므로 재인증·게스트 선택 뒤 재시도가 깨끗하게 된다. 처음 오신 브라우저는 예전 그대로 익명으로 시작한다 — 규칙이 auth != null이라 막으면 신규 화면이 통째로 빈다. ②V210_LINKMSG: 소진된 링크(auth/invalid-action-code)로 돌아오면 토스트만 뜨고 다음 행동이 없어 막다른 길이었다 — 재발송 입력창(mkOpenReauth_)을 자동으로 연다. ③V210_ENTERFIX: 비번칸 Enter 핸들러 안에 V169 초기화 블록이 잘못 붙여넣어져 다섯 버전을 건너뛰며 살아 있었다. 세미콜론 없이 줄이 바뀌어 `if(!els.joinBtn.disabled)`의 몸통이 try 블록이 되는 바람에 ⑴입장 버튼이 disabled여도 Enter면 joinRoom()이 무조건 실행됐고 ⑵"절약모드 갇힘 구제"가 부팅 시가 아니라 비번칸 Enter 시에만 돌았다. 핸들러를 한 줄로 되돌리고 초기화는 부팅 경로로 옮겼다. 빌드 17090 -->
 <!-- V206_MEMBERFALLBACK: "관리자인데 계속 미인증으로 뜨고 승인 버튼이 사라진다"(2026-08-14 복길 님). 📏 00:02 콘솔 — `[V204_AUTHWATCH] 토큰 갱신 — uid NC17u27M… / 이메일 없음` + `[V196_AUTHFIX] 계정 정보 재조회 — email: (없음)` + `identitytoolkit 400`. ★ 계정은 **맞다**: NC17u27M은 본인 uid이고 admins·members 등록도 그대로이며 서버 기록도 그 uid로 정상 누적 중이었다(00:35 기준 오늘 32분). 클라이언트가 들고 있는 user 객체에만 email이 비었고, 그걸 채우려는 authReload가 400으로 실패해 영영 안 채워진다. 그런데 인증 판정이 `mkAuthDone_()` = "이메일이 있는가?" 한 줄이라 배지는 미인증·🛡️승인 버튼은 숨김이 됐다 — 정작 채팅·타일·타이머는 멀쩡했다(규칙은 이메일이 아니라 uid를 보니까). ★ 이 판정이 하루에 두 번 틀렸다: V196에서는 isAnonymous가 낡아서, 이번엔 email이 비어서. **둘 다 클라이언트가 들고 있는 계정 객체를 믿었다가 틀린 것이다.** → 더 단단한 근거를 순서대로 본다: ①ID 토큰 클레임(서버가 방금 발급한 값 — 토큰 갱신 자체는 성공하고 있었다) ②members/{내 uid}(승인 명단에 있다는 건 이메일 인증을 마쳤다는 뜻이고, 규칙상 본인은 자기 레코드를 읽을 수 있다). ⚠️ 이 폴백은 **표시와 권한 노출에만** 쓴다(배지·🛡️승인 버튼·입장 전 화면). 신청서 제출처럼 규칙이 실제로 email_verified를 요구하는 자리는 엄격한 mkAuthDone_()을 그대로 뒀다 — 느슨하게 하면 규칙에 막혀 조용히 실패한다. 실패 시 1분 뒤 재시도하고, 확인되면 스스로 배지·버튼·입장 화면을 다시 그린다. 빌드 17084 -->
@@ -1571,6 +1572,42 @@
       padding:3px 6px; border-radius:999px;
       background:rgba(0,0,0,.66); color:#fff;
       border:1px solid rgba(255,255,255,.24);
+      }
+    /* ═══ V212_NEWBIE (2026-08-14): 신입 작가 타일의 새싹 덩쿨 테두리 (시안 B) ═══
+       V203_미리보기_뉴비테두리.html에서 시안 B(SVG 덩쿨 + 잎 12장)로 확정된 안이다.
+       ⚠️ ::after를 쓸 수 없다 — 바로 위 .tile.tileGrace::after가 이미 점유 중이라
+          별도 오버레이 div(.tileVine)로 넣는다.
+       ⚠️ z-index를 일부러 주지 않는다. DOM 순서상 .content 앞에 들어가므로
+          배지·닉네임·타이머 글자가 잎에 가려지지 않는다(미리보기 note 항목).
+       ⚠️ pointer-events:none이 설계 조건이다 — 이게 없으면 오버레이가 우클릭을 먹어
+          강퇴 메뉴가 열리지 않는다.
+       📏 미리보기에서 확인된 것: 실제 배포본은 .tile .shade가 뒤쪽 "v27 vivid 패치"의
+          rgba(0,0,0,0)!important로 사실상 꺼져 있어 파스텔 배경이 안 어두워진다.
+          그래서 줄기·잎에 어두운 윤곽선(#0f3016)을 반드시 깔아야 연두 배경 위에서 살아남는다
+          (SVG 상수에 이미 반영돼 있다). */
+    .tile .tileVine{
+      position:absolute; inset:0;
+      pointer-events:none;      /* 우클릭 메뉴 통과 */
+      }
+    .tile .tileVine svg{width:100%; height:100%; display:block;}
+    .tile .tileVine .lf{                       /* 잎만 아주 살짝 흔든다 */
+      transform-box:fill-box; transform-origin:0% 50%;
+      animation:mkVineSway 5.4s ease-in-out infinite;
+      will-change:transform;
+      }
+    @keyframes mkVineSway{ 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(6deg)} }
+    @media (prefers-reduced-motion:reduce){ .tile .tileVine .lf{animation:none !important;} }
+    body.mkLowSpecMode .tile .tileVine .lf{animation:none !important;}   /* 저사양 모드에선 정지 */
+    /* 🌱 뉴비 라벨. 왼쪽 위는 tileGrace 라벨이 쓰고 있어 오른쪽 위에 둔다(자리가 달라 안 겹친다).
+       ⚠️ 미리보기에는 body.showTag 토글 게이트가 있었지만 그건 시안 비교용이라 걷어냈다 —
+          프로덕션에서는 뉴비 판정이 곧 표시 조건이므로 항상 보인다. */
+    .newbieTag{
+      position:absolute; right:5px; top:5px; z-index:6; pointer-events:none;
+      font-size:9px; line-height:1; white-space:nowrap; letter-spacing:.2px;
+      padding:3px 7px; border-radius:999px;
+      background:rgba(24,72,32,.78); color:#dcffc4;
+      border:1px solid rgba(168,224,106,.55);
+      box-shadow:0 2px 6px rgba(0,0,0,.35);
       }
     .tile .bg{position:absolute; inset:0; opacity:1;}
     .tile .shade{
@@ -10470,6 +10507,75 @@ const BREAK_DISCONNECT_GRACE_MS = 2 * 60 * 1000;      // 휴식/자리비움 2�
 function mkGraceNowMs_(){
   try{ return mkNowMs_(); }catch(_e){ return Date.now(); }
 }
+
+/* ═══ V212_NEWBIE (2026-08-14): 신입 작가 타일의 새싹 덩쿨 ═══
+   ★ 판정의 진실은 **각자 자기 presence에 찍은 도장(newbieUntilMs)** 하나뿐이다.
+     렌더러는 설정도 members도 다시 읽지 않는다 — 남의 members는 규칙상 읽을 수도 없고,
+     타일 하나 그릴 때마다 서버를 왕복하면 인원수만큼 읽기가 터진다.
+   ⚠️ 이 기능은 관리자가 settings/newbie.enabled를 켜기 전에는 **완전 무동작**이다.
+      도장을 찍는 쪽이 아무것도 안 쓰므로 렌더러도 그릴 것이 없다(배포해도 화면 변화 0).
+   ⚠️ 지금 시각은 반드시 mkGraceNowMs_()로 본다 — 기기 시계가 틀어진 브라우저에서
+      뉴비가 영원히 끝나지 않거나 즉시 사라지는 조용한 오차를 막는다(V198 전례). */
+const MK_VINE_SVG = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round"><path d="M16.4 5.4C17.9 4.9 19.5 4.6 21.1 4.3C22.7 4 24.2 3.7 25.8 3.5C27.4 3.3 28.9 3.2 30.5 3.2C32 3.2 33.6 3.3 35.2 3.5C36.7 3.7 38.3 4 39.9 4.3C41.4 4.6 43 5 44.6 5.4C46.1 5.8 47.7 6.2 49.3 6.5C50.8 6.8 52.4 7.1 53.9 7.3C55.5 7.5 57.1 7.6 58.6 7.6C60.2 7.6 61.8 7.5 63.3 7.3C64.9 7.1 66.5 6.8 68 6.5C69.6 6.2 71.2 5.8 72.7 5.4C74.3 5 75.8 4.6 77.4 4.3C79 4 80.4 3.6 82.1 3.5C83.8 3.4 85.7 3.2 87.4 3.8C89 4.3 90.9 5.4 92.1 6.7C93.3 7.9 94.2 9.8 94.6 11.4C95 13 94.8 14.8 94.6 16.4C94.4 18 93.8 19.5 93.5 21.1C93.2 22.7 92.9 24.2 92.7 25.8C92.5 27.4 92.4 28.9 92.4 30.5C92.4 32 92.5 33.6 92.7 35.2C92.9 36.7 93.2 38.3 93.5 39.9C93.8 41.4 94.2 43 94.6 44.6C95 46.1 95.4 47.7 95.7 49.3C96 50.8 96.3 52.4 96.5 53.9C96.7 55.5 96.8 57.1 96.8 58.6C96.8 60.2 96.7 61.8 96.5 63.3C96.3 64.9 96 66.5 95.7 68C95.4 69.6 95 71.2 94.6 72.7C94.2 74.3 93.8 75.8 93.5 77.4C93.2 79 92.9 80.7 92.7 82.1C92.4 83.6 92.4 84.9 92 86.1C91.7 87.4 91.2 88.5 90.5 89.6C89.7 90.7 88.8 91.8 87.7 92.6C86.6 93.4 85.1 94.1 83.6 94.6C82.1 95.1 80.5 95.4 78.9 95.7C77.3 96 75.8 96.3 74.2 96.5C72.6 96.7 71.1 96.8 69.5 96.8C68 96.8 66.4 96.7 64.8 96.5C63.3 96.3 61.7 96 60.1 95.7C58.6 95.4 57 95 55.4 94.6C53.9 94.2 52.3 93.8 50.7 93.5C49.2 93.2 47.6 92.9 46.1 92.7C44.5 92.5 42.9 92.4 41.4 92.4C39.8 92.4 38.2 92.5 36.7 92.7C35.1 92.9 33.5 93.2 32 93.5C30.4 93.8 28.8 94.2 27.3 94.6C25.7 95 24.2 95.4 22.6 95.7C21 96 19.6 96.4 17.9 96.5C16.2 96.6 14.3 96.8 12.6 96.2C11 95.7 9.1 94.6 7.9 93.3C6.7 92.1 5.8 90.2 5.4 88.6C5 87 5.2 85.2 5.4 83.6C5.6 82 6.2 80.5 6.5 78.9C6.8 77.3 7.1 75.8 7.3 74.2C7.5 72.6 7.6 71.1 7.6 69.5C7.6 68 7.5 66.4 7.3 64.8C7.1 63.3 6.8 61.7 6.5 60.1C6.2 58.6 5.8 57 5.4 55.4C5 53.9 4.6 52.3 4.3 50.7C4 49.2 3.7 47.6 3.5 46.1C3.3 44.5 3.2 42.9 3.2 41.4C3.2 39.8 3.3 38.2 3.5 36.7C3.7 35.1 4 33.5 4.3 32C4.6 30.4 5 28.8 5.4 27.3C5.8 25.7 6.2 24.2 6.5 22.6C6.8 21 7.1 19.3 7.3 17.9C7.6 16.4 7.6 15.1 8 13.9C8.3 12.6 8.8 11.5 9.5 10.4C10.3 9.3 11.2 8.2 12.3 7.4C13.4 6.6 14.9 5.9 16.4 5.4Z" stroke="#0f3016" stroke-opacity=".55" stroke-width="3" vector-effect="non-scaling-stroke"/><path d="M16.4 5.4C17.9 4.9 19.5 4.6 21.1 4.3C22.7 4 24.2 3.7 25.8 3.5C27.4 3.3 28.9 3.2 30.5 3.2C32 3.2 33.6 3.3 35.2 3.5C36.7 3.7 38.3 4 39.9 4.3C41.4 4.6 43 5 44.6 5.4C46.1 5.8 47.7 6.2 49.3 6.5C50.8 6.8 52.4 7.1 53.9 7.3C55.5 7.5 57.1 7.6 58.6 7.6C60.2 7.6 61.8 7.5 63.3 7.3C64.9 7.1 66.5 6.8 68 6.5C69.6 6.2 71.2 5.8 72.7 5.4C74.3 5 75.8 4.6 77.4 4.3C79 4 80.4 3.6 82.1 3.5C83.8 3.4 85.7 3.2 87.4 3.8C89 4.3 90.9 5.4 92.1 6.7C93.3 7.9 94.2 9.8 94.6 11.4C95 13 94.8 14.8 94.6 16.4C94.4 18 93.8 19.5 93.5 21.1C93.2 22.7 92.9 24.2 92.7 25.8C92.5 27.4 92.4 28.9 92.4 30.5C92.4 32 92.5 33.6 92.7 35.2C92.9 36.7 93.2 38.3 93.5 39.9C93.8 41.4 94.2 43 94.6 44.6C95 46.1 95.4 47.7 95.7 49.3C96 50.8 96.3 52.4 96.5 53.9C96.7 55.5 96.8 57.1 96.8 58.6C96.8 60.2 96.7 61.8 96.5 63.3C96.3 64.9 96 66.5 95.7 68C95.4 69.6 95 71.2 94.6 72.7C94.2 74.3 93.8 75.8 93.5 77.4C93.2 79 92.9 80.7 92.7 82.1C92.4 83.6 92.4 84.9 92 86.1C91.7 87.4 91.2 88.5 90.5 89.6C89.7 90.7 88.8 91.8 87.7 92.6C86.6 93.4 85.1 94.1 83.6 94.6C82.1 95.1 80.5 95.4 78.9 95.7C77.3 96 75.8 96.3 74.2 96.5C72.6 96.7 71.1 96.8 69.5 96.8C68 96.8 66.4 96.7 64.8 96.5C63.3 96.3 61.7 96 60.1 95.7C58.6 95.4 57 95 55.4 94.6C53.9 94.2 52.3 93.8 50.7 93.5C49.2 93.2 47.6 92.9 46.1 92.7C44.5 92.5 42.9 92.4 41.4 92.4C39.8 92.4 38.2 92.5 36.7 92.7C35.1 92.9 33.5 93.2 32 93.5C30.4 93.8 28.8 94.2 27.3 94.6C25.7 95 24.2 95.4 22.6 95.7C21 96 19.6 96.4 17.9 96.5C16.2 96.6 14.3 96.8 12.6 96.2C11 95.7 9.1 94.6 7.9 93.3C6.7 92.1 5.8 90.2 5.4 88.6C5 87 5.2 85.2 5.4 83.6C5.6 82 6.2 80.5 6.5 78.9C6.8 77.3 7.1 75.8 7.3 74.2C7.5 72.6 7.6 71.1 7.6 69.5C7.6 68 7.5 66.4 7.3 64.8C7.1 63.3 6.8 61.7 6.5 60.1C6.2 58.6 5.8 57 5.4 55.4C5 53.9 4.6 52.3 4.3 50.7C4 49.2 3.7 47.6 3.5 46.1C3.3 44.5 3.2 42.9 3.2 41.4C3.2 39.8 3.3 38.2 3.5 36.7C3.7 35.1 4 33.5 4.3 32C4.6 30.4 5 28.8 5.4 27.3C5.8 25.7 6.2 24.2 6.5 22.6C6.8 21 7.1 19.3 7.3 17.9C7.6 16.4 7.6 15.1 8 13.9C8.3 12.6 8.8 11.5 9.5 10.4C10.3 9.3 11.2 8.2 12.3 7.4C13.4 6.6 14.9 5.9 16.4 5.4Z" stroke="#4fae5a" stroke-width="1.9" vector-effect="non-scaling-stroke"/><path d="M16.4 5.4C17.9 4.9 19.5 4.6 21.1 4.3C22.7 4 24.2 3.7 25.8 3.5C27.4 3.3 28.9 3.2 30.5 3.2C32 3.2 33.6 3.3 35.2 3.5C36.7 3.7 38.3 4 39.9 4.3C41.4 4.6 43 5 44.6 5.4C46.1 5.8 47.7 6.2 49.3 6.5C50.8 6.8 52.4 7.1 53.9 7.3C55.5 7.5 57.1 7.6 58.6 7.6C60.2 7.6 61.8 7.5 63.3 7.3C64.9 7.1 66.5 6.8 68 6.5C69.6 6.2 71.2 5.8 72.7 5.4C74.3 5 75.8 4.6 77.4 4.3C79 4 80.4 3.6 82.1 3.5C83.8 3.4 85.7 3.2 87.4 3.8C89 4.3 90.9 5.4 92.1 6.7C93.3 7.9 94.2 9.8 94.6 11.4C95 13 94.8 14.8 94.6 16.4C94.4 18 93.8 19.5 93.5 21.1C93.2 22.7 92.9 24.2 92.7 25.8C92.5 27.4 92.4 28.9 92.4 30.5C92.4 32 92.5 33.6 92.7 35.2C92.9 36.7 93.2 38.3 93.5 39.9C93.8 41.4 94.2 43 94.6 44.6C95 46.1 95.4 47.7 95.7 49.3C96 50.8 96.3 52.4 96.5 53.9C96.7 55.5 96.8 57.1 96.8 58.6C96.8 60.2 96.7 61.8 96.5 63.3C96.3 64.9 96 66.5 95.7 68C95.4 69.6 95 71.2 94.6 72.7C94.2 74.3 93.8 75.8 93.5 77.4C93.2 79 92.9 80.7 92.7 82.1C92.4 83.6 92.4 84.9 92 86.1C91.7 87.4 91.2 88.5 90.5 89.6C89.7 90.7 88.8 91.8 87.7 92.6C86.6 93.4 85.1 94.1 83.6 94.6C82.1 95.1 80.5 95.4 78.9 95.7C77.3 96 75.8 96.3 74.2 96.5C72.6 96.7 71.1 96.8 69.5 96.8C68 96.8 66.4 96.7 64.8 96.5C63.3 96.3 61.7 96 60.1 95.7C58.6 95.4 57 95 55.4 94.6C53.9 94.2 52.3 93.8 50.7 93.5C49.2 93.2 47.6 92.9 46.1 92.7C44.5 92.5 42.9 92.4 41.4 92.4C39.8 92.4 38.2 92.5 36.7 92.7C35.1 92.9 33.5 93.2 32 93.5C30.4 93.8 28.8 94.2 27.3 94.6C25.7 95 24.2 95.4 22.6 95.7C21 96 19.6 96.4 17.9 96.5C16.2 96.6 14.3 96.8 12.6 96.2C11 95.7 9.1 94.6 7.9 93.3C6.7 92.1 5.8 90.2 5.4 88.6C5 87 5.2 85.2 5.4 83.6C5.6 82 6.2 80.5 6.5 78.9C6.8 77.3 7.1 75.8 7.3 74.2C7.5 72.6 7.6 71.1 7.6 69.5C7.6 68 7.5 66.4 7.3 64.8C7.1 63.3 6.8 61.7 6.5 60.1C6.2 58.6 5.8 57 5.4 55.4C5 53.9 4.6 52.3 4.3 50.7C4 49.2 3.7 47.6 3.5 46.1C3.3 44.5 3.2 42.9 3.2 41.4C3.2 39.8 3.3 38.2 3.5 36.7C3.7 35.1 4 33.5 4.3 32C4.6 30.4 5 28.8 5.4 27.3C5.8 25.7 6.2 24.2 6.5 22.6C6.8 21 7.1 19.3 7.3 17.9C7.6 16.4 7.6 15.1 8 13.9C8.3 12.6 8.8 11.5 9.5 10.4C10.3 9.3 11.2 8.2 12.3 7.4C13.4 6.6 14.9 5.9 16.4 5.4Z" stroke="#a8e06a" stroke-opacity=".85" stroke-width=".7" vector-effect="non-scaling-stroke"/></g><g transform="translate(30.5 3.2) rotate(36) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-0.00s"/></g><g transform="translate(58.6 7.6) rotate(144) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-0.42s"/></g><g transform="translate(87.4 3.8) rotate(52.7) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-0.84s"/></g><g transform="translate(92.4 30.5) rotate(-126) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-1.26s"/></g><g transform="translate(96.8 58.6) rotate(-234) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-1.68s"/></g><g transform="translate(92 86.1) rotate(-109.3) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-2.10s"/></g><g transform="translate(69.5 96.8) rotate(-144) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-2.52s"/></g><g transform="translate(41.4 92.4) rotate(-36) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-2.94s"/></g><g transform="translate(12.6 96.2) rotate(-127.3) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-3.36s"/></g><g transform="translate(7.6 69.5) rotate(54) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-3.78s"/></g><g transform="translate(3.2 41.4) rotate(-54) scale(0.96)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#5fbf5a" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-4.20s"/></g><g transform="translate(8 13.9) rotate(70.7) scale(0.86)"><path class="lf" d="M0 0C1.9 -2.5 5.3 -3 7.6 0C5.3 3 1.9 2.5 0 0Z" fill="#8ed85e" stroke="#0f3016" stroke-opacity=".55" stroke-width=".55" style="animation-delay:-4.62s"/></g></svg>';
+
+function isNewbiePresence_(p){
+  try{ return Number(p?.newbieUntilMs || 0) > mkGraceNowMs_(); }catch(_e){ return false; }
+}
+
+/* 내 뉴비 여부를 계산해 내 presence에 도장을 찍는다(입장 시 1회, fire-and-forget).
+   ⚠️ approvedAtMs 함정: 매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼
+      approvedAtMs가 전부 같은 날이다. **cutoffMs 비교가 없으면 방 전체가 뉴비가 된다.**
+      그래서 approvedAtMs >= cutoffMs 인 사람만 대상이다(관리자가 이관일 이후로 cutoff를 잡는다).
+   ⚠️ 읽기 2건 모두 readGuard_로 감싼다 — 맨 await는 오프라인·차단 상태에서 settle되지 않아
+      이 파일에서 다섯 번 사고가 난 함정이다. 실패하면 도장 없이 조용히 넘어가고,
+      다음 입장에서 자연히 다시 시도된다(따로 재시도 루프를 돌리지 않는다). */
+async function mkNewbieSelfStamp_(){
+  const roomId = String(state.roomId || FIXED_ROOM_ID || "");
+  const uid = String(state.uid || "");
+  if(!roomId || !uid) return;
+
+  let cfg = null;
+  try{
+    const s = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(roomId)}/settings/newbie`)), "뉴비 설정 확인", 8000);
+    cfg = (s && typeof s.val === "function") ? (s.val() || null) : null;
+  }catch(_e){ return; }   // 못 읽으면 아무것도 하지 않는다(도장도 지우지 않는다)
+
+  const enabled = !!(cfg && cfg.enabled === true);
+  const cutoffMs = Number(cfg && cfg.cutoffMs || 0);
+  const durationDays = Number(cfg && cfg.durationDays || 0);
+
+  let untilMs = 0;
+  if(enabled && durationDays > 0){
+    let approvedAtMs = 0;
+    try{
+      /* 규칙상 members/{내 uid}는 본인이 읽을 수 있다(auth.uid === $uid).
+         남의 것은 관리자만 읽히므로 이 계산은 "각자 자기 것만" 하는 구조여야 한다. */
+      const m = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(roomId)}/members/${uid}`)), "뉴비 승인일 확인", 8000);
+      const mv = (m && typeof m.val === "function") ? (m.val() || null) : null;
+      approvedAtMs = Number(mv && mv.approvedAtMs || 0);
+    }catch(_e){ return; }
+    if(approvedAtMs > 0 && cutoffMs > 0 && approvedAtMs >= cutoffMs){
+      untilMs = approvedAtMs + durationDays * 86400000;
+    }
+  }
+
+  const isNewbie = enabled && untilMs > Date.now();
+  const already = Number(state.__newbieStampedMs || 0);
+  /* 값이 실제로 달라질 때만 쓴다 — 입장마다 같은 값을 다시 쓰면 순수한 낭비다.
+     현재 값(already)은 ensureMeDoc의 기존 rGet에서 주워 둔 서버 값이라 읽기 추가가 0건이다.
+     ★ 뉴비가 아닌 대다수는 already===0, next===0이라 **쓰기가 아예 일어나지 않는다.**
+       도장이 남아 있던 사람만(관리자가 기능을 끄거나 기간이 끝난 경우) null로 한 번 지운다. */
+  const next = isNewbie ? untilMs : 0;
+  if(already === next) return;
+
+  try{
+    await rUpdate(rMePresenceRef(roomId, uid), { newbieUntilMs: next > 0 ? next : null });
+    state.__newbieStampedMs = next;
+  }catch(err){
+    console.warn("[V212_NEWBIE] 뉴비 도장 실패(무시하고 진행)", err);
+  }
+}
+
 // 서버가 "이 세션 끊겼다"고 도장을 찍었는가.
 // 이전 페이지의 늦은 종료 표식은 presenceSessionId가 다르므로 여기서 걸러진다(V160).
 function presenceDisconnectStamped_(p){
@@ -13589,6 +13695,12 @@ async function ensureMeDoc(){
       try{ syncTimerResetEpochFromPresence_(data); }catch(_e){}
       try{ applyTimerResetCommandToLocal_(data, "ensureMeDoc"); }catch(_e){}
     }
+    /* V212_NEWBIE: 서버에 이미 찍혀 있던 뉴비 도장을 여기서 주워 둔다.
+       mkNewbieSelfStamp_이 "값이 달라질 때만 쓰기"를 판단하는 근거이고,
+       이 값이 없으면 뉴비가 아닌 사람의 낡은 도장을 영영 못 지운다.
+       ⚠️ 이 rGet은 원래부터 있던 읽기다 — 뉴비 때문에 서버를 한 번 더 왕복하지 않으려고
+          여기에 얹었다(입장당 읽기 추가 0건). */
+    try{ state.__newbieStampedMs = Number((data && data.newbieUntilMs) || 0); }catch(_e){}
 
     if(!data){
       await rSet(pref, seed);
@@ -17618,7 +17730,13 @@ async function sendChatCore(text, isFlush=false){
         nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
         online:isOnlinePresence(p),
         // ✅ 손캠: 켜고 끌 때 해당 타일만 즉시 다시 그리기
-        hc: !!(window.__MK_HANDCAM_LIVE__ && window.__MK_HANDCAM_LIVE__.has(String(p?.id||"")))
+        hc: !!(window.__MK_HANDCAM_LIVE__ && window.__MK_HANDCAM_LIVE__.has(String(p?.id||""))),
+        /* V212_NEWBIE: 뉴비 '여부'(불리언)를 키에 넣는다 — 안 넣으면 기간이 끝나도
+           캐시된 타일이 그대로 재사용돼 새로고침 전까지 덩쿨이 안 사라진다.
+           ⚠️ newbieUntilMs 원값을 넣으면 안 된다. 그건 안 변하는 값이라 만료를 못 잡고,
+              반대로 매 tick 바뀌는 값을 넣으면 타일이 통째로 재생성돼 사진·펫이 깜빡인다
+              (V69가 타이머 누적값을 키에서 뺀 것과 같은 이유). */
+        newbie: isNewbiePresence_(p)
       });
     }
     function renderTile(p){
@@ -17853,7 +17971,24 @@ content.appendChild(timer);
 content.appendChild(bottomStack);
 t.appendChild(bg);
       t.appendChild(shade);
+      /* V212_NEWBIE: 덩쿨은 반드시 .content **앞**에 넣는다.
+         z-index를 주지 않고 DOM 순서로만 아래에 깔아야 배지·닉네임·타이머 글자가
+         잎에 가려지지 않는다(미리보기에서 확정한 조건). */
+      if(isNewbiePresence_(p)){
+        const vine = document.createElement("div");
+        vine.className = "tileVine";
+        vine.setAttribute("aria-hidden","true");
+        vine.innerHTML = MK_VINE_SVG;
+        t.appendChild(vine);
+      }
       t.appendChild(content);
+      // 🌱 뉴비 라벨은 content 뒤에(오른쪽 위, z-index:6 — tileGrace 라벨과 자리가 다르다)
+      if(isNewbiePresence_(p)){
+        const nbTag = document.createElement("div");
+        nbTag.className = "newbieTag";
+        nbTag.textContent = "🌱 뉴비";
+        t.appendChild(nbTag);
+      }
 
       // V169_MOVE: 움직이기 모드면 타일 루트에 캐릭터 오버레이 부착(칸에는 기존 콘텐츠 유지).
       // attachMover가 모드/저사양 판정과 이전 컨트롤러 정리를 모두 담당한다.
@@ -20298,6 +20433,12 @@ async function joinRoom(){
          못 읽으면 건너뛰고 진행한다. */
       await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId), 6000);
       await joinStepGuard_("ensureMeDoc(presence 초기화)", ensureMeDoc(), 8000);
+      /* V212_NEWBIE: 내 뉴비 도장을 찍는다. ensureMeDoc 뒤여야 한다 —
+         거기서 읽어 둔 서버의 기존 값(state.__newbieStampedMs)을 근거로 쓰기 여부를 정하기 때문이다.
+         ⚠️ 일부러 await하지 않는다(fire-and-forget). 입장 경로에 읽기 2건을 직렬로 끼워 넣으면
+            그만큼 입장이 늦어지고, 무엇보다 이 장식 하나 때문에 입장이 막히면 안 된다.
+            내부는 전부 readGuard_(8초)로 감싸 놨고 실패해도 조용히 넘어간다. */
+      try{ Promise.resolve(mkNewbieSelfStamp_()).catch(()=>{}); }catch(_e){}
       // ✅ V128: heartbeat 없이도 보이도록 입장 직후 만렙 펫 현황을 presence + profiles에 1회 공개 저장
       try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){}
       // ✅ v75: 이번 접속 시점 기준으로 프로필 펫 모션 시작점을 분산
@@ -26301,7 +26442,7 @@ try{
   const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
   // ✅ V168.7: 구버전 탭 감지용 빌드 번호. 배포 때마다 올린다.
   // summary.appBuild(방 공유값)보다 내 빌드가 낮으면 새로고침 안내를 반복해서 띄운다.
-  const MK_APP_BUILD = 17091; // ✅ V211: 절전 폐기로 리로드된 탭 자동 재입장(같은 날+presence 생존+공지 억제).
+  const MK_APP_BUILD = 17092; // ✅ V212: 바로가기 3버튼 한 줄 고정 + 뉴비 새싹 덩쿨 테두리(설정 켜기 전엔 무동작).
   /* ⚠️ V208(2026-08-14): "지금 이 탭이 몇 번 빌드인가"를 확인할 방법이 없었다.
      소스보기(Ctrl+U)는 **이미 로드된 문서**를 보여줘서 새로고침 전에는 옛 버전이 나오고,
      그래서 배포가 됐는지 안 됐는지를 놓고 계속 헷갈렸다.
@@ -30697,6 +30838,35 @@ if(!window.__MK_BOOT_OK__){
     line-height:1 !important;
   }
 }
+</style>
+
+<!-- V212_BTNROW: 바로가기 3버튼 중 "🔥공지&출석"만 두 줄로 꺾이던 문제 -->
+<style id="v212ShortcutRowSingleLine">
+/* ═══ V212_BTNROW (2026-08-14): 바로가기 버튼을 내용 폭에 맞춰 한 줄로 ═══
+   📏 제보: ✨캐꾸 / 🔥공지&출석 / 📚숙제장 셋 중 가운데만 두 줄로 꺾인다.
+
+   ⚠️ 처음 의심한 "그리드가 4열이라 빈 칸이 남는다"는 **데스크톱에서는 원인이 아니었다.**
+      기본 .btnRow(repeat(4,...))와 V113(#dashShortcuts repeat(4) !important)은 둘 다
+      아래 V119 블록(#v119SafeCompactSettingsHomeworkLayout)에 덮여 있다 —
+      그쪽이 grid-template-columns:none + grid-auto-flow:column + grid-auto-columns:minmax(0,1fr)
+      로 다시 깔아서, 실제로는 **버튼 수(3개)만큼 정확히 균등 분할**되고 있었다.
+      (V179에서 📎뽀모도로가 빠져 4→3개가 된 흔적이 repeat(4)로 남아 있을 뿐,
+       데스크톱 렌더에는 영향이 없다. 다른 .btnRow가 그 규칙을 공유하므로 지우지 않는다.)
+
+   ★ 진짜 원인은 두 가지가 겹친 것이다:
+      ①균등 1/3 — 라벨 길이가 제각각인데 칸은 똑같이 나눠 준다.
+      ②V119가 같은 블록에서 `#dashShortcuts > button{white-space:normal !important}`와
+        `.btnLabel{white-space:normal !important}`로 **줄바꿈을 일부러 다시 켰다**
+        (기본 .btnRow button은 nowrap이다). 그래서 가장 긴 라벨만 1/3을 못 버티고 꺾인다.
+
+   → 트랙을 내용 기반(auto)으로 바꾼다. auto 트랙은 내용만큼 먼저 확보한 뒤 남는 공간을
+     나눠 가지므로 긴 라벨이 자연스럽게 더 넓게 가져간다. 명시 트랙 3개를 주면
+     grid-auto-flow:column(암시 트랙 규칙)은 더 이상 관여하지 않는다.
+   ⚠️ 반드시 V119 블록보다 **뒤에** 있어야 한다 — 같은 특이도(0,1,0)+!important라
+      순서로만 이긴다. 앞에 두면 조용히 무시된다.
+   ⚠️ 모바일(≤760px) 입장 후는 V107/V120이 body.joined(특이도 0,2,0)로 display:flex를
+      걸어 두었으므로 이 규칙은 그쪽에 닿지 않는다(그리드 속성이 무시된다). */
+#dashShortcuts{ grid-template-columns: auto auto auto !important; }
 </style>
 
 

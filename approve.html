@@ -113,6 +113,31 @@
       <h2>관리자</h2>
       <p class="muted" id="adminNote">관리자 임명·해제는 방장만 할 수 있습니다.</p>
       <div id="adminList"><p class="muted">불러오는 중…</p></div>
+
+      <!-- V212A_NEWBIECFG: 뉴비(신입) 새싹 테두리 설정. index.html 작업자와 공유하는 스키마라 필드명은 고정. -->
+      <div class="card" id="newbieCfgCard">
+        <div style="font-weight:600;margin-bottom:8px">🌱 뉴비 테두리</div>
+        <div class="row">
+          <label><input id="newbieEnabled" type="checkbox" style="width:auto;padding:0;vertical-align:middle"/> 켜기</label>
+        </div>
+        <div class="row">
+          <label class="muted" for="newbieCutoff" style="min-width:64px">기준일</label>
+          <input id="newbieCutoff" type="date"/>
+          <span class="muted">이 날짜 이후 승인된 멤버에게 표시됩니다</span>
+        </div>
+        <div class="row">
+          <label class="muted" for="newbieDuration" style="min-width:64px">표시 기간</label>
+          <input id="newbieDuration" type="number" min="1" max="365" style="width:80px"/>
+          <span class="muted">일 · 승인일로부터</span>
+        </div>
+        <div class="row">
+          <button class="primary" id="newbieSaveBtn" type="button">저장</button>
+        </div>
+        <p class="muted" id="newbieStatus" style="margin:10px 0 0">현재 상태: 불러오는 중…</p>
+        <p class="muted" style="margin:4px 0 0">
+          설정 변경은 각자 다음 입장부터 반영됩니다. 2026-08-13 일괄 이관 승인자는 기준일 이전이라 대상이 아닙니다.
+        </p>
+      </div>
     </section>
 
     <section id="tab-archive" class="hide">
@@ -604,6 +629,81 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
     __roleRetryTimer = setTimeout(()=>{ __roleRetryTimer = null; applyRole_(user, true); }, ms);
   }
 
+  /* ===== V212A_NEWBIECFG: 뉴비 테두리 설정 =====
+     매직링크 이관일(2026-08-13)에 34명 전원이 일괄 승인돼 approvedAtMs가 전부 그 날짜다.
+     "기준일 이후 승인자만" 조건이 없으면 켜는 순간 이관 대상자 전원이 뉴비로 표시된다 —
+     그래서 cutoffMs는 선택이 아니라 필수이고, 처음 켤 때도 항상 오늘 날짜를 기본으로 채운다.
+     rooms/${ROOM}/settings/newbie는 index.html 작업자와 공유하는 스키마이므로 필드명(enabled/
+     cutoffMs/durationDays/updatedAtMs/updatedBy)을 임의로 바꾸지 않는다. */
+  const NEWBIE_PATH = `rooms/${ROOM}/settings/newbie`;
+
+  // 날짜 input(YYYY-MM-DD) ↔ ms 변환. UTC 자정이 아니라 KST 자정으로 고정한다 — 관리자가
+  // 화면에서 고른 "그 날짜"와 서버에 저장되는 cutoffMs가 어긋나면 기준일이 하루 밀릴 수 있다.
+  function newbieDateInputToMs_(v){
+    if(!v) return null;
+    const t = new Date(v + "T00:00:00+09:00").getTime();
+    return Number.isFinite(t) ? t : null;
+  }
+  function newbieMsToDateInput_(ms){
+    try{ return new Date(Number(ms)).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); } // en-CA = YYYY-MM-DD
+    catch(_e){ return ""; }
+  }
+  const clampDuration_ = (n) => Math.min(365, Math.max(1, Math.round(Number(n)) || 14));
+
+  function paintNewbieStatus_(v){
+    const on = !!(v && v.enabled);
+    const cutoffTxt = v && v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : "-";
+    const days = (v && v.durationDays) || "-";
+    $("newbieStatus").textContent = `현재 상태: ${on ? "켜짐" : "꺼짐"} · 기준일 ${cutoffTxt} · ${days}일`;
+  }
+
+  async function loadNewbieCfg_(){
+    $("newbieStatus").textContent = "현재 상태: 불러오는 중…";
+    try{
+      const snap = await getWithTimeout_(ref(db, NEWBIE_PATH), "뉴비 설정");
+      const v = snap.exists() ? (snap.val() || {}) : {};
+      $("newbieEnabled").checked = !!v.enabled;
+      $("newbieCutoff").value = v.cutoffMs ? newbieMsToDateInput_(v.cutoffMs) : newbieMsToDateInput_(Date.now());
+      $("newbieDuration").value = v.durationDays ? clampDuration_(v.durationDays) : 14;
+      paintNewbieStatus_(v);
+      diag("뉴비설정", "로드 enabled=" + !!v.enabled);
+    }catch(err){
+      console.warn("[V212A_NEWBIECFG] 설정 로드 실패", err);
+      diag("뉴비설정", "로드 실패 " + (err?.code || err?.message || ""));
+      $("newbieStatus").textContent = "설정을 불러오지 못했습니다 · 저장 전에 새로고침해 주세요";
+      // 로드는 실패해도 "처음 켠다" 시나리오는 막지 않는다 — 폼이 비어 있을 때만 기본값을 채운다.
+      if(!$("newbieCutoff").value) $("newbieCutoff").value = newbieMsToDateInput_(Date.now());
+      if(!$("newbieDuration").value) $("newbieDuration").value = 14;
+    }
+  }
+
+  $("newbieSaveBtn").addEventListener("click", async () => {
+    const cutoffVal = $("newbieCutoff").value;
+    if(!cutoffVal){ toast("기준일을 입력해 주세요.", 4000); $("newbieCutoff").focus(); return; }
+    const cutoffMs = newbieDateInputToMs_(cutoffVal);
+    if(cutoffMs == null){ toast("기준일 형식이 올바르지 않습니다.", 4000); return; }
+    const durationDays = clampDuration_($("newbieDuration").value);
+    $("newbieDuration").value = durationDays;   // 클램프된 값을 화면에도 그대로 반영
+    const payload = {
+      enabled: !!$("newbieEnabled").checked, cutoffMs, durationDays,
+      updatedAtMs: Date.now(), updatedBy: me?.email || me?.uid || ""
+    };
+    const btn = $("newbieSaveBtn"), label = btn.textContent;
+    btn.disabled = true; btn.textContent = "저장 중…";
+    try{
+      await update(ref(db, NEWBIE_PATH), payload);
+      paintNewbieStatus_(payload);
+      diag("뉴비설정", "저장 enabled=" + payload.enabled + " cutoff=" + cutoffVal + " days=" + durationDays);
+      toast("뉴비 설정을 저장했습니다. 각자 다음 입장부터 반영됩니다.", 4500);
+    }catch(err){
+      console.warn("[V212A_NEWBIECFG] 저장 실패", err);
+      diag("뉴비설정", "저장 실패 " + (err?.code || err?.message || ""));
+      toast("저장 실패: " + (err?.code || err?.message || ""), 6000);
+    }finally{
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+
   async function applyRole_(user, isRetry){
     if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;   // 그새 계정이 바뀌었다
     const role = await resolveRole(user);
@@ -625,6 +725,9 @@ document.querySelectorAll('[role="tab"]').forEach(btn => {
       return;
     }
     $("noPerm").classList.add("hide"); $("adminUI").classList.remove("hide");
+    // V212A_NEWBIECFG: adminUI를 열 때마다(재판정·복귀 재구독 포함) 서버 최신값으로 폼을 다시 채운다.
+    // getWithTimeout_로 가드된 읽기라 여기서 기다리지 않아도(await 없이 호출해도) 화면이 멈추지 않는다.
+    loadNewbieCfg_();
 
     detachSubs_();   // 재판정으로 다시 들어왔을 수 있다 — 겹치기 전에 반드시 회수
     const fail = (where) => (err) => {
