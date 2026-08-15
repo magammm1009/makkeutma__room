@@ -10274,7 +10274,7 @@ function presenceFeedWatchdog_(){
     if(now - Number(state.__presenceRefetchAt || 0) < 10 * 60 * 1000) return;
     state.__presenceRefetchAt = now;
     mkDiag("presence-재구독", `${Math.round((now - Number(state.__presenceFeedAtMs || 0))/1000)}초간 수신 없음`);
-    Promise.resolve(subscribeParticipants()).catch(()=>{});
+    Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V223_RENDERWATCH] 참가자 재구독 실패 — 이 실패가 조용하면 타일이 영영 안 돌아온다", e); });
   }catch(e){}
 }
 
@@ -10296,7 +10296,7 @@ if(!state.unsubParticipants){
       console.warn("[V205_TILEPROBE] 참가자 구독이 없어 다시 겁니다 (" + reason + " · " + step0 + "단계)");
       if(step0 >= 4){ try{ mkShowTilesLost_(0); }catch(_e){} }
       else if(step0 === 3){ if(!rtdbConnRecycle_("nohandle:" + reason)) state.__tilesRecoverStep = 2; }
-      Promise.resolve(subscribeParticipants()).catch(()=>{});
+      Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V223_RENDERWATCH] 참가자 재구독 실패 — 이 실패가 조용하면 타일이 영영 안 돌아온다", e); });
       return;
     }
 
@@ -10325,7 +10325,7 @@ if(serverNewest > mineNewest + 1000){
         step + "단계 복구 (" + reason + ")");
       try{ mkDiag("타일-재구독", `${step}단계 · 서버가 ${gap}초 최신 · ${reason}`); }catch(_e){}
       if(step === 1){
-        Promise.resolve(subscribeParticipants()).catch(()=>{});
+        Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V223_RENDERWATCH] 참가자 재구독 실패 — 이 실패가 조용하면 타일이 영영 안 돌아온다", e); });
       }else if(step === 2){
         tilesHardRebuild_("probe:" + reason);
       }else if(step === 3){
@@ -10348,7 +10348,7 @@ function tilesHardRebuild_(reason){
     try{ state.__presenceGoodArr = null; }catch(_e){}     
     try{ state.lastRendered?.clear?.(); }catch(_e){}
     state.__presenceFeedAtMs = 0;
-    Promise.resolve(subscribeParticipants()).catch(()=>{});
+    Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V223_RENDERWATCH] 참가자 재구독 실패 — 이 실패가 조용하면 타일이 영영 안 돌아온다", e); });
   }catch(e){ console.warn("[V207_TILEHARD] 실패", e); }
 }
 
@@ -10376,6 +10376,36 @@ try{
               : "재생성하지 않았습니다 — 진짜 연결 끊김(V194) 상태거나 예외입니다. __MK_CHAT_DEBUG__()를 확인해 주세요.";
   };
 }catch(_e){}
+
+const TILES_RENDER_STALL_MS = 4 * 60 * 1000;      
+const TILES_RENDER_FIX_COOLDOWN_MS = 3 * 60 * 1000;
+function tilesRenderWatchdog_(reason){
+  try{
+    if(!state || !state.joined || !state.nonChatEnabled) return;
+    if(state.nonChatPausedByHidden) return;
+    if(document.visibilityState !== "visible") return;   
+    const feedAt = Number(state.__presenceFeedAtMs || 0);
+    const renderAt = Number(state.__tilesRenderAtMs || 0);
+    if(!feedAt || !renderAt) return;                     
+    if(feedAt - renderAt < TILES_RENDER_STALL_MS){ state.__renderFixCount = 0; return; }   
+    const now = Date.now();
+    if(now - Number(state.__renderFixAtMs || 0) < TILES_RENDER_FIX_COOLDOWN_MS) return;
+    state.__renderFixAtMs = now;
+    state.__renderFixCount = Number(state.__renderFixCount || 0) + 1;
+    
+    if(state.__renderFixCount >= 4){
+      console.warn("[V223_RENDERWATCH] 강제 재렌더 " + (state.__renderFixCount - 1) + "회로도 화면이 안 살아나 새로고침을 안내합니다");
+      try{ mkShowTilesLost_(Math.round((feedAt - renderAt)/1000)); }catch(_e){}
+      return;
+    }
+    console.warn("[V223_RENDERWATCH] 데이터는 오는데 화면이 " +
+      Math.round((feedAt - renderAt)/1000) + "초째 안 바뀝니다 — 강제 재렌더 (" + reason + ")");
+    try{ mkDiag("타일-강제재렌더", `${Math.round((feedAt - renderAt)/1000)}초 정체 · ${reason}`); }catch(_e){}
+    try{ state._presenceRenderQueued = false; }catch(_e){}          
+    try{ schedulePresenceRender(state._lastPresenceArr || []); }catch(_e){}
+    try{ restartUiTickV143(); }catch(_e){}                          
+  }catch(e){}
+}
 
 let __tilesLostBound = false;
 function mkShowTilesLost_(gapSec){
@@ -10447,8 +10477,14 @@ const srvTs = Number((val[id] || {}).tsMs || 0);
       console.warn("[V198_CHATWATCH] 놓친 메시지를 발견했지만 쿨다운 중이라 재구독을 미룹니다.");
       return;
     }
+    
+    const chatResubFailed = state.__chatWatchMineTsAtResub === mineTs;   
+    state.__chatWatchMineTsAtResub = mineTs;
     state.__chatResubAt = now;
     state.__chatWatchResubCount = Number(state.__chatWatchResubCount || 0) + 1;
+    if(chatResubFailed){
+      try{ rtdbConnRecycle_("chatwatch"); }catch(_e){}   
+    }
     console.warn("[V198_CHATWATCH] 채팅 수신이 멈춘 것으로 판단해 다시 구독합니다. " +
       `(서버 최신 ${new Date(srvTs).toLocaleTimeString("ko-KR")} / 내 최신 ` +
       `${mineTs ? new Date(mineTs).toLocaleTimeString("ko-KR") : "없음"}, 누적 ${state.__chatWatchResubCount}회)`);
@@ -13033,6 +13069,7 @@ async function heartbeat(){
     try{ presenceFeedWatchdog_(); }catch(_e){}
     try{ chatFeedWatchdog_(); }catch(_e){}          
     try{ presenceProbeWatchdog_("heartbeat"); }catch(_e){}   
+    try{ tilesRenderWatchdog_("heartbeat"); }catch(_e){}     
     
     try{
       if(document.visibilityState === "visible" && !state.nonChatPausedByHidden) ensureTilesAlive_("heartbeat");
@@ -13200,6 +13237,12 @@ window.__MK_CHAT_DEBUG__ = function(){
       return v ? (Math.round((now - v)/1000) + "초 전") : "(수신 없음)"; })(),
     타일_재구독_횟수: Number(state.__presenceProbeResubCount || 0),
     연결_재생성_횟수: Number(state.__connRecycleCount || 0),   
+    
+    타일_마지막렌더: (()=>{ const v = Number(state.__tilesRenderAtMs || 0);
+      return v ? (Math.round((now - v)/1000) + "초 전") : "(아직 없음)"; })(),
+    초시계_마지막틱: (()=>{ const v = Number(state.__uiTickAtMs || 0);
+      return v ? (Math.round((now - v)/1000) + "초 전") : "(아직 없음)"; })(),
+    강제재렌더_횟수: Number(state.__renderFixCount || 0),
     마지막_서버확인: state.__chatWatchProbeAtMs ? (Math.round((now - state.__chatWatchProbeAtMs)/1000) + "초 전") : "(아직 없음)",
     서버시각_오차ms: Number(__mkServerTimeOffsetMs) || 0,
     RTDB_연결끊김: !!__connLostSince,
@@ -13662,6 +13705,7 @@ window.addEventListener("pageshow", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ ensureTilesAlive_("focus"); }catch(_e){}   
       try{ presenceProbeWatchdog_("focus"); }catch(_e){}   
+      try{ tilesRenderWatchdog_("focus"); }catch(_e){}     
       try{ chatFeedWatchdog_(); }catch(_e){}          
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
@@ -16879,6 +16923,7 @@ coinEl: (timer && timer.querySelector) ? timer.querySelector('.coinTick') : null
       return t;
     }
     function updateTimersLive(){
+      try{ state.__uiTickAtMs = Date.now(); }catch(_e){}   
       
       try{ if(state.joined) ensureFocusDayCurrent("uiTick"); }catch(_e){}
       for(const [uid, rec] of state.lastRendered.entries()){
@@ -17073,7 +17118,17 @@ function schedulePresenceRender(onlineArr){
           state._presenceRenderQueued = false;
           const arr = state._pendingPresenceArr || [];
           try{ renderStatusRoster(arr); }catch(e){}
-          try{ renderGridTilesOrRoster(arr); }catch(e){}
+          
+          try{
+            renderGridTilesOrRoster(arr);
+            state.__tilesRenderAtMs = Date.now();
+          }catch(e){
+            const t = Date.now();
+            if(t - Number(state.__renderErrWarnAtMs || 0) > 60 * 1000){
+              state.__renderErrWarnAtMs = t;
+              console.warn("[V223_RENDERWATCH] 타일 렌더 실패", e);
+            }
+          }
           try{ setMissionButtonState(); }catch(e){}
         });
       };
@@ -18852,7 +18907,14 @@ try{ updateOnlineCountUI(onlineArr.length); }catch(e){}
             try{ refreshChatMetaFromParticipants(false); }catch(e){}
             try{ if(state.adminOk) refreshAdminTimerTargetOptions(); }catch(e){}
             schedulePresenceRender(orderedArr);
-          }catch(e){}
+          }catch(e){
+            
+            const t = Date.now();
+            if(t - Number(state.__recalcErrWarnAtMs || 0) > 60 * 1000){
+              state.__recalcErrWarnAtMs = t;
+              console.warn("[V223_RENDERWATCH] 참가자 재계산 실패 — 화면 갱신이 이 예외에 막혀 있습니다", e);
+            }
+          }
         });
       };
 
@@ -19583,6 +19645,7 @@ if(!__nonChatPausedByTimer){
       ensureTilesAlive_("visible");
       
       try{ presenceProbeWatchdog_("visible"); }catch(_e){}
+      try{ tilesRenderWatchdog_("visible"); }catch(_e){}   
       return;
     }
     __nonChatPausedByTimer = false;
@@ -24814,7 +24877,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17101; 
+const MK_APP_BUILD = 17102; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
