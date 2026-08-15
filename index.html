@@ -53,6 +53,8 @@
 
 
 
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -10280,14 +10282,24 @@ function presenceFeedWatchdog_(){
 
 const TILEPROBE_MIN_SILENCE_MS = 90 * 1000;               
 const TILEPROBE_COOLDOWN_MS    = 60 * 1000;               
-async function presenceProbeWatchdog_(reason){
+const TILEPROBE_FORCE_COOLDOWN_MS = 15 * 1000;            
+async function presenceProbeWatchdog_(reason, force){
   try{
     if(!state || !state.joined || !state.roomId || !state.nonChatEnabled) return;
     if(state.nonChatPausedByHidden) return;          
+    
+    if(document.visibilityState !== "visible") return;
     const now = Date.now();
+    const forced = !!force;
     const at = Number(state.__presenceFeedAtMs || 0);
-    if(at && (now - at) < TILEPROBE_MIN_SILENCE_MS) return;   
-    if(now - Number(state.__presenceProbeAtMs || 0) < TILEPROBE_COOLDOWN_MS) return;
+    if(!forced && at && (now - at) < TILEPROBE_MIN_SILENCE_MS) return;   
+    if(forced){
+      
+      if(now - Number(state.__presenceProbeForceAtMs || 0) < TILEPROBE_FORCE_COOLDOWN_MS) return;
+      state.__presenceProbeForceAtMs = now;
+    }else if(now - Number(state.__presenceProbeAtMs || 0) < TILEPROBE_COOLDOWN_MS){
+      return;
+    }
     state.__presenceProbeAtMs = now;                 
 
 if(!state.unsubParticipants){
@@ -10379,7 +10391,9 @@ try{
 
 const TILES_RENDER_STALL_MS = 4 * 60 * 1000;      
 const TILES_RENDER_FIX_COOLDOWN_MS = 3 * 60 * 1000;
-function tilesRenderWatchdog_(reason){
+const TILES_RENDER_VISIBLE_GRACE_MS = 3 * 1000;    
+const TILES_RENDER_FORCE_COOLDOWN_MS = 15 * 1000;
+function tilesRenderWatchdog_(reason, force){
   try{
     if(!state || !state.joined || !state.nonChatEnabled) return;
     if(state.nonChatPausedByHidden) return;
@@ -10387,9 +10401,19 @@ function tilesRenderWatchdog_(reason){
     const feedAt = Number(state.__presenceFeedAtMs || 0);
     const renderAt = Number(state.__tilesRenderAtMs || 0);
     if(!feedAt || !renderAt) return;                     
-    if(feedAt - renderAt < TILES_RENDER_STALL_MS){ state.__renderFixCount = 0; return; }   
+    const forced = !!force;
+    const minGap = forced ? TILES_RENDER_VISIBLE_GRACE_MS : TILES_RENDER_STALL_MS;
+    if(feedAt - renderAt < minGap){
+      if(!forced) state.__renderFixCount = 0;
+      return;
+    }
     const now = Date.now();
-    if(now - Number(state.__renderFixAtMs || 0) < TILES_RENDER_FIX_COOLDOWN_MS) return;
+    if(forced){
+      if(now - Number(state.__tilesRenderForceAtMs || 0) < TILES_RENDER_FORCE_COOLDOWN_MS) return;
+      state.__tilesRenderForceAtMs = now;
+    }else if(now - Number(state.__renderFixAtMs || 0) < TILES_RENDER_FIX_COOLDOWN_MS){
+      return;
+    }
     state.__renderFixAtMs = now;
     state.__renderFixCount = Number(state.__renderFixCount || 0) + 1;
     
@@ -10445,16 +10469,24 @@ try{
 
 const CHATWATCH_MIN_SILENCE_MS = 4 * 60 * 1000;   
 const CHATWATCH_COOLDOWN_MS    = 5 * 60 * 1000;   
-async function chatFeedWatchdog_(){
+const CHATWATCH_FORCE_COOLDOWN_MS = 15 * 1000;    
+async function chatFeedWatchdog_(reason, force){
   try{
     if(!state || !state.joined || !state.roomId) return;
     if(document.visibilityState !== "visible") return;
     if(!state.chatDayKey) return;                       
     const now = Date.now();
+    const forced = !!force;
     
     const last = Number(state.chatLastRecvMs || state.__chatWatchBaseMs || 0);
-    if(last && now - last < CHATWATCH_MIN_SILENCE_MS) return;
-    if(now - Number(state.__chatWatchAt || 0) < CHATWATCH_MIN_SILENCE_MS) return;
+    if(!forced && last && now - last < CHATWATCH_MIN_SILENCE_MS) return;
+    if(forced){
+      
+      if(now - Number(state.__chatWatchForceAt || 0) < CHATWATCH_FORCE_COOLDOWN_MS) return;
+      state.__chatWatchForceAt = now;
+    }else if(now - Number(state.__chatWatchAt || 0) < CHATWATCH_MIN_SILENCE_MS){
+      return;
+    }
     state.__chatWatchAt = now;
 
     const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
@@ -13230,6 +13262,8 @@ window.__MK_CHAT_DEBUG__ = function(){
 구독중_presence수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
     화면_타일수: (()=>{ try{ return state.lastRendered?.size ?? "?"; }catch(e){ return "?"; } })(),
     절약모드_꺼짐: !!state.nonChatEnabled,
+    
+    백그라운드_presence_유지: !!state.__backgroundPresenceKept,
     구독토큰: Number(state.chatSubSeq || 0),
     자동재구독_횟수: Number(state.__chatWatchResubCount || 0),   
 
@@ -13697,22 +13731,33 @@ window.addEventListener("pageshow", ()=>{ fired = false; }, {capture:true});
 window.addEventListener("pageshow", ()=>{
       try{ ensureChatDayCurrent_("pageshow"); }catch(_e){}
       try{ ensureTilesAlive_("pageshow"); }catch(_e){}   
-      try{ presenceProbeWatchdog_("pageshow"); }catch(_e){}   
+      try{ presenceProbeWatchdog_("pageshow", true); }catch(_e){}   
+      try{ chatFeedWatchdog_("pageshow", true); }catch(_e){}
+      try{ tilesRenderWatchdog_("pageshow", true); }catch(_e){}
       try{ autoLeaveIfIdle_("pageshow"); }catch(_e){}    
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("focus", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ ensureTilesAlive_("focus"); }catch(_e){}   
-      try{ presenceProbeWatchdog_("focus"); }catch(_e){}   
-      try{ tilesRenderWatchdog_("focus"); }catch(_e){}     
-      try{ chatFeedWatchdog_(); }catch(_e){}          
+      
+      try{
+        if(state.__renderSkippedHidden && document.visibilityState === "visible"){
+          state.__renderSkippedHidden = false;
+          schedulePresenceRender(state._pendingPresenceArr || state._lastPresenceArr || []);
+        }
+      }catch(_e){}
+      try{ presenceProbeWatchdog_("focus", true); }catch(_e){}   
+      try{ tilesRenderWatchdog_("focus", true); }catch(_e){}     
+      try{ chatFeedWatchdog_("focus", true); }catch(_e){}
       try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
       try{ ensureChatDayCurrent_("online"); }catch(_e){}
       try{ ensureTilesAlive_("online"); }catch(_e){}   
-      try{ presenceProbeWatchdog_("online"); }catch(_e){}   
+      try{ presenceProbeWatchdog_("online", true); }catch(_e){}   
+      try{ chatFeedWatchdog_("online", true); }catch(_e){}
+      try{ tilesRenderWatchdog_("online", true); }catch(_e){}
       try{ Promise.resolve(ensureFocusDayCurrent("online")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
 
@@ -16925,6 +16970,11 @@ coinEl: (timer && timer.querySelector) ? timer.querySelector('.coinTick') : null
     function updateTimersLive(){
       try{ state.__uiTickAtMs = Date.now(); }catch(_e){}   
       
+      if(document.visibilityState === "hidden"){
+        try{ if(state.joined) ensureFocusDayCurrent("uiTick"); }catch(_e){}
+        return;
+      }
+      
       try{ if(state.joined) ensureFocusDayCurrent("uiTick"); }catch(_e){}
       for(const [uid, rec] of state.lastRendered.entries()){
         const p = state.currentParticipants.get(uid);
@@ -17103,6 +17153,8 @@ return false;
 
 function schedulePresenceRender(onlineArr){
       state._pendingPresenceArr = onlineArr;
+      
+      if(document.visibilityState === "hidden"){ state.__renderSkippedHidden = true; return; }
       if(state._presenceRenderQueued) return;
       state._presenceRenderQueued = true;
       const runPresenceRender = ()=>{
@@ -19558,13 +19610,19 @@ window.addEventListener("resize", ()=>{
 
 function pauseNonChatSubscriptions(reason){
   try{
-    
-    state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
-    state.__presenceFeedAtMs = 0; 
-    if(state.unsubParticipants){ state.unsubParticipants(); state.unsubParticipants = null; }
+
+const keepPresenceInBackground = (reason === "hidden" && !!state.joined && !!state.nonChatEnabled);
+    if(!keepPresenceInBackground){
+      
+      state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
+      state.__presenceFeedAtMs = 0; 
+      if(state.unsubParticipants){ state.unsubParticipants(); state.unsubParticipants = null; }
+    }
     if(state.unsubRoom){ state.unsubRoom(); state.unsubRoom = null; }
     
-    state.nonChatPausedByHidden = (reason === "hidden");
+    state.__backgroundPresenceKept = keepPresenceInBackground;
+
+state.nonChatPausedByHidden = ((reason === "hidden" || reason === "hiddenLong") && !keepPresenceInBackground);
   }catch(e){}
 }
 
@@ -19592,16 +19650,26 @@ function resumeNonChatSubscriptions(){
     if(!state.nonChatEnabled) return;
     
     try{ subscribeRoom(); }catch(e){ console.warn("[V197_TILEBACK] subscribeRoom 실패 — 계속 진행합니다", e); }
-    try{ subscribeParticipants(); }catch(e){ console.warn("[V197_TILEBACK] subscribeParticipants 실패 — 타일이 안 보일 수 있습니다", e); }
+    
+    try{
+      if(!state.unsubParticipants) subscribeParticipants();
+    }catch(e){ console.warn("[V197_TILEBACK] subscribeParticipants 실패 — 타일이 안 보일 수 있습니다", e); }
     
     try{ if(!state.unsubKick) subscribeKicks(); }catch(e){ console.warn("[V197_TILEBACK] subscribeKicks 실패 — 계속 진행합니다", e); }
     state.nonChatPausedByHidden = false;
+    state.__backgroundPresenceKept = false;
 
 try{ ensureChatDayCurrent_("resume"); }catch(e){}
     const now = Date.now();
     if(state.joined && now - Number(state.__lastResumeHeartbeatAt || 0) > 3000){
       state.__lastResumeHeartbeatAt = now;
-      v158RunSoon_(()=>{ try{ heartbeat(); }catch(e){} });
+      v158RunSoon_(()=>{
+        
+        try{ presenceProbeWatchdog_("resume", true); }catch(e){}
+        try{ chatFeedWatchdog_("resume", true); }catch(e){}
+        try{ tilesRenderWatchdog_("resume", true); }catch(e){}
+        try{ heartbeat(); }catch(e){}
+      });
     }
   }catch(e){}
 }
@@ -19624,11 +19692,15 @@ function setNonChatEnabled(on){
 }
 
 const NONCHAT_PAUSE_DELAY_MS = 90000; 
+
+const PRESENCE_HIDDEN_CUTOFF_MS = 45 * 60 * 1000;
 let __nonChatPauseTimer = null;
+let __presencePauseTimer = null;   
 let __nonChatPausedByTimer = false;
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden){
     if(__nonChatPauseTimer){ clearTimeout(__nonChatPauseTimer); __nonChatPauseTimer = null; }
+    if(__presencePauseTimer){ clearTimeout(__presencePauseTimer); __presencePauseTimer = null; }
     __nonChatPauseTimer = setTimeout(()=>{
       __nonChatPauseTimer = null;
       if(!document.hidden) return;            
@@ -19638,14 +19710,29 @@ document.addEventListener("visibilitychange", ()=>{
 
 try{ if(typeof stopPetPlaygroundRealtimeV67 === "function") stopPetPlaygroundRealtimeV67(); }catch(e){}
     }, NONCHAT_PAUSE_DELAY_MS);
+    __presencePauseTimer = setTimeout(()=>{
+      __presencePauseTimer = null;
+      if(!document.hidden) return;
+      
+      pauseNonChatSubscriptions("hiddenLong");
+    }, PRESENCE_HIDDEN_CUTOFF_MS);
   }else{
     if(__nonChatPauseTimer){ clearTimeout(__nonChatPauseTimer); __nonChatPauseTimer = null; }
+    if(__presencePauseTimer){ clearTimeout(__presencePauseTimer); __presencePauseTimer = null; }
+    
+    try{
+      if(state.__renderSkippedHidden){
+        state.__renderSkippedHidden = false;
+        schedulePresenceRender(state._pendingPresenceArr || state._lastPresenceArr || []);
+      }
+    }catch(_e){}
 
 if(!__nonChatPausedByTimer){
       ensureTilesAlive_("visible");
       
-      try{ presenceProbeWatchdog_("visible"); }catch(_e){}
-      try{ tilesRenderWatchdog_("visible"); }catch(_e){}   
+      try{ chatFeedWatchdog_("visible", true); }catch(_e){}
+      try{ presenceProbeWatchdog_("visible", true); }catch(_e){}
+      try{ tilesRenderWatchdog_("visible", true); }catch(_e){}   
       return;
     }
     __nonChatPausedByTimer = false;
@@ -24877,7 +24964,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17102; 
+const MK_APP_BUILD = 17104; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
