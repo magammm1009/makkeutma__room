@@ -7739,7 +7739,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, onChildRemoved as rOnChildRemoved, onChildMoved as rOnChildMoved, off as rOff, onDisconnect as rOnDisconnect,
       query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
-      serverTimestamp as rServerTimestamp, increment as rIncrement
+      serverTimestamp as rServerTimestamp, increment as rIncrement, goOffline as rGoOffline, goOnline as rGoOnline 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 ; (async ()=>{
@@ -10291,7 +10291,11 @@ async function presenceProbeWatchdog_(reason){
     state.__presenceProbeAtMs = now;                 
 
 if(!state.unsubParticipants){
-      console.warn("[V205_TILEPROBE] 참가자 구독이 없어 다시 겁니다 (" + reason + ")");
+      const step0 = Number(state.__tilesRecoverStep || 0) + 1;
+      state.__tilesRecoverStep = step0;
+      console.warn("[V205_TILEPROBE] 참가자 구독이 없어 다시 겁니다 (" + reason + " · " + step0 + "단계)");
+      if(step0 >= 4){ try{ mkShowTilesLost_(0); }catch(_e){} }
+      else if(step0 === 3){ if(!rtdbConnRecycle_("nohandle:" + reason)) state.__tilesRecoverStep = 2; }
       Promise.resolve(subscribeParticipants()).catch(()=>{});
       return;
     }
@@ -10324,6 +10328,9 @@ if(serverNewest > mineNewest + 1000){
         Promise.resolve(subscribeParticipants()).catch(()=>{});
       }else if(step === 2){
         tilesHardRebuild_("probe:" + reason);
+      }else if(step === 3){
+        
+        if(!rtdbConnRecycle_("probe:" + reason)) state.__tilesRecoverStep = 2;
       }else{
         try{ mkShowTilesLost_(gap); }catch(_e){}
       }
@@ -10344,6 +10351,31 @@ function tilesHardRebuild_(reason){
     Promise.resolve(subscribeParticipants()).catch(()=>{});
   }catch(e){ console.warn("[V207_TILEHARD] 실패", e); }
 }
+
+const CONN_RECYCLE_COOLDOWN_MS = 5 * 60 * 1000;
+function rtdbConnRecycle_(reason){
+  try{
+    const now = Date.now();
+    if(now - Number(state.__connRecycleAtMs || 0) < CONN_RECYCLE_COOLDOWN_MS) return false;
+    if(__connLostSince) return false;               
+    state.__connRecycleAtMs = now;                  
+    state.__connRecycleCount = Number(state.__connRecycleCount || 0) + 1;
+    console.warn("[V221_CONNRECYCLE] 리스너 재부착으로 안 살아나 RTDB 연결을 재생성합니다 (" + reason + ")");
+    try{ mkDiag("연결-재생성", String(reason || "")); }catch(_e){}
+    rGoOffline(rtdb);
+    setTimeout(()=>{ try{ rGoOnline(rtdb); }catch(_e){} }, 250);
+    return true;
+  }catch(e){ console.warn("[V221_CONNRECYCLE] 실패", e); return false; }
+}
+
+try{
+  window.__MK_CONN_FIX__ = function(){
+    state.__connRecycleAtMs = 0;                    
+    const ok = rtdbConnRecycle_("manual");
+    return ok ? "연결을 재생성했습니다. 몇 초 뒤 __MK_CHAT_DEBUG__()의 타일_마지막수신이 갱신되는지 확인해 주세요."
+              : "재생성하지 않았습니다 — 진짜 연결 끊김(V194) 상태거나 예외입니다. __MK_CHAT_DEBUG__()를 확인해 주세요.";
+  };
+}catch(_e){}
 
 let __tilesLostBound = false;
 function mkShowTilesLost_(gapSec){
@@ -13167,6 +13199,7 @@ window.__MK_CHAT_DEBUG__ = function(){
 타일_마지막수신: (()=>{ const v = Number(state.__presenceFeedAtMs || 0);
       return v ? (Math.round((now - v)/1000) + "초 전") : "(수신 없음)"; })(),
     타일_재구독_횟수: Number(state.__presenceProbeResubCount || 0),
+    연결_재생성_횟수: Number(state.__connRecycleCount || 0),   
     마지막_서버확인: state.__chatWatchProbeAtMs ? (Math.round((now - state.__chatWatchProbeAtMs)/1000) + "초 전") : "(아직 없음)",
     서버시각_오차ms: Number(__mkServerTimeOffsetMs) || 0,
     RTDB_연결끊김: !!__connLostSince,
@@ -24726,6 +24759,7 @@ try{
       segCur.dataset.boundV220 = "1";
       segCur.addEventListener("click", (ev)=>{
         ev.stopPropagation();
+        try{ closeViewMenu(); }catch(_e){}   
         modeSegSetOpen(!segWrap.classList.contains("open"));
       });
     }
@@ -24780,7 +24814,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17100; 
+const MK_APP_BUILD = 17101; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
