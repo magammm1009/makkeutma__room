@@ -2321,6 +2321,12 @@
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.04);
     }
+    
+    .actions #authStateHint{
+      display:inline-flex; align-items:center;
+      min-height:40px; padding:10px 12px;
+      font-size:13px; border-radius:12px;
+    }
     @media (max-width: 760px){
       .topCenter{order:3; width:100%; justify-content:flex-start;}
       .actions{order:2;}
@@ -5909,7 +5915,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <body>
 <div class="topbar">
 <div class="brand">
-<span class="dot" title="방 불"></span>
+
 <div class="brandTitle">💗마끝마💗</div>
 </div>
 
@@ -5930,7 +5936,6 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <button class="ghost" id="profileBtn">🆔 내 프로필</button>
 
-<button class="ghost" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button class="ghost legacyHide" id="installPwaBtn" title="PC/모바일에 앱처럼 설치" type="button">📲앱설치</button>
 </div>
 <div class="actions">
@@ -6028,10 +6033,16 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 
 <div aria-label="화면 모드" class="modeSeg" id="modeSeg" role="group">
 <span class="modeSegLabel">모드</span>
+
+<button aria-expanded="false" aria-haspopup="menu" class="modeSegCurBtn" id="modeSegCur" title="화면 모드 선택" type="button">일반 ▾</button>
+<div class="modeSegPop" id="modeSegPop" role="menu">
 <button aria-pressed="true" class="modeSegBtn" id="modeSegNormal" title="일반 · 모든 화면 효과를 그대로 사용" type="button">일반</button>
 <button aria-pressed="false" class="modeSegBtn" id="modeSegLight" title="경량 · 프로필·펫·손캠 기능은 유지하고 화면 효과만 가볍게" type="button">🍃<span class="modeSegText"> 경량</span></button>
 <button aria-pressed="false" class="modeSegBtn" id="modeSegLow" title="저사양 · 프로필 타일을 접속자 목록으로 바꾸고 손캠·장식 효과를 줄임" type="button">☁️<span class="modeSegText"> 저사양</span></button>
 </div>
+</div>
+
+<button class="ghost layoutToggle" disabled="" id="directInboxBtn" title="개인 쪽지함" type="button">💌 <span class="directInboxLabel">쪽지함</span> <span aria-label="읽지 않은 쪽지" id="directUnreadBadge">0</span></button>
 <button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lightModeBtn" title="기능은 유지하고 화면 효과만 가볍게 사용">🍃<span class="perfLabel"> 경량</span></button>
 <button aria-pressed="false" class="ghost layoutToggle perfModeBtn legacyHide" id="lowSpecBtn" title="저사양 PC용 경량 화면으로 전환">☁️<span class="perfLabel"> 저사양</span></button>
 <button aria-label="보기/정렬 설정" class="ghost layoutToggle" id="viewMenuBtn" title="보기/정렬 설정" type="button">👓보기 ▾</button>
@@ -7890,7 +7901,7 @@ window.__MK_AUTH_DEBUG__ = function(){
 
 if(!mkAuthUsable_() && mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }
         if(mkAuthUsable_()){
-          el.textContent = "✅ 인증됨"; el.className = "meMini authOk";
+          el.textContent = "✅ 인증"; el.className = "meMini authOk"; 
           el.title = "이메일 인증 완료";
           el.style.cursor = ""; el.style.textDecoration = "";
         }else{
@@ -24127,7 +24138,16 @@ function hcPickMenuOpen_(mode){
         const m = document.getElementById("hcPickMenu");
         if(!m) return;
         const isOpen = m.style.display && m.style.display !== "none";
-        m.style.display = ((mode === "toggle") ? !isOpen : !!mode) ? "flex" : "none";
+        const willOpen = ((mode === "toggle") ? !isOpen : !!mode);
+        
+        if(willOpen){
+          const b = document.getElementById("handcamBtn");
+          if(b && m.parentElement === b.parentElement){
+            m.style.left = (b.offsetLeft + b.offsetWidth / 2) + "px";
+            m.style.top = (b.offsetTop + b.offsetHeight + 6) + "px";
+          }
+        }
+        m.style.display = willOpen ? "flex" : "none";
       }catch(e){}
     }
 
@@ -24388,6 +24408,11 @@ function syncModeSegV183(){
         const on = (key === cur);
         b.classList.toggle("on", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+      
+      const curBtn = document.getElementById("modeSegCur");
+      if(curBtn){
+        curBtn.textContent = (cur === "low") ? "☁️ 저사양 ▾" : (cur === "light") ? "🍃 경량 ▾" : "일반 ▾";
       }
     }catch(e){}
   }
@@ -24688,6 +24713,34 @@ try{
         await applyLowSpecModeV143(true);
       });
     }
+    
+    const segWrap = document.getElementById("modeSeg");
+    const segCur = document.getElementById("modeSegCur");
+    const segPop = document.getElementById("modeSegPop");
+    function modeSegSetOpen(open){
+      if(!segWrap) return;
+      segWrap.classList.toggle("open", !!open);
+      if(segCur) segCur.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if(segCur && !segCur.dataset.boundV220){
+      segCur.dataset.boundV220 = "1";
+      segCur.addEventListener("click", (ev)=>{
+        ev.stopPropagation();
+        modeSegSetOpen(!segWrap.classList.contains("open"));
+      });
+    }
+    if(segPop && !segPop.dataset.boundV220){
+      segPop.dataset.boundV220 = "1";
+      
+      segPop.addEventListener("click", (ev)=>{
+        if(ev.target && ev.target.closest("button")) modeSegSetOpen(false);
+      });
+    }
+    document.addEventListener("click", (ev)=>{
+      try{
+        if(segWrap && segWrap.classList.contains("open") && !segWrap.contains(ev.target)) modeSegSetOpen(false);
+      }catch(e){}
+    });
     syncModeSegV183();
   }catch(e){}
 
@@ -24727,7 +24780,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17099; 
+const MK_APP_BUILD = 17100; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29698,7 +29751,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaTab:hover{ border-color:rgba(255,141,194,.45); }
   .mkCharaTab.on{ border-color:#ff8dc2; background:rgba(255,141,194,.16); color:#ffd2e7; box-shadow:0 0 0 1px rgba(255,141,194,.25); }
   
-  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
+  
+  .mkCharaGrid{ flex:1 1 auto; min-height:180px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
   .mkCharaThumb{ position:relative; aspect-ratio:1/1; border:2px solid transparent; border-radius:14px; overflow:hidden; cursor:pointer; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
   .mkCharaThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkCharaThumb:hover{ border-color:rgba(255,141,194,.45); }
@@ -30554,7 +30608,7 @@ var PRESET_KEY = 'mk_chara_presets';
     
     var imgs = layers.map(function(L){
       var f = presetFilterOf(slot.hue, L.catKey, L.part.name);
-      return '<img src="' + esc(L.part.url) + '" alt="' + esc(L.part.name) + '"' + (f ? (' style="filter:' + esc(f) + '"') : '') + '>';
+      return '<img src="' + esc(L.part.url) + '" alt=""' + (f ? (' style="filter:' + esc(f) + '"') : '') + '>'; 
     }).join('');
     return '<span class="mkPresetArt" style="' + esc(style) + '">' + imgs + '</span>';
   }
@@ -30605,7 +30659,7 @@ var b = rectBoxFor(catKey, name);
   function thumbImgHtml(catKey, name, url, extraStyle){ 
     var st = rectStyleFor(catKey, name);
     var style = st + (extraStyle || '');
-    return '<img loading="lazy" src="' + esc(url) + '" alt="' + esc(name) + '"'
+    return '<img loading="lazy" src="' + esc(url) + '" alt=""' 
       + (st ? ' class="mkRectCrop"' : '')
       + (style ? ' style="' + esc(style) + '"' : '') + '>';
   }
@@ -30650,7 +30704,7 @@ var cartUnchecked = {};
     var spHtml = sp.map(function(it){
       return '<div class="mkCartItem mkCartSpecial" data-award="1" role="button" tabindex="0" title="특별 파츠라 코인으로는 살 수 없어요 — 눌러서 쿠폰 코드 등록칸으로 가기">'
         + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
-        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
+        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b></span>' 
         + '<span class="mkCartPrice mkCartCodeNeed">🎖️ 코드 필요</span>'
         + '</div>';
     }).join('');
@@ -30677,7 +30731,7 @@ var cartUnchecked = {};
       return '<label class="mkCartItem">'
         + '<input type="checkbox" data-key="' + esc(k) + '"' + (checked ? ' checked' : '') + '>'
         + '<span class="mkCartThumb">' + (it.url ? thumbImgHtml(it.catKey, it.name, it.url, '') : '') + '</span>'
-        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b><span>' + esc(it.name) + '</span></span>'
+        + '<span class="mkCartInfo"><b>' + esc(it.label) + '</b></span>' 
         + '<span class="mkCartPrice">' + COIN + fmtCoins(it.price) + '</span>'
         + '</label>';
     }).join('') + spHtml; 
@@ -30746,12 +30800,12 @@ var awardBusy = false;
     var amount = Math.floor(Number(item.slice(5)));
     var inp = $id('mkAwardCodeInput');
     if(!isFinite(amount) || amount < 1 || amount > 1000000){
-      setAwardMsg('쿠폰 정보가 이상해요 — 관리자님께 알려 주세요 🥺', 'err');
-      toast('💰 쿠폰 정보가 이상해요 — 관리자님께 알려 주세요', 3400);
+      setAwardMsg('쿠폰 정보가 이상해요 — 관리자에게 알려 주세요 🥺', 'err');
+      toast('💰 쿠폰 정보가 이상해요 — 관리자에게 알려 주세요', 3400);
       return;
     }
     if(res && res.again === true){
-      setAwardMsg('이미 등록한 쿠폰이에요 — 코인은 지갑 서버 백업으로 복구되므로 다시 충전되지 않아요. 충전을 못 받으셨다면 관리자님께 알려 주세요 🙏', 'err');
+      setAwardMsg('이미 등록한 쿠폰이에요 — 코인은 지갑 서버 백업으로 복구되므로 다시 충전되지 않아요. 충전을 못 받으셨다면 관리자에게 알려 주세요 🙏', 'err');
       toast('💰 이미 등록한 쿠폰이에요 — 다시 충전되지 않아요', 3800);
       if(inp) inp.value = '';
       return;
@@ -30779,8 +30833,8 @@ try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }ca
     if(item.indexOf('coin:') === 0){ applyCoinCoupon(res, item); return; }
     var i = item.indexOf('/');
     if(i <= 0 || i >= item.length - 1){
-      setAwardMsg('코드는 확인했는데 파츠 정보가 이상해요 — 관리자님께 알려 주세요 🥺', 'err');
-      toast('🎖️ 파츠 정보가 이상해요 — 관리자님께 알려 주세요', 3400);
+      setAwardMsg('코드는 확인했는데 파츠 정보가 이상해요 — 관리자에게 알려 주세요 🥺', 'err');
+      toast('🎖️ 파츠 정보가 이상해요 — 관리자에게 알려 주세요', 3400);
       return;
     }
     var catKey = item.slice(0, i), name = item.slice(i + 1);
@@ -30793,8 +30847,8 @@ try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }ca
     var label = String((res && res.label) || '') || (specialInfo(catKey, name) || {}).label || '특별 파츠';
     var inp = $id('mkAwardCodeInput'); if(inp) inp.value = '';
     if(!exists){ 
-      setAwardMsg('🎖️ ' + label + ' 등록은 됐는데, 파츠 파일이 아직 배포되지 않았어요 — 관리자님께 알려 주세요', 'err');
-      toast('🎖️ 파츠 파일이 아직 배포되지 않았어요 — 관리자님께 알려 주세요', 3800);
+      setAwardMsg('🎖️ ' + label + ' 등록은 됐는데, 파츠 파일이 아직 배포되지 않았어요 — 관리자에게 알려 주세요', 'err');
+      toast('🎖️ 파츠 파일이 아직 배포되지 않았어요 — 관리자에게 알려 주세요', 3800);
       return;
     }
     if(res && res.again){
@@ -31013,7 +31067,7 @@ function renderTabs(){
       if(isSpecial(cat.key, p.name)){
         var tag = specialTag(cat.key, p.name);
         var sTry = isOn && !has; 
-        var sTitle = esc(p.name)+' — '+esc(tag.label)+(has
+        var sTitle = esc(tag.label)+(has 
           ? ' · 보유 중'
           : (sTry ? ' · 미리보기 중 — 쿠폰 코드를 등록하면 내 것이 돼요' : ' · 눌러서 미리보기 · 쿠폰 코드로 받을 수 있어요'));
         return '<div class="mkCharaThumb'+(isOn?' on':'')+(sTry?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" data-special="1" title="'+sTitle+'">'
@@ -31024,7 +31078,7 @@ function renderTabs(){
       var price = partPrice(cat.key, p.name);
       var isSet = isSetPart(p.name); 
       
-      var title = esc(p.name)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기'))
+      var title = esc(cat.label)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기')) 
         + (isSet?' · 세트 파츠 — 같은 종류끼리도 함께 착용돼요':'');
       return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'"'+(isSet?' data-set="1"':'')+' title="'+title+'">'
         + thumbImgHtml(cat.key, p.name, p.url, '') 
@@ -31125,7 +31179,7 @@ function renderTabs(){
     ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
     var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
     
-    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? (cat.label + ((multi && tgt) ? (' · '+partShortLabel(tgt)) : '')) : '-';
+    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? cat.label : '-'; 
     renderColorParts(cat, tgt);                                        
     var a = cat ? getAdjFor(cat.key, tgt) : { h:0, s:100, b:100 };
     
@@ -31187,7 +31241,7 @@ function renderTabs(){
       var p = cat.parts.find(function(x){ return x.name===nm; });
       if(!p) return '';
       var f = filterFor(cat.key, nm);
-      return '<button type="button" class="mkColorPartChip'+(nm===tgt?' on':'')+'" data-name="'+esc(nm)+'" title="'+esc(partShortLabel(nm))+' 색 조절">'
+      return '<button type="button" class="mkColorPartChip'+(nm===tgt?' on':'')+'" data-name="'+esc(nm)+'" title="이 파츠 색 조절">' 
         + thumbImgHtml(cat.key, p.name, p.url, (f?('filter:'+f+';'):''))
         + '</button>';
     }).join('');
@@ -31326,13 +31380,13 @@ var BODY_HTML =
     +   '</div>'
     
     +   '<div class="mkCharaSection mkAwardBox mkAwardCollapsed" id="mkAwardBox">'
-    +     '<div class="petSectionTitle" id="mkAwardToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mkAwardPanel"><span>🎖️ 쿠폰 코드</span><span class="tiny mkAwardHint">관리자님께 받은 코드를 입력하면 특별 파츠·코인이 열려요</span><span class="mkAwardCaret" aria-hidden="true">▾</span></div>'
+    +     '<div class="petSectionTitle" id="mkAwardToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mkAwardPanel"><span>🎖️ 쿠폰 코드</span><span class="tiny mkAwardHint">관리자에게 받은 코드를 입력하면 특별 파츠·코인이 열려요</span><span class="mkAwardCaret" aria-hidden="true">▾</span></div>'
     +     '<div id="mkAwardPanel" style="display:none">'
     +       '<div class="mkAwardRow">'
     +         '<input id="mkAwardCodeInput" type="text" placeholder="코드 입력 (예: ABCD-1234-EFGH)" autocomplete="off" spellcheck="false" maxlength="24">'
     +         '<button type="button" id="mkAwardBtn">🎁 등록</button>'
     +       '</div>'
-    +       '<div class="tiny" id="mkAwardMsg">코드 하나는 한 분만 쓸 수 있어요. 같은 브라우저에서라면 다시 등록해 파츠를 되찾을 수 있고, 기기나 브라우저를 바꿔서 파츠가 사라졌다면 관리자님께 새 코드를 요청해 주세요. 💰 코인 쿠폰도 이 칸에 등록해요(코인은 한 번만 충전되고, 잔액은 서버에 백업돼요).</div>'
+    +       '<div class="tiny" id="mkAwardMsg">코드 하나는 한 분만 쓸 수 있어요. 같은 브라우저에서라면 다시 등록해 파츠를 되찾을 수 있고, 기기나 브라우저를 바꿔서 파츠가 사라졌다면 관리자에게 새 코드를 요청해 주세요. 💰 코인 쿠폰도 이 칸에 등록해요(코인은 한 번만 충전되고, 잔액은 서버에 백업돼요).</div>'
     +     '</div>'
     +   '</div>'
     
@@ -33659,7 +33713,22 @@ window.__MK_BINDER_V176__ = {
   min-height:40px; padding:3px 4px;
   border:1px solid var(--line); border-radius:12px;
   background:rgba(255,255,255,.05);
+  position:relative; 
 }
+
+.modeSegCurBtn{
+  min-height:32px; padding:0 10px; border-radius:9px;
+  font-size:12px; font-weight:900;
+  background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.22);
+  color:#fff; white-space:nowrap; cursor:pointer;
+}
+.modeSegPop{
+  position:absolute; top:calc(100% + 6px); left:0; z-index:10090;
+  display:none; gap:4px; padding:6px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.14); background:rgba(16,16,18,.94);
+  box-shadow:0 16px 34px rgba(0,0,0,.42);
+}
+.modeSeg.open .modeSegPop{ display:flex; }
 .gridHead .right .modeSegLabel{
   padding:0 7px 0 5px;
   font-size:11px; font-weight:900; line-height:1;
