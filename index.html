@@ -16969,9 +16969,23 @@ coinEl: (timer && timer.querySelector) ? timer.querySelector('.coinTick') : null
     }
     function updateTimersLive(){
       try{ state.__uiTickAtMs = Date.now(); }catch(_e){}   
-      
-      if(document.visibilityState === "hidden"){
+
+if(document.visibilityState === "hidden"){
         try{ if(state.joined) ensureFocusDayCurrent("uiTick"); }catch(_e){}
+        try{
+          if(state.joined && state.uid){
+            const p = state.currentParticipants?.get?.(state.uid);
+            if(p){
+              const s = Math.max(0, Math.floor(Number(computeDisplayedTotal(p))||0));
+              const nowMs = Date.now();
+              if(!state.__lastFocusPersistAtMs || (nowMs - state.__lastFocusPersistAtMs) > 15000 || Math.abs((state.__lastFocusPersistSec||0) - s) >= 3){
+                state.__lastFocusPersistAtMs = nowMs;
+                state.__lastFocusPersistSec = s;
+                focusSaveSeconds(s);
+              }
+            }
+          }
+        }catch(_e){}
         return;
       }
       
@@ -29936,7 +29950,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaTab.on{ border-color:#ff8dc2; background:rgba(255,141,194,.16); color:#ffd2e7; box-shadow:0 0 0 1px rgba(255,141,194,.25); }
   
   
-  .mkCharaGrid{ flex:1 1 auto; min-height:180px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
+  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
   .mkCharaThumb{ position:relative; aspect-ratio:1/1; border:2px solid transparent; border-radius:14px; overflow:hidden; cursor:pointer; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
   .mkCharaThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkCharaThumb:hover{ border-color:rgba(255,141,194,.45); }
