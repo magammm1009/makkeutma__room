@@ -55,6 +55,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -24978,7 +24979,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17104; 
+const MK_APP_BUILD = 17105; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29943,14 +29944,16 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
 
   
   .mkPartsBox{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-  .mkCharaTabs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; flex:0 0 auto; }
+  
+  .mkPartsBox .petSectionTitle{ margin-bottom:6px; }
+  .mkCharaTabs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; flex:0 0 auto; }
   .mkCharaTab{ border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:rgba(255,255,255,.72); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:900; cursor:pointer; line-height:1.2; min-width:auto !important; }
   .mkCharaTab .cnt{ font-size:10px; opacity:.6; margin-left:3px; }
   .mkCharaTab:hover{ border-color:rgba(255,141,194,.45); }
   .mkCharaTab.on{ border-color:#ff8dc2; background:rgba(255,141,194,.16); color:#ffd2e7; box-shadow:0 0 0 1px rgba(255,141,194,.25); }
   
   
-  .mkCharaGrid{ flex:1 1 auto; min-height:110px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
+  .mkCharaGrid{ flex:1 1 auto; min-height:88px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); grid-auto-rows:max-content; gap:8px; align-content:start; padding-right:2px; scrollbar-width:thin; }
   .mkCharaThumb{ position:relative; aspect-ratio:1/1; border:2px solid transparent; border-radius:14px; overflow:hidden; cursor:pointer; background:repeating-conic-gradient(rgba(255,255,255,.05) 0% 25%, rgba(0,0,0,.16) 0% 50%) 0 0/16px 16px, #1b1720; }
   .mkCharaThumb img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkCharaThumb:hover{ border-color:rgba(255,141,194,.45); }
@@ -29976,10 +29979,6 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     box-shadow:0 0 0 1px rgba(255,199,74,.16);
   }
   
-  .mkCharaPrice.mkSetBadge{
-    left:4px; right:auto; top:4px; bottom:auto;
-    color:#dbe6ff; background:rgba(10,14,34,.74); border-color:rgba(140,170,255,.5);
-  }
   
   .mkCharaThumb.mkTryOn{ border-color:#ffd85c; }
   .mkCharaThumb.mkTryOn.on{ box-shadow:0 0 0 2px rgba(255,216,92,.28); }
@@ -29989,12 +29988,14 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkComboSlot .th{ position:relative; }
   
   .mkComboSlot .th.mkAccMulti{ display:flex; align-items:center; justify-content:center; gap:1px; overflow:hidden; }
-  .mkComboSlot .mkAccMini{ position:relative; flex:0 0 auto; width:32%; aspect-ratio:1/1; border-radius:6px; overflow:hidden; background:rgba(0,0,0,.18); }
+  
+  .mkComboSlot .mkAccMini{ position:relative; flex:1 1 0; min-width:0; max-width:32%; aspect-ratio:1/1; border-radius:6px; overflow:hidden; background:rgba(0,0,0,.18); }
   .mkComboSlot .mkAccMini img{ width:100%; height:100%; object-fit:contain; display:block; }
   
-  .mkCharaColorParts{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  
+  .mkCharaColorParts{ display:flex; align-items:center; gap:6px; margin-bottom:4px; }
   .mkCharaColorParts:empty{ display:none; }
-  .mkColorPartChip{ position:relative; flex:0 0 auto; width:34px; height:34px; padding:0; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.18); cursor:pointer; }
+  .mkColorPartChip{ position:relative; flex:0 0 auto; width:26px; height:26px; padding:0; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.18); cursor:pointer; }
   .mkColorPartChip.on{ border-color:#ff8dc2; box-shadow:0 0 0 2px rgba(255,141,194,.30); }
   .mkColorPartChip img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkColorPartChip img.mkRectCrop{ position:absolute; max-width:none; }
@@ -30075,24 +30076,30 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkComboSlot .th{ width:44px; height:44px; border-radius:10px; overflow:hidden; background:#1b1720; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); font-size:10px; font-weight:900; }
   .mkComboSlot .th img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkComboSlot b{ font-size:10.5px; color:rgba(255,255,255,.72); letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .mkCharaColorPanel{ border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:10px 12px; }
+  
+  .mkCharaColorPanel{ border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.16); border-radius:14px; padding:6px 12px; }
   .mkCharaColorPanel.off{ opacity:.45; }
-  .mkCharaColorHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:1000; color:rgba(255,255,255,.85); margin-bottom:8px; }
+  
+  .mkCharaColorHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:1000; color:rgba(255,255,255,.85); margin-bottom:4px; }
   .mkCharaColorHead b{ color:#ffd2e7; }
   #mkCharaColorReset{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; }
   
-  .mkCharaColorPalette{ display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-bottom:7px; }
+  
+  .mkCharaColorPalette{ display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-bottom:3px; }
   .mkTintChip{ width:100%; min-width:0 !important; padding:0 !important; aspect-ratio:1/1; border:1px solid rgba(255,255,255,.22); border-radius:50%; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(0,0,0,.28); transition:transform .12s ease, box-shadow .12s ease; }
   .mkTintChip:hover:not(:disabled){ transform:scale(1.14); }
   .mkTintChip.on{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.55), inset 0 0 0 1px rgba(0,0,0,.3); }
   .mkTintChip:disabled{ cursor:default; opacity:.55; }
-  .mkCharaSliderRow{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  
+  .mkCharaSliderRow{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
   .mkCharaSliderRow:last-child{ margin-bottom:0; }
   .mkCharaSliderRow label{ flex:0 0 30px; font-size:11px; font-weight:900; color:rgba(255,255,255,.62); }
-  .mkCharaSliderRow input[type="range"]{ flex:1; accent-color:#ff8dc2; min-width:0; }
+  
+  .mkCharaSliderRow input[type="range"]{ flex:1; accent-color:#ff8dc2; min-width:0; height:22px; padding:0; border:0; background:transparent; }
   .mkCharaSliderRow .val{ flex:0 0 42px; text-align:right; font-size:11px; color:rgba(255,255,255,.62); font-variant-numeric:tabular-nums; }
   
-  .mkCharaSliderRow input[type="range"].mkHueAbs{ -webkit-appearance:none; appearance:none; height:9px; border-radius:999px; border:1px solid rgba(0,0,0,.35);
+  
+  .mkCharaSliderRow input[type="range"].mkHueAbs{ -webkit-appearance:none; appearance:none; height:9px; margin:7.5px 0; border-radius:999px; border:1px solid rgba(0,0,0,.35);
     background:linear-gradient(to right,hsl(0,85%,55%),hsl(60,85%,55%),hsl(120,85%,55%),hsl(180,85%,55%),hsl(240,85%,55%),hsl(300,85%,55%),hsl(360,85%,55%)); }
   .mkCharaSliderRow input[type="range"].mkHueAbs::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid rgba(0,0,0,.5); cursor:pointer; }
   .mkCharaSliderRow input[type="range"].mkHueAbs::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid rgba(0,0,0,.5); cursor:pointer; }
@@ -30108,7 +30115,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   
   .mkCharaPresetBox .petSectionTitle > span:first-child{ flex:0 0 auto; white-space:nowrap; }
   
-  .mkCharaPresetGrid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(56px,1fr)); grid-auto-rows:max-content; align-content:start; gap:6px; max-height:168px; overflow-y:auto; scrollbar-width:thin; padding-right:2px; }
+  .mkCharaPresetGrid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(56px,1fr)); grid-auto-rows:max-content; align-content:start; gap:6px; max-height:130px; overflow-y:auto; scrollbar-width:thin; padding-right:2px; }
   
   .mkPresetCell{ position:relative; min-width:0; }
   .mkPresetSlot{ position:relative; display:block; width:100%; aspect-ratio:1/1; min-width:auto !important; padding:0 !important; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#1b1720; cursor:pointer; } 
@@ -30150,7 +30157,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
 
   
-  @media (min-width:761px) and (max-height:840px){
+  
+  @media (min-width:761px) and (max-height:845px), (min-width:761px) and (max-width:1023px){
     .mkCharaLeft{ overflow-y:auto; scrollbar-width:thin; }
     .mkCharaLeft .mkCharaSection{ flex:0 0 auto; }
     .mkPartsBox{ min-height:auto; }
@@ -30473,8 +30481,8 @@ var COIN = '<span class="mkCoinIcon"></span>';
 function isAccCat(key){ return catName(key) === 'acc'; }
   
   function isMultiCat(key){ var n = catName(key); return n === 'acc' || n === 'gear'; }
-  
-  var MULTI_SLOT_MAX = 3; 
+
+var MULTI_SLOT_MAX = 4;
   
   var GEAR_SLOT_MAX = 5;
   function slotMaxOf(catKey){ return catName(catKey) === 'gear' ? GEAR_SLOT_MAX : MULTI_SLOT_MAX; }
@@ -30503,15 +30511,10 @@ var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리'
     var t = partTypeOf(catKey, name);
     return !!(t && FREE_EXTRA_TYPES[t]);
   }
+  
   function sameSlotAs(catKey, a, b){ 
-    var ta = partTypeOf(catKey, a), tb = partTypeOf(catKey, b);
-    if(!ta || !tb || ta !== tb) return false;
-    if(ta === 'companion'){
-      var sa = partSideOf(a), sb = partSideOf(b);
-      if(!sa || !sb) return true; 
-      return sa === sb;
-    }
-    return true;
+    return false;
+    
   }
   function slotLabelOf(catKey, name){ 
     var t = partTypeOf(catKey, name);
@@ -31274,15 +31277,12 @@ function renderTabs(){
           + '</div>';
       }
       var price = partPrice(cat.key, p.name);
-      var isSet = isSetPart(p.name); 
-      
-      var title = esc(cat.label)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기')) 
-        + (isSet?' · 세트 파츠 — 같은 종류끼리도 함께 착용돼요':'');
-      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'"'+(isSet?' data-set="1"':'')+' title="'+title+'">'
+
+var title = esc(cat.label)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기')); 
+      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" title="'+title+'">'
         + thumbImgHtml(cat.key, p.name, p.url, '') 
         
         + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">'+COIN+fmtCoins(price)+'</span>'))
-        + (isSet?'<span class="mkCharaPrice mkSetBadge">세트</span>':'') 
         + '</div>';
     }).join('');
     el.innerHTML = html;
@@ -31304,8 +31304,8 @@ function renderTabs(){
     el.innerHTML = visibleCats().map(function(c){
       var th;
       if(isMultiCat(c.key)){ 
-        
-        var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ return p.name===nm; }); }).filter(Boolean);
+
+var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ return p.name===nm; }); }).filter(Boolean);
         th = accParts.length
           ? '<span class="th mkAccMulti">'+accParts.map(function(p){
               var fAcc = filterFor(c.key, p.name); 
@@ -32285,7 +32285,8 @@ function onModalShown(){
   }
 
 var slotRules = null; 
-  var TILE_MULTI_MAX = { acc:3, gear:5 }; 
+  
+  var TILE_MULTI_MAX = { acc:4, gear:5 }; 
   var TILE_FREE_EXTRA = { gum:1, bandage:1, special:1 }; 
   function slotMaxOf(cat){ return TILE_MULTI_MAX[cat] || 3; }
   function partTypeOf(cat, name){
@@ -32300,16 +32301,8 @@ var slotRules = null;
     var t = partTypeOf(cat, name);
     return !!(t && TILE_FREE_EXTRA[t]);
   }
-  function sameSlotAs(cat, a, b){
-    var ta = partTypeOf(cat, a), tb = partTypeOf(cat, b);
-    if(!ta || !tb || ta !== tb) return false;
-    if(ta === 'companion'){
-      var sa = partSideOf(a), sb = partSideOf(b);
-      if(!sa || !sb) return true; 
-      return sa === sb;
-    }
-    return true;
-  }
+  
+  function sameSlotAs(cat, a, b){ return false; }
   function normalizeMultiSel(cat, arr){ 
     var max = slotMaxOf(cat), out = [], slotted = [], n = 0;
     (arr || []).forEach(function(nm){
