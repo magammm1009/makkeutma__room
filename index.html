@@ -56,6 +56,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -24526,12 +24527,52 @@ const lowSpec = (typeof isLowSpecModeV143 === "function") && isLowSpecModeV143()
       }
     }catch(e){}
 
+let __hcProbeAtMs = 0;
+    function hcProbeWatchdog_(reason){
+      try{
+        if(!state.joined || !hc.roomId || !hc.unsub) return;      
+        if(document.visibilityState !== "visible") return;
+        const now = Date.now();
+        if(now - __hcProbeAtMs < 30000) return;
+        __hcProbeAtMs = now;
+        const probedRoom = hc.roomId; 
+        rGet(hcLiveRef(probedRoom)).then((snap)=>{
+          try{
+            if(!state.joined || hc.roomId !== probedRoom || !hc.unsub) return; 
+            const v = (snap && typeof snap.val === "function") ? (snap.val() || {}) : {};
+            
+            const server = new Map();
+            Object.keys(v).forEach((slotId)=>{
+              const d = v[slotId] || {};
+              const uid = String(d.uid || "") || String(slotId);
+              if(d.ready !== false && d.sessionId && d.trackName && uid) server.set(uid, d);
+            });
+            let stale = (server.size !== HC_LIVE.size);
+            if(!stale){
+              for(const [uid, d] of server){
+                const o = HC_LIVE.get(uid);
+                if(!o || o.sessionId !== d.sessionId){ stale = true; break; }
+              }
+            }
+            
+            if(stale){
+              console.warn("[V225.1_HCPROBE] 손캠 수신이 서버와 어긋나 있어 동기화 + 리스너 재부착 (" + reason + ") — 서버 " + server.size + "명 / 화면 " + HC_LIVE.size + "명");
+              try{ mkDiag("손캠-좀비복구", "서버 " + server.size + " / 화면 " + HC_LIVE.size); }catch(_e){}
+              onLiveSnap(snap);
+              try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(_e){}
+              hc.unsub = rOnValue(hcLiveRef(probedRoom), onLiveSnap);
+            }
+          }catch(_e){}
+        }).catch(()=>{});
+      }catch(_e){}
+    }
     document.addEventListener("visibilitychange", ()=>{
 
 syncPulls();
       if(document.visibilityState === "visible"){
         refreshOwnLive("visible").catch(()=>{});
         scheduleMount();
+        hcProbeWatchdog_("visible"); 
       }
     });
 
