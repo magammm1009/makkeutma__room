@@ -57,6 +57,8 @@
 
 
 
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -2185,7 +2187,8 @@
       box-shadow: 0 18px 40px rgba(0,0,0,.35);
       opacity:0; pointer-events:none;
       transition: opacity .18s ease;
-      z-index:999;
+      
+      z-index:100500;
     }
     .toast.show{opacity:1}
 
@@ -10491,13 +10494,19 @@ async function chatFeedWatchdog_(reason, force){
     }
     state.__chatWatchAt = now;
 
-    const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
-    const snap = await rGet(rQuery(root, rOrderByChild("tsMs"), rLimitToLast(1)));
+const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
+    const snap = await rGet(rQuery(root, rOrderByChild("tsMs"), rLimitToLast(5)));
     const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
-    const ids = Object.keys(val);
     state.__chatWatchProbeAtMs = now;
-    if(!ids.length) return;                             
-    const id = ids[0];
+    const NONRENDER_TYPES = { ticker:1, sfx:1, mission:1, sys:1 }; 
+    let id = null, idTs = 0;
+    for(const k of Object.keys(val)){
+      const m = val[k] || {};
+      if(NONRENDER_TYPES[String(m.type || "")]) continue;
+      const t = Number(m.tsMs || 0);
+      if(t >= idTs){ idTs = t; id = k; }
+    }
+    if(!id) return;                                     
     if(state.chatRollingById && state.chatRollingById[id]) return;   
 
 const srvTs = Number((val[id] || {}).tsMs || 0);
@@ -13209,7 +13218,8 @@ function connLostMark_(connected){
     if(__connLostSince){
       console.info("[V194_CONNLOST] 연결 복구됨 — 끊겨 있던 시간 " +
         Math.round((Date.now() - __connLostSince) / 1000) + "초");
-      try{ showToast("연결이 복구됐어요!", 3000); }catch(_e){}
+      
+      try{ if(state.adminOk) showToast("연결이 복구됐어요!", 3000); }catch(_e){}
     }
     connLostHide_();
     return;
@@ -15784,6 +15794,8 @@ if(!isCurrentChatSub()) return;
           state.chatLiveSeenAt[id] = __nowLive;
 
 if(mm && mm.type==='ticker'){
+            
+            state.chatLastRecvMs = Date.now();
             try{
               const ts = Number(mm.tsMs||0);
               const last = Number(sessionStorage.getItem('lastTickerTs') || 0);
@@ -15796,6 +15808,7 @@ if(mm && mm.type==='ticker'){
           }
 
 if(mm && mm.type==='sfx'){
+            state.chatLastRecvMs = Date.now(); 
             try{
               const ts = Number(mm.tsMs||0);
               if(!state.sfxInitDone){
@@ -15809,7 +15822,7 @@ if(mm && mm.type==='sfx'){
             return;
           }
 
-          if(mm && (mm.type==='mission' || mm.type==='sys')) return;
+          if(mm && (mm.type==='mission' || mm.type==='sys')){ state.chatLastRecvMs = Date.now(); return; } 
 
 if(state.chatFirstLoadDone && state.chatRollingById && state.chatRollingById[id]){
             return;
@@ -25020,7 +25033,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17105; 
+const MK_APP_BUILD = 17106; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
