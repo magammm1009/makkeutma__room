@@ -59,6 +59,8 @@
 
 
 
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -30429,6 +30431,8 @@ function loadSaved(){
     try{
       localStorage.setItem(LS_KEY, JSON.stringify(currentSavePayload()));
       
+      try{ localStorage.setItem('mk_chara_state_stamp_v1', String(Date.now())); }catch(e3){}
+      
       try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e2){}
     }catch(e){ console.warn('[chara v169] 저장 실패', e); }
   }
@@ -30747,7 +30751,29 @@ var PRESET_KEY = 'mk_chara_presets';
     var b = presetCloudBridge();
     if(!b || typeof b.readCharaPresets !== 'function') return;
     try{ if(!b.joined()) return; }catch(e){ return; }
-    if(loadPresets().length){ presetPullDone = true; return; } 
+    if(loadPresets().length){
+      presetPullDone = true;
+      
+      try{
+        if(!localStorage.getItem('mk_preset_backfill_v1')){
+          
+          b.readCharaPresets().then(function(remote){
+            if(remote && Array.isArray(remote.slots) && remote.slots.length){
+              try{ localStorage.setItem('mk_preset_backfill_v1', '1'); }catch(e2){} 
+              return;
+            }
+            var slots = loadPresets();
+            if(!slots.length){ try{ localStorage.setItem('mk_preset_backfill_v1', '1'); }catch(e2){} return; }
+            try{
+              b.writeCharaPresets({ v:1, slots:slots, updatedAtMs:Date.now() }).then(function(){
+                try{ localStorage.setItem('mk_preset_backfill_v1', '1'); }catch(e2){} 
+              }, function(){});
+            }catch(e2){}
+          }, function(){}); 
+        }
+      }catch(e){}
+      return;
+    } 
     presetPullDone = true;
     try{
       b.readCharaPresets().then(function(remote){
@@ -32524,7 +32550,10 @@ function validPartName(v){ return typeof v === 'string' && v.length && v.length 
       + '@' + sanitizeCharaName(payload && payload.name); 
   }
 
-var localCache = null, localCacheLoaded = false;
+var LS_CHARA_STAMP = 'mk_chara_state_stamp_v1';
+  function readLocalStamp(){ try{ return Math.max(0, Number(localStorage.getItem(LS_CHARA_STAMP)) || 0); }catch(e){ return 0; } }
+  function writeLocalStamp(ms){ try{ localStorage.setItem(LS_CHARA_STAMP, String(Number(ms) || Date.now())); }catch(e){} }
+  var localCache = null, localCacheLoaded = false;
   function readLocalChara(){
     if(localCacheLoaded) return localCache;
     localCacheLoaded = true;
@@ -33288,7 +33317,11 @@ function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, 
       if(!b || !b.joined()) return; 
       stats.writeAttemptCount++;
       b.writeCharaV1(payload).then(function(ok){
-        if(ok){ lastWrittenSig = sig; stats.writeOkCount++; }
+        if(ok){
+          lastWrittenSig = sig; stats.writeOkCount++;
+          
+          writeLocalStamp(payload.updatedAtMs);
+        }
       }, function(){});
     }catch(e){}
   }
@@ -33328,11 +33361,34 @@ var joinSyncDone = false;
     joinSyncDone = true;
     setTimeout(function(){
       try{
+        var b = bridge();
+        var remote = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
+        
+        var remoteStamp = Number(remote && remote.updatedAtMs || 0);
+        if(remote && remoteStamp > readLocalStamp()){
+          var rParts = sanitizeParts(remote.parts);
+          if(hasParts(rParts)){
+            var restored = { v:1, parts:rParts, hue:sanitizeHue(remote.hue) };
+            var rName = sanitizeCharaName(remote.name);
+            if(rName) restored.name = rName;
+            try{
+              localStorage.setItem(LS_CHARA, JSON.stringify(restored));
+              writeLocalStamp(remoteStamp);
+              
+              localCache = null; 
+              try{
+                var api = window.__MK_CHARA_TILE_V169__;
+                if(api && typeof api.onLocalCharaChanged === 'function') api.onLocalCharaChanged();
+                else { localCacheLoaded = false; selfRerenderNow(); } 
+              }catch(e2){ localCacheLoaded = false; try{ selfRerenderNow(); }catch(e3){} }
+              console.info('[V225.4_OUTFIT_SYNC] 다른 기기에서 저장한 착장을 불러왔어요 (' +
+                new Date(remoteStamp).toLocaleString('ko-KR') + ' 저장본)');
+            }catch(e1){}
+          }
+        }
         var payload = buildCharaV1();
         if(!payload) return;
         var sig = writeSigOf(payload);
-        var b = bridge();
-        var remote = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
         if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), mode: remote.mode, name: remote.name }) === sig){ 
           lastWrittenSig = sig; 
           return;
