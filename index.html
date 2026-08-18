@@ -67,6 +67,8 @@
 
 
 
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -13291,6 +13293,8 @@ window.__MK_CHAT_DEBUG__ = function(){
 
 구독중_presence수: (()=>{ try{ return state.currentParticipants?.size ?? "?"; }catch(e){ return "?"; } })(),
     화면_타일수: (()=>{ try{ return state.lastRendered?.size ?? "?"; }catch(e){ return "?"; } })(),
+    
+    손캠: (()=>{ try{ return (typeof window.__MK_HC_DIAG__ === "function") ? window.__MK_HC_DIAG__() : "(모듈 전)"; }catch(e){ return "?"; } })(),
     절약모드_꺼짐: !!state.nonChatEnabled,
     
     백그라운드_presence_유지: !!state.__backgroundPresenceKept,
@@ -23453,8 +23457,14 @@ let slotVal = null;
       }catch(e){}
     }
 
-function onLiveSnap(snap){
+function hcSlotAlive_(d){
+      return !!(d && d.ready !== false && d.sessionId && d.trackName);
+    }
+    
+    let hcLastSnapMs = 0; 
+    function onLiveSnap(snap){
       try{
+        hcLastSnapMs = Date.now(); 
         const v = (snap && snap.val && snap.val()) || {};
         const next = new Map();
         Object.keys(v).forEach(slotId=>{
@@ -23462,7 +23472,7 @@ function onLiveSnap(snap){
           const uid = String(d.uid || "");
 
 const resolvedUid = uid || String(slotId);
-          if(d.ready !== false && d.sessionId && d.trackName && resolvedUid){
+          if(hcSlotAlive_(d) && resolvedUid){ 
             next.set(resolvedUid, Object.assign({}, d, { slotId:String(slotId), uid:resolvedUid }));
           }
         });
@@ -24581,7 +24591,7 @@ const lowSpec = (typeof isLowSpecModeV143 === "function") && isLowSpecModeV143()
       }
     }catch(e){}
 
-let __hcProbeAtMs = 0;
+let __hcProbeAtMs = 0, __hcReattachCount = 0; 
     function hcProbeWatchdog_(reason){
       try{
         if(!state.joined || !hc.roomId || !hc.unsub) return;      
@@ -24599,7 +24609,7 @@ let __hcProbeAtMs = 0;
             Object.keys(v).forEach((slotId)=>{
               const d = v[slotId] || {};
               const uid = String(d.uid || "") || String(slotId);
-              if(d.ready !== false && d.sessionId && d.trackName && uid) server.set(uid, d);
+              if(hcSlotAlive_(d) && uid) server.set(uid, d); 
             });
             let stale = (server.size !== HC_LIVE.size);
             if(!stale){
@@ -24610,7 +24620,8 @@ let __hcProbeAtMs = 0;
             }
             
             if(stale){
-              console.warn("[V225.1_HCPROBE] 손캠 수신이 서버와 어긋나 있어 동기화 + 리스너 재부착 (" + reason + ") — 서버 " + server.size + "명 / 화면 " + HC_LIVE.size + "명");
+              __hcReattachCount++; 
+              console.warn("[V225.1_HCPROBE] 손캠 수신이 서버와 어긋나 있어 동기화 + 리스너 재부착 (" + reason + ", 누적 " + __hcReattachCount + "회) — 서버 " + server.size + "명 / 화면 " + HC_LIVE.size + "명");
               try{ mkDiag("손캠-좀비복구", "서버 " + server.size + " / 화면 " + HC_LIVE.size); }catch(_e){}
               onLiveSnap(snap);
               try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(_e){}
@@ -24630,8 +24641,30 @@ syncPulls();
       }
     });
 
+let __hcPeriodicAt = 0;
+    function hcMaintenanceTick_(){
+      if(!state.joined || !hc.roomId || !hc.unsub) return;
+      if(document.visibilityState !== "visible") return; 
+      const now = Date.now();
+      if(now - __hcPeriodicAt < 180000) return;
+      __hcPeriodicAt = now;
+      hcProbeWatchdog_("periodic");
+    }
+    
+    window.__MK_HC_DIAG__ = function(){
+      try{
+        return {
+          구독중: !!hc.unsub,
+          LIVE수: HC_LIVE.size,
+          마지막수신: hcLastSnapMs ? (Math.round((Date.now() - hcLastSnapMs) / 1000) + "초 전") : "없음",
+          재부착_횟수: __hcReattachCount,
+          송출중: !!hc.my
+        };
+      }catch(e){ return { 오류: String(e && e.message || e) }; }
+    };
+
     setInterval(()=>{ try{ if(hc.my) refreshOwnLive("heartbeat").catch(()=>{}); }catch(e){} }, 10000);
-    setInterval(()=>{ lifecycleTick(); }, 1200);
+    setInterval(()=>{ lifecycleTick(); try{ hcMaintenanceTick_(); }catch(_e){} }, 1200);
     lifecycleTick();
 
     window.addEventListener("pagehide", ()=>{
@@ -25074,7 +25107,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17106; 
+const MK_APP_BUILD = 17107; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
