@@ -65,6 +65,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -30158,8 +30159,10 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaColorHead b{ color:#ffd2e7; }
   #mkCharaColorReset{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; }
   
-  #mkStripAllBtn{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; min-height:auto !important; margin-left:6px; vertical-align:1px; }
+  #mkStripAllBtn{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; min-height:auto !important; flex:0 0 auto; }
   #mkStripAllBtn:hover{ background:rgba(255,255,255,.12); }
+  .mkCartTitle{ justify-content:flex-start; }
+  .mkCartTitle .tiny{ margin-left:auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:right; }
   
   
   .mkCharaColorPalette{ display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-bottom:3px; }
@@ -31691,7 +31694,7 @@ var BODY_HTML =
     
     +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox">'
     
-    +     '<div class="petSectionTitle"><span>🛒 입어보는 중 <button id="mkStripAllBtn" type="button" title="몸통만 남기고 전부 벗기 — 새 컨셉을 처음부터 입혀 보세요">🧺 다 벗기</button></span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
+    +     '<div class="petSectionTitle mkCartTitle"><span>🛒 입어보는 중</span><button id="mkStripAllBtn" type="button" title="몸통만 남기고 전부 벗기 — 새 컨셉을 처음부터 입혀 보세요">🧺 다 벗기</button><span class="tiny">체크한 파츠만 결제돼요</span></div>'
     +     '<div id="mkCartList" class="mkCartList"></div>'
     +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">' + COIN + ' 결제</button></div>'
     +   '</div>'
