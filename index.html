@@ -64,6 +64,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -11231,7 +11232,7 @@ function stop(){
         state.dashPollInFlight = false;
         state.dashPollUrl = "";
         state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
-        try{ if(els.pomoOk) els.pomoOk.textContent = "연결안됨"; }catch(e){} 
+        try{ if(els.pomoOk && !(Number(state.livePomoCount) > 0)) els.pomoOk.textContent = "연결안됨"; }catch(e){} 
       }
 
 let __dashWriteAt = 0;
@@ -11449,8 +11450,10 @@ try{
           try{
             if(els.pomoOk){
               
-              if(pomoCount != null) els.pomoOk.textContent = pomoPublishable ? "연결" : "연결안됨";
-              else els.pomoOk.textContent = "연결안됨";
+              if(!(Number(state.livePomoCount) > 0)){
+                if(pomoCount != null) els.pomoOk.textContent = "연결";
+                else els.pomoOk.textContent = "연결안됨";
+              }
             }
           }catch(e){}
 
@@ -11464,7 +11467,7 @@ try{
           renderDashboard();
           writeCountsToRTDB(state.localDashCounts);
         }catch(e){
-          try{ if(els.pomoOk) els.pomoOk.textContent = "연결안됨"; }catch(_e){} 
+          try{ if(els.pomoOk && !(Number(state.livePomoCount) > 0)) els.pomoOk.textContent = "연결안됨"; }catch(_e){} 
         }finally{
           if(requestSeq === state.dashPollSeq) state.dashPollInFlight = false;
         }
@@ -29274,6 +29277,7 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
 #dashShortcuts{ grid-template-columns: auto auto auto auto !important; }
 
 #dashShortcuts{ justify-content:center !important; }
+#dashShortcuts{ grid-template-columns: repeat(4, minmax(max-content, 1fr)) !important; }
 
 #dashShortcuts > button{ padding-left:3px !important; padding-right:3px !important; }
 #dashShortcuts .btnLabel{ font-size:11.5px !important; letter-spacing:-.85px !important; }
@@ -30154,6 +30158,9 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkCharaColorHead b{ color:#ffd2e7; }
   #mkCharaColorReset{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; }
   
+  #mkStripAllBtn{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:900; cursor:pointer; min-width:auto !important; min-height:auto !important; margin-left:6px; vertical-align:1px; }
+  #mkStripAllBtn:hover{ background:rgba(255,255,255,.12); }
+  
   
   .mkCharaColorPalette{ display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-bottom:3px; }
   .mkTintChip{ width:100%; min-width:0 !important; padding:0 !important; aspect-ratio:1/1; border:1px solid rgba(255,255,255,.22); border-radius:50%; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(0,0,0,.28); transition:transform .12s ease, box-shadow .12s ease; }
@@ -30337,6 +30344,8 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   var LS_KEY = 'mk_chara_state';
   
   var KNOWN_LABELS = { body:'몸통', hair:'헤어', face:'얼굴', look:'룩', acc:'액세서리', facedeco:'얼굴 꾸미기', background:'배경', hair_back:'뒷머리', gear:'장비'  };
+  
+  var COLOR_CAT_EN = { body:'BODY', hair:'HAIR', face:'FACE', look:'LOOK', acc:'ACC', facedeco:'DECO', background:'BG', hair_back:'BACK', gear:'GEAR' };
   
   var Z_RANK = { background:0, hair_back:10, body:20, look:35, face:50, facedeco:55, hair:60, acc:71, gear:72  };
   var UNKNOWN_Z_BASE = 1000;
@@ -30836,6 +30845,20 @@ var PRESET_KEY = 'mk_chara_presets';
     savePresets(slots);
     renderPresets();
     toast('칸을 비웠어요');
+  }
+  
+  function stripAllParts(){
+    if(chara.phase !== 'ready'){ toast('아직 파츠를 준비하는 중이에요'); return; }
+    var any = false;
+    chara.cats.forEach(function(c){
+      if(isHairBackCat(c.key)) return;
+      if(catName(c.key) === 'body') return; 
+      if(isMultiCat(c.key)){ if(selArr(c.key).length) any = true; chara.sel[c.key] = []; }
+      else { if(chara.sel[c.key]) any = true; chara.sel[c.key] = null; }
+    });
+    if(!any){ toast('이미 다 벗은 상태예요'); return; }
+    renderChara();
+    toast('🧺 다 벗었어요 — 새 컨셉을 입혀 보세요 (저장 전까지는 나만 보여요)');
   }
   function presetApply(idx){
     var slots = loadPresets();
@@ -31471,12 +31494,12 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
     ['mkCharaHue','mkCharaSat','mkCharaBri'].forEach(function(id){ var s=$id(id); if(s) s.disabled=!on; });
     var reset=$id('mkCharaColorReset'); if(reset) reset.disabled=!on;
     
-    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? cat.label : '-'; 
+    var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? (COLOR_CAT_EN[catName(cat.key)] || cat.label) : '-'; 
     renderColorParts(cat, tgt);                                        
     var a = cat ? getAdjFor(cat.key, tgt) : { h:0, s:100, b:100 };
     
     var tint = isTintAdj(a);
-    var hl=$id('mkCharaHueLab'); if(hl) hl.textContent = tint ? '덧칠' : '색조';
+    var hl=$id('mkCharaHueLab'); if(hl) hl.textContent = tint ? 'TINT' : 'HUE'; 
     var sh=$id('mkCharaHue');
     if(sh){
       sh.min = tint ? 0 : -180;
@@ -31648,9 +31671,10 @@ var BODY_HTML =
     +         '<div class="mkCharaColorHead"><span>🎨 색상 조절 · <b id="mkCharaColorCat">-</b></span><button id="mkCharaColorReset" type="button">원래 색으로</button></div>'
     +         '<div id="mkCharaColorParts" class="mkCharaColorParts"></div>' 
     +         '<div id="mkCharaColorPalette" class="mkCharaColorPalette"></div>' 
-    +         '<div class="mkCharaSliderRow"><label for="mkCharaHue" id="mkCharaHueLab">색조</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
-    +         '<div class="mkCharaSliderRow"><label for="mkCharaSat">채도</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
-    +         '<div class="mkCharaSliderRow"><label for="mkCharaBri">명도</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
+    
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaHue" id="mkCharaHueLab">HUE</label><input type="range" id="mkCharaHue" min="-180" max="180" step="1" value="0"><span class="val" id="mkCharaHueVal">0°</span></div>'
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaSat">SAT</label><input type="range" id="mkCharaSat" min="0" max="200" step="1" value="100"><span class="val" id="mkCharaSatVal">100%</span></div>'
+    +         '<div class="mkCharaSliderRow"><label for="mkCharaBri">BRI</label><input type="range" id="mkCharaBri" min="50" max="150" step="1" value="100"><span class="val" id="mkCharaBriVal">100%</span></div>'
     +       '</div>'
     +       '<div id="mkCharaPresetBox" class="mkCharaPresetBox">'
     +         '<div class="petSectionTitle"><span>🧑‍🎨 내 캐릭터 <b id="mkCharaPresetCount">0/12</b></span><span class="tiny">칸을 누르면 그 컨셉으로 전환</span></div>' 
@@ -31666,7 +31690,8 @@ var BODY_HTML =
     +   '</div>'
     
     +   '<div class="mkCharaSection mkCartBox" id="mkCharaCartBox">'
-    +     '<div class="petSectionTitle"><span>🛒 입어보는 중</span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
+    
+    +     '<div class="petSectionTitle"><span>🛒 입어보는 중 <button id="mkStripAllBtn" type="button" title="몸통만 남기고 전부 벗기 — 새 컨셉을 처음부터 입혀 보세요">🧺 다 벗기</button></span><span class="tiny">체크한 파츠만 결제돼요 — 결제 전엔 나만 보여요</span></div>'
     +     '<div id="mkCartList" class="mkCartList"></div>'
     +     '<div class="mkCartFoot"><span id="mkCartTotal" class="mkCartTotal"></span><button type="button" id="mkCartPay">' + COIN + ' 결제</button></div>'
     +   '</div>'
@@ -31743,6 +31768,7 @@ var BODY_HTML =
     });
     
     var payBtn=body.querySelector('#mkCartPay'); if(payBtn) payBtn.addEventListener('click', payCart);
+    var stripBtn=body.querySelector('#mkStripAllBtn'); if(stripBtn) stripBtn.addEventListener('click', stripAllParts); 
     var cartList=body.querySelector('#mkCartList');
     if(cartList) cartList.addEventListener('change', function(e){
       var t=e.target;
