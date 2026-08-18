@@ -61,6 +61,9 @@
 
 
 
+
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -1610,6 +1613,8 @@
       max-width:none;
       width:100%;
       justify-self:stretch;
+      
+      contain: layout paint;
       }
     
     .tile.tileGrace{ opacity:.55; border-style:dashed; border-color:rgba(255,255,255,.30); }
@@ -1631,7 +1636,7 @@
     .tile .tileVine .lf{                       
       transform-box:fill-box; transform-origin:0% 50%;
       animation:mkVineSway 5.4s ease-in-out infinite;
-      will-change:transform;
+      
       }
     @keyframes mkVineSway{ 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(6deg)} }
     @media (prefers-reduced-motion:reduce){ .tile .tileVine .lf{animation:none !important;} }
@@ -1867,11 +1872,10 @@
       padding:4px 10px 5px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.34);
-      background:rgba(18,14,22,.58);
+      
+      background:rgba(18,14,22,.78);
       color:rgba(255,255,255,.96);
       box-shadow:0 6px 14px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,182,214,.10);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
       font-size:10.5px;
       font-weight:1100;
       line-height:1;
@@ -2358,7 +2362,6 @@
     .stBreak{animation: none !important;}
     .stIdle{animation: floaty 1.8s ease-in-out infinite;}
     @keyframes wiggle{0%,100%{transform:rotate(0deg) translateY(0);}50%{transform:rotate(-10deg) translateY(-1px);}}
-    @keyframes puff{0%,100%{transform:translateY(0);opacity:1;}50%{transform:translateY(-2px);opacity:.85;}}
     @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
     .chatEmoji{margin-right:6px;}
 
@@ -2916,7 +2919,6 @@ body.joined #preJoinCard{ display:none; }
   #petHeroArt .petStageArt.hero{
     animation:petDashAliveFloatV86 12.8s cubic-bezier(.37,0,.23,1) infinite !important;
     transform-origin:50% 78% !important;
-    will-change:transform;
     backface-visibility:hidden;
     transform:translate3d(0,0,0);
   }
@@ -2924,7 +2926,6 @@ body.joined #preJoinCard{ display:none; }
     position:relative;
     z-index:2;
     transform:translate3d(0,0,0);
-    will-change:transform;
     backface-visibility:hidden;
   }
   #petHeroArt .petStageArt.hero::after{
@@ -2941,7 +2942,6 @@ body.joined #preJoinCard{ display:none; }
     opacity:0;
     pointer-events:none;
     transform-origin:50% 80%;
-    will-change:transform, opacity;
     backface-visibility:hidden;
     animation:petDashHeartPopV86 6.2s ease-in-out infinite !important;
   }
@@ -4428,6 +4428,7 @@ body.joined #preJoinCard{ display:none; }
   body.joined #onlineBtn,
   body.joined #menuBtn,
   body.joined #leaveBtn,
+  body.joined #profileBtn, 
   body.joined .topCenter .hcBtn,
   body.joined .topCenter .hcViewBtn{
     position:static !important;
@@ -4452,8 +4453,8 @@ body.joined #preJoinCard{ display:none; }
   body.joined #statusBtn{ min-width:112px !important; }
   body.joined #onlineBtn{ min-width:88px !important; }
   body.joined #leaveBtn{ min-width:70px !important; }
-  body.joined .topCenter .hcBtn{ min-width:104px !important; }
-  body.joined .topCenter .hcViewBtn{ min-width:126px !important; }
+  body.joined .topCenter .hcBtn{ min-width:64px !important; }   
+  body.joined .topCenter .hcViewBtn{ min-width:76px !important; }
   body.joined .statusMenu{
     top:calc(100% + 8px) !important;
     left:8px !important;
@@ -4470,6 +4471,7 @@ body.joined #preJoinCard{ display:none; }
   body.joined #onlineBtn,
   body.joined #menuBtn,
   body.joined #leaveBtn,
+  body.joined #profileBtn, 
   body.joined .topCenter .hcBtn,
   body.joined .topCenter .hcViewBtn{
     height:38px !important;
@@ -4481,8 +4483,8 @@ body.joined #preJoinCard{ display:none; }
   body.joined #statusBtn{ min-width:100px !important; }
   body.joined #onlineBtn{ min-width:76px !important; }
   body.joined #leaveBtn{ min-width:62px !important; }
-  body.joined .topCenter .hcBtn{ min-width:94px !important; }
-  body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
+  body.joined .topCenter .hcBtn{ min-width:58px !important; }   
+  body.joined .topCenter .hcViewBtn{ min-width:70px !important; }
 }
 </style>
 
@@ -6108,7 +6110,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 <div class="dashFoot">
-<span>연결: <b id="pomoOk">연결됨</b></span>
+<span><b id="pomoOk">연결</b></span>
 <span class="chip">LIVE</span>
 </div>
 </div>
@@ -6122,7 +6124,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 <div class="dashFoot">
-<span>연결: <b id="sudaOk">연결됨</b></span>
+<span><b id="sudaOk">연결</b></span>
 <span class="chip">LIVE</span>
 </div>
 </div>
@@ -9582,16 +9584,16 @@ function fmtHM(sec){
       const m = Math.floor((sec%3600)/60);
       return `${pad2(h)}:${pad2(m)}`;
     }
+    
+    const __NOW_TIME_FMT_S = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+    const __NOW_TIME_FMT_M = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour:"2-digit", minute:"2-digit", hour12:false });
     function nowTimeStr(withSeconds=true){
-      const opt = withSeconds ? { timeZone: "Asia/Seoul", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }
-                              : { timeZone: "Asia/Seoul", hour:"2-digit", minute:"2-digit", hour12:false };
-      return new Intl.DateTimeFormat("ko-KR", opt).format(new Date());
+      return (withSeconds ? __NOW_TIME_FMT_S : __NOW_TIME_FMT_M).format(new Date());
     }
     function updateClocks(){
-      const tFull = nowTimeStr(true);
-      const tShort = nowTimeStr(true);
-      if(els.lastSync) els.lastSync.textContent = tFull;
-      if(els.nowClockMain) els.nowClockMain.textContent = tShort;
+      const t = nowTimeStr(true); 
+      if(els.lastSync && els.lastSync.textContent !== t) els.lastSync.textContent = t;
+      if(els.nowClockMain && els.nowClockMain.textContent !== t) els.nowClockMain.textContent = t;
     }
 
 const MK_MISSION_KEY = "mk_mission_v1";
@@ -10070,10 +10072,19 @@ const MK_DASH_FOLD_KEY = "mk_dash_fold_v1";
     function loadDashFold(){ try{ return localStorage.getItem(MK_DASH_FOLD_KEY)==="1"; }catch(e){ return false; } }
     function saveDashFold(v){ try{ localStorage.setItem(MK_DASH_FOLD_KEY, v?"1":"0"); }catch(e){} }
 function seoulDateKey(){
-      const parts = new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit"
-      }).formatToParts(new Date()).reduce((a,p)=> (a[p.type]=p.value, a), {});
-      return `${parts.year}-${parts.month}-${parts.day}`;
+      
+      try{
+        const now = new Date();
+        const utc = now.getTime() + now.getTimezoneOffset()*60000;
+        const kst = new Date(utc + 9*3600000);
+        const y = kst.getFullYear();
+        const m = String(kst.getMonth()+1).padStart(2,"0");
+        const d = String(kst.getDate()).padStart(2,"0");
+        return `${y}-${m}-${d}`;
+      }catch(e){
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      }
     }
 
 function seoulDayStartMs(dayKey = seoulDateKey()){
@@ -11220,7 +11231,7 @@ function stop(){
         state.dashPollInFlight = false;
         state.dashPollUrl = "";
         state.localDashCounts = {pomoCount:null, sudaCount:null, updatedAtMs:null};
-        try{ if(els.pomoOk) els.pomoOk.textContent = "API 필요"; }catch(e){}
+        try{ if(els.pomoOk) els.pomoOk.textContent = "연결안됨"; }catch(e){} 
       }
 
 let __dashWriteAt = 0;
@@ -11437,9 +11448,9 @@ try{
 
           try{
             if(els.pomoOk){
-              if(pomoCount != null) els.pomoOk.textContent = pomoPublishable ? "연결됨" : "이전 정상값 유지";
-              else if(pomoApi || dashUrl) els.pomoOk.textContent = "응답 없음";
-              else els.pomoOk.textContent = "API 필요";
+              
+              if(pomoCount != null) els.pomoOk.textContent = pomoPublishable ? "연결" : "연결안됨";
+              else els.pomoOk.textContent = "연결안됨";
             }
           }catch(e){}
 
@@ -11453,7 +11464,7 @@ try{
           renderDashboard();
           writeCountsToRTDB(state.localDashCounts);
         }catch(e){
-          try{ if(els.pomoOk) els.pomoOk.textContent = "응답 지연"; }catch(_e){}
+          try{ if(els.pomoOk) els.pomoOk.textContent = "연결안됨"; }catch(_e){} 
         }finally{
           if(requestSeq === state.dashPollSeq) state.dashPollInFlight = false;
         }
@@ -11616,7 +11627,7 @@ let __sudaPresenceUnsub = null;
       try{ if(__sudaPresenceUnsub) __sudaPresenceUnsub(); }catch(e){}
       __sudaPresenceUnsub = null;
       try{
-        if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+        if(els.sudaOk) els.sudaOk.textContent = "연결안됨";
         if(els.sudaCount) els.sudaCount.textContent = "—";
       }catch(e){}
     }
@@ -11625,7 +11636,7 @@ let __sudaPresenceUnsub = null;
         stopSudaPresenceWatch_();
 
 if(!sudaRtdb){
-          if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+          if(els.sudaOk) els.sudaOk.textContent = "연결안됨";
           if(els.sudaCount) els.sudaCount.textContent = "—";
           return;
         }
@@ -11683,10 +11694,10 @@ let anyRecent = false;
             const count = computeCountFromPresence_(raw);
             try{ state.liveSudaCount = count; }catch(e){}
             if(els.sudaCount) els.sudaCount.textContent = String(count);
-            if(els.sudaOk) els.sudaOk.textContent = "연결됨";
+            if(els.sudaOk) els.sudaOk.textContent = "연결";
           }catch(e){
             console.warn("[suda presence] poll error", e);
-            if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
+            if(els.sudaOk) els.sudaOk.textContent = "연결안됨" ;
           }
         }
 
@@ -11694,14 +11705,14 @@ let anyRecent = false;
           try{
             const res = await readFirstExisting_(HUB_PATHS);
             if(!res){
-              if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+              if(els.sudaOk) els.sudaOk.textContent = "연결안됨";
               if(els.sudaCount) els.sudaCount.textContent = "—";
               return;
             }
             const hub = res.val || {};
             const sid = String(hub.sessionId || hub.id || hub.roomId || "").trim();
             if(!sid){
-              if(els.sudaOk) els.sudaOk.textContent = "연결 안됨";
+              if(els.sudaOk) els.sudaOk.textContent = "연결안됨";
               if(els.sudaCount) els.sudaCount.textContent = "—";
               return;
             }
@@ -11717,7 +11728,7 @@ try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
             }
           }catch(e){
             console.warn("[suda presence] session poll error", e);
-            if(els.sudaOk) els.sudaOk.textContent = "권한/연결 오류";
+            if(els.sudaOk) els.sudaOk.textContent = "연결안됨" ;
           }
         }
 
@@ -11736,7 +11747,7 @@ __sudaPresenceUnsub = ()=>{
 
       }catch(e){
         console.warn("[suda presence] start failed", e);
-        try{ if(els.sudaOk) els.sudaOk.textContent = "연결 안됨"; }catch(_){}
+        try{ if(els.sudaOk) els.sudaOk.textContent = "연결안됨"; }catch(_){}
       }
     }
 
@@ -11797,7 +11808,7 @@ if(count > 0){
                 try{ state.livePomoCount = null; }catch(e){} 
               }
             }
-            if(els.pomoOk) els.pomoOk.textContent = "연결됨";
+            if(els.pomoOk) els.pomoOk.textContent = "연결";
           }catch(e){
             console.warn("[pomo presence] poll error", e);
             try{ state.livePomoCount = null; }catch(_e){}
@@ -15366,6 +15377,8 @@ const seenRenderIds = new Set();
       if(keepOpenReactMsgId) requestAnimationFrame(()=>restoreOpenReactPicker(keepOpenReactMsgId));
 
 try{ dedupeChatDomHard(); ensureChatDedupeObserver(); }catch(e){}
+      
+      try{ state._chatDedupeObserver && state._chatDedupeObserver.takeRecords(); }catch(e){}
 
       if(nearBottom){
         requestAnimationFrame(()=>{ try{ el.scrollTop = el.scrollHeight; }catch(e){} });
@@ -17086,6 +17099,8 @@ function getViewportW(){
     }
 
     function isCompactNow(){
+      
+      return false;
       const g = els.grid || document.getElementById("grid");
       const vw = getViewportW();
       
@@ -23151,7 +23166,8 @@ const HC_ORDER = new Map();
       pendingMissingTimer: null,
       publishFailTimer: null,
       
-      viewerEnabled: false
+      viewerEnabled: false,
+      gridHandcamClean: false 
     };
 
 try{ hc.viewerEnabled = localStorage.getItem("mkHandcamViewerEnabledV1") === "1"; }catch(e){ hc.viewerEnabled = false; }
@@ -23184,8 +23200,8 @@ try{
            타일의 닉네임/상태/메달 영역과 완전히 분리해 겹침을 막습니다. */
         .topCenter .hcBtn{ flex:0 0 auto; border:1px solid rgba(255,182,214,.55);
           cursor:pointer; border-radius:12px; font-size:12px; line-height:1; font-weight:900;
-          min-height:40px; padding:10px 12px; background:rgba(18,18,26,.88); color:#ffe2ef;
-          box-shadow:0 5px 16px rgba(0,0,0,.20); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
+          min-height:40px; padding:10px 12px; background:rgba(18,18,26,.96); color:#ffe2ef;
+          box-shadow:0 5px 16px rgba(0,0,0,.20); /* V226_PERF: 상시 노출 버튼의 blur(7px)는 아래 타일 애니가 움직일 때마다 재계산됐다 — 배경 .88→.96으로 대체(짝 버튼 .hcViewBtn은 원래 blur 없음) */ }
         .topCenter .hcBtn.on{ background:rgba(255,64,129,.95); border-color:rgba(255,255,255,.65); color:#fff; }
         .topCenter .hcBtn:disabled{ opacity:.55; cursor:not-allowed; }
         .topCenter .hcViewBtn{ flex:0 0 auto; border:1px solid rgba(255,214,233,.35);
@@ -23196,8 +23212,8 @@ try{
         body:not(.joined) .topCenter .hcBtn, body:not(.joined) .topCenter .hcViewBtn{ display:none !important; }
         .tile .hcLiveHint{ position:absolute; top:8px; left:8px; z-index:19; max-width:calc(100% - 16px);
           display:inline-flex; align-items:center; gap:6px; min-height:27px; padding:5px 9px; border-radius:999px;
-          background:rgba(18,18,26,.78); border:1px solid rgba(255,182,214,.42); color:#fff;
-          font-size:11px; font-weight:900; backdrop-filter:blur(7px); pointer-events:none; }
+          background:rgba(18,18,26,.92); border:1px solid rgba(255,182,214,.42); color:#fff;
+          font-size:11px; font-weight:900; pointer-events:none; /* V226_PERF: 배지 뒤에서 펫/덩쿨이 상시 움직여 blur(7px)가 송출자 수만큼 매 프레임 재계산됐다 — 배경 .78→.92로 대체 */ }
         .tile .hcLiveHint .hcHintName{ max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         @media (max-width:760px){
           .topCenter .hcBtn{ min-height:40px; padding:10px 10px; font-size:11px; }
@@ -23267,6 +23283,7 @@ function hcLiveLabel_(liveInfo){
       return {};
     }
 
+const HC_MQL_NARROW = (()=>{ try{ return window.matchMedia ? window.matchMedia("(max-width: 920px)") : null; }catch(e){ return null; } })();
     function hcReceiveLayoutAllowed(){
       try{
         const grid = els && els.grid;
@@ -23275,7 +23292,7 @@ function hcLiveLabel_(liveInfo){
         if(typeof window.__MK_IS_LOW_SPEC__ === "function" && window.__MK_IS_LOW_SPEC__()) return false;
         
         if(document.body.classList.contains("compact")) return false;
-        if(window.matchMedia && window.matchMedia("(max-width: 920px)").matches) return false;
+        if(HC_MQL_NARROW && HC_MQL_NARROW.matches) return false;
         
         if(grid.classList.contains("compact5") || grid.classList.contains("playgroundMode")) return false;
         return true;
@@ -23732,7 +23749,7 @@ const pixBtn = card.querySelector("#mkScPixel");
     async function makeBlurredScreenSource_(onSourceEnded){
       
       const src = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "window", frameRate: SCREEN_FPS },  
+        video: { displaySurface: "window", frameRate: { ideal: SCREEN_FPS, max: SCREEN_FPS }  },  
         selfBrowserSurface: "exclude",   
         surfaceSwitching: "include",     
         audio: false
@@ -23772,6 +23789,7 @@ const small = document.createElement("canvas");
       const sctx = small.getContext("2d");
 
 let latest = null;   
+      let lastPumpDrawMs = 0; 
       const frameSrc = ()=>{
         if(latest) return { img: latest, w: latest.displayWidth || latest.codedWidth, h: latest.displayHeight || latest.codedHeight };
         return { img: vid, w: vid.videoWidth, h: vid.videoHeight };
@@ -23801,8 +23819,11 @@ let latest = null;
         }catch(_e){}
       };
       draw();
-      
-      const timer = setInterval(draw, Math.round(1000 / SCREEN_FPS));
+
+const timer = setInterval(()=>{
+        if(lastPumpDrawMs && (Date.now() - lastPumpDrawMs) < 600) return;
+        draw();
+      }, Math.round(1000 / SCREEN_FPS));
 
 const okay = await confirmScreenShare_(vid, cv, crop, draw);
       if(!okay){
@@ -23829,6 +23850,7 @@ let alive = true, reader = null;
               const prev = latest;
               latest = value;
               draw();
+              lastPumpDrawMs = Date.now(); 
               if(prev){ try{ prev.close(); }catch(_e){} }   
             }
           })().catch(()=>{});
@@ -24253,6 +24275,10 @@ function scheduleMount(){
         ensureHeaderBtn();
 
 if(document.visibilityState !== "visible" && hcCanReceive()) return;
+        
+        const hcIdle = HC_LIVE.size === 0
+          && !(hc.my && hc.my.stream) && !(hc.pending && hc.pending.stream);
+        if(hcIdle && hc.gridHandcamClean) return;
         const canDisplay = hcCanDisplay();
         const canReceive = hcCanReceive();
 
@@ -24344,6 +24370,7 @@ if(isRemoteLive && !canReceive){
 
 if(uid === String(state.uid || "")) ensureHeaderBtn();
         });
+        hc.gridHandcamClean = hcIdle; 
       }catch(e){}
     }
 
@@ -24365,6 +24392,8 @@ function hcPickMenuOpen_(mode){
       }catch(e){}
     }
 
+const HC_ICON_CAM = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="vertical-align:-2px;margin-right:5px;flex:0 0 auto"><path d="M3 6.5C3 5.67 3.67 5 4.5 5h9c.83 0 1.5.67 1.5 1.5v11c0 .83-.67 1.5-1.5 1.5h-9C3.67 19 3 18.33 3 17.5v-11zm13.5 3.6 3.9-2.99c.66-.5 1.6-.04 1.6.79v8.2c0 .83-.94 1.3-1.6.79l-3.9-2.99v-3.8z"/></svg>';
+    const HC_ICON_SCREEN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="vertical-align:-2px;margin-right:5px;flex:0 0 auto"><path d="M3 5.5C3 4.67 3.67 4 4.5 4h15c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 16 3 15.33 3 14.5v-9zM9.2 18h5.6l.9 2.1c.2.46-.14.9-.64.9H8.94c-.5 0-.84-.44-.64-.9L9.2 18z"/></svg>';
     function ensureHeaderBtn(){
       try{
         const host = (els && els.statusBtn && els.statusBtn.parentElement) || document.querySelector(".topCenter");
@@ -24437,16 +24466,19 @@ let menu = host.querySelector(":scope > #hcPickMenu");
         const live = camLive || screenLive;
 
         btn.classList.toggle("on", live);
-        btn.textContent = hc.starting ? "📹 연결 중…"
-                        : screenLive ? "🖥️ 화공 끄기"
-                        : camLive ? "📹 손캠 끄기"
-                        : (menu ? `📹 캠/공 ${n}/${HC_MAX}` : `📹 손캠 ${n}/${HC_MAX}`);
+        
+        const nextBtnHtml = hc.starting ? HC_ICON_CAM + "연결 중…"
+                        : screenLive ? HC_ICON_SCREEN + "화공 끄기"
+                        : camLive ? HC_ICON_CAM + "손캠 끄기"
+                        : HC_ICON_CAM + `${n}/${HC_MAX}`;
+        if(btn.__mkHtml !== nextBtnHtml){ btn.__mkHtml = nextBtnHtml; btn.innerHTML = nextBtnHtml; }
         btn.disabled = !joined || hc.starting || (!live && n >= HC_MAX);
-        btn.title = !joined ? "입장 후에 켤 수 있어요"
+        const nextBtnTitle = !joined ? "입장 후에 켤 수 있어요"
                   : screenLive ? "화면공유 종료"
                   : camLive ? "손캠 송출 종료"
                   : (menu ? `손캠 또는 화면공유 켜기 (선착순 ${HC_MAX}명)` : `손캠 켜기 (선착순 ${HC_MAX}명)`);
-        btn.setAttribute("aria-label", btn.title);
+        if(btn.title !== nextBtnTitle) btn.title = nextBtnTitle;
+        if(btn.getAttribute("aria-label") !== nextBtnTitle) btn.setAttribute("aria-label", nextBtnTitle);
 
         if(live || !joined) hcPickMenuOpen_(false);
         if(menu){
@@ -24459,10 +24491,12 @@ let menu = host.querySelector(":scope > #hcPickMenu");
         }
 
         viewBtn.classList.toggle("on", hc.viewerEnabled);
-        viewBtn.textContent = hc.viewerEnabled ? "💗 손캠 보기 ON" : "💗 손캠 보기 OFF";
+        const nextViewText = hc.viewerEnabled ? "💗 LIVE" : "💗 OFF"; 
+        if(viewBtn.textContent !== nextViewText) viewBtn.textContent = nextViewText;
         viewBtn.disabled = !joined;
-        viewBtn.title = hc.viewerEnabled ? "손캠 영상 수신을 끄기" : "손캠 영상을 보기";
-        viewBtn.setAttribute("aria-label", viewBtn.title);
+        const nextViewTitle = hc.viewerEnabled ? "손캠 영상 수신을 끄기" : "손캠 영상을 보기";
+        if(viewBtn.title !== nextViewTitle) viewBtn.title = nextViewTitle;
+        if(viewBtn.getAttribute("aria-label") !== nextViewTitle) viewBtn.setAttribute("aria-label", nextViewTitle);
       }catch(e){}
     }
 
@@ -27208,11 +27242,13 @@ if(!window.__MK_BOOT_OK__){
     animation:worldTreeDewBadgePulse 2.4s ease-in-out infinite;
   }
   #worldTreeDewBadge[data-kind="dew50"]{
+    
+    filter:drop-shadow(0 0 9px rgba(180,220,255,.95)) drop-shadow(0 0 18px rgba(120,190,255,.65));
     animation:worldTreeDewBadgeFlash 1.05s ease-in-out infinite;
   }
   @keyframes worldTreeDewBadgeFlash{
-    0%,100%{transform:scale(1); opacity:.88; filter:drop-shadow(0 0 5px rgba(150,205,255,.85));}
-    50%{transform:scale(1.5); opacity:1; filter:drop-shadow(0 0 13px rgba(200,235,255,1)) drop-shadow(0 0 26px rgba(120,190,255,.85));}
+    0%,100%{transform:scale(1); opacity:.8;}
+    50%{transform:scale(1.5); opacity:1;}
   }
   
   #toast.dewCueSoft{box-shadow:0 0 14px rgba(140,200,255,.45), 0 18px 40px rgba(0,0,0,.35);}
@@ -27304,7 +27340,6 @@ if(!window.__MK_BOOT_OK__){
     width:108px; height:108px;
     animation:petDashboardGentleSway 24s cubic-bezier(.42,0,.24,1) infinite;
     transform-origin:50% 74%;
-    will-change:transform;
     backface-visibility:hidden;
     filter:drop-shadow(0 13px 15px rgba(0,0,0,.36)) drop-shadow(0 0 10px rgba(255,166,211,.24));
   }
@@ -27312,7 +27347,6 @@ if(!window.__MK_BOOT_OK__){
     width:var(--petViewSizeV24, 230px); height:var(--petViewSizeV24, 230px);
     animation:petModalGentleSway 24s cubic-bezier(.42,0,.24,1) infinite !important;
     transform-origin:50% 74%;
-    will-change:transform;
     backface-visibility:hidden;
     filter:drop-shadow(0 17px 18px rgba(0,0,0,.38)) drop-shadow(0 0 14px rgba(255,166,211,.28));
   }
@@ -27369,8 +27403,6 @@ if(!window.__MK_BOOT_OK__){
   .petPreviewCell{flex-direction:column; gap:2px; padding:5px;}
   .petPreviewCell small{font-size:10px; color:rgba(255,255,255,.48)}
 
-  @keyframes petV24Float{0%,100%{transform:translateY(0) scale(.985)}50%{transform:translateY(-5px) scale(1)}}
-  @keyframes petDashCalmFloat{0%,100%{transform:translateY(0) scale(.992)}50%{transform:translateY(-2px) scale(1)}}
   @keyframes petDashboardGentleSway{
     0%, 60%, 100%{ transform:translateY(0) rotate(0deg) scale(1); }
     64%{ transform:translateY(-.45px) rotate(-.55deg) scale(1.0008); }
@@ -27506,16 +27538,6 @@ if(!window.__MK_BOOT_OK__){
     68%{ transform:translateY(-.4px) rotate(.28deg) scale(1.0006); }
     72%{ transform:translateY(0) rotate(0deg) scale(1); }
   }
-  @keyframes petModalScratchArm{
-    0%, 20%, 39%, 100%{ opacity:0; transform:translate(4px,10px) rotate(24deg) scale(.88); }
-    22%{ opacity:.0; transform:translate(4px,10px) rotate(24deg) scale(.88); }
-    24%{ opacity:1; transform:translate(0,3px) rotate(8deg) scale(1); }
-    26%{ opacity:1; transform:translate(-2px,1px) rotate(-10deg) scale(1.02); }
-    28%{ opacity:1; transform:translate(1px,2px) rotate(12deg) scale(1); }
-    30%{ opacity:1; transform:translate(-1px,1px) rotate(-8deg) scale(1.02); }
-    32%{ opacity:.95; transform:translate(0,3px) rotate(5deg) scale(1); }
-    35%{ opacity:0; transform:translate(4px,9px) rotate(22deg) scale(.9); }
-  }
   @keyframes petModalHeartAction{
     0%, 42%, 100%{ opacity:0; transform:translateY(9px) scale(.72) rotate(-10deg); }
     46%{ opacity:0; transform:translateY(9px) scale(.72) rotate(-10deg); }
@@ -27553,7 +27575,6 @@ if(!window.__MK_BOOT_OK__){
     pointer-events:none;
     transform-origin:50% 70%;
     backface-visibility:hidden;
-    will-change:transform, opacity;
     animation:petModalHeartAction 8.8s ease-in-out infinite !important;
   }
 
@@ -27574,18 +27595,15 @@ if(!window.__MK_BOOT_OK__){
   .petStageArt.hero{
     animation:petDashAliveFloat 16s cubic-bezier(.45,0,.2,1) infinite !important;
     transform-origin:50% 76%;
-    will-change:transform;
     backface-visibility:hidden;
   }
   .petStageArt.current{
     animation:petModalAliveFloat 14s cubic-bezier(.45,0,.2,1) infinite !important;
     transform-origin:50% 76%;
-    will-change:transform;
     backface-visibility:hidden;
   }
   .petStageArt.hero img,
   .petStageArt.current img{
-    will-change:transform;
     backface-visibility:hidden;
     transform:translateZ(0);
   }
@@ -27625,14 +27643,12 @@ if(!window.__MK_BOOT_OK__){
   .petStageArt.hero{
     animation:petDashAliveFloatV85 8.8s ease-in-out infinite !important;
     transform-origin:50% 78% !important;
-    will-change:transform;
     backface-visibility:hidden;
     transform:translateZ(0);
   }
   .petStageArt.current{
     animation:petModalAliveFloatV85 10.5s ease-in-out infinite !important;
     transform-origin:50% 78% !important;
-    will-change:transform;
     backface-visibility:hidden;
     transform:translateZ(0);
   }
@@ -27642,7 +27658,6 @@ if(!window.__MK_BOOT_OK__){
     z-index:2;
     transform:translateZ(0);
     backface-visibility:hidden;
-    will-change:transform;
   }
   .petStageArt.hero::before,
   .petStageArt.current::before{
@@ -27668,7 +27683,6 @@ if(!window.__MK_BOOT_OK__){
     opacity:0;
     pointer-events:none;
     transform-origin:50% 80%;
-    will-change:transform, opacity;
     backface-visibility:hidden;
     animation:petDashHeartPopV85 5.6s ease-in-out infinite !important;
   }
@@ -27686,7 +27700,6 @@ if(!window.__MK_BOOT_OK__){
     opacity:0;
     pointer-events:none;
     transform-origin:50% 80%;
-    will-change:transform, opacity;
     backface-visibility:hidden;
     animation:petModalHeartPopV85 6.8s ease-in-out infinite !important;
   }
@@ -28525,12 +28538,12 @@ if(window.__MK_PET_V24__ && typeof window.__MK_PET_V24__.accrueV169 === 'functio
       window.__MK_PET_DEBUG__.added = 0;
     }
 
-if(now - petRenderThrottleMs > 5000){
+if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){ 
       petRenderThrottleMs = now;
       try{ renderAll(); }catch(e){}
     }
   }
-  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(renderDash,5000); window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState,  saveState, clampSec, levelOf, isPetId, MAX_SEC, LEVEL_SEC, MAX_LEVEL, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
+  function init(){ try{ replaceDashCard(); ensurePetModal(); attachPetWorkFlagListeners(); renderAll(); setInterval(growthTick,1000); setInterval(function(){ if(document.visibilityState !== 'hidden') renderDash(); },5000);  window.__MK_PET_V24__ = { renderAll, openModal, addGrowth, petSvg, PETS, PREVIEW_LEVELS, isWorking, loadState,  saveState, clampSec, levelOf, isPetId, MAX_SEC, LEVEL_SEC, MAX_LEVEL, setPetWorkFlag, resetActivePetGrowth: function(){ const st=loadState(); const id=isPetId(st.activePetId)?st.activePetId:(isPetId(st.growingPetId)?st.growingPetId:'cat'); st.pets=st.pets||{}; st.pets[id]=st.pets[id]||{}; st.pets[id].totalSec=0; st.growingPetId=id; saveState(st); petGrowthCarrySec=0; writePetGrowthAnchor(petDayKey(), getPetRuntimeSnapshot().live); renderAll(); return id; } }; window.__MK_PET_GROWTH_TIMER_HOOKED__ = false; }catch(e){ console.warn('[pet rework v51]', e); } }
   let waited=0; (function waitReady(){ if(window.__MK_READY__ || waited>4000){ init(); return; } waited+=100; setTimeout(waitReady,100); })();
 })();
 
@@ -28548,7 +28561,6 @@ if(now - petRenderThrottleMs > 5000){
     position:relative !important;
     isolation:isolate !important;
     transform-origin:50% 78% !important;
-    will-change:transform !important;
     backface-visibility:hidden !important;
     animation:petModalAliveFloatV90 10.5s ease-in-out infinite !important;
   }
@@ -28556,7 +28568,6 @@ if(now - petRenderThrottleMs > 5000){
     position:relative !important;
     z-index:2 !important;
     transform:translate3d(0,0,0) !important;
-    will-change:transform !important;
     backface-visibility:hidden !important;
   }
   #petModal.petModalV2 .petStageArt.current::before{
@@ -28581,7 +28592,6 @@ if(now - petRenderThrottleMs > 5000){
     opacity:0;
     pointer-events:none !important;
     transform-origin:50% 80% !important;
-    will-change:transform, opacity !important;
     backface-visibility:hidden !important;
     animation:petModalHeartPopV90 6.8s ease-in-out infinite !important;
   }
@@ -29263,6 +29273,8 @@ if(now - petRenderThrottleMs > 5000){
 
 #dashShortcuts{ grid-template-columns: auto auto auto auto !important; }
 
+#dashShortcuts{ justify-content:center !important; }
+
 #dashShortcuts > button{ padding-left:3px !important; padding-right:3px !important; }
 #dashShortcuts .btnLabel{ font-size:11.5px !important; letter-spacing:-.85px !important; }
 </style>
@@ -29479,6 +29491,7 @@ if(now - petRenderThrottleMs > 5000){
   body.joined #onlineBtn,
   body.joined #menuBtn,
   body.joined #leaveBtn,
+  body.joined #profileBtn, 
   body.joined .topCenter .hcBtn,
   body.joined .topCenter .hcViewBtn{
     position:static !important;
@@ -29501,8 +29514,8 @@ if(now - petRenderThrottleMs > 5000){
   body.joined #onlineBtn{ min-width:88px !important; order:1 !important; }
   body.joined #menuBtn{ width:40px !important; padding:0 !important; font-size:15px !important; order:2 !important; }
   body.joined #leaveBtn{ min-width:70px !important; order:3 !important; }
-  body.joined .topCenter .hcBtn{ min-width:104px !important; }
-  body.joined .topCenter .hcViewBtn{ min-width:126px !important; }
+  body.joined .topCenter .hcBtn{ min-width:64px !important; }   
+  body.joined .topCenter .hcViewBtn{ min-width:76px !important; }
 }
 @media (min-width:761px) and (max-width:880px){
   body.joined .topbar{ gap:5px !important; padding:7px 8px !important; }
@@ -29511,6 +29524,7 @@ if(now - petRenderThrottleMs > 5000){
   body.joined #onlineBtn,
   body.joined #menuBtn,
   body.joined #leaveBtn,
+  body.joined #profileBtn, 
   body.joined .topCenter .hcBtn,
   body.joined .topCenter .hcViewBtn{
     height:38px !important;
@@ -29522,8 +29536,8 @@ if(now - petRenderThrottleMs > 5000){
   body.joined #onlineBtn{ min-width:76px !important; }
   body.joined #menuBtn{ width:38px !important; padding:0 !important; }
   body.joined #leaveBtn{ min-width:62px !important; }
-  body.joined .topCenter .hcBtn{ min-width:94px !important; }
-  body.joined .topCenter .hcViewBtn{ min-width:114px !important; }
+  body.joined .topCenter .hcBtn{ min-width:58px !important; }   
+  body.joined .topCenter .hcViewBtn{ min-width:70px !important; }
 }
 </style>
 
@@ -32011,9 +32025,10 @@ var COIN = '<span class="mkCoinIcon"></span>';
   function updateWalletUI(){
     var el = ensureWalletEl(); if(!el) return;
     var s = readStats();
-    
-    el.innerHTML = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' ' + s.coins.toLocaleString('ko-KR');
-    el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; 
+
+var html = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' ' + s.coins.toLocaleString('ko-KR');
+    if(el.__mkWalletHtml !== html){ el.__mkWalletHtml = html; el.innerHTML = html; }
+    if(!el.__mkWalletTitle){ el.__mkWalletTitle = 1; el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; } 
   }
 
 function isPetIdV(id){ return !!(api && api.isPetId && api.isPetId(id)); }
@@ -32062,6 +32077,7 @@ function isPetIdV(id){ return !!(api && api.isPetId && api.isPetId(id)); }
   }
 
 var COIN_SEC_PER_COIN = 5;
+  var v169RenderAllLastMs = 0; 
   function accrueV169(delta){
     delta = Math.max(0, Math.floor(Number(delta) || 0));
     var out = { added:delta, pets:{}, skippedMax:[] };
@@ -32099,7 +32115,12 @@ if(api){
         st.growingPetId = picks.indexOf(st.activePetId) >= 0 ? st.activePetId : picks[0];
         api.saveState(st);
         msgs.forEach(toast);
-        try{ api.renderAll(); }catch(e){}
+        
+        var __nowRA = Date.now();
+        if(msgs.length || (document.visibilityState !== 'hidden' && __nowRA - v169RenderAllLastMs > 5000)){
+          v169RenderAllLastMs = __nowRA;
+          try{ api.renderAll(); }catch(e){}
+        }
       }else{
         out.growthDisabled = true;
       }
@@ -32791,6 +32812,27 @@ var EYE_BASE = 1024;
 
 var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUBLE_P = 0.2, BLINK_DOUBLE_GAP_MS = 150;
   var blinkReg = new Set(); 
+  
+  var blinkVis = (typeof WeakMap === 'function') ? new WeakMap() : null;
+  var blinkIO = null;
+  try{
+    if(blinkVis && typeof IntersectionObserver === 'function'){
+      blinkIO = new IntersectionObserver(function(entries){
+        for(var i = 0; i < entries.length; i++){
+          var c = blinkVis.get(entries[i].target);
+          if(c) c.vis = entries[i].isIntersecting;
+        }
+      });
+    }
+  }catch(e){ blinkIO = null; }
+  function blinkObserve(c){
+    if(!blinkIO || !c || !c.el) return;
+    try{ blinkVis.set(c.el, c); blinkIO.observe(c.el); }catch(e){}
+  }
+  function blinkUnobserve(c){
+    if(!blinkIO || !c || !c.el) return;
+    try{ blinkIO.unobserve(c.el); blinkVis.delete(c.el); }catch(e){}
+  }
   function blinkLowSpec(){ try{ return document.body.classList.contains('mkLowSpecMode'); }catch(e){ return false; } }
   function blinkClearTimers(c){ c.t.forEach(clearTimeout); c.t.length = 0; }
   function blinkSetFrame(c, closed){
@@ -32805,9 +32847,10 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
   }
   function blinkFire(c){
     c.t.length = 0;
-    if(!c.el.isConnected){ blinkReg.delete(c); return; }        
+    if(!c.el.isConnected){ blinkUnobserve(c); blinkReg.delete(c); return; }        
     if(document.hidden) return;                                  
-    if(blinkLowSpec() || c.el.offsetParent === null){ blinkSchedule(c); return; } 
+    var hiddenNow = blinkIO ? (c.vis === false) : (c.el.offsetParent === null); 
+    if(blinkLowSpec() || hiddenNow){ blinkSchedule(c); return; } 
     blinkSetFrame(c, true);
     c.t.push(setTimeout(function(){
       blinkSetFrame(c, false);
@@ -32823,9 +32866,10 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
   }
   function blinkAttach(el, openUrl, closedUrl){
     if(!el || !openUrl || !closedUrl) return null;
-    blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkReg.delete(c); } });
-    var c = { el: el, open: openUrl, closed: closedUrl, t: [], nextAt: 0 };
+    blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkUnobserve(c); blinkReg.delete(c); } });
+    var c = { el: el, open: openUrl, closed: closedUrl, t: [], nextAt: 0, vis: true }; 
     blinkReg.add(c);
+    blinkObserve(c);
     blinkSchedule(c);
     return c;
   }
@@ -32833,7 +32877,7 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
     if(document.hidden){
       blinkReg.forEach(function(c){ blinkClearTimers(c); blinkSetFrame(c, false); }); 
     }else{
-      blinkReg.forEach(function(c){ if(c.el.isConnected) blinkSchedule(c); else blinkReg.delete(c); });
+      blinkReg.forEach(function(c){ if(c.el.isConnected) blinkSchedule(c); else { blinkUnobserve(c); blinkReg.delete(c); } });
     }
   });
   function blinkDebug(){ 
@@ -33080,17 +33124,21 @@ m.rot = rot || 0;
       moverReg.forEach(function(m){ if(!m.root.isConnected) moverDestroy(m); }); 
       var b = bridge();
       if(!b || typeof b.participantOf !== 'function') return;
+      
+      var byRoot = new Map();
+      moverReg.forEach(function(m){ byRoot.set(m.root, m); });
       var tiles = document.querySelectorAll('#grid .tile[data-uid]');
       for(var i = 0; i < tiles.length; i++){
         var el = tiles[i];
         if(!el.isConnected) continue;
+        var m = byRoot.get(el);
+        if(m && m.t.length) continue;
         var p = b.participantOf(el.dataset.uid || '');
         if(!p || moveModeOf(p) !== 'move') continue;
-        var m = moverOf(el);
         if(!m){
           if(Date.now() < moverRetryBackoffUntil) continue; 
           attachMover(el, p);
-        }else if(!m.t.length){
+        }else{
           moverStep(m); 
         }
       }
