@@ -69,6 +69,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -20714,9 +20715,9 @@ let __authLostBound = false;
         }
         const reauthBtn = document.getElementById("authLostReauth");
         if(reauthBtn) reauthBtn.style.display = last ? "" : "none";
-        
-        const guestBtn = document.getElementById("authLostGuest");
-        if(guestBtn) guestBtn.style.display = guestOffer ? "" : "none";
+
+const guestBtn = document.getElementById("authLostGuest");
+        if(guestBtn) guestBtn.style.display = "none";
         if(!__authLostBound){
           __authLostBound = true;
           const rl = document.getElementById("authLostReload");
@@ -25107,7 +25108,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17107; 
+const MK_APP_BUILD = 17108; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
