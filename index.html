@@ -30371,7 +30371,121 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     return 'grayscale(1) brightness(' + fx(r.p*100) + '%) sepia(1) saturate(' + fx(r.S*100)
          + '%) hue-rotate(' + fx(r.theta) + 'deg) brightness(' + fx(r.q*bv) + '%)';
   }
-  window.__MK_TINT_V184__ = { filterString:filterString, solve:solve, satTargetOf:satTargetOf };
+  
+  var MASK_SAT_LO = 15, MASK_SAT_HI = 35;
+  var ctxFilterOk = null;
+  function canvasFilterSupported(){ 
+    if(ctxFilterOk !== null) return ctxFilterOk;
+    ctxFilterOk = false;
+    try{
+      var c = document.createElement('canvas'); c.width = 1; c.height = 1;
+      var x = c.getContext('2d');
+      if(x && ('filter' in x)){ x.filter = 'grayscale(1)'; ctxFilterOk = (String(x.filter) !== 'none'); }
+    }catch(e){ ctxFilterOk = false; }
+    return ctxFilterOk;
+  }
+  function buildMaskedCanvas(src, filterStr, w, h){
+    var base = document.createElement('canvas'); base.width = w; base.height = h;
+    var bctx = base.getContext('2d', { willReadFrequently:true });
+    bctx.drawImage(src, 0, 0, w, h);
+    var od = bctx.getImageData(0, 0, w, h);   
+    var tin = document.createElement('canvas'); tin.width = w; tin.height = h;
+    var tctx = tin.getContext('2d', { willReadFrequently:true });
+    tctx.filter = filterStr;
+    tctx.drawImage(src, 0, 0, w, h);
+    tctx.filter = 'none';
+    var fd = tctx.getImageData(0, 0, w, h);
+    var o = od.data, f = fd.data, n = o.length, lo = MASK_SAT_LO, span = MASK_SAT_HI - MASK_SAT_LO;
+    for(var i = 0; i < n; i += 4){
+      if(o[i+3] === 0) continue;              
+      var r = o[i], g = o[i+1], b = o[i+2];
+      var mx = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
+      var mn = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
+      var t = (mx - mn - lo) / span;
+      if(t <= 0) continue;                    
+      if(t >= 1){ o[i] = f[i]; o[i+1] = f[i+1]; o[i+2] = f[i+2]; continue; } 
+      var wt = t * t * (3 - 2 * t);           
+      o[i]   = r + (f[i]   - r) * wt;
+      o[i+1] = g + (f[i+1] - g) * wt;
+      o[i+2] = b + (f[i+2] - b) * wt;
+    }
+    bctx.putImageData(od, 0, 0);              
+    return base;
+  }
+
+var MASK_CACHE_MAX = 16;
+  var maskByKey = new Map();                                              
+  var maskByObj = (typeof WeakMap === 'function') ? new WeakMap() : null; 
+  function maskKeyOf(src){
+    if(typeof src === 'string') return src;
+    if(src && src.tagName === 'IMG') return src.currentSrc || src.src || '';
+    return '';
+  }
+  function maskTrim(map, keep){
+    if(map.size > MASK_CACHE_MAX){ var old = map.keys().next().value; if(old !== keep) map.delete(old); }
+  }
+  function maskEntry(src, filterStr){
+    var k = maskKeyOf(src);
+    if(k){
+      var kk = k + '|' + filterStr, e = maskByKey.get(kk);
+      if(!e){ e = {}; maskByKey.set(kk, e); maskTrim(maskByKey, kk); }
+      return e;
+    }
+    if(!maskByObj) return {};                 
+    var m = maskByObj.get(src);
+    if(!m){ m = new Map(); maskByObj.set(src, m); }
+    var e2 = m.get(filterStr);
+    if(!e2){ e2 = {}; m.set(filterStr, e2); maskTrim(m, filterStr); } 
+    return e2;
+  }
+  
+  function maskedTintCanvas(src, filterStr){
+    if(!src || !filterStr || !canvasFilterSupported()) return null;
+    var w = src.naturalWidth || src.width || 0, h = src.naturalHeight || src.height || 0;
+    if(!w || !h) return null;                 
+    var e = maskEntry(src, filterStr);
+    if(e.cv !== undefined) return e.cv;
+    try{ e.cv = buildMaskedCanvas(src, filterStr, w, h); }
+    catch(err){ e.cv = null; }                
+    return e.cv;
+  }
+  
+  function maskedTintDataUrl(src, filterStr){
+    var cv = maskedTintCanvas(src, filterStr);
+    if(!cv) return null;
+    var e = maskEntry(src, filterStr);
+    if(e.url === undefined){
+      try{ e.url = cv.toDataURL('image/png'); }catch(err){ e.url = null; }
+    }
+    return e.url;
+  }
+  
+  var MASK_IMG_MAX = 8;         
+  var maskImgCache = new Map(); 
+  var maskImgReady = new Map(); 
+  function maskedTintLoad(url){
+    var hit = maskImgCache.get(url);
+    if(hit) return hit;
+    var pr = new Promise(function(res, rej){
+      var im = new Image();
+      im.decoding = 'async';
+      im.onload = function(){ maskImgReady.set(url, im); res(im); };
+      im.onerror = function(){ rej(new Error('mask img load fail: ' + url)); };
+      im.src = url;
+    });
+    pr.catch(function(){ maskImgCache.delete(url); });
+    maskImgCache.set(url, pr);
+    if(maskImgCache.size > MASK_IMG_MAX){
+      var old = maskImgCache.keys().next().value;
+      if(old !== url){ maskImgCache.delete(old); maskImgReady.delete(old); }
+    }
+    return pr;
+  }
+  function maskedTintReady(url){ return maskImgReady.get(url) || null; }
+  window.__MK_TINT_V184__ = { filterString:filterString, solve:solve, satTargetOf:satTargetOf,
+    
+    maskedTintCanvas:maskedTintCanvas, maskedTintDataUrl:maskedTintDataUrl,
+    maskedTintLoad:maskedTintLoad, maskedTintReady:maskedTintReady };
 })();
 </script>
 <script id="v169CharaDressupScript">
@@ -31498,6 +31612,7 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
       img.src=L.part.url; img.alt=L.part.name;
       img.dataset.cat=L.catKey;
       img.dataset.part=L.part.name; 
+      if(catName(L.catKey)==='face') img.dataset.src0=L.part.url; 
       var f=filterFor(L.catKey, L.part.name); if(f) img.style.filter=f;
       el.appendChild(img);
     });
@@ -31505,21 +31620,64 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
   }
   
   function setupStageBlink(stage){
-    var api = window.__MK_CHARA_TILE_V169__;
-    if(!api || typeof api.closedFaceUrl !== 'function' || typeof api.blinkAttach !== 'function') return;
     var img = null;
     stage.querySelectorAll('img[data-cat]').forEach(function(im){ if(catName(im.dataset.cat)==='face') img = im; });
     if(!img) return; 
-    var openUrl = img.getAttribute('src');
-    api.closedFaceUrl(img.alt).then(function(closed){
+    applyFaceLayer(img); 
+  }
+  
+  var faceSeq = 0; 
+  var faceBlinkTimer = 0, FACE_BLINK_DELAY_MS = 220; 
+  function setFaceFrame(img, src, filter){ 
+    if(src && img.getAttribute('src') !== src) img.setAttribute('src', src);
+    if(img.style.filter !== filter) img.style.filter = filter;
+  }
+  function applyFaceLayer(img){
+    if(!img || !img.isConnected) return;
+    var cat = img.dataset.cat, part = img.dataset.part || '';
+    var base = img.dataset.src0 || img.getAttribute('src') || '';
+    var tapi = window.__MK_TINT_V184__, api = window.__MK_CHARA_TILE_V169__;
+    var tf = tintFilterOf(getAdjFor(cat, part)); 
+    var open = '', masked = false;
+    if(tf && tapi && typeof tapi.maskedTintDataUrl === 'function'){
+      var src0 = tapi.maskedTintReady(base);
+      if(src0){ open = tapi.maskedTintDataUrl(src0, tf) || ''; masked = !!open; }
       
-      if(!closed || !img.isConnected || img.getAttribute('src') !== openUrl) return;
-      api.blinkAttach(img, openUrl, closed);
-    }, function(){});
+      else tapi.maskedTintLoad(base).then(function(){ if(tapi.maskedTintReady(base)) applyFaceLayer(img); }, function(){});
+    }
+    if(!masked) open = base;
+    setFaceFrame(img, open, masked ? '' : filterFor(cat, part));
+    var sig = masked ? ('m|' + tf) : 'p';
+    if(img.dataset.faceSig === sig) return;  
+    img.dataset.faceSig = sig;
+    if(!api || typeof api.blinkAttach !== 'function' || typeof api.closedFaceUrl !== 'function') return;
+    
+    if(typeof api.blinkDetach === 'function') api.blinkDetach(img);
+    var seq = ++faceSeq;
+    
+    clearTimeout(faceBlinkTimer);
+    faceBlinkTimer = setTimeout(function(){
+      if(seq !== faceSeq || !img.isConnected) return;
+      var pClosed = masked
+        ? (typeof api.closedFaceCanvas === 'function'
+            ? api.closedFaceCanvas(img.alt).then(function(cv){ return tapi.maskedTintDataUrl(cv, tf) || ''; })
+            : Promise.resolve(''))        
+        : api.closedFaceUrl(img.alt);
+      pClosed.then(function(closed){
+        
+        if(seq !== faceSeq || !closed || !img.isConnected || img.getAttribute('src') !== open) return;
+        api.blinkAttach(img, open, closed);
+      }, function(){});
+    }, FACE_BLINK_DELAY_MS);
   }
   function applyStageFilters(){
     var el=$id('mkCharaStage'); if(!el) return;
-    el.querySelectorAll('img[data-cat]').forEach(function(img){ img.style.filter=filterFor(img.dataset.cat, img.dataset.part||''); }); 
+    var face=null;
+    el.querySelectorAll('img[data-cat]').forEach(function(img){
+      if(catName(img.dataset.cat)==='face'){ face=img; return; } 
+      img.style.filter=filterFor(img.dataset.cat, img.dataset.part||''); 
+    });
+    if(face) applyFaceLayer(face);
   }
   function renderColorPanel(){
     var panel=$id('mkCharaColorPanel'); if(!panel) return;
@@ -32872,6 +33030,14 @@ var EYE_BASE = 1024;
     closedFaceUrlCache.set(faceName, pr);
     return pr;
   }
+  
+  function closedFaceCanvasFor(faceName){
+    if(typeof faceName !== 'string' || !faceName) return Promise.reject(new Error('no face'));
+    return ensureManifest().then(function(mani){
+      if(!mani.files.face || !mani.files.face[faceName]) throw new Error('unknown face: ' + faceName);
+      return closedFaceCanvas(mani, faceName);
+    });
+  }
 
 var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUBLE_P = 0.2, BLINK_DOUBLE_GAP_MS = 150;
   var blinkReg = new Set(); 
@@ -32927,9 +33093,13 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
       }else blinkSchedule(c);
     }, BLINK_CLOSE_MS));
   }
+  
+  function blinkDetach(el){
+    blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkUnobserve(c); blinkReg.delete(c); } });
+  }
   function blinkAttach(el, openUrl, closedUrl){
     if(!el || !openUrl || !closedUrl) return null;
-    blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkUnobserve(c); blinkReg.delete(c); } });
+    blinkDetach(el);
     var c = { el: el, open: openUrl, closed: closedUrl, t: [], nextAt: 0, vis: true }; 
     blinkReg.add(c);
     blinkObserve(c);
@@ -33232,22 +33402,32 @@ m.rot = rot || 0;
   }
 
 var bakeCache = new Map(); 
-  function filterOf(hue, key){
+  function adjOf(hue, key){
     var a = hue && hue[key];
     
     if(!a && key){
       var i = key.indexOf('/');
       if(i > 0) a = hue && hue[key.slice(0, i)];
     }
+    return a || null;
+  }
+  
+  function tintFilterOf(a){
+    if(!a || a.t == null) return '';
+    var tapi = window.__MK_TINT_V184__;
+    if(!tapi || typeof tapi.filterString !== 'function') return '';
+    return tapi.filterString(a.t, a.s, a.b) || '';
+  }
+  function tintFilterFor(hue, key){ return tintFilterOf(adjOf(hue, key)); }
+  function maskedTintOf(src, filterStr){ 
+    var tapi = window.__MK_TINT_V184__;
+    if(!tapi || typeof tapi.maskedTintCanvas !== 'function') return null;
+    try{ return tapi.maskedTintCanvas(src, filterStr); }catch(e){ return null; }
+  }
+  function filterOf(hue, key){
+    var a = adjOf(hue, key);
     if(!a) return '';
-    
-    if(a.t != null){
-      var tapi = window.__MK_TINT_V184__;
-      if(tapi && typeof tapi.filterString === 'function'){
-        var tf = tapi.filterString(a.t, a.s, a.b);
-        if(tf) return tf;
-      }
-    }
+    var tf = tintFilterOf(a); if(tf) return tf;
     return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
   }
   function bakeChara(parts, hue){
@@ -33325,8 +33505,11 @@ var bakeCache = new Map();
             var s = Math.min(BAKE_SIZE / iw, BAKE_SIZE / ih);
             var w = iw * s, h = ih * s, x = (BAKE_SIZE - w) / 2, y = (BAKE_SIZE - h) / 2;
             var f = filterOf(hue, L.adjKey);
-            try{ ctx.filter = f || 'none'; }catch(e){}
-            ctx.drawImage((faceCv && L.cat === 'face') ? faceCv : L.img, x, y, w, h);
+            var srcCv = (faceCv && L.cat === 'face') ? faceCv : L.img;
+            
+            var mCv = (L.cat === 'face' && f) ? (tintFilterFor(hue, L.adjKey) ? maskedTintOf(srcCv, f) : null) : null;
+            try{ ctx.filter = mCv ? 'none' : (f || 'none'); }catch(e){}
+            ctx.drawImage(mCv || srcCv, x, y, w, h);
             try{ ctx.filter = 'none'; }catch(e){}
             var rect = { x: x, y: y, w: w, h: h };
             meta.layers.push({ cat: L.cat, name: L.name, rect: rect });
@@ -33606,7 +33789,9 @@ window.__MK_CHARA_TILE_V169__ = {
     stats: stats,              
     
     closedFaceUrl: closedFaceUrl, 
+    closedFaceCanvas: closedFaceCanvasFor, 
     blinkAttach: blinkAttach,     
+    blinkDetach: blinkDetach,     
     blinkDebug: blinkDebug,       
     blinkFireNow: blinkFireNow,   
     
