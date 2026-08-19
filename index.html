@@ -28164,7 +28164,7 @@ const LS_DASH_PET_VIEW = 'mk_profile_pref_v1';
     img.alt = '내 캐릭터';
     img.decoding = 'async';
     art.appendChild(img);
-    api.bake(payload.parts, payload.hue).then(res => {
+    api.bake(payload.parts, payload.hue, payload.flip).then(res => { 
       if(!img.isConnected) return; 
       img.src = res.url;
       
@@ -30109,6 +30109,11 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   .mkColorPartChip img{ width:100%; height:100%; object-fit:contain; display:block; }
   .mkColorPartChip img.mkRectCrop{ position:absolute; max-width:none; }
   
+  .mkCharaFlipBtn{ flex:0 1 auto; min-width:0; height:26px; padding:0 8px; font-size:11px; line-height:24px; white-space:nowrap;
+                   overflow:hidden; text-overflow:ellipsis; border-radius:8px; cursor:pointer;
+                   border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#f2e9f4; }
+  .mkCharaFlipBtn.on{ border-color:#ff8dc2; background:rgba(255,141,194,.18); }
+  
   .mkCartBox{ margin-top:10px; }
   
   .mkCartList{ display:flex; flex-direction:column; gap:6px; height:170px; overflow-y:auto; scrollbar-width:thin; }
@@ -30513,6 +30518,7 @@ var MASK_CACHE_MAX = 16;
     adj:{},         
                     
     colorTarget:{}, 
+    flip:{},        
     name:'',        
     active:null
   };
@@ -30595,7 +30601,16 @@ function loadSaved(){
       if(k.indexOf('/')>=0 && !liveHueKeys[k]) return; 
       hue[k]= tint ? { h:0, s:a.s, b:a.b, t:clampNum(a.t,0,359,0) } : { h:a.h, s:a.s, b:a.b };
     });
+    
+    var flip = [];
+    Object.keys(chara.flip).forEach(function(k){
+      if(!chara.flip[k] || !liveHueKeys[k]) return;
+      var m = /^(acc|gear)\/(.+)$/.exec(k); if(!m) return;
+      flip.push(m[1] + ':' + m[2].replace(/\.png$/i, ''));
+    });
+    flip.sort();
     var out = { v:1, parts:parts, hue:hue };
+    if(flip.length) out.flip = flip; 
     var nm = sanitizeName(chara.name);
     if(nm) out.name = nm; 
     return out;
@@ -30738,6 +30753,29 @@ var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리'
   }
   function isSetPart(name){ return !!(chara.partSets || {})[name]; } 
   function partSideOf(name){ var s = (chara.partSide || {})[name]; return (s === 'left' || s === 'right') ? s : null; }
+  
+  function flipKeyOf(catKey, name){ return catName(catKey) + '/' + name; }
+  function canFlip(catKey, name){
+    if(!name || catName(catKey) !== 'gear') return false;
+    if(isSpecial(catKey, name)) return false;
+    return partTypeOf(catKey, name) === 'companion'; 
+  }
+  function isFlipped(catKey, name){ return !!chara.flip[flipKeyOf(catKey, name)]; }
+  
+  function effSideOf(catKey, name){
+    var s = partSideOf(name);
+    if(!s) return null;
+    return isFlipped(catKey, name) ? (s === 'left' ? 'right' : 'left') : s;
+  }
+  
+  function pruneFlip(){
+    var live = {};
+    chara.cats.forEach(function(c){
+      if(!isMultiCat(c.key)) return;
+      selArr(c.key).forEach(function(nm){ live[flipKeyOf(c.key, nm)] = 1; });
+    });
+    Object.keys(chara.flip).forEach(function(k){ if(!live[k]) delete chara.flip[k]; });
+  }
   function isFreeExtra(catKey, name){ 
     if(isSpecial(catKey, name)) return true; 
     var t = partTypeOf(catKey, name);
@@ -30752,7 +30790,8 @@ var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리'
     var t = partTypeOf(catKey, name);
     if(!t) return '파츠';
     var base = PART_TYPE_LABEL[t] || '파츠';
-    if(t === 'companion'){ var s = partSideOf(name); return (s === 'left' ? '왼쪽 ' : (s === 'right' ? '오른쪽 ' : '')) + base; }
+    
+    if(t === 'companion'){ var s = effSideOf(catKey, name); return (s === 'left' ? '왼쪽 ' : (s === 'right' ? '오른쪽 ' : '')) + base; }
     return base;
   }
   function joEul(w){ 
@@ -30817,7 +30856,9 @@ var NAME_MAX5 = 5;
         np[k] = (typeof v==='string' && v) ? v : null;
       }
     });
-    return JSON.stringify({ parts:np, hue:(p && p.hue) || {}, name:sanitizeName(p && p.name) });
+    
+    return JSON.stringify({ parts:np, hue:(p && p.hue) || {}, name:sanitizeName(p && p.name),
+                            flip:(p && Array.isArray(p.flip)) ? p.flip.slice().sort() : [] });
   }
   function isDirty(){ 
     if(chara.phase !== 'ready') return false;
@@ -30830,6 +30871,7 @@ var NAME_MAX5 = 5;
     
     var saved = (payloadOpt && payloadOpt.parts && typeof payloadOpt.parts==='object' && !Array.isArray(payloadOpt.parts)) ? payloadOpt : loadSaved();
     chara.adj = {};
+    chara.flip = {}; 
     chara.cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); 
     chara.name = sanitizeName(saved && saved.name);
     if(saved){
@@ -30856,7 +30898,15 @@ var NAME_MAX5 = 5;
           chara.adj[k]=o;
         });
       }
+      
+      if(Array.isArray(saved.flip)) saved.flip.forEach(function(k){
+        if(typeof k !== 'string') return;
+        var m = /^(acc|gear)[\/:](.+)$/.exec(k); if(!m) return;
+        var fn = m[2]; if(!/\.png$/i.test(fn)) fn += '.png';
+        chara.flip[m[1] + '/' + fn] = true;
+      });
       stripUnownedSel(); 
+      pruneFlip();       
     }else{
       
       var bodyCat = chara.cats.find(function(c){ return catName(c.key)==='body' && c.parts.length; });
@@ -30896,10 +30946,14 @@ var PRESET_KEY = 'mk_chara_presets';
         var s = arr[i];
         var okParts = s && typeof s === 'object' && !Array.isArray(s) && s.parts && typeof s.parts === 'object' && !Array.isArray(s.parts);
         if(!okParts) continue; 
-        slots.push({ parts: s.parts,
-                     hue: (s.hue && typeof s.hue === 'object' && !Array.isArray(s.hue)) ? s.hue : {},
-                     name: sanitizeName(s.name),
-                     savedAtMs: isFinite(Number(s.savedAtMs)) ? Number(s.savedAtMs) : 0 });
+        var sl = { parts: s.parts,
+                   hue: (s.hue && typeof s.hue === 'object' && !Array.isArray(s.hue)) ? s.hue : {},
+                   name: sanitizeName(s.name),
+                   savedAtMs: isFinite(Number(s.savedAtMs)) ? Number(s.savedAtMs) : 0 };
+        
+        var fl = Array.isArray(s.flip) ? s.flip.filter(function(k){ return typeof k === 'string'; }).slice(0, 8) : [];
+        if(fl.length) sl.flip = fl;
+        slots.push(sl);
       }
     }catch(e){
       slots = []; 
@@ -30975,7 +31029,10 @@ var PRESET_KEY = 'mk_chara_presets';
     if(!any){ toast('입힌 파츠가 없어요 — 캐릭터를 먼저 만들어 주세요'); return; } 
     var slots = loadPresets();
     if(slots.length >= PRESET_MAX){ toast('내 캐릭터 칸이 다 찼어요 (최대 ' + PRESET_MAX + '개) — 칸의 ×를 눌러 비우고 저장해 주세요', 3400); return; }
-    slots.push({ parts:p.parts, hue:p.hue, name:(p.name || ''), savedAtMs:Date.now() });
+    var sl = { parts:p.parts, hue:p.hue, name:(p.name || ''), savedAtMs:Date.now() };
+    
+    if(Array.isArray(p.flip) && p.flip.length) sl.flip = p.flip;
+    slots.push(sl);
     savePresets(slots);
     renderPresets();
     presetScrollToEnd(); 
@@ -31017,7 +31074,7 @@ var PRESET_KEY = 'mk_chara_presets';
     if(chara.phase !== 'ready'){ toast('아직 파츠를 준비하는 중이에요'); return; }
     
     if(isDirty() && !window.confirm('저장하지 않은 변경이 있어요. 저장해둔 캐릭터로 바꾸면 지금 변경은 사라져요. 계속할까요?')) return;
-    applySavedToSel({ v:1, parts:s.parts, hue:s.hue, name:s.name });
+    applySavedToSel({ v:1, parts:s.parts, hue:s.hue, flip:s.flip , name:s.name });
     persist(); 
     renderChara();
     toast('\'' + (s.name || '내 캐릭터') + '\' 캐릭터로 바꿨어요 ✨');
@@ -31050,6 +31107,15 @@ var PRESET_KEY = 'mk_chara_presets';
     if(a.t != null && isFinite(Number(a.t))){ o.t = clampNum(a.t,0,359,0); o.h = 0; }
     return o;
   }
+  
+  function presetFlipped(slot, catKey, partName){
+    var arr = slot && slot.flip;
+    if(!Array.isArray(arr) || !arr.length || !canFlip(catKey, partName)) return false;
+    var want = catName(catKey) + ':' + String(partName).replace(/\.png$/i, '');
+    return arr.some(function(k){
+      return typeof k === 'string' && k.replace(/\.png$/i, '').replace('/', ':') === want;
+    });
+  }
   function presetFilterOf(hueMap, catKey, partName){
     var a = presetAdjFor(hueMap, catKey, partName);
     var tf = tintFilterOf(a); if(tf) return tf; 
@@ -31077,7 +31143,9 @@ var PRESET_KEY = 'mk_chara_presets';
     
     var imgs = layers.map(function(L){
       var f = presetFilterOf(slot.hue, L.catKey, L.part.name);
-      return '<img src="' + esc(L.part.url) + '" alt=""' + (f ? (' style="filter:' + esc(f) + '"') : '') + '>'; 
+      
+      var st = (f ? ('filter:' + f + ';') : '') + (presetFlipped(slot, L.catKey, L.part.name) ? 'transform:scaleX(-1);' : '');
+      return '<img src="' + esc(L.part.url) + '" alt=""' + (st ? (' style="' + esc(st) + '"') : '') + '>'; 
     }).join('');
     return '<span class="mkPresetArt" style="' + esc(style) + '">' + imgs + '</span>';
   }
@@ -31393,7 +31461,7 @@ function loadManifest(){
         if(!cats.length) throw new Error('manifest에 파츠 카테고리가 없음');
         cats.forEach(splitBackParts);
 
-        chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={};
+        chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={}; chara.flip={}; 
         cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); 
 
 applySavedToSel();
@@ -31613,6 +31681,8 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
       img.dataset.cat=L.catKey;
       img.dataset.part=L.part.name; 
       if(catName(L.catKey)==='face') img.dataset.src0=L.part.url; 
+      
+      if(isFlipped(L.catKey, L.part.name) && canFlip(L.catKey, L.part.name)) img.style.transform='scaleX(-1)';
       var f=filterFor(L.catKey, L.part.name); if(f) img.style.filter=f;
       el.appendChild(img);
     });
@@ -31691,6 +31761,7 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
     
     var lb=$id('mkCharaColorCat'); if(lb) lb.textContent = cat ? (COLOR_CAT_EN[catName(cat.key)] || cat.label) : '-'; 
     renderColorParts(cat, tgt);                                        
+    renderFlipRow(cat, tgt);                                           
     var a = cat ? getAdjFor(cat.key, tgt) : { h:0, s:100, b:100 };
     
     var tint = isTintAdj(a);
@@ -31755,6 +31826,26 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
         + thumbImgHtml(cat.key, p.name, p.url, (f?('filter:'+f+';'):''))
         + '</button>';
     }).join('');
+  }
+  
+  function renderFlipRow(cat, tgt){
+    var wrap=$id('mkCharaColorParts'); if(!wrap) return; 
+    var nm = (cat && isMultiCat(cat.key)) ? tgt : null;
+    if(chara.phase!=='ready' || !nm || !canFlip(cat.key, nm)) return; 
+    var on = isFlipped(cat.key, nm);
+    var side = effSideOf(cat.key, nm); 
+    var to = (side==='left') ? '오른쪽으로' : (side==='right' ? '왼쪽으로' : '좌우 반전');
+    wrap.insertAdjacentHTML('beforeend',
+      '<button type="button" class="mkCharaFlipBtn'+(on?' on':'')+'" title="이 친구를 좌우로 뒤집어 반대쪽에 세워요">'
+      + '↔ ' + esc(to) + (on ? ' (원래대로)' : '') + '</button>');
+  }
+  function onFlipToggle(){
+    var cat=activeCat(); if(!cat || !isMultiCat(cat.key)) return;
+    var nm = colorTargetFor(cat.key); if(!nm || !canFlip(cat.key, nm)) return;
+    var k = flipKeyOf(cat.key, nm);
+    if(chara.flip[k]) delete chara.flip[k]; else chara.flip[k]=true;
+    
+    renderColorPanel(); renderStage(); renderSaveBar();
   }
   
   function paintColorChips(){
@@ -31835,6 +31926,7 @@ var arr = selArr(catKey).slice();
         }
       }
       chara.sel[catKey] = arr;
+      pruneFlip(); 
     }else{
       chara.sel[catKey]=name;
     }
@@ -31940,6 +32032,8 @@ var BODY_HTML =
     
     var colorParts=body.querySelector('#mkCharaColorParts');
     if(colorParts) colorParts.addEventListener('click', function(e){
+      
+      if(e.target && e.target.closest && e.target.closest('.mkCharaFlipBtn')){ onFlipToggle(); return; }
       var b = e.target && e.target.closest ? e.target.closest('.mkColorPartChip') : null;
       if(b && b.dataset.name) setColorTarget(b.dataset.name);
     });
@@ -32689,6 +32783,26 @@ function validPartName(v){ return typeof v === 'string' && v.length && v.length 
     });
     return out;
   }
+  
+  function sanitizeFlip(src){
+    var out = {}, n = 0;
+    if(!src || typeof src !== 'object') return out;
+    var keys = Array.isArray(src) ? src : Object.keys(src).filter(function(k){ return !!src[k]; });
+    keys.forEach(function(k){
+      if(n >= 8 || typeof k !== 'string') return;
+      var m = /^(acc|gear)[\/:](.+)$/.exec(k); if(!m) return;
+      var nm = m[2];
+      if(!/\.png$/i.test(nm)) nm += '.png';
+      if(!validPartName(nm)) return;              
+      var key = m[1] + '/' + nm;
+      if(out[key]) return;
+      out[key] = true; n++;
+    });
+    return out;
+  }
+  function flipOutOf(flip){ 
+    return Object.keys(sanitizeFlip(flip)).map(function(k){ return k.replace(/\.png$/i, '').replace('/', ':'); }).sort();
+  }
   function hasParts(parts){
     for(var i = 0; i < PART_KEYS.length; i++){ if(parts && parts[PART_KEYS[i]]) return true; }
     return false;
@@ -32767,7 +32881,7 @@ function validPartName(v){ return typeof v === 'string' && v.length && v.length 
       try{ if(typeof window.showToast === 'function') window.showToast('캐릭터를 되살렸어요 ✨ 보유 파츠 ' + n + '개를 복구했어요', 3600); }catch(e){}
     }, function(){});
   }
-  function sigOf(parts, hue){
+  function sigOf(parts, hue, flip){
     var p = [], h = [];
     PART_KEYS.forEach(function(k){
       var v = parts && parts[k];
@@ -32784,10 +32898,12 @@ function validPartName(v){ return typeof v === 'string' && v.length && v.length 
       ph.push(m[1] + ':' + m[2].replace(/\.png$/i, '') + '=' + a.h + ',' + a.s + ',' + a.b + (a.t == null ? '' : ('t' + a.t))); 
     });
     ph.sort();
-    return p.join('|') + '#' + h.join('|') + (ph.length ? ('#' + ph.join('|')) : '');
+    
+    var fp = flipOutOf(flip);
+    return p.join('|') + '#' + h.join('|') + (ph.length ? ('#' + ph.join('|')) : '') + (fp.length ? ('#f' + fp.join('|')) : '');
   }
   function writeSigOf(payload){
-    return normShow(payload && payload.show) + '@' + sigOf(payload && payload.parts, payload && payload.hue)
+    return normShow(payload && payload.show) + '@' + sigOf(payload && payload.parts, payload && payload.hue, payload && payload.flip) 
       + '@' + normMode(payload && payload.mode) 
       + '@' + sanitizeCharaName(payload && payload.name); 
   }
@@ -32804,7 +32920,9 @@ var LS_CHARA_STAMP = 'mk_chara_state_stamp_v1';
       var d = JSON.parse(localStorage.getItem(LS_CHARA) || 'null');
       if(d && d.v === 1 && d.parts && typeof d.parts === 'object'){
         
-        localCache = { parts: filterOwnedParts(sanitizeParts(d.parts)), hue: sanitizeHue(d.hue), name: sanitizeCharaName(d.name) };
+        localCache = { parts: filterOwnedParts(sanitizeParts(d.parts)), hue: sanitizeHue(d.hue),
+                       flip: sanitizeFlip(d.flip), 
+                       name: sanitizeCharaName(d.name) };
       }
     }catch(e){}
     return localCache;
@@ -32859,7 +32977,7 @@ function charaOf(p){
     var isMe = !!uid && uid === selfUid();
     if(isMe){
       var lc = readLocalChara();
-      if(lc && hasParts(lc.parts)) return { parts: lc.parts, hue: lc.hue, name: lc.name, show: getMyShow(), mode: getMyMode() }; 
+      if(lc && hasParts(lc.parts)) return { parts: lc.parts, hue: lc.hue, flip: lc.flip , name: lc.name, show: getMyShow(), mode: getMyMode() }; 
       
     }
     var cv = p && p.charaV1;
@@ -32872,6 +32990,7 @@ function charaOf(p){
         if(hadParts && !hasParts(parts)) repairOwnedFromCharaV1(cv);
       }
       if(hasParts(parts)) return { parts: parts, hue: sanitizeHue(cv.hue),
+        flip: sanitizeFlip(cv.flip),      
         name: sanitizeCharaName(cv.name), 
         show: isMe ? getMyShow() : normShow(cv.show),
         mode: isMe ? getMyMode() : normMode(cv.mode) }; 
@@ -33315,7 +33434,7 @@ m.rot = rot || 0;
       var m = { root: tileEl, host: tileEl, wrap: wrap, flip: flip, img: img, t: [], x: 0, y: 0, dir: 1, rot: 0 }; 
       moverReg.add(m);
       stats.moverAttachCount++;
-      bakeChara(c.parts, c.hue).then(function(res){
+      bakeChara(c.parts, c.hue, c.flip).then(function(res){ 
         if(!moverReg.has(m)) return; 
         img.src = res.url;
         if(res.urlClosed) blinkAttach(img, res.url, res.urlClosed); 
@@ -33430,10 +33549,11 @@ var bakeCache = new Map();
     var tf = tintFilterOf(a); if(tf) return tf;
     return 'hue-rotate(' + a.h + 'deg) saturate(' + a.s + '%) brightness(' + a.b + '%)';
   }
-  function bakeChara(parts, hue){
+  function bakeChara(parts, hue, flip){
     parts = sanitizeParts(parts);
     hue = sanitizeHue(hue);
-    var key = sigOf(parts, hue);
+    flip = sanitizeFlip(flip); 
+    var key = sigOf(parts, hue, flip);
     var hit = bakeCache.get(key);
     if(hit){ stats.bakeCacheHit++; return hit; }
     var pr = ensureManifest().then(function(mani){
@@ -33508,9 +33628,13 @@ var bakeCache = new Map();
             var srcCv = (faceCv && L.cat === 'face') ? faceCv : L.img;
             
             var mCv = (L.cat === 'face' && f) ? (tintFilterFor(hue, L.adjKey) ? maskedTintOf(srcCv, f) : null) : null;
+            
+            var flipped = !!flip[L.adjKey] && partTypeOf(L.cat, L.name) === 'companion';
+            if(flipped){ ctx.save(); ctx.translate(BAKE_SIZE, 0); ctx.scale(-1, 1); }
             try{ ctx.filter = mCv ? 'none' : (f || 'none'); }catch(e){}
             ctx.drawImage(mCv || srcCv, x, y, w, h);
             try{ ctx.filter = 'none'; }catch(e){}
+            if(flipped) ctx.restore();
             var rect = { x: x, y: y, w: w, h: h };
             meta.layers.push({ cat: L.cat, name: L.name, rect: rect });
             if(L.cat === 'face'){ meta.facePart = L.name; meta.faceRect = rect; }
@@ -33560,7 +33684,7 @@ function fillSlot(box, p){
         tag.textContent = c.name;
         box.appendChild(tag);
       }
-      bakeChara(c.parts, c.hue).then(function(res){
+      bakeChara(c.parts, c.hue, c.flip).then(function(res){ 
         try{
           img.src = res.url;
           
@@ -33592,6 +33716,9 @@ function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, 
       payload.hue[m[1] + ':' + m[2].replace(/\.png$/i, '')] = hueOutOf(a); 
     });
     if(!Object.keys(payload.hue).length) delete payload.hue;
+    
+    var flipArr = flipOutOf(lc.flip);
+    if(flipArr.length) payload.flip = flipArr;
     if(lc.name) payload.name = lc.name; 
     return payload;
   }
@@ -33663,6 +33790,8 @@ var joinSyncDone = false;
           var rParts = sanitizeParts(remote.parts);
           if(hasParts(rParts)){
             var restored = { v:1, parts:rParts, hue:sanitizeHue(remote.hue) };
+            var rFlip = flipOutOf(remote.flip); 
+            if(rFlip.length) restored.flip = rFlip;
             var rName = sanitizeCharaName(remote.name);
             if(rName) restored.name = rName;
             try{
@@ -33683,7 +33812,7 @@ var joinSyncDone = false;
         var payload = buildCharaV1();
         if(!payload) return;
         var sig = writeSigOf(payload);
-        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), mode: remote.mode, name: remote.name }) === sig){ 
+        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), flip: sanitizeFlip(remote.flip) , mode: remote.mode, name: remote.name }) === sig){ 
           lastWrittenSig = sig; 
           return;
         }
@@ -33805,6 +33934,8 @@ window.__MK_CHARA_TILE_V169__ = {
     movePeekOutNow: movePeekOutNow,   
     computeEyeFracs: computeEyeFracs, 
     
+    sanitizeFlip: sanitizeFlip, 
+    sigOf: sigOf,               
     slot:{ sanitizeParts:sanitizeParts, normalizeMultiSel:normalizeMultiSel, partTypeOf:partTypeOf,
            isSetPart:isSetPart, partSideOf:partSideOf, isFreeExtra:isFreeExtra,
            rules:function(){ return slotRules; } },
@@ -33948,6 +34079,11 @@ function slimChara(c){
     if(!has) return null;                       
     var out = { v: Number(c.v) || 1, parts: parts };
     if(c.hue && typeof c.hue === 'object' && !Array.isArray(c.hue)) out.hue = c.hue;
+    
+    if(Array.isArray(c.flip)){
+      var fl = c.flip.filter(function(k){ return typeof k === 'string'; }).slice(0, 8).map(String);
+      if(fl.length) out.flip = fl;
+    }
     if(c.show) out.show = String(c.show);
     if(c.mode) out.mode = String(c.mode);
     if(c.name) out.name = String(c.name).slice(0,20);
@@ -34128,7 +34264,7 @@ function enqueue(card){
     if(!api || typeof api.bake !== 'function'){ card.__queued = false; return; }
     running++; stats.bakeRequested++;
     var c = card.__chara || {};
-    api.bake(c.parts, c.hue).then(function(res){
+    api.bake(c.parts, c.hue, c.flip).then(function(res){ 
       if(myGen !== gen) return;                       
       var img = card.querySelector('img');
       if(img && res && res.url){ img.src = res.url; card.__baked = true; card.classList.add('ready'); }
