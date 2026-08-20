@@ -1,5 +1,5 @@
 {
-  "_version": "20260819174012",
+  "_version": "20260820211807",
   "01_body": [
     "01_body_auto_01.png",
     "01_body_auto_02.png",
@@ -180,7 +180,15 @@
     "04_look_auto_59.png",
     "04_look_auto_60.png",
     "04_look_auto_61.png",
-    "04_look_auto_62.png"
+    "04_look_auto_62.png",
+    "04_look_auto_63.png",
+    "04_look_auto_64.png",
+    "04_look_auto_65.png",
+    "04_look_auto_66.png",
+    "04_look_auto_68.png",
+    "04_look_auto_69.png",
+    "04_look_auto_70.png",
+    "04_look_auto_71.png"
   ],
   "05_acc": [
     "05_acc_auto_01.png",
@@ -234,6 +242,13 @@
     "05_acc_auto_54.png",
     "05_acc_auto_55.png",
     "05_acc_auto_56.png",
+    "05_acc_auto_58.png",
+    "05_acc_auto_59.png",
+    "05_acc_auto_60.png",
+    "05_acc_auto_61.png",
+    "05_acc_auto_62.png",
+    "05_acc_auto_64.png",
+    "05_acc_auto_65.png",
     "05_acc_special_bangjang.png",
     "05_acc_special_bubangjang.png",
     "05_acc_special_gaegeun.png",
@@ -288,7 +303,14 @@
     "06_gear_auto_47.png",
     "06_gear_auto_48.png",
     "06_gear_auto_49.png",
-    "06_gear_auto_50.png"
+    "06_gear_auto_50.png",
+    "06_gear_auto_52.png",
+    "06_gear_auto_53.png",
+    "06_gear_auto_54.png",
+    "06_gear_auto_56.png",
+    "06_gear_auto_57.png",
+    "06_gear_auto_58.png",
+    "06_gear_auto_59.png"
   ],
   "_eyes": {
     "03_face_auto_01.png": {
@@ -913,6 +935,14 @@
     "04_look/04_look_auto_60.png": 4000,
     "04_look/04_look_auto_61.png": 4000,
     "04_look/04_look_auto_62.png": 4000,
+    "04_look/04_look_auto_63.png": 4000,
+    "04_look/04_look_auto_64.png": 4000,
+    "04_look/04_look_auto_65.png": 4000,
+    "04_look/04_look_auto_66.png": 4000,
+    "04_look/04_look_auto_68.png": 4000,
+    "04_look/04_look_auto_69.png": 4000,
+    "04_look/04_look_auto_70.png": 4000,
+    "04_look/04_look_auto_71.png": 4000,
     "05_acc/05_acc_auto_01.png": 2,
     "05_acc/05_acc_auto_02.png": 2200,
     "05_acc/05_acc_auto_04.png": 2200,
@@ -964,6 +994,13 @@
     "05_acc/05_acc_auto_54.png": 2200,
     "05_acc/05_acc_auto_55.png": 2200,
     "05_acc/05_acc_auto_56.png": 2200,
+    "05_acc/05_acc_auto_58.png": 2200,
+    "05_acc/05_acc_auto_59.png": 2200,
+    "05_acc/05_acc_auto_60.png": 2200,
+    "05_acc/05_acc_auto_61.png": 2200,
+    "05_acc/05_acc_auto_62.png": 2200,
+    "05_acc/05_acc_auto_64.png": 2200,
+    "05_acc/05_acc_auto_65.png": 2200,
     "06_gear/06_gear_auto_01.png": 2,
     "06_gear/06_gear_auto_02.png": 2200,
     "06_gear/06_gear_auto_03.png": 2200,
@@ -1012,7 +1049,14 @@
     "06_gear/06_gear_auto_47.png": 2200,
     "06_gear/06_gear_auto_48.png": 2200,
     "06_gear/06_gear_auto_49.png": 2200,
-    "06_gear/06_gear_auto_50.png": 2200
+    "06_gear/06_gear_auto_50.png": 2200,
+    "06_gear/06_gear_auto_52.png": 2200,
+    "06_gear/06_gear_auto_53.png": 2200,
+    "06_gear/06_gear_auto_54.png": 2200,
+    "06_gear/06_gear_auto_56.png": 2200,
+    "06_gear/06_gear_auto_57.png": 2200,
+    "06_gear/06_gear_auto_58.png": 2200,
+    "06_gear/06_gear_auto_59.png": 2200
   },
   "_rects": {
     "01_body/01_body_auto_01.png": [
@@ -1843,6 +1887,54 @@
       447,
       513
     ],
+    "04_look/04_look_auto_63.png": [
+      300,
+      456,
+      423,
+      546
+    ],
+    "04_look/04_look_auto_64.png": [
+      301,
+      459,
+      435,
+      536
+    ],
+    "04_look/04_look_auto_65.png": [
+      315,
+      458,
+      395,
+      520
+    ],
+    "04_look/04_look_auto_66.png": [
+      318,
+      465,
+      392,
+      533
+    ],
+    "04_look/04_look_auto_68.png": [
+      309,
+      454,
+      407,
+      554
+    ],
+    "04_look/04_look_auto_69.png": [
+      289,
+      457,
+      446,
+      542
+    ],
+    "04_look/04_look_auto_70.png": [
+      322,
+      457,
+      391,
+      524
+    ],
+    "04_look/04_look_auto_71.png": [
+      323,
+      465,
+      393,
+      519
+    ],
     "05_acc/05_acc_auto_01.png": [
       539,
       122,
@@ -2149,6 +2241,48 @@
       210,
       314
     ],
+    "05_acc/05_acc_auto_58.png": [
+      541,
+      64,
+      312,
+      277
+    ],
+    "05_acc/05_acc_auto_59.png": [
+      410,
+      502,
+      200,
+      307
+    ],
+    "05_acc/05_acc_auto_60.png": [
+      458,
+      50,
+      355,
+      325
+    ],
+    "05_acc/05_acc_auto_61.png": [
+      415,
+      498,
+      200,
+      318
+    ],
+    "05_acc/05_acc_auto_62.png": [
+      462,
+      62,
+      330,
+      303
+    ],
+    "05_acc/05_acc_auto_64.png": [
+      417,
+      503,
+      200,
+      341
+    ],
+    "05_acc/05_acc_auto_65.png": [
+      568,
+      99,
+      206,
+      206
+    ],
     "05_acc/05_acc_special_bangjang.png": [
       15,
       379,
@@ -2450,10 +2584,10 @@
       347
     ],
     "06_gear/06_gear_auto_48.png": [
-      39,
-      508,
-      567,
-      452
+      37,
+      530,
+      569,
+      458
     ],
     "06_gear/06_gear_auto_49.png": [
       3,
@@ -2466,6 +2600,48 @@
       296,
       849,
       420
+    ],
+    "06_gear/06_gear_auto_52.png": [
+      178,
+      5,
+      669,
+      631
+    ],
+    "06_gear/06_gear_auto_53.png": [
+      629,
+      530,
+      311,
+      435
+    ],
+    "06_gear/06_gear_auto_54.png": [
+      0,
+      468,
+      486,
+      518
+    ],
+    "06_gear/06_gear_auto_56.png": [
+      7,
+      502,
+      434,
+      490
+    ],
+    "06_gear/06_gear_auto_57.png": [
+      371,
+      487,
+      240,
+      337
+    ],
+    "06_gear/06_gear_auto_58.png": [
+      402,
+      501,
+      283,
+      280
+    ],
+    "06_gear/06_gear_auto_59.png": [
+      363,
+      490,
+      246,
+      291
     ]
   },
   "_gearBack": [
@@ -2482,7 +2658,8 @@
     "06_gear_auto_26.png",
     "06_gear_auto_41.png",
     "06_gear_auto_45.png",
-    "06_gear_auto_50.png"
+    "06_gear_auto_50.png",
+    "06_gear_auto_52.png"
   ],
   "_gearCostumeOk": [
     "06_gear_auto_04.png",
@@ -2516,7 +2693,11 @@
     "06_gear_auto_46.png",
     "06_gear_auto_48.png",
     "06_gear_auto_49.png",
-    "06_gear_auto_50.png"
+    "06_gear_auto_50.png",
+    "06_gear_auto_52.png",
+    "06_gear_auto_53.png",
+    "06_gear_auto_54.png",
+    "06_gear_auto_56.png"
   ],
   "_partTypes": {
     "05_acc_auto_01.png": "hairpin",
@@ -2568,6 +2749,10 @@
     "05_acc_auto_54.png": "hairpin",
     "05_acc_auto_55.png": "scarf",
     "05_acc_auto_56.png": "glasses",
+    "05_acc_auto_58.png": "hairpin",
+    "05_acc_auto_60.png": "hairpin",
+    "05_acc_auto_62.png": "hairpin",
+    "05_acc_auto_65.png": "hairpin",
     "05_acc_special_bangjang.png": "special",
     "05_acc_special_bubangjang.png": "special",
     "05_acc_special_gaegeun.png": "special",
@@ -2620,7 +2805,14 @@
     "06_gear_auto_47.png": "bag",
     "06_gear_auto_48.png": "companion",
     "06_gear_auto_49.png": "companion",
-    "06_gear_auto_50.png": "wing"
+    "06_gear_auto_50.png": "wing",
+    "06_gear_auto_52.png": "wing",
+    "06_gear_auto_53.png": "companion",
+    "06_gear_auto_54.png": "companion",
+    "06_gear_auto_56.png": "companion",
+    "06_gear_auto_57.png": "bag",
+    "06_gear_auto_58.png": "bag",
+    "06_gear_auto_59.png": "bag"
   },
   "_partSets": [
     "05_acc_auto_01.png",
@@ -2646,6 +2838,40 @@
     "06_gear_auto_44.png": "right",
     "06_gear_auto_46.png": "right",
     "06_gear_auto_48.png": "left",
-    "06_gear_auto_49.png": "left"
+    "06_gear_auto_49.png": "left",
+    "06_gear_auto_53.png": "right",
+    "06_gear_auto_54.png": "left",
+    "06_gear_auto_56.png": "left"
+  },
+  "_seasonal": {
+    "04_look_auto_63.png": "chuseok",
+    "04_look_auto_64.png": "chuseok",
+    "04_look_auto_65.png": "chuseok",
+    "04_look_auto_66.png": "chuseok",
+    "04_look_auto_68.png": "chuseok",
+    "04_look_auto_69.png": "chuseok",
+    "04_look_auto_70.png": "chuseok",
+    "04_look_auto_71.png": "chuseok",
+    "05_acc_auto_58.png": "chuseok",
+    "05_acc_auto_59.png": "chuseok",
+    "05_acc_auto_60.png": "chuseok",
+    "05_acc_auto_61.png": "chuseok",
+    "05_acc_auto_62.png": "chuseok",
+    "05_acc_auto_64.png": "chuseok",
+    "05_acc_auto_65.png": "chuseok",
+    "06_gear_auto_52.png": "chuseok",
+    "06_gear_auto_53.png": "chuseok",
+    "06_gear_auto_54.png": "chuseok",
+    "06_gear_auto_56.png": "chuseok",
+    "06_gear_auto_57.png": "chuseok",
+    "06_gear_auto_58.png": "chuseok",
+    "06_gear_auto_59.png": "chuseok"
+  },
+  "_seasonWindows": {
+    "chuseok": {
+      "from": "08-15",
+      "to": "09-30",
+      "label": "추석"
+    }
   }
 }

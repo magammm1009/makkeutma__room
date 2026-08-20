@@ -70,6 +70,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -1639,14 +1640,7 @@
       z-index:21;               
       }
     .tile .tileVine svg{width:100%; height:100%; display:block;}
-    .tile .tileVine .lf{                       
-      transform-box:fill-box; transform-origin:0% 50%;
-      animation:mkVineSway 5.4s ease-in-out infinite;
-      
-      }
-    @keyframes mkVineSway{ 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(6deg)} }
-    @media (prefers-reduced-motion:reduce){ .tile .tileVine .lf{animation:none !important;} }
-    body.mkLowSpecMode .tile .tileVine .lf{animation:none !important;}   
+    
     
     .newbieTag{
       position:absolute; right:5px; top:5px; z-index:22; pointer-events:none; 
@@ -25108,7 +25102,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17108; 
+const MK_APP_BUILD = 17109; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30090,6 +30084,17 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   
   
+  .mkCharaPrice.mkSeasonLockBadge{
+    color:#d9d2e6; background:rgba(18,14,26,.82); border-color:rgba(190,175,220,.45);
+  }
+  .mkCharaThumb.mkSeasonLocked img{ filter:grayscale(.75) brightness(.58); opacity:.85; }
+  .mkCharaThumb.mkSeasonLocked:hover img{ filter:grayscale(.6) brightness(.66); }
+  .mkSeasonChip{
+    position:absolute; left:4px; bottom:4px; padding:2px 5px; border-radius:999px; pointer-events:none;
+    font-size:9px; font-weight:1000; max-width:calc(100% - 8px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    color:#ffe3f1; background:rgba(40,10,28,.72); border:1px solid rgba(255,141,194,.45);
+  }
+  
   .mkCharaThumb.mkTryOn{ border-color:#ffd85c; }
   .mkCharaThumb.mkTryOn.on{ box-shadow:0 0 0 2px rgba(255,216,92,.28); }
   .mkCharaThumb.mkTryOn.on::after{ content:"👕"; background:#ffd85c; font-size:10px; }
@@ -30653,6 +30658,38 @@ var V169_PART_PRICE_DEFAULT = 2;
   
   function specialInfo(catKey, name){ return (chara.special || {})[catKey + '/' + name] || null; }
   function isSpecial(catKey, name){ return !!specialInfo(catKey, name); }
+  
+  var SEASON_ICON = '🌕'; 
+  function seasonalMapOf(mf){ var o = mf && mf._seasonal; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  function seasonWindowsOf(mf){ var o = mf && mf._seasonWindows; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  function isMMDD(v){ return typeof v === 'string' && /^\d{2}-\d{2}$/.test(v); }
+  function todayMMDD(){ var d = new Date(); return ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); }
+  
+  function inSeasonWindow(from, to, today){
+    if(!isMMDD(from) || !isMMDD(to) || !isMMDD(today)) return false;
+    return (from <= to) ? (today >= from && today <= to) : (today >= from || today <= to);
+  }
+  
+  function seasonStateOf(name){
+    var id = (chara.seasonal || {})[name];
+    if(typeof id !== 'string' || !id) return null;
+    var w = (chara.seasonWindows || {})[id];
+    if(!w || typeof w !== 'object' || Array.isArray(w)) return null;
+    if(!isMMDD(w.from) || !isMMDD(w.to)) return null;
+    return { id:id, label:(typeof w.label === 'string' && w.label) ? w.label : id,
+             from:w.from, to:w.to, active:inSeasonWindow(w.from, w.to, todayMMDD()) };
+  }
+  function mmddText(v){ var m = /^(\d{2})-(\d{2})$/.exec(String(v||'')); return m ? (Number(m[1]) + '/' + Number(m[2])) : String(v||''); }
+  
+  function seasonLockedFor(catKey, name){
+    var s = seasonStateOf(name);
+    if(!s || s.active) return null;
+    if(getOwned()[ownedKeyFor(catKey, name)]) return null;
+    return s;
+  }
+  function seasonLockMsg(s){
+    return SEASON_ICON + ' ' + s.label + ' 한정 파츠예요 — 매년 ' + mmddText(s.from) + '~' + mmddText(s.to) + '에만 살 수 있어요';
+  }
   
   function gearBackMapOf(mf){
     var out = {}, arr = mf && mf._gearBack;
@@ -31281,7 +31318,15 @@ var cartUnchecked = {};
   }
   function payCart(){
     var items = tryOnItems().filter(function(it){ return !cartUnchecked[ownedKeyFor(it.catKey, it.name)]; });
-    if(!items.length) return;
+    
+    var sBlocked = [];
+    items = items.filter(function(it){
+      var lock = seasonLockedFor(it.catKey, it.name);
+      if(lock){ sBlocked.push(lock); return false; }
+      return true;
+    });
+    if(sBlocked.length) toast(seasonLockMsg(sBlocked[0]) + (sBlocked.length > 1 ? (' (외 ' + (sBlocked.length - 1) + '개)') : ''), 3600);
+    if(!items.length){ if(sBlocked.length) renderCart(); return; }
     var total = items.reduce(function(s, it){ return s + it.price; }, 0);
     if(!spendCoins(total)){ refreshWalletPill(); toast('코인이 부족해요 — 타이머를 채우면 5초당 1코인!'); renderCart(); return; } 
     items.forEach(function(it){ grantOwned(it.catKey, it.name); });
@@ -31447,6 +31492,9 @@ function loadManifest(){
         chara.partTypes = partTypesMapOf(mf);
         chara.partSets  = partSetsMapOf(mf);
         chara.partSide  = partSideMapOf(mf);
+        
+        chara.seasonal = seasonalMapOf(mf);
+        chara.seasonWindows = seasonWindowsOf(mf);
         var cats=[];
         Object.keys(mf||{}).forEach(function(key){
           if(key.charAt(0)==='_') return;             
@@ -31615,11 +31663,18 @@ function renderTabs(){
       }
       var price = partPrice(cat.key, p.name);
 
-var title = esc(cat.label)+(has?' — 보유 중':(tryOn?' — 입어보는 중 (결제 전)':' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기')); 
-      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+'" data-name="'+esc(p.name)+'" title="'+title+'">'
+var season = has ? null : seasonStateOf(p.name);
+      var sLocked = !!(season && !season.active);
+      
+      var title = esc(cat.label)+(has?' — 보유 중':(sLocked ? (' — '+esc(season.label)+' 한정 · 매년 '+mmddText(season.from)+'~'+mmddText(season.to)+'에만 살 수 있어요')
+                                        :(tryOn?' — 입어보는 중 (결제 전)':(season?(' — '+esc(season.label)+' 한정 · 코인 '+fmtCoins(price)+' · 눌러서 입어보기'):' — 코인 '+fmtCoins(price)+' · 눌러서 입어보기')))); 
+      return '<div class="mkCharaThumb'+(isOn?' on':'')+(tryOn?' mkTryOn':(has?'':' mkLocked'))+(sLocked?' mkSeasonLocked':'')+'" data-name="'+esc(p.name)+'" title="'+title+'">'
         + thumbImgHtml(cat.key, p.name, p.url, '') 
         
-        + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>':('<span class="mkCharaPrice">'+COIN+fmtCoins(price)+'</span>'))
+        + (has?'<span class="mkCharaPrice mkOwnedBadge">보유 ✓</span>'
+              :(sLocked?('<span class="mkCharaPrice mkSeasonLockBadge">'+SEASON_ICON+' '+esc(season.label)+' 한정</span>')
+                       :('<span class="mkCharaPrice">'+COIN+fmtCoins(price)+'</span>'
+                         + (season?('<span class="mkSeasonChip">'+SEASON_ICON+esc(season.label)+'</span>'):''))))
         + '</div>';
     }).join('');
     el.innerHTML = html;
@@ -31629,6 +31684,11 @@ var title = esc(cat.label)+(has?' — 보유 중':(tryOn?' — 입어보는 중 
         
         var isSp = !!(nm && tile.dataset.special === '1' && !getOwned()[ownedKeyFor(cat.key, nm)]);
         var onNow = function(){ return isMultiCat(cat.key) ? selArr(cat.key).indexOf(nm)>=0 : chara.sel[cat.key]===nm; }; 
+        
+        if(nm && !onNow()){
+          var sLock = seasonLockedFor(cat.key, nm);
+          if(sLock){ toast(seasonLockMsg(sLock), 3400); return; }
+        }
         var wasOn = isSp && onNow();
         selectPart(cat.key, nm); 
         if(isSp && !wasOn && onNow()) toast('🎖️ 미리보기예요 — 쿠폰 코드를 등록하면 내 것이 돼요', 2600);
