@@ -72,6 +72,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -106,7 +107,9 @@
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR",
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
       color:var(--text);
       background:#000;
       min-height:100vh;
@@ -16174,6 +16177,29 @@ const CHAT_EMOJI_GROUPS = [
 const EMOJI_TOFU_PROBE = "\u{10FFFD}";   
     const EMOJI_KNOWN_OK   = "\u{1F600}";    
     const __emojiRenderCache = new Map();
+
+let __emojiWebfontOk = false;
+    (function emojiWebfontProbe_(){
+      let tries = 0;
+      const probe = ()=>{
+        try{
+          if(__emojiWebfontOk) return;
+          if(!(document.fonts && document.fonts.load)) return;
+          document.fonts.load('16px "Noto Color Emoji"', "\u{1FAE8}\u{1FA77}\u{1FAF6}").then((faces)=>{
+            if(__emojiWebfontOk || !faces || !faces.length) return;
+            __emojiWebfontOk = true;
+            try{ console.log("[V232_EMOJIFONT] 이모지 웹폰트 확인 — 픽커 필터 해제"); }catch(_e){}
+            
+            try{ if(__emojiPickEl && __emojiPickEl.style.display !== "none") emojiPickSync_(); }catch(_e){}
+          }).catch(()=>{});
+        }catch(_e){}
+      };
+      probe();
+      try{ if(document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(probe); }catch(_e){}
+      
+      const late = ()=>{ tries++; probe(); if(!__emojiWebfontOk && tries < 3) setTimeout(late, 6000); };
+      setTimeout(late, 4000);
+    })();
     let __emojiMeasureCtx = null;
     let __emojiDetectOn = null;              
 
@@ -16233,6 +16259,7 @@ if(!emojiPixSame_(okPix, __emojiTofuPix) && !emojiPixSame_(okPix, __emojiBlankPi
     }
 
     function emojiCanRender_(emo){
+      if(__emojiWebfontOk) return true;         
       if(!emojiDetectInit_()) return true;      
       if(!emo) return false;
       if(__emojiRenderCache.has(emo)) return __emojiRenderCache.get(emo);
@@ -16374,7 +16401,7 @@ const EMOJI_RECENT_KEY = "mk_chat_emoji_recent";
     
     function emojiAllGroups_(){
       
-      const recent = emojiRecentRead_().filter((e)=> __emojiRenderCache.has(e) ? __emojiRenderCache.get(e) : true);
+      const recent = emojiRecentRead_().filter((e)=> __emojiWebfontOk || (__emojiRenderCache.has(e) ? __emojiRenderCache.get(e) : true)); 
       if(!recent.length) return CHAT_EMOJI_GROUPS;
       return [{ key:"최근", words:["최근","자주","방금","recent"], emojis: recent.join("") }].concat(CHAT_EMOJI_GROUPS);
     }
@@ -16493,6 +16520,7 @@ const picked = [], unknown = [];
           const all = emojiPickSplit_(g.emojis);
           const list = [];
           for(const e of all){
+            if(__emojiWebfontOk){ list.push(e); continue; }   
             if(__emojiRenderCache.has(e)){ if(__emojiRenderCache.get(e)) list.push(e); }
             else { unknown.push(e); list.push(e); }   
           }
@@ -25213,7 +25241,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17110; 
+const MK_APP_BUILD = 17111; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29995,6 +30023,8 @@ body.joined #dashboardCard .dashLinksBox{
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&amp;family=Jua&amp;display=swap" rel="stylesheet">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&amp;display=swap" rel="stylesheet">
 <style id="v231Stickers">
   
   .msg.stkOnly,
@@ -30032,6 +30062,17 @@ body.joined #dashboardCard .dashLinksBox{
   @media (max-width:520px){
     .msg .stkArt{ width:112px; height:112px; }
     .stkPickGrid{ grid-template-columns:repeat(auto-fill, minmax(56px, 1fr)); }
+  }
+</style>
+<style id="v232EmojiFont">
+  
+  .emojiPickGrid button,
+  .emojiPickGroups button,
+  .reactBtn,
+  .reactToggle,
+  .reactPicker button,
+  #chatInput{
+    font-family: inherit;
   }
 </style>
 <svg aria-hidden="true" id="mkStickerDefs" style="position:absolute" width="0" height="0">
