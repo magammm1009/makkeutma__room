@@ -73,6 +73,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6852,6 +6853,13 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 </div>
+
+<div class="hr" style="margin-top:6px;"></div>
+<div class="hint">🚪 계정</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">이 브라우저의 로그인만 해제돼요. 기록·프로필·펫은 계정에 그대로 남고, 같은 이메일로 다시 인증하면 전부 그대로 돌아와요. 다른 이메일로 인증하면 별도 계정으로 시작돼요(작업용 장비·부계정 분리용).</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="settingsLogoutBtn" type="button">🚪 이 브라우저에서 로그아웃</button>
+</div>
 </div>
 </div>
 </div>
@@ -7749,7 +7757,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence,
       sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, EmailAuthProvider, linkWithCredential,
-      reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      signOut,
+
+reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
@@ -7788,12 +7798,17 @@ try{
     }catch(_e){}
 
 let __mkCachedIdToken = "";
+    
+    let __mkAuthWasNull = false;    
+    let __mkAuthResubAtMs = 0;      
     try{
       onIdTokenChanged(auth, (u)=>{
         try{
           const at = new Date().toLocaleTimeString("ko-KR", { hour12:false });
           if(!u){
             __mkCachedIdToken = "";   
+            
+            if(!window.__MK_SIGNOUT_INTENT__) __mkAuthWasNull = true;
             console.warn("[V204_AUTHWATCH] " + at + " 토큰 없음 — 로그아웃 상태");
             mkDiag("토큰", "사라짐");
             return;
@@ -7803,9 +7818,40 @@ let __mkCachedIdToken = "";
           console.info("[V204_AUTHWATCH] " + at + " 토큰 갱신 — uid " + String(u.uid).slice(0,8) +
             "… / 이메일 " + (u.email ? "있음" : "없음"));
           mkDiag("토큰", "갱신 uid=" + String(u.uid).slice(0,8) + " email=" + (u.email ? "O" : "X"));
+          
+          if(__mkAuthWasNull){
+            __mkAuthWasNull = false;
+            const nowMs = Date.now();
+            if(nowMs - Number(__mkAuthResubAtMs || 0) >= 60 * 1000){
+              __mkAuthResubAtMs = nowMs;
+              setTimeout(mkAuthRecoverResub_, 2500);
+            }
+          }
         }catch(_e){}
       });
     }catch(_e){}
+
+function mkAuthRecoverResub_(){
+      try{
+        if(!state || !state.joined) return;         
+        if(window.__MK_SIGNOUT_INTENT__) return;    
+      }catch(_e){ return; }
+      try{ mkDiag("인증복구-재구독", "토큰 사라짐→복귀 — 취소된 리스너 재부착"); }catch(_e){}
+      console.warn("[V233_AUTHRESUB] 토큰이 사라졌다 같은 uid로 돌아왔습니다 — 취소된 RTDB 리스너를 다시 붙입니다.");
+
+      try{ subscribeChat(); }catch(e){ console.warn("[V233_AUTHRESUB] 채팅 재구독 실패", e); }
+      
+      try{
+        if(state.nonChatEnabled && !state.nonChatPausedByHidden){
+          Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V233_AUTHRESUB] 참가자 재구독 실패", e); });
+        }
+      }catch(e){ console.warn("[V233_AUTHRESUB] 참가자 재구독 실패", e); }
+      try{ subscribeRoom(); }catch(e){ console.warn("[V233_AUTHRESUB] 방 재구독 실패", e); }
+      try{ subscribeDirectMessages_(); }catch(e){ console.warn("[V233_AUTHRESUB] 쪽지 재구독 실패", e); }
+      try{ subscribeKicks(); }catch(e){ console.warn("[V233_AUTHRESUB] 강퇴 재구독 실패", e); }
+      
+      try{ window.__MK_HC_RESUB__ && window.__MK_HC_RESUB__(); }catch(_e){}
+    }
 
     function mkEmailLooksValid_(email){
       const e = String(email || "").trim().toLowerCase();
@@ -8384,6 +8430,7 @@ onlineBtn: $("onlineBtn"),
 
       settingsModal: $("settingsModal"),
       closeSettings: $("closeSettings"),
+      settingsLogoutBtn: $("settingsLogoutBtn"),   
       sfxToggle: $("sfxToggle"),
       adminPass: $("adminPass"),
       adminUnlock: $("adminUnlock"),
@@ -9288,9 +9335,17 @@ function normalizeDirectMessages_(snap){
       renderDirectArrival_();
     }
 
+function directArrivalBlur_(){
+      try{
+        const ae = document.activeElement;
+        if(els.directArrival && ae && els.directArrival.contains(ae)) ae.blur();
+      }catch(_e){}
+    }
+
     function dismissDirectArrival_(openInbox=false){
       const current = state.directArrivalCurrent;
       if(els.directArrival){
+        directArrivalBlur_();   
         els.directArrival.classList.remove("show");
         els.directArrival.setAttribute("aria-hidden","true");
       }
@@ -9305,8 +9360,12 @@ function normalizeDirectMessages_(snap){
 
     function queueDirectArrival_(item){
       if(!item || !item.id) return;
+      
+      if(!(state.directArrivalShownIds instanceof Set)) state.directArrivalShownIds = new Set();
+      if(state.directArrivalShownIds.has(item.id)) return;
       if(state.directArrivalCurrent?.id === item.id) return;
       if((state.directArrivalQueue || []).some(x=>x.id === item.id)) return;
+      state.directArrivalShownIds.add(item.id);
       state.directArrivalQueue.push(item);
       showToast(`${item.fromName || "누군가"}님에게 새 쪽지가 도착했어요 💌`,3200);
       showNextDirectArrival_();
@@ -9319,6 +9378,27 @@ function normalizeDirectMessages_(snap){
       state.unsubDirectOutbox = null;
     }
 
+function scheduleDirectResub_(why){
+      try{
+        
+        if(state.__directResubTimer) return;
+        if(Number(state.__directResubTries || 0) >= 5){
+          console.warn("[V233_DMGUARD] 쪽지 재구독 5회 실패 — 포기합니다(권한 문제일 수 있음).", why || "");
+          return;
+        }
+        state.__directResubTimer = setTimeout(()=>{
+          state.__directResubTimer = null;
+          try{
+            
+            state.__directResubTries = Number(state.__directResubTries || 0) + 1;
+            if(!state.joined || !auth.currentUser){ scheduleDirectResub_("재대기"); return; }
+            console.warn("[V233_DMGUARD] 쪽지 리스너 재부착 시도 " + state.__directResubTries + "/5");
+            subscribeDirectMessages_();   
+          }catch(e){ console.warn("[V233_DMGUARD] 쪽지 재구독 실패", e); }
+        }, 8000);
+      }catch(_e){}
+    }
+
     function subscribeDirectMessages_(){
       unsubscribeDirectMessages_();
       if(!state.roomId || !state.uid) return;
@@ -9327,6 +9407,7 @@ function normalizeDirectMessages_(snap){
 
       const inboxQuery = rQuery(rDirectInboxRootRef(state.roomId,state.uid),rOrderByChild("tsMs"),rLimitToLast(100));
       const onInbox = (snap)=>{
+        state.__directResubTries = 0;   
         const items = normalizeDirectMessages_(snap);
         const ids = new Set(items.map(item=>item.id));
         if(!state.directInboxReady){
@@ -9349,7 +9430,10 @@ function normalizeDirectMessages_(snap){
           renderDirectMessageDetail_();
         }
       };
-      rOnValue(inboxQuery,onInbox,(e)=>console.warn("[direct message] inbox subscribe failed",e));
+      rOnValue(inboxQuery,onInbox,(e)=>{
+        console.warn("[direct message] inbox subscribe failed",e);
+        scheduleDirectResub_("inbox");   
+      });
       state.unsubDirectInbox = ()=>{ try{ rOff(inboxQuery,"value",onInbox); }catch(e){} };
 
       const outboxQuery = rQuery(rDirectOutboxRootRef(state.roomId,state.uid),rOrderByChild("tsMs"),rLimitToLast(100));
@@ -9360,7 +9444,10 @@ function normalizeDirectMessages_(snap){
           renderDirectMessageDetail_();
         }
       };
-      rOnValue(outboxQuery,onOutbox,(e)=>console.warn("[direct message] outbox subscribe failed",e));
+      rOnValue(outboxQuery,onOutbox,(e)=>{
+        console.warn("[direct message] outbox subscribe failed",e);
+        scheduleDirectResub_("outbox");   
+      });
       state.unsubDirectOutbox = ()=>{ try{ rOff(outboxQuery,"value",onOutbox); }catch(e){} };
     }
     
@@ -9534,6 +9621,26 @@ try{
       }
     }
 
+function scheduleKickResub_(why){
+      try{
+        if(state.__kickResubTimer) return;
+        if(Number(state.__kickResubTries || 0) >= 5){
+          console.warn("[V233_DMGUARD] 강퇴 재구독 5회 실패 — 포기합니다(권한 문제일 수 있음).", why || "");
+          return;
+        }
+        state.__kickResubTimer = setTimeout(()=>{
+          state.__kickResubTimer = null;
+          try{
+
+state.__kickResubTries = Number(state.__kickResubTries || 0) + 1;
+            if(!state.joined || !auth.currentUser){ scheduleKickResub_("재대기"); return; }
+            console.warn("[V233_DMGUARD] 강퇴 리스너 재부착 시도 " + state.__kickResubTries + "/5");
+            subscribeKicks();   
+          }catch(e){ console.warn("[V233_DMGUARD] 강퇴 재구독 실패", e); }
+        }, 8000);
+      }catch(_e){}
+    }
+
     function subscribeKicks(){
   
   if(state.unsubKick) state.unsubKick();
@@ -9542,6 +9649,7 @@ try{
 
   const kref = rKickRef(state.roomId, state.uid);
   const onKick = (snap)=>{
+    state.__kickResubTries = 0;   
     try{
       if(!snap || (snap.exists && !snap.exists())) return;
       const k = (snap && snap.val) ? (snap.val()||{}) : (snap?.val?.()||{});
@@ -9568,7 +9676,11 @@ const sid = String(k.sessionId || "");
   };
 
   try{
-    rOnValue(kref, onKick);
+    
+    rOnValue(kref, onKick, (e)=>{
+      console.warn("[kick] listener cancelled", e);
+      scheduleKickResub_("kick");
+    });
     state.unsubKick = ()=>{ try{ rOff(kref, "value", onKick); }catch(e){} };
   }catch(e){
     console.warn("[kick] subscribe failed", e);
@@ -10299,7 +10411,9 @@ function presenceFeedWatchdog_(){
     const now = Date.now();
     if(now - Number(state.__presenceRefetchAt || 0) < 10 * 60 * 1000) return;
     state.__presenceRefetchAt = now;
-    mkDiag("presence-재구독", `${Math.round((now - Number(state.__presenceFeedAtMs || 0))/1000)}초간 수신 없음`);
+
+const __pFeedAt = Number(state.__presenceFeedAtMs || 0);
+    mkDiag("presence-재구독", __pFeedAt ? `${Math.round((now - __pFeedAt)/1000)}초간 수신 없음` : "첫 스냅샷 없음(재구독 직후)");
     Promise.resolve(subscribeParticipants()).catch((e)=>{ console.warn("[V223_RENDERWATCH] 참가자 재구독 실패 — 이 실패가 조용하면 타일이 영영 안 돌아온다", e); });
   }catch(e){}
 }
@@ -10552,6 +10666,9 @@ const srvTs = Number((val[id] || {}).tsMs || 0);
       `${mineTs ? new Date(mineTs).toLocaleTimeString("ko-KR") : "없음"}, 누적 ${state.__chatWatchResubCount}회)`);
     try{ mkDiag("chat-재구독", `${Math.round((now - last)/1000)}초간 수신 없음 · 서버에 새 메시지 있음`); }catch(_e){}
     subscribeChat();
+    
+    try{ subscribeDirectMessages_(); }catch(e){ console.warn("[V233_DMGUARD] 쪽지 재구독 실패", e); }
+    try{ subscribeKicks(); }catch(e){ console.warn("[V233_DMGUARD] 강퇴 재구독 실패", e); }
   }catch(err){
     console.warn("[V198_CHATWATCH] 확인 실패(다음 기회에 재시도)", err);
   }
@@ -19668,6 +19785,9 @@ state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
       if(state.unsubChat) state.unsubChat();
       if(state.unsubKick) state.unsubKick();
       unsubscribeDirectMessages_();
+
+try{ if(state.__directResubTimer){ clearTimeout(state.__directResubTimer); state.__directResubTimer = null; } }catch(e){}
+      try{ if(state.__kickResubTimer){ clearTimeout(state.__kickResubTimer); state.__kickResubTimer = null; } }catch(e){}
       if(state.unsubMissionFeed) state.unsubMissionFeed();
       
       try{ if(state.unsubDashCounts) state.unsubDashCounts(); }catch(e){}
@@ -19742,7 +19862,8 @@ return out;
       state.directComposeTarget = null;
       updateDirectUnreadUI_();
       try{ hideModal(els.directComposeModal); hideModal(els.directInboxModal); }catch(e){}
-      try{ if(els.directArrival){ els.directArrival.classList.remove("show"); els.directArrival.setAttribute("aria-hidden","true"); } }catch(e){}
+      
+      try{ if(els.directArrival){ directArrivalBlur_(); els.directArrival.classList.remove("show"); els.directArrival.setAttribute("aria-hidden","true"); } }catch(e){}
 
       setControlsEnabled(false);
     updateClocks();
@@ -22230,6 +22351,34 @@ if(els.emoji){
       showModal(els.settingsModal);
     });
     els.closeSettings.addEventListener("click", ()=>hideModal(els.settingsModal));
+    
+    if(els.settingsLogoutBtn){
+      els.settingsLogoutBtn.addEventListener("click", async ()=>{
+        const btn = els.settingsLogoutBtn;
+        if(btn.disabled) return;   
+        const ok = confirm("이 브라우저에서 로그아웃할까요?\n\n· 이 브라우저의 모든 마끝마 탭(승인 페이지 포함)이 함께 로그아웃됩니다.\n· 다시 입장하려면 이메일 인증을 다시 해야 합니다.\n· 기록·프로필·펫은 계정에 그대로 남습니다. 같은 이메일로 인증하면 전부 그대로 돌아오고, 다른 이메일로 인증하면 별도 계정이 됩니다.");
+        if(!ok) return;
+        try{
+          btn.disabled = true;
+          btn.textContent = "로그아웃 중…";
+          
+          window.__MK_SIGNOUT_INTENT__ = true;
+          if(state.joined){
+            
+            try{ await readGuard_(leaveRoom(), "로그아웃 전 퇴장", 8000); }
+            catch(e){ console.warn("[V233_LOGOUT] 퇴장 정리가 끝나지 않았습니다 — 그대로 로그아웃을 진행합니다", e); }
+          }
+          
+          try{ await readGuard_(signOut(auth), "로그아웃", 8000); }
+          catch(e){ console.warn("[V233_LOGOUT] signOut이 끝나지 않았습니다 — 새로고침으로 진행합니다", e); }
+          console.warn("[V233_LOGOUT] 로그아웃 — 새로고침 후 V210_SESSIONGUARD가 재인증 화면을 띄웁니다.");
+        }catch(e){
+          console.warn("[V233_LOGOUT] 로그아웃 도중 예외 — 그래도 새로고침합니다", e);
+        }finally{
+          try{ location.reload(); }catch(_e){}
+        }
+      });
+    }
     els.adminUnlock.addEventListener("click", unlockAdmin);
     if(els.adminPass){
       els.adminPass.addEventListener("keydown",(e)=>{
@@ -23599,6 +23748,7 @@ function hcSlotAlive_(d){
     function onLiveSnap(snap){
       try{
         hcLastSnapMs = Date.now(); 
+        __hcResubTries = 0; 
         const v = (snap && snap.val && snap.val()) || {};
         const next = new Map();
         Object.keys(v).forEach(slotId=>{
@@ -24301,21 +24451,45 @@ pc.addTransceiver("video", { direction: "recvonly" });
           const mid = evt.transceiver ? evt.transceiver.mid : null;
           const v = hc.view;
           if(!v || v.pc !== pc || !mid) return;
-          for(const [, p] of v.pulls){
+          for(const [uid, p] of v.pulls){
             if(p.mid === mid){
               p.stream = new MediaStream([evt.track]);
+              try{ hcPullRetry_.delete(uid); }catch(_e){} 
               scheduleMount();
               break;
             }
           }
         }catch(e){}
       };
+      
+      let dcTimer = null;
+      const clearDcTimer_ = ()=>{ try{ if(dcTimer){ clearTimeout(dcTimer); dcTimer = null; } }catch(_e){} };
       pc.addEventListener("connectionstatechange", ()=>{
         try{
-          if(hc.view && hc.view.pc === pc && ["failed", "closed"].includes(pc.connectionState)){
+          if(!hc.view || hc.view.pc !== pc){ clearDcTimer_(); return; } 
+          const st = pc.connectionState;
+          if(["failed", "closed"].includes(st)){
+            clearDcTimer_();
             hc.view = null;
             if(hcCanReceive()) syncPulls();
+            return;
           }
+          if(st === "disconnected"){
+            if(dcTimer) return;
+            dcTimer = setTimeout(()=>{
+              dcTimer = null;
+              try{
+                if(!hc.view || hc.view.pc !== pc || pc.connectionState !== "disconnected") return; 
+                console.warn("[V233_HCSESSION] 시청 연결이 disconnected로 10초 넘게 머물러 세션을 재생성합니다.");
+                try{ mkDiag("손캠-세션재생성", "disconnected 10초"); }catch(_e){}
+                hc.view = null;
+                try{ pc.close(); }catch(_e){}
+                if(hcCanReceive()) syncPulls();
+              }catch(_e){}
+            }, 10000);
+            return;
+          }
+          if(st === "connected") clearDcTimer_();
         }catch(e){}
       });
 
@@ -24390,7 +24564,7 @@ if(hcCanReceive()){
         view = await ensureViewer();
         if(view.pulls.has(uid)) continue;
 
-        const p = { sessionId: d.sessionId, trackName: d.trackName, mid: null, stream: null };
+const p = { sessionId: d.sessionId, trackName: d.trackName, mid: null, stream: null, createdAtMs: Date.now() };
         view.pulls.set(uid, p);
         try{
           const res = await hcApi(`/sessions/${view.sessionId}/tracks/new`, {
@@ -24399,9 +24573,17 @@ if(hcCanReceive()){
           const t = (res.tracks || []).find(x => x.trackName === d.trackName) || (res.tracks || [])[0];
           p.mid = t ? (t.mid || null) : null;
           await hcHandleRenegotiate(view, res);
+          view.apiFailCount = 0; 
         }catch(e){
           console.warn("[handcam] pull failed:", uid, e);
           view.pulls.delete(uid);
+          
+          view.apiFailCount = (view.apiFailCount || 0) + 1;
+          if(view.apiFailCount >= 2 && hc.view === view){ 
+            console.warn("[V233_HCSESSION] tracks/new가 " + view.apiFailCount + "회 연속 실패 — 시청 세션이 죽었다고 보고 재생성합니다.");
+            try{ mkDiag("손캠-세션재생성", "tracks/new 연속실패"); }catch(_e){}
+            await closeViewer(); 
+          }
           
           setTimeout(()=>{ if(hcCanReceive() && HC_LIVE.has(uid)) syncPulls(); }, 1500);
         }
@@ -24680,6 +24862,34 @@ async function releaseStaleOwnSlots_(roomId){
       }catch(e){ console.warn("[handcam] 잔여 자리 정리 실패", e); }
     }
 
+let __hcResubTimer = null, __hcResubTries = 0;
+    function hcAttachLive_(roomId){
+      const rid = String(roomId || "");
+      if(!rid) return;
+      try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(_e){}
+      try{ if(__hcResubTimer){ clearTimeout(__hcResubTimer); __hcResubTimer = null; } }catch(_e){}
+      hc.unsub = rOnValue(hcLiveRef(rid), onLiveSnap, (err)=>{
+        try{
+          console.warn("[V233_HCSESSION] 손캠 live 리스너가 취소됐습니다 — 재부착을 예약합니다.", err);
+          
+          if(__hcResubTimer) return;       
+          if(__hcResubTries >= 5){
+            console.warn("[V233_HCSESSION] 손캠 live 재구독 5회 실패 — 포기합니다(권한 문제일 수 있음).");
+            return;
+          }
+          __hcResubTimer = setTimeout(()=>{
+            __hcResubTimer = null;
+            try{
+              if(!state.joined || hc.roomId !== rid) return;   
+              __hcResubTries++;
+              console.warn("[V233_HCSESSION] 손캠 live 리스너 재부착 시도 " + __hcResubTries + "/5");
+              hcAttachLive_(rid);
+            }catch(e){ console.warn("[V233_HCSESSION] 손캠 live 재구독 실패", e); }
+          }, 8000);
+        }catch(_e){}
+      });
+    }
+
     async function lifecycleTick(){
       if(hc.lifecycleBusy) return;
       hc.lifecycleBusy = true;
@@ -24692,7 +24902,7 @@ const lowSpec = (typeof isLowSpecModeV143 === "function") && isLowSpecModeV143()
           await teardownAll();
           hc.roomId = roomId;
           await releaseStaleOwnSlots_(roomId);
-          hc.unsub = rOnValue(hcLiveRef(roomId), onLiveSnap);
+          hcAttachLive_(roomId); 
         }else if(((!joined || !roomId) || lowSpec) && hc.roomId){
           await teardownAll();
         }
@@ -24758,8 +24968,7 @@ let __hcProbeAtMs = 0, __hcReattachCount = 0;
               console.warn("[V225.1_HCPROBE] 손캠 수신이 서버와 어긋나 있어 동기화 + 리스너 재부착 (" + reason + ", 누적 " + __hcReattachCount + "회) — 서버 " + server.size + "명 / 화면 " + HC_LIVE.size + "명");
               try{ mkDiag("손캠-좀비복구", "서버 " + server.size + " / 화면 " + HC_LIVE.size); }catch(_e){}
               onLiveSnap(snap);
-              try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(_e){}
-              hc.unsub = rOnValue(hcLiveRef(probedRoom), onLiveSnap);
+              hcAttachLive_(probedRoom); 
             }
           }catch(_e){}
         }).catch(()=>{});
@@ -24785,7 +24994,49 @@ let __hcPeriodicAt = 0;
       hcProbeWatchdog_("periodic");
     }
     
-    window.__MK_HC_DIAG__ = function(){
+    const hcPullRetry_ = new Map(); 
+    function hcPullHealthTick_(){
+      const view = hc.view;
+      if(!view || !hcCanReceive()) return;
+      const now = Date.now();
+      for(const [uid, p] of Array.from(view.pulls || [])){
+        if(!p || p.stream) continue;
+        if(!(now - Number(p.createdAtMs || 0) > 8000)) continue;
+        const n = (hcPullRetry_.get(uid) || 0) + 1;
+        hcPullRetry_.set(uid, n);
+        const who = String(uid).slice(0, 8);
+        if(n >= 3){
+          console.warn("[V233_HCSESSION] " + who + " 영상이 " + n + "회 연속으로 안 와 시청 세션을 통째로 재생성합니다.");
+          try{ mkDiag("손캠-세션재생성", who + " 풀 " + n + "회 무응답"); }catch(_e){}
+          hcPullRetry_.clear();
+          Promise.resolve(closeViewer()).catch(()=>{}); 
+          syncPulls();                                  
+          return;                                       
+        }
+        console.warn("[V233_HCSESSION] " + who + " 영상이 8초 넘게 안 와 풀을 다시 당깁니다(" + n + "/3).");
+        try{ mkDiag("손캠-풀재시도", who + " " + n + "회"); }catch(_e){}
+        view.pulls.delete(uid);                             
+        Promise.resolve(closeRemotePull(view, p)).catch(()=>{});
+        syncPulls();
+      }
+      
+      if(hcPullRetry_.size){
+        for(const uid of Array.from(hcPullRetry_.keys())){
+          if(!HC_LIVE.has(uid)) hcPullRetry_.delete(uid);
+        }
+      }
+    }
+
+window.__MK_HC_RESUB__ = function(){
+      try{
+        if(!state.joined || !hc.roomId) return; 
+        try{ hcAttachLive_(hc.roomId); }catch(e){ console.warn("[V233_HCSESSION] 손캠 명단 재구독 실패", e); }
+        try{ syncPulls(); }catch(e){ console.warn("[V233_HCSESSION] 손캠 pull 재동기화 실패", e); }
+        try{ scheduleMount(); }catch(_e){}
+      }catch(_e){}
+    };
+
+window.__MK_HC_DIAG__ = function(){
       try{
         return {
           구독중: !!hc.unsub,
@@ -24798,7 +25049,7 @@ let __hcPeriodicAt = 0;
     };
 
     setInterval(()=>{ try{ if(hc.my) refreshOwnLive("heartbeat").catch(()=>{}); }catch(e){} }, 10000);
-    setInterval(()=>{ lifecycleTick(); try{ hcMaintenanceTick_(); }catch(_e){} }, 1200);
+    setInterval(()=>{ lifecycleTick(); try{ hcMaintenanceTick_(); }catch(_e){} try{ hcPullHealthTick_(); }catch(_e){} }, 1200);
     lifecycleTick();
 
     window.addEventListener("pagehide", ()=>{
@@ -25241,7 +25492,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17111; 
+const MK_APP_BUILD = 17112; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
