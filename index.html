@@ -74,6 +74,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -10542,7 +10543,8 @@ function tilesRenderWatchdog_(reason, force){
     const forced = !!force;
     const minGap = forced ? TILES_RENDER_VISIBLE_GRACE_MS : TILES_RENDER_STALL_MS;
     if(feedAt - renderAt < minGap){
-      if(!forced) state.__renderFixCount = 0;
+      
+      state.__renderFixCount = 0;
       return;
     }
     const now = Date.now();
@@ -10568,6 +10570,12 @@ function tilesRenderWatchdog_(reason, force){
     try{ restartUiTickV143(); }catch(_e){}                          
   }catch(e){}
 }
+
+try{
+  document.addEventListener("visibilitychange", ()=>{
+    try{ if(document.visibilityState === "visible") state.__renderFixCount = 0; }catch(_e){}
+  });
+}catch(_e){}
 
 let __tilesLostBound = false;
 function mkShowTilesLost_(gapSec){
@@ -25492,7 +25500,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17112; 
+const MK_APP_BUILD = 17113; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
