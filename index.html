@@ -75,6 +75,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7810,8 +7811,16 @@ let __mkCachedIdToken = "";
             __mkCachedIdToken = "";   
             
             if(!window.__MK_SIGNOUT_INTENT__) __mkAuthWasNull = true;
-            console.warn("[V204_AUTHWATCH] " + at + " 토큰 없음 — 로그아웃 상태");
-            mkDiag("토큰", "사라짐");
+            
+            let __trace = "";
+            try{
+              const mk = Number(localStorage.getItem("mk_signout_marker_v1") || 0);
+              __trace = " · 버튼=" + ((Date.now() - mk) < 15000 ? "O" : "X")
+                      + " · 로컬흔적=" + (localStorage.getItem(MK_LAST_EMAIL_LS) ? "O" : "X")
+                      + " · " + document.visibilityState + " · online=" + navigator.onLine;
+            }catch(_e){ __trace = " · 판별실패(저장소 접근 불가?)"; }
+            console.warn("[V204_AUTHWATCH] " + at + " 토큰 없음 — 로그아웃 상태" + __trace);
+            mkDiag("토큰", "사라짐" + __trace);
             return;
           }
           
@@ -22371,6 +22380,8 @@ if(els.emoji){
           btn.textContent = "로그아웃 중…";
           
           window.__MK_SIGNOUT_INTENT__ = true;
+          
+          try{ localStorage.setItem("mk_signout_marker_v1", String(Date.now())); }catch(_e){}
           if(state.joined){
             
             try{ await readGuard_(leaveRoom(), "로그아웃 전 퇴장", 8000); }
@@ -25500,7 +25511,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17113; 
+const MK_APP_BUILD = 17114; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
