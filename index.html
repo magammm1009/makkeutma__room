@@ -76,6 +76,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -2485,6 +2486,8 @@
 
   
     body.passok #roomPass{display:none;}
+    
+    body:not(.joined) #approveLink{display:none !important;}
     .actions{flex-wrap:wrap}
     #roomPass{min-width:92px}
 
@@ -16729,6 +16732,15 @@ const MK_STICKERS = [
       { id:"cheer",    label:"응원" },
       { id:"congrats", label:"축하" },
       { id:"gnight",   label:"잘자" },
+      
+      { id:"sulk",     label:"무룩" },
+      { id:"lol",      label:"ㅋㅋㅋㅋ" },
+      { id:"uncomfy",  label:"불편" },
+      { id:"crumple",  label:"꾸깃" },
+      { id:"hmph",     label:"흥" },
+      { id:"onfire",   label:"활활" },
+      { id:"noway",    label:"아니" },
+      { id:"forbid",   label:"불허한다" },
     ];
     const MK_STICKER_MAP = {};
     for(const __s of MK_STICKERS) MK_STICKER_MAP[__s.id] = __s;
@@ -25511,7 +25523,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17114; 
+const MK_APP_BUILD = 17115; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30897,6 +30909,215 @@ body.joined #dashboardCard .dashLinksBox{
       <ellipse cx="130" cy="150" rx="8.5" ry="7.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
       <path d="M54 192 q44 -10 92 -6 M130 214 q36 -4 66 -2" stroke="#9FB6C8" stroke-width="3" fill="none" stroke-linecap="round"/>
       <text x="132" y="44" text-anchor="middle" font-family="Jua, sans-serif" font-size="36" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">잘자.</text>
+    </symbol>
+
+    
+    <symbol id="mkstk-sulk" viewBox="0 0 240 240">
+      <text x="120" y="50" text-anchor="middle" font-family="Jua, sans-serif" font-size="38" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">무룩</text>
+      <g stroke="#7A88C8" stroke-width="3.4" stroke-linecap="round" opacity=".8">
+        <path d="M70 62 v14 M83 57 v17 M96 60 v13"/>
+      </g>
+      <g transform="rotate(2 120 150)">
+        <ellipse cx="92" cy="84" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8" transform="rotate(-22 92 84)"/>
+        <ellipse cx="148" cy="84" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8" transform="rotate(22 148 84)"/>
+        <path d="M120 80 C150 80 171 103 173 136 C175 169 167 196 151 205 C137 213 103 213 89 205 C73 196 65 169 67 136 C69 103 90 80 120 80 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4" stroke-linejoin="round"/>
+        <ellipse cx="120" cy="140" rx="37" ry="33" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.8"/>
+        <path d="M97 115 q7 6 14 0 M129 115 q7 6 14 0" stroke="#2A211A" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <circle cx="104" cy="133" r="3.2" fill="#2A211A"/>
+        <circle cx="136" cy="133" r="3.2" fill="#2A211A"/>
+        <path d="M108 158 q12 -9 24 0" stroke="#2A211A" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="96" cy="147" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <ellipse cx="144" cy="147" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <g stroke-linecap="round">
+          <path d="M86 172 q12 12 22 15" stroke="#2A211A" stroke-width="13"/>
+          <path d="M86 172 q12 12 22 15" stroke="#FFD9A8" stroke-width="7.5"/>
+          <path d="M154 172 q-12 12 -22 15" stroke="#2A211A" stroke-width="13"/>
+          <path d="M154 172 q-12 12 -22 15" stroke="#FFD9A8" stroke-width="7.5"/>
+        </g>
+        <ellipse cx="112" cy="189" rx="8" ry="7" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+        <ellipse cx="128" cy="189" rx="8" ry="7" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+      </g>
+    </symbol>
+
+    <symbol id="mkstk-lol" viewBox="0 0 240 240">
+      <g transform="rotate(-3 120 170)">
+        <ellipse cx="70" cy="72" rx="15" ry="13" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4"/>
+        <ellipse cx="170" cy="72" rx="15" ry="13" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4"/>
+        <path d="M120 62 C196 62 232 128 228 240 L12 240 C8 128 44 62 120 62 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="5" stroke-linejoin="round"/>
+        <ellipse cx="120" cy="176" rx="80" ry="74" fill="#FFFDF8" stroke="#2A211A" stroke-width="4.5"/>
+        <path d="M82 152 q14 -16 28 0 M130 152 q14 -16 28 0" stroke="#2A211A" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="74" cy="192" rx="9" ry="5.5" fill="#FFB39B" opacity=".9"/>
+        <ellipse cx="166" cy="192" rx="9" ry="5.5" fill="#FFB39B" opacity=".9"/>
+        <g stroke-linecap="round">
+          <path d="M100 240 q6 -20 15 -32" stroke="#2A211A" stroke-width="16"/>
+          <path d="M100 240 q6 -20 15 -32" stroke="#FFD9A8" stroke-width="9.5"/>
+        </g>
+        <ellipse cx="118" cy="202" rx="17" ry="15" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.2"/>
+        <path d="M68 158 q-8 5 -13 0 q5 -9 13 0 Z" fill="#9CC8F0" stroke="#2A211A" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M172 158 q8 5 13 0 q-5 -9 -13 0 Z" fill="#9CC8F0" stroke="#2A211A" stroke-width="2.4" stroke-linejoin="round"/>
+      </g>
+      <text x="58" y="46" text-anchor="middle" font-family="Jua, sans-serif" font-size="34" fill="#2A211A" stroke="#FFFFFF" stroke-width="9" stroke-linejoin="round" paint-order="stroke" transform="rotate(-10 58 46)">ㅋㅋ</text>
+      <text x="172" y="42" text-anchor="middle" font-family="Jua, sans-serif" font-size="27" fill="#2A211A" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round" paint-order="stroke" transform="rotate(9 172 42)">ㅋㅋㅋ</text>
+      <text x="112" y="26" text-anchor="middle" font-family="Jua, sans-serif" font-size="22" fill="#2A211A" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" paint-order="stroke" transform="rotate(-5 112 26)">ㅋㅋㅋ</text>
+      <text x="26" y="70" text-anchor="middle" font-family="Jua, sans-serif" font-size="24" fill="#2A211A" stroke="#FFFFFF" stroke-width="7.5" stroke-linejoin="round" paint-order="stroke" transform="rotate(-14 26 70)">ㅋ</text>
+      <text x="210" y="70" text-anchor="middle" font-family="Jua, sans-serif" font-size="26" fill="#2A211A" stroke="#FFFFFF" stroke-width="7.5" stroke-linejoin="round" paint-order="stroke" transform="rotate(12 210 70)">ㅋㅋ</text>
+      <text x="222" y="120" text-anchor="middle" font-family="Jua, sans-serif" font-size="24" fill="#2A211A" stroke="#FFFFFF" stroke-width="7.5" stroke-linejoin="round" paint-order="stroke" transform="rotate(14 222 120)">ㅋ</text>
+      <text x="18" y="112" text-anchor="middle" font-family="Jua, sans-serif" font-size="26" fill="#2A211A" stroke="#FFFFFF" stroke-width="7.5" stroke-linejoin="round" paint-order="stroke" transform="rotate(-14 18 112)">ㅋ</text>
+      <text x="18" y="172" text-anchor="middle" font-family="Jua, sans-serif" font-size="22" fill="#2A211A" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" paint-order="stroke" transform="rotate(-10 18 172)">ㅋ</text>
+      <text x="224" y="176" text-anchor="middle" font-family="Jua, sans-serif" font-size="22" fill="#2A211A" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" paint-order="stroke" transform="rotate(10 224 176)">ㅋ</text>
+    </symbol>
+
+    <symbol id="mkstk-uncomfy" viewBox="0 0 240 240">
+      <ellipse cx="70" cy="72" rx="15" ry="13" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4"/>
+      <ellipse cx="170" cy="72" rx="15" ry="13" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4"/>
+      <path d="M120 62 C196 62 232 128 228 240 L12 240 C8 128 44 62 120 62 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="120" cy="176" rx="80" ry="74" fill="#FFFDF8" stroke="#2A211A" stroke-width="4.5"/>
+      <g stroke="#2A211A" stroke-width="3" stroke-linecap="round" opacity=".5">
+        <path d="M108 116 v14 M120 113 v17 M132 116 v14"/>
+      </g>
+      <path d="M84 148 l26 10 M156 148 l-26 10" stroke="#2A211A" stroke-width="5.6" stroke-linecap="round"/>
+      <path d="M106 204 h28" stroke="#2A211A" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="76" cy="194" rx="9" ry="5.5" fill="#FFB39B" opacity=".9"/>
+      <ellipse cx="164" cy="194" rx="9" ry="5.5" fill="#FFB39B" opacity=".9"/>
+      <g stroke-linecap="round">
+        <path d="M56 230 q18 -12 36 -9" stroke="#2A211A" stroke-width="15"/>
+        <path d="M56 230 q18 -12 36 -9" stroke="#FFD9A8" stroke-width="9"/>
+        <path d="M184 230 q-18 -12 -36 -9" stroke="#2A211A" stroke-width="15"/>
+        <path d="M184 230 q-18 -12 -36 -9" stroke="#FFD9A8" stroke-width="9"/>
+      </g>
+      <ellipse cx="95" cy="220" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+      <ellipse cx="145" cy="220" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+      <text x="42" y="72" text-anchor="middle" font-family="'Black Han Sans', sans-serif" font-size="40" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">불</text>
+      <text x="196" y="72" text-anchor="middle" font-family="'Black Han Sans', sans-serif" font-size="40" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">편..</text>
+    </symbol>
+
+    <symbol id="mkstk-crumple" viewBox="0 0 240 240">
+      <text x="120" y="50" text-anchor="middle" font-family="Jua, sans-serif" font-size="38" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">꾸깃</text>
+      <ellipse cx="84" cy="98" rx="9" ry="7" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4" transform="rotate(-28 84 98)"/>
+      <ellipse cx="146" cy="87" rx="9" ry="7" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4" transform="rotate(18 146 87)"/>
+      <path d="M60 150 q-6 -22 12 -32 q2 -16 22 -18 q10 -10 26 -8 q18 -6 30 4 q18 2 24 16 q12 8 10 26 q6 16 -4 28 q-2 18 -22 22 q-14 12 -34 10 q-20 6 -36 -4 q-18 -2 -22 -18 q-8 -12 -6 -26 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.2" stroke-linejoin="round"/>
+      <g stroke="#2A211A" stroke-width="2.6" stroke-linecap="round" opacity=".35">
+        <path d="M78 122 l12 10 M156 112 l-12 12 M70 168 l14 -6 M170 160 l-14 -4 M104 190 l8 -10 M140 188 l-6 -10"/>
+      </g>
+      <path d="M92 130 q6 -12 20 -12 q16 -4 26 6 q10 6 8 20 q2 12 -10 18 q-10 8 -24 4 q-14 2 -20 -10 q-6 -10 0 -26 Z" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.6" stroke-linejoin="round"/>
+      <g stroke="#2A211A" stroke-width="2.4" stroke-linecap="round" opacity=".55">
+        <path d="M112 126 v8 M119 124 v10 M126 126 v8"/>
+      </g>
+      <path d="M104 141 l10 4 M136 141 l-10 4" stroke="#2A211A" stroke-width="3.6" stroke-linecap="round"/>
+      <ellipse cx="120" cy="157" rx="2.6" ry="3.4" fill="none" stroke="#2A211A" stroke-width="2.8"/>
+      <ellipse cx="101" cy="152" rx="5" ry="3.2" fill="#FFB39B" opacity=".85"/>
+      <ellipse cx="139" cy="152" rx="5" ry="3.2" fill="#FFB39B" opacity=".85"/>
+    </symbol>
+
+    <symbol id="mkstk-hmph" viewBox="0 0 240 240">
+      <ellipse cx="187" cy="56" rx="31" ry="25" fill="#FFFFFF" stroke="#2A211A" stroke-width="3.4"/>
+      <path d="M168 76 L152 92 L178 79 Z" fill="#FFFFFF" stroke="#2A211A" stroke-width="3" stroke-linejoin="round"/>
+      <text x="187" y="68" text-anchor="middle" font-family="Jua, sans-serif" font-size="32" fill="#2A211A">흥</text>
+      <g stroke="#8F887B" stroke-width="2.8" fill="none" stroke-linecap="round" opacity=".8">
+        <path d="M70 120 q-9 -3 -11 -9 M67 131 q-10 -1 -13 -7"/>
+      </g>
+      <g transform="rotate(-6 120 150)">
+        <ellipse cx="98" cy="74" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <ellipse cx="142" cy="74" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <path d="M120 74 C150 74 171 97 173 130 C175 163 167 190 151 199 C137 207 103 207 89 199 C73 190 65 163 67 130 C69 97 90 74 120 74 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4" stroke-linejoin="round"/>
+        <ellipse cx="112" cy="131" rx="36" ry="32" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.8"/>
+        <g stroke="#2A211A" stroke-width="2.6" stroke-linecap="round" opacity=".5">
+          <path d="M105 107 v10 M112 105 v12 M119 107 v10"/>
+        </g>
+        <path d="M86 121 l16 7 M138 121 l-16 7" stroke="#2A211A" stroke-width="4.4" stroke-linecap="round"/>
+        <path d="M104 146 h16" stroke="#2A211A" stroke-width="3.8" stroke-linecap="round"/>
+        <ellipse cx="86" cy="135" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <ellipse cx="136" cy="135" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <g stroke-linecap="round">
+          <path d="M84 165 q26 16 52 3" stroke="#2A211A" stroke-width="14"/>
+          <path d="M84 165 q26 16 52 3" stroke="#FFD9A8" stroke-width="8.5"/>
+          <path d="M156 164 q-26 18 -52 4" stroke="#2A211A" stroke-width="14"/>
+          <path d="M156 164 q-26 18 -52 4" stroke="#FFD9A8" stroke-width="8.5"/>
+        </g>
+        <ellipse cx="134" cy="169" rx="8.5" ry="7.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+        <ellipse cx="106" cy="170" rx="8.5" ry="7.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+      </g>
+    </symbol>
+
+    <symbol id="mkstk-onfire" viewBox="0 0 240 240">
+      <text x="120" y="48" text-anchor="middle" font-family="Jua, sans-serif" font-size="36" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">활활…</text>
+      <ellipse cx="120" cy="214" rx="60" ry="7" fill="#2A211A" opacity=".12"/>
+      <path d="M204 100 l2 5 5 1 -4 4 1 5 -4 -3 -4 3 1 -5 -4 -4 5 -1 Z" fill="#DE9A38" opacity=".85"/>
+      <circle cx="40" cy="118" r="3" fill="#F2A03D" opacity=".7"/>
+      <ellipse cx="84" cy="176" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.6"/>
+      <ellipse cx="156" cy="176" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.6"/>
+      <g transform="translate(-8.5 -200) scale(2.3)">
+        <path d="M52 172 q-14 -16 -1 -34 q3 9 9 12 q7 -10 4 -19 q17 14 8 34 q-9 14 -20 7 Z" fill="#F2A03D" stroke="#2A211A" stroke-width="1.9" stroke-linejoin="round"/>
+      </g>
+      <path d="M120 122 q26 14 26 40 q0 26 -26 34 q-26 -8 -26 -34 q0 -26 26 -40 Z" fill="#FFD97A"/>
+      <ellipse cx="120" cy="162" rx="24" ry="21" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.6"/>
+      <circle cx="112" cy="157" r="2.8" fill="#2A211A"/>
+      <circle cx="128" cy="157" r="2.8" fill="#2A211A"/>
+      <path d="M116 170 h8" stroke="#2A211A" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="106" cy="167" rx="4.5" ry="3" fill="#FFB39B" opacity=".85"/>
+      <ellipse cx="134" cy="167" rx="4.5" ry="3" fill="#FFB39B" opacity=".85"/>
+      <path d="M62 208 q-9 -11 -1 -25 q2 6 6 8 q5 -7 3 -13 q12 10 5 25 q-6 9 -13 5 Z" fill="#F2A03D" stroke="#2A211A" stroke-width="2.8" stroke-linejoin="round"/>
+      <path d="M184 208 q-9 -11 -1 -25 q2 6 6 8 q5 -7 3 -13 q12 10 5 25 q-6 9 -13 5 Z" fill="#F2A03D" stroke="#2A211A" stroke-width="2.8" stroke-linejoin="round"/>
+      <ellipse cx="104" cy="207" rx="7.5" ry="6.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.2"/>
+      <ellipse cx="136" cy="207" rx="7.5" ry="6.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.2"/>
+    </symbol>
+
+    <symbol id="mkstk-noway" viewBox="0 0 240 240">
+      <text x="120" y="50" text-anchor="middle" font-family="'Black Han Sans', sans-serif" font-size="40" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">아 니.</text>
+      <g transform="rotate(-2 120 150)">
+        <ellipse cx="98" cy="84" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <ellipse cx="142" cy="84" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <path d="M120 84 C150 84 171 107 173 140 C175 173 167 200 151 209 C137 217 103 217 89 209 C73 200 65 173 67 140 C69 107 90 84 120 84 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4" stroke-linejoin="round"/>
+        <ellipse cx="120" cy="144" rx="37" ry="33" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.8"/>
+        <circle cx="105" cy="138" r="10.5" fill="#FFFFFF" stroke="#2A211A" stroke-width="3.6"/>
+        <circle cx="135" cy="138" r="10.5" fill="#FFFFFF" stroke="#2A211A" stroke-width="3.6"/>
+        <circle cx="105" cy="139" r="6" fill="#2A211A"/>
+        <circle cx="135" cy="139" r="6" fill="#2A211A"/>
+        <circle cx="103" cy="136.5" r="2.2" fill="#FFFFFF"/>
+        <circle cx="133" cy="136.5" r="2.2" fill="#FFFFFF"/>
+        <circle cx="107.5" cy="142" r="1.2" fill="#FFFFFF"/>
+        <circle cx="137.5" cy="142" r="1.2" fill="#FFFFFF"/>
+        <path d="M116 163 h8" stroke="#2A211A" stroke-width="3.2" stroke-linecap="round"/>
+        <ellipse cx="94" cy="153" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <ellipse cx="146" cy="153" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <g stroke-linecap="round">
+          <path d="M88 178 q-6 10 -4 19" stroke="#2A211A" stroke-width="13"/>
+          <path d="M88 178 q-6 10 -4 19" stroke="#FFD9A8" stroke-width="7.5"/>
+          <path d="M154 170 q17 -14 19 -33" stroke="#2A211A" stroke-width="14"/>
+          <path d="M154 170 q17 -14 19 -33" stroke="#FFD9A8" stroke-width="8.5"/>
+        </g>
+        <ellipse cx="85" cy="199" rx="7.5" ry="6.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.2"/>
+        <rect x="169" y="103" width="10" height="24" rx="5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.2" transform="rotate(8 174 115)"/>
+        <ellipse cx="174" cy="133" rx="9.5" ry="8.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.6"/>
+      </g>
+    </symbol>
+
+    <symbol id="mkstk-forbid" viewBox="0 0 240 240">
+      <text x="36" y="98" text-anchor="middle" font-family="'Black Han Sans', sans-serif" font-size="38" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">불</text>
+      <text x="36" y="144" text-anchor="middle" font-family="'Black Han Sans', sans-serif" font-size="38" fill="#2A211A" stroke="#FFFFFF" stroke-width="9.5" stroke-linejoin="round" paint-order="stroke">허</text>
+      <g transform="translate(16 0)">
+        <ellipse cx="98" cy="66" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <ellipse cx="142" cy="66" rx="10" ry="9" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.8"/>
+        <path d="M120 66 C152 66 175 90 177 126 C179 163 170 194 153 203 C138 211 102 211 87 203 C70 194 61 163 63 126 C65 90 88 66 120 66 Z" fill="#FFD9A8" stroke="#2A211A" stroke-width="4.4" stroke-linejoin="round"/>
+        <ellipse cx="120" cy="124" rx="37" ry="33" fill="#FFFDF8" stroke="#2A211A" stroke-width="3.8"/>
+        <path d="M97 107 h16 M127 107 h16" stroke="#2A211A" stroke-width="3.6" stroke-linecap="round"/>
+        <path d="M98 120 h14 M128 120 h14" stroke="#2A211A" stroke-width="5" stroke-linecap="round"/>
+        <path d="M119 138 C114 130 104 128 96 133 C89 137 87 145 92 150 C97 154 106 152 112 147 C116 144 118 141 119 138 Z" fill="#F4F1E8" stroke="#2A211A" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M121 138 C126 130 136 128 144 133 C151 137 153 145 148 150 C143 154 134 152 128 147 C124 144 122 141 121 138 Z" fill="#F4F1E8" stroke="#2A211A" stroke-width="3" stroke-linejoin="round"/>
+        <g stroke="#2A211A" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".85">
+          <path d="M114 152 q-2 9 -1 18 M120 153 q0 10 0 20 M126 152 q2 9 1 18"/>
+        </g>
+        <ellipse cx="90" cy="126" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <ellipse cx="150" cy="126" rx="5.5" ry="3.5" fill="#FFB39B" opacity=".85"/>
+        <g stroke-linecap="round">
+          <path d="M86 168 q3 15 13 21" stroke="#2A211A" stroke-width="14"/>
+          <path d="M86 168 q3 15 13 21" stroke="#FFD9A8" stroke-width="8.5"/>
+          <path d="M154 168 q-3 15 -13 21" stroke="#2A211A" stroke-width="14"/>
+          <path d="M154 168 q-3 15 -13 21" stroke="#FFD9A8" stroke-width="8.5"/>
+        </g>
+        <ellipse cx="101" cy="191" rx="8.5" ry="7.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+        <ellipse cx="139" cy="191" rx="8.5" ry="7.5" fill="#FFD9A8" stroke="#2A211A" stroke-width="3.4"/>
+      </g>
     </symbol>
   </defs>
 </svg>
