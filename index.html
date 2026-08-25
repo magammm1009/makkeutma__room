@@ -78,6 +78,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6914,15 +6915,16 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="hr" style="margin-top:6px;"></div>
 <div class="hint">🎨 포인트 색상</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">방 곳곳의 핑크 포인트(테두리·버튼·LIVE 표시·입장 램프 등)를 내 취향 색으로 바꿔요. <b>이 기기의 내 화면에만</b> 적용되고, 남들 화면이나 프로필 타일·말풍선 색과는 무관해요.</div>
+
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<input aria-label="포인트 색 직접 선택" id="accentColorInput" type="color" value="#ff77b8" style="width:52px; height:36px; padding:2px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); cursor:pointer;"/>
-<button class="ghost accentPresetBtn" data-accent="#ff77b8" type="button">💗 핑크</button>
-<button class="ghost accentPresetBtn" data-accent="#9d8cff" type="button">🔮 라벤더</button>
-<button class="ghost accentPresetBtn" data-accent="#4fd6b6" type="button">🌿 민트</button>
-<button class="ghost accentPresetBtn" data-accent="#5db9ff" type="button">🌊 하늘</button>
-<button class="ghost accentPresetBtn" data-accent="#ffa25e" type="button">🍑 살구</button>
-<button class="ghost accentPresetBtn" data-accent="#ffd166" type="button">⭐ 골드</button>
-<button class="ghost" id="accentResetBtn" type="button">↩️ 기본 핑크로</button>
+<button class="swatch accentPresetBtn tight" data-accent="#ff77b8" type="button" title="핑크(기본)" aria-label="핑크(기본)" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ff77b8;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#9d8cff" type="button" title="라벤더" aria-label="라벤더" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#9d8cff;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#4fd6b6" type="button" title="민트" aria-label="민트" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#4fd6b6;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#5db9ff" type="button" title="하늘" aria-label="하늘" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#5db9ff;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#ffa25e" type="button" title="살구" aria-label="살구" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffa25e;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#ffd166" type="button" title="골드" aria-label="골드" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffd166;"></button>
+<input aria-label="포인트 색 직접 선택" title="원하는 색 직접 선택" class="tight" id="accentColorInput" type="color" value="#ff77b8" style="width:40px; height:32px; padding:2px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); cursor:pointer; flex:0 0 auto;"/>
+<button class="ghost tight" id="accentResetBtn" type="button" style="height:32px; padding:0 12px; font-size:12px; flex:0 0 auto;">↩️ 기본</button>
 </div>
 <div class="tiny" id="accentStatus" style="opacity:.74; line-height:1.5;">지금은 기본 핑크를 쓰고 있어요.</div>
 
@@ -22496,6 +22498,11 @@ if(els.emoji){
         if(status) status.textContent = saved
           ? ("내 포인트 색: " + saved.toLowerCase() + " — 이 기기에서만 적용돼요.")
           : "지금은 기본 핑크를 쓰고 있어요.";
+        
+        const cur = (saved || "#ff77b8").toLowerCase();
+        document.querySelectorAll(".accentPresetBtn").forEach((b)=>{
+          b.classList.toggle("active", (b.getAttribute("data-accent")||"").toLowerCase() === cur);
+        });
       }
       function useColor(hex){
         if(!acc.apply(hex)) return;
