@@ -80,6 +80,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -24599,7 +24600,7 @@ pc.addTransceiver("video", { direction: "recvonly" });
           for(const [uid, p] of v.pulls){
             if(p.mid === mid){
               p.stream = new MediaStream([evt.track]);
-              try{ hcPullRetry_.delete(uid); }catch(_e){} 
+              try{ hcPullRetry_.delete(uid); hcPullRecreates_.delete(uid); hcPullMute_.delete(uid); }catch(_e){} 
               scheduleMount();
               break;
             }
@@ -25140,19 +25141,46 @@ let __hcPeriodicAt = 0;
     }
     
     const hcPullRetry_ = new Map(); 
+    
+    const hcPullRecreates_ = new Map(); 
+    const hcPullMute_ = new Map();      
     function hcPullHealthTick_(){
       const view = hc.view;
       if(!view || !hcCanReceive()) return;
       const now = Date.now();
+      let anyStream = false;
+      try{ for(const [, p0] of view.pulls){ if(p0 && p0.stream){ anyStream = true; break; } } }catch(_e){}
       for(const [uid, p] of Array.from(view.pulls || [])){
         if(!p || p.stream) continue;
         if(!(now - Number(p.createdAtMs || 0) > 8000)) continue;
+        const who = String(uid).slice(0, 8);
+        const d = HC_LIVE.get(uid) || {};
+        const sig = String(d.sessionId || "") + "/" + String(d.trackName || "");
+        const mute = hcPullMute_.get(uid);
+        if(mute){
+          if(mute.sig === sig && now < mute.until) continue;   
+          hcPullMute_.delete(uid);                             
+          hcPullRetry_.delete(uid);
+          hcPullRecreates_.delete(uid);
+        }
+        const recPrev = hcPullRecreates_.get(uid);
+        if(recPrev && recPrev.sig !== sig) hcPullRecreates_.delete(uid); 
         const n = (hcPullRetry_.get(uid) || 0) + 1;
         hcPullRetry_.set(uid, n);
-        const who = String(uid).slice(0, 8);
         if(n >= 3){
-          console.warn("[V233_HCSESSION] " + who + " 영상이 " + n + "회 연속으로 안 와 시청 세션을 통째로 재생성합니다.");
-          try{ mkDiag("손캠-세션재생성", who + " 풀 " + n + "회 무응답"); }catch(_e){}
+          const recEntry = hcPullRecreates_.get(uid);
+          const recN = (recEntry && recEntry.sig === sig) ? Number(recEntry.n || 0) : 0;
+          if(anyStream || recN >= 2){
+            
+            hcPullMute_.set(uid, { sig, until: now + 5 * 60 * 1000 });
+            hcPullRetry_.delete(uid);
+            console.warn("[V236.1_HCBACKOFF] " + who + " 영상이 재시도로도 안 옵니다 — 송출측 문제로 보고 5분간 조용히 둡니다(방송을 다시 켜면 즉시 재시도)." + (anyStream ? " 다른 영상은 정상 수신 중이라 세션은 건드리지 않습니다." : ""));
+            try{ mkDiag("손캠-풀포기", who + " 5분 뮤트" + (anyStream ? " · 세션무죄" : " · 재생성2회소진")); }catch(_e){}
+            continue;
+          }
+          hcPullRecreates_.set(uid, { sig, n: recN + 1 });
+          console.warn("[V233_HCSESSION] " + who + " 영상이 " + n + "회 연속으로 안 와 시청 세션을 통째로 재생성합니다(" + (recN + 1) + "/2).");
+          try{ mkDiag("손캠-세션재생성", who + " 풀 " + n + "회 무응답 · " + (recN + 1) + "/2"); }catch(_e){}
           hcPullRetry_.clear();
           Promise.resolve(closeViewer()).catch(()=>{}); 
           syncPulls();                                  
@@ -25165,9 +25193,10 @@ let __hcPeriodicAt = 0;
         syncPulls();
       }
       
-      if(hcPullRetry_.size){
-        for(const uid of Array.from(hcPullRetry_.keys())){
-          if(!HC_LIVE.has(uid)) hcPullRetry_.delete(uid);
+      for(const m of [hcPullRetry_, hcPullRecreates_, hcPullMute_]){
+        if(!m.size) continue;
+        for(const uid of Array.from(m.keys())){
+          if(!HC_LIVE.has(uid)) m.delete(uid);
         }
       }
     }
@@ -25637,7 +25666,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17117; 
+const MK_APP_BUILD = 17118; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
