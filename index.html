@@ -81,6 +81,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7795,6 +7796,19 @@ function loadLocalProfile(){
       }catch(e){}
     }
 
+(function(){
+      try{
+        const FLAG = "mk_emoji_default_cleared_v237";
+        if(localStorage.getItem(FLAG)) return;
+        const lp = loadLocalProfile();
+        if(lp && lp.theme){
+          const cur = String(lp.theme.emoji || "").trim();
+          if(cur === "✍️" || cur === "✍"){ lp.theme.emoji = ""; saveLocalProfile(lp); }
+        }
+        localStorage.setItem(FLAG, "1");
+      }catch(e){}
+    })();
+
 const firebaseConfig = {
     apiKey: "AIzaSyAmhsxF7syCPNfgIVb2ZIQBxgGV_rZ2nDI",
     authDomain: "magamm00-5baee.firebaseapp.com",
@@ -8953,7 +8967,7 @@ function normalizeDirectMessages_(snap){
             return {
               uid:String(uid || profile.uid || ""),
               name:String(profile.name || "").trim().slice(0,40),
-              emoji:String(theme.emoji || "✍️").trim().slice(0,4) || "✍️",
+              emoji:String(theme.emoji || "").trim().slice(0,4),
               bgColor:String(theme.bgColor || "#ffd0e2"),
               petSlotId:String(theme.petSlotId || ""),
               petSlotLv:Math.max(0,Math.min(30,Number(theme.petSlotLv || 0))),
@@ -13096,7 +13110,7 @@ try{
       const lp = loadLocalProfile();
       if(lp && lp.theme){
         return {
-          emoji: (lp.theme.emoji || "✍️").trim(),
+          emoji: (lp.theme.emoji || "").trim(),  
           bgColor: clampHexColor(lp.theme.bgColor || "#ffd0e2"),
           pattern: (lp.theme.pattern || lp.theme.bgPattern || "none"),
           patternColor: clampHexColor(lp.theme.patternColor || "#ffffff"),
@@ -13125,7 +13139,7 @@ try{
           photoSize: Number(lp.theme.photoSize || 68)
         };
       }
-      return { emoji: "✍️", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, petDisplaySlot:"none", showPetInPhotoSlot:false, petSlotBgColor:"#1b1720", petSlotBgTransparent:false, petSlotMotion:"bounce", petSlotId:"cat", petSlotLv:0, petSlotName:"", petFullCount:0, petFullTotal:21, petFullVersion:"v126", emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
+      return { emoji: "", bgColor: "#ffd0e2", pattern: "none", patternColor:"#ffffff", photoUrl: "", photoEnabled:true, petDisplaySlot:"none", showPetInPhotoSlot:false, petSlotBgColor:"#1b1720", petSlotBgTransparent:false, petSlotMotion:"bounce", petSlotId:"cat", petSlotLv:0, petSlotName:"", petFullCount:0, petFullTotal:21, petFullVersion:"v126", emojiBg:"#2b2b2b", emojiBgTransparent:false, bubbleColor:"#ffd0e2", timeColor:"#ffffff", nameColor:"#ffffff", statusTextColor:"#ffffff", bubbleTextColor:"#ffffff", emojiSize:40, photoSize:68 };
     }
 
 function buildCurrentProfilePayload({uid, name, theme, bubbleText, autoBreakMin, autoIdleMin, source}){
@@ -13174,7 +13188,8 @@ try{
     const name = existing?.name || src.name || state.nickname || lp.nickname || lp.name || (els.name?.value || '').trim();
 
     if(existing){
-      const needsRepair = !hasValidNick(existing.name) || !existing.theme || !String(existing.theme?.emoji || "").trim();
+
+const needsRepair = !hasValidNick(existing.name) || !existing.theme;
       if(!needsRepair) return existing;
       const repaired = Object.assign({}, existing, {
         uid: String(state.uid),
@@ -14141,7 +14156,7 @@ if(!meNow || String(meNow.status || "") !== String(nextStatus)) patch.statusSinc
 
     async function applyProfile(){
       const theme = {
-        emoji: ((window.firstEmojiGrapheme|| (typeof firstEmojiGrapheme==='function' ? firstEmojiGrapheme : null) || ((s)=>{ try{const a=Array.from(String(s||'').trim()); return a[0]||'';}catch(e){return '';} }))(els.emoji.value || "✍️")),
+        emoji: ((window.firstEmojiGrapheme|| (typeof firstEmojiGrapheme==='function' ? firstEmojiGrapheme : null) || ((s)=>{ try{const a=Array.from(String(s||'').trim()); return a[0]||'';}catch(e){return '';} }))(els.emoji.value || "")),
         bgColor: clampHexColor(els.bgColor.value),
         pattern: (els.bgPattern && els.bgPattern.value ? els.bgPattern.value : "none"),
         bgPattern: (els.bgPattern && els.bgPattern.value ? els.bgPattern.value : "none"),
@@ -14549,7 +14564,7 @@ function normalizeAdminProfileCatalog_(profileSnap,presenceSnap){
       return {
         uid:String(uid),
         name:String(profile.name || "이름 없음").trim().slice(0,40) || "이름 없음",
-        emoji:String(theme.emoji || "✍️").trim().slice(0,4) || "✍️",
+        emoji:String(theme.emoji || "").trim().slice(0,4),
         petSlotLv:Math.max(0,Math.min(30,Number(theme.petSlotLv || 0))),
         petSlotName:String(theme.petSlotName || "").trim().slice(0,30),
         petFullCount:Math.max(0,Number(theme.petFullCount || 0)),
@@ -15310,7 +15325,8 @@ div.innerHTML = `<div class="text">${linkifyChatText(m.text || "")}</div>`;
             try{ if(m.uid) div.setAttribute("data-uid", String(m.uid)); }catch(e){}
       try{ if(m.uid) ensureChatProfileByUid_(m.uid); }catch(e){}
 const p = m.uid ? resolveChatProfileByUid_(m.uid) : null;
-      const emoji = (p && p.theme && p.theme.emoji) ? String(p.theme.emoji) : ((m && m.emoji) ? String(m.emoji) : "💬");
+
+const emoji = (p && p.theme && ("emoji" in p.theme)) ? String(p.theme.emoji || "") : ((m && m.emoji) ? String(m.emoji) : "");
       const nick = (m.name || (p && p.name) || "익명");
 
 const stkInfo = (m && m.stk && (typeof MK_STICKER_MAP !== "undefined")) ? (MK_STICKER_MAP[String(m.stk)] || null) : null;
@@ -15429,10 +15445,11 @@ let __chatMetaRefreshAt = 0;
           if(!p) return;
 
 try{
-            const e = (p.theme && p.theme.emoji) ? String(p.theme.emoji) : "";
-            if(e){
+
+if(p.theme && ("emoji" in p.theme)){
+              const e = String(p.theme.emoji || "");
               const eEl = div.querySelector(".chatEmoji");
-              if(eEl) eEl.textContent = e;
+              if(eEl && eEl.textContent !== e) eEl.textContent = e;
             }
           }catch(e){}
 
@@ -17005,18 +17022,18 @@ let myName = (state.nickname || els.name.value || "").trim();
       dayKey: __seoulDateKeyFromMs(mkNowMs_()),
       
       serverTs: rServerTimestamp(),
-      
-      emoji: (()=>{ 
+
+emoji: (()=>{
         try{
           const v = (els.emoji && els.emoji.value) ? String(els.emoji.value) : "";
           if(v){
             const fn = (window.firstEmojiGrapheme || (typeof firstEmojiGrapheme==="function" ? firstEmojiGrapheme : null));
-            if(fn) return String(fn(v) || "✍️");
-            try{ const a = Array.from(v.trim()); return a[0] || "✍️"; }catch(e){}
+            if(fn) return String(fn(v) || "");
+            try{ const a = Array.from(v.trim()); return a[0] || ""; }catch(e){}
           }
         }catch(e){}
-        try{ return String((defaultTheme()||{}).emoji || "✍️"); }catch(e){}
-        return "✍️";
+        try{ return String((defaultTheme()||{}).emoji || ""); }catch(e){}
+        return "";
       })(),
       
       chatNameColor: (()=>{ 
@@ -17244,7 +17261,7 @@ if(charaSlot === "emoji"){
   avatar.textContent = "";
   fillPetSlotBox(avatar, p, { nameTag:true });
 }else{
-  avatar.textContent = (p.theme?.emoji || "✍️");
+  avatar.textContent = (p.theme?.emoji || "");
 }
 
 const photoEnabled = !(p.theme && (p.theme.photoEnabled === false || p.theme.photoEnabled === "false" || p.theme.photoEnabled === 0));
@@ -17534,7 +17551,7 @@ return false;
 
         const emo = document.createElement("div");
         emo.className = "statusRosterEmoji";
-        emo.textContent = (p.theme?.emoji || "🙂");
+        emo.textContent = (p.theme?.emoji || "");
         const eb = clampHexColor(p.theme?.emojiBg || "#2b2b2b");
         emo.style.background = eb;
         emo.style.borderColor = hexToRgba("#ffffff", 0.16);
@@ -17617,7 +17634,7 @@ function renderCompactRoster(onlineArr){
 
         const emoji = document.createElement("div");
         emoji.className = "gridRosterEmoji";
-        emoji.textContent = (p.theme?.emoji || "✍️");
+        emoji.textContent = (p.theme?.emoji || "");
         const emoBg = clampHexColor(p.theme?.emojiBg || "#2b2b2b");
         emoji.style.background = hexToRgba(emoBg, 0.18);
         emoji.style.borderColor = hexToRgba(emoBg, 0.40);
@@ -17715,7 +17732,7 @@ try{
 
         const emoji = document.createElement("div");
         emoji.className = "gridRosterEmoji";
-        emoji.textContent = (p.theme?.emoji || "✍️");
+        emoji.textContent = (p.theme?.emoji || "");
         const emoBg = clampHexColor(p.theme?.emojiBg || "#2b2b2b");
         emoji.style.background = hexToRgba(emoBg, 0.18);
         emoji.style.borderColor = hexToRgba(emoBg, 0.40);
@@ -19703,7 +19720,7 @@ try{ startRtdbConnectionWatch(); }catch(e){}
         const me = Object.assign({}, meSnap.val() || {});
 
 me.theme = Object.assign({}, defaultTheme(), me.theme || {}, (state.__canonicalProfileAtJoin_?.theme) || {});
-        els.emoji.value = me.theme?.emoji || "✍️";
+        els.emoji.value = me.theme?.emoji || "";
         els.bgColor.value = me.theme?.bgColor || "#ffd0e2";
         if(els.emojiBgColor) els.emojiBgColor.value = me.theme?.emojiBg || "#2b2b2b";
         try{ if(els.emojiBgTransparent) els.emojiBgTransparent.checked = (me.theme?.emojiBgTransparent === true || me.theme?.emojiBgTransparent === "true"); }catch(e){}
@@ -21707,7 +21724,8 @@ try{
           const nn = (lp.nickname || state.nickname || "").toString().trim().slice(0,20);
           if(nn) els.profileNick.value = nn;
         }
-        if(els.emoji) els.emoji.value = (window.firstEmojiGrapheme || firstEmojiGrapheme)((theme.emoji || els.emoji.value || "✍️").toString().trim()) || "✍️";
+        
+        if(els.emoji) els.emoji.value = (window.firstEmojiGrapheme || firstEmojiGrapheme)(String((("emoji" in theme) ? theme.emoji : els.emoji.value) || "").trim()) || "";
         if(els.emojiSize){ els.emojiSize.value = "82"; els.emojiSize.disabled = true; }
         if(els.emojiSizeNum){ els.emojiSizeNum.value = "82"; }
 
@@ -22439,8 +22457,9 @@ if(els.emoji){
         if(v && els.emoji.value !== v) els.emoji.value = v;
       });
       els.emoji.addEventListener("blur", ()=>{
+        
         const v = (window.firstEmojiGrapheme || firstEmojiGrapheme)(els.emoji.value);
-        els.emoji.value = v || "✍️";
+        els.emoji.value = v || "";
       });
     }
 
@@ -22675,7 +22694,7 @@ function renderOnlineList(){
 
           const emo = document.createElement("div");
           emo.className = "onlineEmoji";
-          emo.textContent = (p.theme?.emoji || "💬");
+          emo.textContent = (p.theme?.emoji || "");
 
           const name = document.createElement("div");
           name.className = "onlineName";
@@ -25666,7 +25685,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17118; 
+const MK_APP_BUILD = 17119; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
