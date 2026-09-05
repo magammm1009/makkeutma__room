@@ -85,6 +85,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25744,7 +25745,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17122; 
+const MK_APP_BUILD = 17123; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32211,6 +32212,8 @@ var MASK_CACHE_MAX = 16;
   var Z_GEAR_BACK = 5;
   
   var Z_GEAR_BACKDROP = 1;
+  
+  var Z_HAIR_UNDER_HOOD = 30;
 
   var chara = {
     phase:'idle',   
@@ -33337,7 +33340,7 @@ function stageLayersOf(selMap){
       
       if(isFullCostume && (isHairCat(cat.key) || isHairBackCat(cat.key) || catName(cat.key)==='face' || catName(cat.key)==='body')) return; 
       
-      if(isHoodLook && (isHairCat(cat.key) || isHairBackCat(cat.key))) return;
+      if(isHoodLook && isHairBackCat(cat.key)) return;
       
       selArrIn(selMap, cat.key).forEach(function(sel){
         var part=null;
@@ -33348,9 +33351,10 @@ function stageLayersOf(selMap){
 layers.push({ catKey:cat.key, part:part,
                       z: isSpecial(cat.key, sel) ? Z_SPECIAL
                          : (isGearBackdrop(cat.key, sel) ? Z_GEAR_BACKDROP
-                            : (isGearBack(cat.key, sel) ? Z_GEAR_BACK : zRankFor(cat))) });
+                            : (isGearBack(cat.key, sel) ? Z_GEAR_BACK
+                               : ((isHoodLook && isHairCat(cat.key)) ? Z_HAIR_UNDER_HOOD : zRankFor(cat)))) }); 
         var back = cat.backParts && cat.backParts.get(sel);
-        if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); 
+        if(back && !isHoodLook) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); 
       });
     });
     return layers.map(function(l,i){ return { l:l, i:i }; })
@@ -35403,7 +35407,7 @@ var bakeCache = new Map();
       Z_ORDER.forEach(function(cat){
         
         if(isFullCostume && (cat === 'hair' || cat === 'hair_back' || cat === 'face' || cat === 'body')) return; 
-        if(isHoodLook && (cat === 'hair' || cat === 'hair_back')) return; 
+        if(isHoodLook && cat === 'hair_back') return; 
         if(cat === 'acc' || cat === 'gear'){   
           
           var multi = parts[cat];
@@ -35445,6 +35449,15 @@ var bakeCache = new Map();
         var _isSp = function(L){ return /_special_/i.test(String(L.name || '')); };
         layers = layers.filter(function(L){ return !_isSp(L); })
                        .concat(layers.filter(_isSp));
+      }
+      
+      if(isHoodLook && layers.length > 1){
+        var _hi = -1, _li = -1;
+        for(var _k = 0; _k < layers.length; _k++){
+          if(_hi < 0 && layers[_k].cat === 'hair') _hi = _k;
+          if(_li < 0 && layers[_k].cat === 'look') _li = _k;
+        }
+        if(_hi >= 0 && _li >= 0 && _hi > _li){ var _hl = layers.splice(_hi, 1)[0]; layers.splice(_li, 0, _hl); }
       }
       if(!layers.length) throw new Error('no layers');
       return Promise.all(layers.map(function(L){
