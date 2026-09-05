@@ -86,6 +86,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25745,7 +25746,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17123; 
+const MK_APP_BUILD = 17124; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32214,6 +32215,14 @@ var MASK_CACHE_MAX = 16;
   var Z_GEAR_BACKDROP = 1;
   
   var Z_HAIR_UNDER_HOOD = 30;
+  
+  var HOOD_HAIR_CLIP_CIRCLE = { cx:0.5, cy:0.322, r:0.21 };
+  
+  function hoodHairMaskValue(hoodUrl, q){
+    var C = HOOD_HAIR_CLIP_CIRCLE, Q = q || '"';
+    var g = 'radial-gradient(ellipse ' + (C.r*100) + '% ' + (C.r*100) + '% at ' + (C.cx*100) + '% ' + (C.cy*100) + '%, #000 99%, transparent 100%)';
+    return 'url(' + Q + hoodUrl + Q + '), ' + g;
+  }
 
   var chara = {
     phase:'idle',   
@@ -32903,8 +32912,14 @@ var PRESET_KEY = 'mk_chara_presets';
           }else presetMaskWarm(L.part.url);
         }
       }
-      
-      var st = (f ? ('filter:' + f + ';') : '') + (presetFlipped(slot, L.catKey, L.part.name) ? 'transform:scaleX(-1);' : '');
+
+var mk = L.clipToHood ? hoodHairMaskValue(L.clipToHood, "'") : '';
+      var st = (f ? ('filter:' + f + ';') : '') + (presetFlipped(slot, L.catKey, L.part.name) ? 'transform:scaleX(-1);' : '')
+             + (mk ? ('-webkit-mask-image:' + mk + ';mask-image:' + mk + ';'
+                    + '-webkit-mask-size:100% 100%, 100% 100%;mask-size:100% 100%, 100% 100%;'
+                    + '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;'
+                    + '-webkit-mask-position:0 0;mask-position:0 0;'
+                    + '-webkit-mask-composite:source-over;mask-composite:add;') : ''); 
       return '<img src="' + esc(src) + '" alt=""' + (st ? (' style="' + esc(st) + '"') : '') + '>'; 
     }).join('');
     return '<span class="mkPresetArt" style="' + esc(style) + '">' + imgs + '</span>';
@@ -33336,6 +33351,14 @@ function stageLayersOf(selMap){
     var isFullCostume = !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
     
     var isHoodLook = !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_hood/i.test(String(n)); });
+    
+    var hoodClipUrl = '';
+    if(isHoodLook){
+      var hoodName = selArrIn(selMap, lookCat.key).filter(function(n){ return /_hood/i.test(String(n)); })[0];
+      for(var hq=0; hoodName && hq<lookCat.parts.length; hq++){
+        if(lookCat.parts[hq].name===hoodName){ hoodClipUrl = lookCat.parts[hq].url || ''; break; }
+      }
+    }
     chara.cats.forEach(function(cat){
       
       if(isFullCostume && (isHairCat(cat.key) || isHairBackCat(cat.key) || catName(cat.key)==='face' || catName(cat.key)==='body')) return; 
@@ -33348,11 +33371,14 @@ function stageLayersOf(selMap){
         if(!part) return;
         if(isFullCostume && costumeHides(cat.key, sel)) return; 
 
-layers.push({ catKey:cat.key, part:part,
+var lyr = { catKey:cat.key, part:part,
                       z: isSpecial(cat.key, sel) ? Z_SPECIAL
                          : (isGearBackdrop(cat.key, sel) ? Z_GEAR_BACKDROP
                             : (isGearBack(cat.key, sel) ? Z_GEAR_BACK
-                               : ((isHoodLook && isHairCat(cat.key)) ? Z_HAIR_UNDER_HOOD : zRankFor(cat)))) }); 
+                               : ((isHoodLook && isHairCat(cat.key)) ? Z_HAIR_UNDER_HOOD : zRankFor(cat)))) }; 
+        
+        if(isHoodLook && hoodClipUrl && isHairCat(cat.key)) lyr.clipToHood = hoodClipUrl;
+        layers.push(lyr);
         var back = cat.backParts && cat.backParts.get(sel);
         if(back && !isHoodLook) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); 
       });
@@ -33485,6 +33511,15 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
       
       if(isFlipped(L.catKey, L.part.name) && canFlip(L.catKey, L.part.name)) img.style.transform='scaleX(-1)';
       var f=filterFor(L.catKey, L.part.name); if(f) img.style.filter=f;
+      
+      if(L.clipToHood){
+        var hm = hoodHairMaskValue(L.clipToHood, '"');
+        img.style.webkitMaskImage = hm; img.style.maskImage = hm;
+        img.style.webkitMaskSize = '100% 100%, 100% 100%'; img.style.maskSize = '100% 100%, 100% 100%';
+        img.style.webkitMaskRepeat = 'no-repeat'; img.style.maskRepeat = 'no-repeat';
+        img.style.webkitMaskPosition = '0 0'; img.style.maskPosition = '0 0';
+        img.style.webkitMaskComposite = 'source-over'; img.style.maskComposite = 'add';
+      }
       el.appendChild(img);
     });
     try{ setupStageBlink(el); }catch(e){} 
@@ -34479,6 +34514,8 @@ function onModalShown(){
   var PART_KEYS = ['body','hair','face','look','acc','gear']; 
   var Z_ORDER = ['hair_back','body','look','face','hair','acc','gear']; 
   var BAKE_SIZE = 256;                  
+  
+  var HOOD_HAIR_CLIP_CIRCLE = { cx:0.5, cy:0.322, r:0.21 };
   var WRITE_DEBOUNCE_MS = 1500;
 
   var stats = { bakeCount:0, bakeCacheHit:0, writeFlushCount:0, writeAttemptCount:0, writeOkCount:0, blinkCount:0, moverAttachCount:0 }; 
@@ -35466,6 +35503,8 @@ var bakeCache = new Map();
         var ok = ls.filter(function(L){ return L.img; });
         if(!ok.length) throw new Error('no images');
         var meta = { facePart: null, faceRect: null, layers: [] };
+        
+        var hoodTmpCv = null, hoodMaskCv = null;
         function drawFrame(faceCv){ 
           var cv = document.createElement('canvas');
           cv.width = BAKE_SIZE; cv.height = BAKE_SIZE;
@@ -35481,11 +35520,42 @@ var bakeCache = new Map();
             var mCv = (L.cat === 'face' && f) ? maskedTintOf(srcCv, f, eyeBoxesFor(mani, L.name)) : null;
             
             var flipped = !!flip[L.adjKey] && partTypeOf(L.cat, L.name) === 'companion';
-            if(flipped){ ctx.save(); ctx.translate(BAKE_SIZE, 0); ctx.scale(-1, 1); }
-            try{ ctx.filter = mCv ? 'none' : (f || 'none'); }catch(e){}
-            ctx.drawImage(mCv || srcCv, x, y, w, h);
-            try{ ctx.filter = 'none'; }catch(e){}
-            if(flipped) ctx.restore();
+            
+            if(isHoodLook && L.cat === 'hair'){
+              if(!hoodTmpCv){ hoodTmpCv = document.createElement('canvas'); hoodTmpCv.width = BAKE_SIZE; hoodTmpCv.height = BAKE_SIZE; }
+              if(!hoodMaskCv){ hoodMaskCv = document.createElement('canvas'); hoodMaskCv.width = BAKE_SIZE; hoodMaskCv.height = BAKE_SIZE; }
+              var hctx = hoodTmpCv.getContext('2d'), mctx = hoodMaskCv.getContext('2d');
+              hctx.globalCompositeOperation = 'source-over';
+              hctx.clearRect(0, 0, BAKE_SIZE, BAKE_SIZE);
+              try{ hctx.filter = mCv ? 'none' : (f || 'none'); }catch(e){}
+              hctx.drawImage(mCv || srcCv, x, y, w, h);
+              try{ hctx.filter = 'none'; }catch(e){}
+              mctx.globalCompositeOperation = 'source-over';
+              mctx.clearRect(0, 0, BAKE_SIZE, BAKE_SIZE);
+              var HL = null;
+              for(var hq = 0; hq < ok.length; hq++){ if(ok[hq].cat === 'look'){ HL = ok[hq]; break; } }
+              var mx = x, my = y, mw = w, mh = h; 
+              if(HL && HL.img){
+                var liw = HL.img.naturalWidth || 1, lih = HL.img.naturalHeight || 1;
+                var lsc = Math.min(BAKE_SIZE / liw, BAKE_SIZE / lih);
+                mw = liw * lsc; mh = lih * lsc; mx = (BAKE_SIZE - mw) / 2; my = (BAKE_SIZE - mh) / 2;
+                mctx.drawImage(HL.img, mx, my, mw, mh); 
+              }
+              var HC = HOOD_HAIR_CLIP_CIRCLE;
+              mctx.beginPath();
+              mctx.arc(mx + HC.cx * mw, my + HC.cy * mh, HC.r * mw, 0, Math.PI * 2);
+              mctx.fillStyle = '#000'; mctx.fill(); 
+              hctx.globalCompositeOperation = 'destination-in';
+              hctx.drawImage(hoodMaskCv, 0, 0);
+              hctx.globalCompositeOperation = 'source-over';
+              ctx.drawImage(hoodTmpCv, 0, 0);
+            }else{
+              if(flipped){ ctx.save(); ctx.translate(BAKE_SIZE, 0); ctx.scale(-1, 1); }
+              try{ ctx.filter = mCv ? 'none' : (f || 'none'); }catch(e){}
+              ctx.drawImage(mCv || srcCv, x, y, w, h);
+              try{ ctx.filter = 'none'; }catch(e){}
+              if(flipped) ctx.restore();
+            }
             var rect = { x: x, y: y, w: w, h: h };
             meta.layers.push({ cat: L.cat, name: L.name, rect: rect });
             if(L.cat === 'face'){ meta.facePart = L.name; meta.faceRect = rect; }
