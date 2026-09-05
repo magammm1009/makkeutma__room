@@ -83,6 +83,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25742,7 +25743,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17120; 
+const MK_APP_BUILD = 17121; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32153,6 +32154,8 @@ var MASK_CACHE_MAX = 16;
   var Z_SPECIAL = 90;
   
   var Z_GEAR_BACK = 5;
+  
+  var Z_GEAR_BACKDROP = 1;
 
   var chara = {
     phase:'idle',   
@@ -32336,6 +32339,13 @@ var V169_PART_PRICE_DEFAULT = 2;
   }
   function isGearBack(catKey, name){ return catName(catKey) === 'gear' && !!(chara.gearBack || {})[name]; }
   
+  function gearBackdropMapOf(mf){
+    var out = {}, arr = mf && mf._gearBackdrop;
+    if(Array.isArray(arr)) arr.forEach(function(f){ if(typeof f === 'string') out[f] = 1; });
+    return out;
+  }
+  function isGearBackdrop(catKey, name){ return catName(catKey) === 'gear' && !!(chara.gearBackdrop || {})[name]; }
+  
   function gearCostumeOkMapOf(mf){
     var arr = mf && mf._gearCostumeOk;
     if(!Array.isArray(arr)) return null;
@@ -32418,7 +32428,7 @@ var MULTI_SLOT_MAX = 4;
 
 var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리', bandage:'반창고', gum:'풍선껌',
                           special:'특수 파츠', headset:'헤드셋', bag:'가방', wing:'날개', companion:'친구' };
-  var FREE_EXTRA_TYPES = { gum:1, bandage:1, special:1 }; 
+  var FREE_EXTRA_TYPES = { gum:1, bandage:1, special:1, backdrop:1 }; 
   function partTypesMapOf(mf){ var o = mf && mf._partTypes; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
   function partSetsMapOf(mf){ var out = {}, arr = mf && mf._partSets; if(Array.isArray(arr)) arr.forEach(function(f){ if(typeof f === 'string') out[f] = 1; }); return out; }
   function partSideMapOf(mf){ var o = mf && mf._partSide; return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
@@ -32454,6 +32464,8 @@ var PART_TYPE_LABEL = { hairpin:'헤어핀', glasses:'안경', scarf:'목도리'
   }
   function isFreeExtra(catKey, name){ 
     if(isSpecial(catKey, name)) return true; 
+    
+    if(isGearBackdrop(catKey, name)) return true;
     var t = partTypeOf(catKey, name);
     return !!(t && FREE_EXTRA_TYPES[t]);
   }
@@ -33125,6 +33137,7 @@ function loadManifest(){
         chara.rects = (mf && mf._rects && typeof mf._rects==='object') ? mf._rects : {}; 
         chara.special = (mf && mf._special && typeof mf._special==='object') ? mf._special : {}; 
         chara.gearBack = gearBackMapOf(mf); 
+        chara.gearBackdrop = gearBackdropMapOf(mf); 
         chara.gearCostumeOk = gearCostumeOkMapOf(mf); 
         
         chara.partTypes = partTypesMapOf(mf);
@@ -33238,9 +33251,13 @@ function stageLayersOf(selMap){
     
     var lookCat = chara.cats.find(function(c){ return catName(c.key)==='look'; });
     var isFullCostume = !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_full/i.test(String(n)); });
+    
+    var isHoodLook = !!lookCat && selArrIn(selMap, lookCat.key).some(function(n){ return /_hood/i.test(String(n)); });
     chara.cats.forEach(function(cat){
       
       if(isFullCostume && (isHairCat(cat.key) || isHairBackCat(cat.key) || catName(cat.key)==='face' || catName(cat.key)==='body')) return; 
+      
+      if(isHoodLook && (isHairCat(cat.key) || isHairBackCat(cat.key))) return;
       
       selArrIn(selMap, cat.key).forEach(function(sel){
         var part=null;
@@ -33250,7 +33267,8 @@ function stageLayersOf(selMap){
 
 layers.push({ catKey:cat.key, part:part,
                       z: isSpecial(cat.key, sel) ? Z_SPECIAL
-                         : (isGearBack(cat.key, sel) ? Z_GEAR_BACK : zRankFor(cat)) });
+                         : (isGearBackdrop(cat.key, sel) ? Z_GEAR_BACKDROP
+                            : (isGearBack(cat.key, sel) ? Z_GEAR_BACK : zRankFor(cat))) });
         var back = cat.backParts && cat.backParts.get(sel);
         if(back) layers.push({ catKey:cat.key, part:back, z:Z_RANK.hair_back }); 
       });
@@ -34408,8 +34426,10 @@ function onModalShown(){
 
 var slotRules = null; 
   
+  var backdropMap = {};
+  
   var TILE_MULTI_MAX = { acc:4, gear:5 }; 
-  var TILE_FREE_EXTRA = { gum:1, bandage:1, special:1 }; 
+  var TILE_FREE_EXTRA = { gum:1, bandage:1, special:1, backdrop:1 }; 
   function slotMaxOf(cat){ return TILE_MULTI_MAX[cat] || 3; }
   function partTypeOf(cat, name){
     if(cat !== 'acc' && cat !== 'gear') return null;
@@ -34420,6 +34440,8 @@ var slotRules = null;
   function partSideOf(name){ var s = slotRules && slotRules.side[name]; return (s === 'left' || s === 'right') ? s : null; }
   function isFreeExtra(cat, name){
     if(/_special_/i.test(String(name))) return true; 
+    
+    if(cat === 'gear' && backdropMap[name]) return true;
     var t = partTypeOf(cat, name);
     return !!(t && TILE_FREE_EXTRA[t]);
   }
@@ -34740,6 +34762,10 @@ var maniPromise = null;
         var gearBack = {};
         if(mf && Array.isArray(mf._gearBack)) mf._gearBack.forEach(function(f){ if(typeof f === 'string') gearBack[f] = 1; });
         
+        var gearBackdrop = {};
+        if(mf && Array.isArray(mf._gearBackdrop)) mf._gearBackdrop.forEach(function(f){ if(typeof f === 'string') gearBackdrop[f] = 1; });
+        backdropMap = gearBackdrop;
+        
         var gearCostumeOk = null;
         if(mf && Array.isArray(mf._gearCostumeOk)){
           gearCostumeOk = {};
@@ -34772,7 +34798,9 @@ var maniPromise = null;
             if(files.hair[back]) hairBackOf[f] = back;
           });
         }
-        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack, gearCostumeOk: gearCostumeOk,
+        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack,
+                 gearBackdrop: gearBackdrop, 
+                 gearCostumeOk: gearCostumeOk,
                  partTypes: partTypes, partSets: partSets, partSide: partSide }; 
       })
       .catch(function(err){ maniPromise = null; throw err; });
@@ -35269,6 +35297,8 @@ var bakeCache = new Map();
       
       var isFullCostume = /_full/i.test(String(parts.look || ''));
       
+      var isHoodLook = /_hood/i.test(String(parts.look || ''));
+      
       function costumeHidesLayer(cat, name){
         if(!mani.gearCostumeOk) return false; 
         if(cat === 'acc') return !/_special_/i.test(String(name));
@@ -35278,6 +35308,7 @@ var bakeCache = new Map();
       Z_ORDER.forEach(function(cat){
         
         if(isFullCostume && (cat === 'hair' || cat === 'hair_back' || cat === 'face' || cat === 'body')) return; 
+        if(isHoodLook && (cat === 'hair' || cat === 'hair_back')) return; 
         if(cat === 'acc' || cat === 'gear'){   
           
           var multi = parts[cat];
@@ -35307,6 +35338,12 @@ var bakeCache = new Map();
         var _isWingBack = function(L){ return L.cat === 'gear' && !!mani.gearBack[L.name]; };
         layers = layers.filter(_isWingBack)
                        .concat(layers.filter(function(L){ return !_isWingBack(L); }));
+      }
+      
+      if(layers.length > 1 && mani.gearBackdrop){
+        var _isBackdrop = function(L){ return L.cat === 'gear' && !!mani.gearBackdrop[L.name]; };
+        layers = layers.filter(_isBackdrop)
+                       .concat(layers.filter(function(L){ return !_isBackdrop(L); }));
       }
       
       if(layers.length > 1){
