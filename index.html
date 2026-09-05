@@ -87,6 +87,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -33250,7 +33251,13 @@ function loadManifest(){
           var files=mf[key]; if(!Array.isArray(files)) return;
           var parts=files
             .filter(function(f){ return typeof f==='string' && /\.png$/i.test(f); })
-            .sort()
+            
+            .sort(function(a,b){
+              var ma=/_auto_(\d+)/i.exec(a), mb=/_auto_(\d+)/i.exec(b);
+              if(ma && mb){ var d=Number(ma[1])-Number(mb[1]); if(d) return d; }
+              else if(ma || mb) return ma ? -1 : 1;
+              return a<b?-1:a>b?1:0;
+            })
             .map(function(f){ return { name:f, url: ASSET_DIR+'/'+encodeURIComponent(key)+'/'+encodeURIComponent(f)+(ver?('?v='+encodeURIComponent(ver)):'') }; });
           if(!parts.length) return;
           cats.push({ key:key, order:parseInt(key,10)||0, label:labelFor(key), parts:parts });
