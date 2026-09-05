@@ -84,6 +84,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25743,7 +25744,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17121; 
+const MK_APP_BUILD = 17122; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32023,6 +32024,30 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
   }
   
   var MASK_SAT_LO = 15, MASK_SAT_HI = 35;
+  
+  var EYE_MASK_FEATHER = 0.25;
+  var EYE_MASK_BASE = 1024;                   
+  function normEyeBoxes(boxes){               
+    if(!boxes || !boxes.length) return null;
+    var out = [];
+    for(var i = 0; i < boxes.length; i++){
+      var b = boxes[i];
+      if(!b || b.length < 4) continue;
+      var cx = Number(b[0]), cy = Number(b[1]), rx = Number(b[2]), ry = Number(b[3]);
+      if(!isFinite(cx) || !isFinite(cy) || !(rx > 0) || !(ry > 0)) continue;
+      out.push([cx, cy, rx, ry]);
+    }
+    return out.length ? out : null;
+  }
+  function eyeSigOf(boxes){                   
+    if(!boxes) return '';
+    var s = '';
+    for(var i = 0; i < boxes.length; i++){
+      s += (i ? ';' : '') + Math.round(boxes[i][0]) + ',' + Math.round(boxes[i][1])
+         + ',' + Math.round(boxes[i][2]) + ',' + Math.round(boxes[i][3]);
+    }
+    return '|e:' + s;
+  }
   var ctxFilterOk = null;
   function canvasFilterSupported(){ 
     if(ctxFilterOk !== null) return ctxFilterOk;
@@ -32034,7 +32059,7 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     }catch(e){ ctxFilterOk = false; }
     return ctxFilterOk;
   }
-  function buildMaskedCanvas(src, filterStr, w, h){
+  function buildMaskedCanvas(src, filterStr, w, h, eyeBoxes){
     var base = document.createElement('canvas'); base.width = w; base.height = h;
     var bctx = base.getContext('2d', { willReadFrequently:true });
     bctx.drawImage(src, 0, 0, w, h);
@@ -32046,15 +32071,43 @@ html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #petDashInner{
     tctx.filter = 'none';
     var fd = tctx.getImageData(0, 0, w, h);
     var o = od.data, f = fd.data, n = o.length, lo = MASK_SAT_LO, span = MASK_SAT_HI - MASK_SAT_LO;
+    
+    var boxes = normEyeBoxes(eyeBoxes), eb = null, ebn = 0, px = 0, py = 0;
+    var rOut2 = (1 + EYE_MASK_FEATHER) * (1 + EYE_MASK_FEATHER);
+    if(boxes){
+      var es = w / EYE_MASK_BASE;
+      eb = [];
+      for(var bi = 0; bi < boxes.length; bi++){
+        var bb = boxes[bi];
+        eb.push([bb[0]*es, bb[1]*es, 1/(bb[2]*es), 1/(bb[3]*es)]);
+      }
+      ebn = eb.length;
+    }
     for(var i = 0; i < n; i += 4){
+      var we = 1;                             
+      if(eb){
+        var best = Infinity;                  
+        for(var bj = 0; bj < ebn; bj++){
+          var e0 = eb[bj], dx = (px - e0[0]) * e0[2], dy = (py - e0[1]) * e0[3];
+          var d2 = dx*dx + dy*dy;
+          if(d2 < best) best = d2;
+        }
+        if(++px >= w){ px = 0; py++; }        
+        if(best >= rOut2) continue;           
+        if(best > 1){
+          var u = 1 - (Math.sqrt(best) - 1) / EYE_MASK_FEATHER; 
+          we = u * u * (3 - 2 * u);
+        }
+      }
       if(o[i+3] === 0) continue;              
       var r = o[i], g = o[i+1], b = o[i+2];
       var mx = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
       var mn = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
       var t = (mx - mn - lo) / span;
       if(t <= 0) continue;                    
-      if(t >= 1){ o[i] = f[i]; o[i+1] = f[i+1]; o[i+2] = f[i+2]; continue; } 
-      var wt = t * t * (3 - 2 * t);           
+      var wt = (t >= 1) ? 1 : (t * t * (3 - 2 * t)); 
+      if(we < 1) wt *= we;                    
+      if(wt >= 1){ o[i] = f[i]; o[i+1] = f[i+1]; o[i+2] = f[i+2]; continue; } 
       o[i]   = r + (f[i]   - r) * wt;
       o[i+1] = g + (f[i+1] - g) * wt;
       o[i+2] = b + (f[i+2] - b) * wt;
@@ -32074,36 +32127,38 @@ var MASK_CACHE_MAX = 16;
   function maskTrim(map, keep){
     if(map.size > MASK_CACHE_MAX){ var old = map.keys().next().value; if(old !== keep) map.delete(old); }
   }
-  function maskEntry(src, filterStr){
+  
+  function maskEntry(src, filterKey){
     var k = maskKeyOf(src);
     if(k){
-      var kk = k + '|' + filterStr, e = maskByKey.get(kk);
+      var kk = k + '|' + filterKey, e = maskByKey.get(kk);
       if(!e){ e = {}; maskByKey.set(kk, e); maskTrim(maskByKey, kk); }
       return e;
     }
     if(!maskByObj) return {};                 
     var m = maskByObj.get(src);
     if(!m){ m = new Map(); maskByObj.set(src, m); }
-    var e2 = m.get(filterStr);
-    if(!e2){ e2 = {}; m.set(filterStr, e2); maskTrim(m, filterStr); } 
+    var e2 = m.get(filterKey);
+    if(!e2){ e2 = {}; m.set(filterKey, e2); maskTrim(m, filterKey); } 
     return e2;
   }
   
-  function maskedTintCanvas(src, filterStr){
+  function maskedTintCanvas(src, filterStr, eyeBoxes){
     if(!src || !filterStr || !canvasFilterSupported()) return null;
     var w = src.naturalWidth || src.width || 0, h = src.naturalHeight || src.height || 0;
     if(!w || !h) return null;                 
-    var e = maskEntry(src, filterStr);
+    var boxes = normEyeBoxes(eyeBoxes);       
+    var e = maskEntry(src, filterStr + eyeSigOf(boxes));
     if(e.cv !== undefined) return e.cv;
-    try{ e.cv = buildMaskedCanvas(src, filterStr, w, h); }
+    try{ e.cv = buildMaskedCanvas(src, filterStr, w, h, boxes); }
     catch(err){ e.cv = null; }                
     return e.cv;
   }
   
-  function maskedTintDataUrl(src, filterStr){
-    var cv = maskedTintCanvas(src, filterStr);
+  function maskedTintDataUrl(src, filterStr, eyeBoxes){
+    var cv = maskedTintCanvas(src, filterStr, eyeBoxes);
     if(!cv) return null;
-    var e = maskEntry(src, filterStr);
+    var e = maskEntry(src, filterStr + eyeSigOf(normEyeBoxes(eyeBoxes)));
     if(e.url === undefined){
       try{ e.url = cv.toDataURL('image/png'); }catch(err){ e.url = null; }
     }
@@ -32831,11 +32886,36 @@ var PRESET_KEY = 'mk_chara_presets';
     
     var imgs = layers.map(function(L){
       var f = presetFilterOf(slot.hue, L.catKey, L.part.name);
+      var src = L.part.url;
+      
+      if(f && catName(L.catKey) === 'face'){
+        var tapi = window.__MK_TINT_V184__;
+        if(tapi && typeof tapi.maskedTintDataUrl === 'function' && typeof tapi.maskedTintReady === 'function'){
+          var im = tapi.maskedTintReady(L.part.url);
+          if(im){
+            var tileApi = window.__MK_CHARA_TILE_V169__;
+            var boxes = (tileApi && typeof tileApi.eyeBoxesFor === 'function') ? tileApi.eyeBoxesFor(L.part.name) : null;
+            var mu = tapi.maskedTintDataUrl(im, f, boxes) || '';
+            if(mu){ src = mu; f = ''; }
+          }else presetMaskWarm(L.part.url);
+        }
+      }
       
       var st = (f ? ('filter:' + f + ';') : '') + (presetFlipped(slot, L.catKey, L.part.name) ? 'transform:scaleX(-1);' : '');
-      return '<img src="' + esc(L.part.url) + '" alt=""' + (st ? (' style="' + esc(st) + '"') : '') + '>'; 
+      return '<img src="' + esc(src) + '" alt=""' + (st ? (' style="' + esc(st) + '"') : '') + '>'; 
     }).join('');
     return '<span class="mkPresetArt" style="' + esc(style) + '">' + imgs + '</span>';
+  }
+  
+  var presetMaskWarmed = Object.create(null), presetMaskRedraw = 0;
+  function presetMaskWarm(url){
+    var tapi = window.__MK_TINT_V184__;
+    if(!tapi || typeof tapi.maskedTintLoad !== 'function' || !url || presetMaskWarmed[url]) return;
+    presetMaskWarmed[url] = 1;
+    tapi.maskedTintLoad(url).then(function(){
+      if(presetMaskRedraw) return;
+      presetMaskRedraw = setTimeout(function(){ presetMaskRedraw = 0; try{ renderPresets(); }catch(e){} }, 60);
+    }, function(){});
   }
   function renderPresets(){
     var grid = $id('mkCharaPresetGrid'); if(!grid) return;
@@ -33419,22 +33499,28 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
     if(src && img.getAttribute('src') !== src) img.setAttribute('src', src);
     if(img.style.filter !== filter) img.style.filter = filter;
   }
+  function faceBoxSig(boxes){ 
+    if(!boxes || !boxes.length) return '-';
+    return boxes.map(function(b){ return (b || []).join(','); }).join(';');
+  }
   function applyFaceLayer(img){
     if(!img || !img.isConnected) return;
     var cat = img.dataset.cat, part = img.dataset.part || '';
     var base = img.dataset.src0 || img.getAttribute('src') || '';
     var tapi = window.__MK_TINT_V184__, api = window.__MK_CHARA_TILE_V169__;
-    var tf = tintFilterOf(getAdjFor(cat, part)); 
+    var ff = filterFor(cat, part);  
+    var boxes = ff ? ((api && typeof api.eyeBoxesFor === 'function') ? api.eyeBoxesFor(img.alt) : null) : null;
     var open = '', masked = false;
-    if(tf && tapi && typeof tapi.maskedTintDataUrl === 'function'){
+    if(ff && tapi && typeof tapi.maskedTintDataUrl === 'function'){
       var src0 = tapi.maskedTintReady(base);
-      if(src0){ open = tapi.maskedTintDataUrl(src0, tf) || ''; masked = !!open; }
+      if(src0){ open = tapi.maskedTintDataUrl(src0, ff, boxes) || ''; masked = !!open; }
       
       else tapi.maskedTintLoad(base).then(function(){ if(tapi.maskedTintReady(base)) applyFaceLayer(img); }, function(){});
     }
     if(!masked) open = base;
-    setFaceFrame(img, open, masked ? '' : filterFor(cat, part));
-    var sig = masked ? ('m|' + tf) : 'p';
+    setFaceFrame(img, open, masked ? '' : ff);
+    
+    var sig = masked ? ('m|' + ff + '|' + faceBoxSig(boxes)) : 'p';
     if(img.dataset.faceSig === sig) return;  
     img.dataset.faceSig = sig;
     if(!api || typeof api.blinkAttach !== 'function' || typeof api.closedFaceUrl !== 'function') return;
@@ -33447,7 +33533,7 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
       if(seq !== faceSeq || !img.isConnected) return;
       var pClosed = masked
         ? (typeof api.closedFaceCanvas === 'function'
-            ? api.closedFaceCanvas(img.alt).then(function(cv){ return tapi.maskedTintDataUrl(cv, tf) || ''; })
+            ? api.closedFaceCanvas(img.alt).then(function(cv){ return tapi.maskedTintDataUrl(cv, ff, boxes) || ''; }) 
             : Promise.resolve(''))        
         : api.closedFaceUrl(img.alt);
       pClosed.then(function(closed){
@@ -34751,6 +34837,7 @@ function charaOf(p){
   }
 
 var maniPromise = null;
+  var maniLast = null;    
   function ensureManifest(){
     if(maniPromise) return maniPromise;
     maniPromise = fetch(ASSET_DIR + '/manifest.json?t=' + Date.now(), { cache:'no-store' })
@@ -34798,10 +34885,12 @@ var maniPromise = null;
             if(files.hair[back]) hairBackOf[f] = back;
           });
         }
-        return { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack,
+        
+        maniLast = { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack,
                  gearBackdrop: gearBackdrop, 
                  gearCostumeOk: gearCostumeOk,
                  partTypes: partTypes, partSets: partSets, partSide: partSide }; 
+        return maniLast;
       })
       .catch(function(err){ maniPromise = null; throw err; });
     return maniPromise;
@@ -34837,6 +34926,11 @@ var EYE_BASE = 1024;
     var l = (e && Array.isArray(e.l) && e.l.length === 4) ? e.l : EYE_FALLBACK.l;
     var r = (e && Array.isArray(e.r) && e.r.length === 4) ? e.r : EYE_FALLBACK.r;
     return [l, r];
+  }
+  
+  function eyeBoxesForName(faceName){
+    if(!maniLast){ try{ ensureManifest().catch(function(){}); }catch(e){} }
+    return eyeBoxesFor(maniLast, faceName);
   }
   function closedFaceCanvas(mani, faceName){
     var hit = closedFaceCache.get(faceName);
@@ -35271,11 +35365,12 @@ var bakeCache = new Map();
     if(!tapi || typeof tapi.filterString !== 'function') return '';
     return tapi.filterString(a.t, a.s, a.b) || '';
   }
+  
   function tintFilterFor(hue, key){ return tintFilterOf(adjOf(hue, key)); }
-  function maskedTintOf(src, filterStr){ 
+  function maskedTintOf(src, filterStr, eyeBoxes){ 
     var tapi = window.__MK_TINT_V184__;
     if(!tapi || typeof tapi.maskedTintCanvas !== 'function') return null;
-    try{ return tapi.maskedTintCanvas(src, filterStr); }catch(e){ return null; }
+    try{ return tapi.maskedTintCanvas(src, filterStr, eyeBoxes); }catch(e){ return null; } 
   }
   function filterOf(hue, key){
     var a = adjOf(hue, key);
@@ -35370,7 +35465,7 @@ var bakeCache = new Map();
             var f = filterOf(hue, L.adjKey);
             var srcCv = (faceCv && L.cat === 'face') ? faceCv : L.img;
             
-            var mCv = (L.cat === 'face' && f) ? (tintFilterFor(hue, L.adjKey) ? maskedTintOf(srcCv, f) : null) : null;
+            var mCv = (L.cat === 'face' && f) ? maskedTintOf(srcCv, f, eyeBoxesFor(mani, L.name)) : null;
             
             var flipped = !!flip[L.adjKey] && partTypeOf(L.cat, L.name) === 'companion';
             if(flipped){ ctx.save(); ctx.translate(BAKE_SIZE, 0); ctx.scale(-1, 1); }
@@ -35662,6 +35757,7 @@ window.__MK_CHARA_TILE_V169__ = {
     
     closedFaceUrl: closedFaceUrl, 
     closedFaceCanvas: closedFaceCanvasFor, 
+    eyeBoxesFor: eyeBoxesForName, 
     blinkAttach: blinkAttach,     
     blinkDetach: blinkDetach,     
     blinkDebug: blinkDebug,       
