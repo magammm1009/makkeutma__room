@@ -23680,7 +23680,7 @@ try{
            휴식중 ☕ / 자리비움 🌙. 가는 구분선으로 라벨과 나누고, 표시할 게 없으면(오프라인) 자리도 안 차지한다. */
         .tile .handcamBox .hcStatus{ flex:0 0 auto; display:inline-flex; align-items:center; min-height:12px; font-size:12px; line-height:1; margin-left:1px; padding-left:6px; border-left:1px solid rgba(255,255,255,.55); }
         .tile .handcamBox .hcStatus.hcNone{ display:none; }
-        .tile .handcamBox .hcStatus.hcRec::before{ content:""; display:block; width:8px; height:8px; border-radius:999px; background:rgb(255,60,60); border:2px solid #fff; box-sizing:content-box; }
+        .tile .handcamBox .hcStatus.hcRec::before{ content:""; display:block; width:9px; height:9px; border-radius:999px; background:#e8141c; border:2px solid #fff; box-sizing:content-box; } /* 핫핑크 배경이라 타일 REC(255,60,60)보다 한 단계 진한 빨강 + 흰 테두리로 대비 확보 */
         .tile .handcamBox .hcTag::before{ content:""; width:6px; height:6px; border-radius:50%;
           background:#fff; animation:hcBlink 1.2s ease-in-out infinite; }
         @keyframes hcBlink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
