@@ -82,6 +82,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -5913,6 +5914,12 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
     .worldTreePodiumWrap{grid-template-columns:1fr;}
   }
   @media (prefers-reduced-motion:reduce){.worldTreeGauge > i{transition:none;}.worldTreePodium li,.worldTreeRosterList li{transition:none;}.worldTreeSparkles i,.worldTreeButterfly,.worldTreeButterfly::before,.worldTreeButterfly::after,.worldTreeCompletionAura{animation:none!important;}}
+  
+  .worldTreeScene[data-blessing="1"] .worldTreeCompletionAura{opacity:.95;--wt-glow:rgba(255,214,102,.78);animation:worldTreeAuraPulse 2.6s ease-in-out infinite;}
+  .worldTreeScene[data-blessing="1"] #worldTreeFinalRibbon{display:none;}
+  
+  #worldTreeBlessRibbon{border-color:#ffd666;color:#ffe9a8;display:none;}
+  .worldTreeScene[data-blessing="1"] #worldTreeBlessRibbon{display:block;}
 </style>
 
 <style id="homeworkModalStyle">
@@ -6603,6 +6610,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="worldTreeLevelOrb"><b id="worldTreeLevel">Lv.0</b><span id="worldTreeLevelMax">MAX 777</span></div>
 <div class="worldTreeFinalRibbon" id="worldTreeFinalRibbon">세계수가 완성되었습니다</div>
 
+<div class="worldTreeFinalRibbon" id="worldTreeBlessRibbon"></div>
+
 <button class="worldTreeDewOrb" id="worldTreeDewOrb" type="button" style="display:none" aria-label="신비로운 물방울 클릭">💧</button>
 <div class="worldTreeDewCount" id="worldTreeDewCount" style="display:none" aria-live="polite">함께 모은 클릭 0 / 5000</div>
 </section>
@@ -6845,6 +6854,21 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="worldTreeGuerrillaCancel" type="button">예약 취소</button>
 </div>
 <div id="worldTreeGuerrillaStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 레이스가 없어요.</div>
+
+<div class="hr"></div>
+<div class="hint">🌟 세계수의 축복 (만렙 이벤트 · 코인 ×3)</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">세계수가 최대 레벨에 도달한 뒤 예약할 수 있어요. 시작 시각부터 지속 시간 동안 <b>작업중 코인 적립이 3배</b>(5초에 3코인)가 되고, 끝나면 세계수는 축복을 남기고 사라져요(대시보드 카드·☰ 메뉴에서 숨겨지고 기여·물방울도 멈춰요). 예약이 접속자 화면에 퍼지는 데 최대 2분이 걸리니 최소 3분 뒤 시각으로 정해 주세요. [예약 취소]를 누르면 언제든(끝난 뒤에도) 세계수가 다시 나타나요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="worldTreeBlessAt" style="min-width:110px;">시작 시각</label>
+<input id="worldTreeBlessAt" type="datetime-local" style="flex:1 1 180px;"/>
+<label for="worldTreeBlessHours" style="min-width:110px;">지속 시간(시간)</label>
+<input id="worldTreeBlessHours" type="number" min="1" max="168" step="1" value="24" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="worldTreeBlessSet" type="button">축복 예약</button>
+<button class="ghost" id="worldTreeBlessCancel" type="button">예약 취소</button>
+</div>
+<div id="worldTreeBlessStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 축복이 없어요.</div>
 
 <div class="hr"></div>
 <div class="hint">🔄 전원 새로고침 요청</div>
@@ -17130,6 +17154,8 @@ timerHidden:p.timerHidden,
       t.dataset.uid = String(p?.id || "");
       t.dataset.name = normalizeNick(p?.name || p?.id || "");
       
+      t.dataset.status = isOnlinePresence(p) ? String(p?.status || "") : "off";
+      
       t.addEventListener("contextmenu", (ev)=>{
         
         const isMine = tileIsMine;
@@ -23644,11 +23670,17 @@ try{
         }
         .tile.hcLiveTile .handcamBox video{ width:100%; height:100%; object-fit:cover; display:block; }
         .tile.hcLiveTile .handcamBox .hcTag{ z-index:2; }
-        .tile .handcamBox .hcTag{ position:absolute; left:6px; top:6px; max-width:calc(100% - 12px); font-size:11px; font-weight:800;
+        .tile .handcamBox .hcTag{ box-sizing:border-box; /* V238_HCSTATUS: 패딩(9px×2)이 max-width 밖에 있어 긴 닉네임이면 태그가 타일 밖으로 6~12px 삐져나가 오른쪽 끝(상태 표시)이 잘렸다 */
+          position:absolute; left:6px; top:6px; max-width:calc(100% - 12px); font-size:11px; font-weight:800;
           color:#fff; background:rgba(var(--pinkHotrgb),.92); padding:3px 9px; border-radius:999px; letter-spacing:.25px;
           display:flex; align-items:center; gap:5px; box-shadow:0 4px 12px rgba(0,0,0,.24); }
         .tile .handcamBox .hcName{ min-width:0; max-width:12em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .tile .handcamBox .hcLabel{ flex:0 0 auto; white-space:nowrap; }
+        /* V238_HCSTATUS: LIVE 라벨 오른쪽 작업 상태 표시 — 작업중은 빨간 점(타일 REC 배지와 동일, V91 정책대로 애니메이션 없음),
+           휴식중 ☕ / 자리비움 🌙. 가는 구분선으로 라벨과 나누고, 표시할 게 없으면(오프라인) 자리도 안 차지한다. */
+        .tile .handcamBox .hcStatus{ flex:0 0 auto; display:inline-flex; align-items:center; min-height:12px; font-size:12px; line-height:1; margin-left:1px; padding-left:6px; border-left:1px solid rgba(255,255,255,.55); }
+        .tile .handcamBox .hcStatus.hcNone{ display:none; }
+        .tile .handcamBox .hcStatus.hcRec::before{ content:""; display:block; width:8px; height:8px; border-radius:999px; background:rgb(255,60,60); border:2px solid #fff; box-sizing:content-box; }
         .tile .handcamBox .hcTag::before{ content:""; width:6px; height:6px; border-radius:50%;
           background:#fff; animation:hcBlink 1.2s ease-in-out infinite; }
         @keyframes hcBlink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
@@ -23731,6 +23763,23 @@ function screenShareUnlocked_(){ return true; }
 
 function hcLiveLabel_(liveInfo){
       return (String((liveInfo && liveInfo.kind) || "") === "screen") ? "화공 LIVE" : "손캠 LIVE";
+    }
+    
+    function hcStatusIconOf_(tile){
+      const st = String((tile && tile.dataset && tile.dataset.status) || "");
+      if(!st || st === "off") return ["", "", false];
+      if(st === "work") return ["", "작업중", true];   
+      if(st === "break") return ["☕", "휴식중", false];
+      return ["🌙", "자리비움", false];   
+    }
+    function hcApplyStatusIcon_(el, tile){
+      try{
+        const [icon, title, rec] = hcStatusIconOf_(tile);
+        if(el.textContent !== icon) el.textContent = icon;
+        if(el.title !== title) el.title = title;
+        el.classList.toggle("hcRec", !!rec);
+        el.classList.toggle("hcNone", !icon && !rec);
+      }catch(e){}
     }
     
     function hcLiveInfoFor_(uid, isMine){
@@ -24825,8 +24874,12 @@ if(isRemoteLive && !canReceive){
               const labelEl = document.createElement("span");
               labelEl.className = "hcLabel";
               labelEl.textContent = hcLiveLabel_(liveInfo);   
+              const statusEl = document.createElement("span");
+              statusEl.className = "hcStatus";
+              hcApplyStatusIcon_(statusEl, tile);              
               tag.appendChild(nameEl);
               tag.appendChild(labelEl);
+              tag.appendChild(statusEl);
               box.appendChild(vd);
               box.appendChild(tag);
 
@@ -24849,6 +24902,10 @@ if(isRemoteLive && !canReceive){
                 const nextLabel = hcLiveLabel_(liveInfo);
                 if(labelEl2.textContent !== nextLabel) labelEl2.textContent = nextLabel;
               }
+              
+              let statusEl2 = tag && tag.querySelector(".hcStatus");
+              if(tag && !statusEl2){ statusEl2 = document.createElement("span"); statusEl2.className = "hcStatus"; tag.appendChild(statusEl2); }
+              if(statusEl2) hcApplyStatusIcon_(statusEl2, tile);
             }
 
             const vd = box.querySelector("video");
@@ -25685,13 +25742,16 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17119; 
+const MK_APP_BUILD = 17120; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
 const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
   const WORLD_TREE_DEW_SEEN_KEY = "mk_wt_dew_seen_v1";
+  
+  const WORLD_TREE_BLESS_MULT = 3;          
+  const WORLD_TREE_BLESS_MAX_HOURS = 168;   
 
   const worldTreeS2Runtime = {
     snapshot:null,
@@ -25719,6 +25779,9 @@ const MK_PAGE_LOADED_AT = Date.now();
     dewCueHour:"",           
     guerrillaCueId:"",       
     guerrillaStartId:"",     
+    blessCueId:"",           
+    blessStartId:"",         
+    blessEndId:"",           
     dewOrbTimer:null,        
     dewOrbRestUntil:0,       
     dewPtMarked:"",          
@@ -25897,9 +25960,58 @@ const MK_PAGE_LOADED_AT = Date.now();
       config:cfg
     });
   }
+
+function worldTreeBlessingInfo_(){
+    const now=mkGraceNowMs_();
+    const rec=worldTreeS2Runtime.summary?.blessing;
+    const atMs=Number(rec?.atMs)||0, endMs=Number(rec?.endMs)||0;
+    if(!rec || typeof rec!=="object" || !(atMs>0) || !(endMs>0)) return {rec:null,phase:"none",atMs:0,endMs:0,mult:1,now};
+    const mult=Math.max(1,Math.min(10,Math.round(Number(rec.mult)||WORLD_TREE_BLESS_MULT)));
+    const phase=(now<atMs)?"scheduled":((now<endMs)?"active":"ended");
+    return {rec,phase,atMs,endMs,mult,now};
+  }
+  
+  function worldTreeCoinMult_(){
+    try{ const info=worldTreeBlessingInfo_(); return info.phase==="active"?info.mult:1; }catch(e){ return 1; }
+  }
+  
+  function worldTreeRetired_(){
+    try{ return worldTreeBlessingInfo_().phase==="ended"; }catch(e){ return false; }
+  }
+  
+  function worldTreeBlessTimeText_(ms){
+    try{
+      const d=new Date(Number(ms)||0);
+      const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+      const today=new Date(mkGraceNowMs_());
+      const sameDay=d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+      return sameDay?`${hh}:${mm}`:`${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+    }catch(e){ return ""; }
+  }
+  
+  function applyWorldTreeBlessingUi_(){
+    try{
+      const info=worldTreeBlessingInfo_();
+      const scene=document.getElementById("worldTreeScene");
+      if(scene){
+        if(info.phase==="active") scene.dataset.blessing="1";
+        else delete scene.dataset.blessing;
+      }
+      const ribbon=document.getElementById("worldTreeBlessRibbon");
+      if(ribbon){
+        const next=(info.phase==="active")?`🌟 세계수의 축복 · 코인 ×${info.mult} · ${worldTreeBlessTimeText_(info.endMs)}까지`:"";
+        if(ribbon.textContent!==next) ribbon.textContent=next;
+      }
+      const menuBtn=document.getElementById("vmViewWorldTree");
+      if(menuBtn) menuBtn.style.display=(info.phase==="ended")?"none":"";
+      
+      if(info.phase==="ended" && !state.adminOk && document.getElementById("worldTreeModal")?.classList.contains("show")) closeWorldTreeS2_();
+    }catch(e){}
+  }
   
   function worldTreeDewBadgeOn_(){
     try{
+      if(worldTreeRetired_()) return false; 
       const item=worldTreeS2Runtime.summary?.item;
       if(!item || typeof item!=="object") return false;
       if(item.mode==="click") return true;
@@ -25932,7 +26044,11 @@ function worldTreeDashInfo_(){
         alignment,myTeam,finished,teamName,
         treeName:content.treeName,
         dewBadge:worldTreeDewBadgeOn_(),
-        dewKind
+        dewKind,
+        
+        retired:worldTreeRetired_(),
+        blessing:worldTreeBlessingInfo_().phase,
+        coinMult:worldTreeCoinMult_()
       };
     }catch(e){ return null; }
   }
@@ -26119,6 +26235,8 @@ if(raw && typeof raw==="object") worldTreeS2Runtime.snapshot=normalizeWorldTreeS
     Object.entries(adminValues).forEach(([id,value])=>{ const input=document.getElementById(id); if(input&&document.activeElement!==input) input.value=value; });
     setText("worldTreeAdminStatus",`${content.treeName} · 현재 Lv.${tree.level.toLocaleString("ko-KR")} / ${max.toLocaleString("ko-KR")} · 팀별 ${capacity.angel}/${capacity.demon}명 · 레벨당 ${tree.config.hoursPerLevel}시간`);
     renderWorldTreeGuerrillaStatus_(); 
+    renderWorldTreeBlessStatus_();     
+    applyWorldTreeBlessingUi_();       
     renderWorldTreeRanking_(tree);
     renderWorldTreeRoster_(tree);
     
@@ -26329,6 +26447,8 @@ try{
   }
   function openWorldTreeS2_(){
     if(!state.joined){ showToast("작업방 입장 후 세계수를 만날 수 있어요 🌳"); return; }
+    
+    if(worldTreeRetired_() && !state.adminOk){ showToast("세계수는 축복을 남기고 떠났어요 🌳✨",3000); return; }
     const modal=document.getElementById("worldTreeModal");
     if(!modal) return;
     try{ closeViewMenu(); }catch(e){}
@@ -26600,6 +26720,7 @@ async function ensureWorldTreeCore_(tree){
 
 async function ensureWorldTreeSched_(){
     if(!state.roomId || !state.joined) return;
+    if(worldTreeRetired_()) return; 
     const res=await rRunTransaction(rWorldTreeItemsRef(state.roomId,"sched"),(raw)=>{
       if(raw && typeof raw==="object" && Number(raw.nextSpawnAtMs)>0) return; 
       const cur=(raw && typeof raw==="object")?Object.assign({},raw):{seq:0};
@@ -26667,6 +26788,8 @@ try{ window.__MK_ROOM_BUILD__ = remoteBuild; }catch(_e){}
         }
         
         try{ worldTreeHandleReloadReq_(); }catch(e){}
+        
+        try{ applyWorldTreeBlessingUi_(); renderWorldTreeBlessStatus_(); }catch(e){}
       }else{
         
         await loadWorldTreeS2Once_(false);
@@ -26782,6 +26905,7 @@ function worldTreeDewSpawnDelay_(){
 
 async function maybeRollWorldTreeDew50_(){
     if(!state.joined || !state.uid || !state.roomId) return;
+    if(worldTreeRetired_()) return; 
     const summary=worldTreeS2Runtime.summary;
     if(!summary) return;
     if(summary.item && summary.item.mode==="click") return; 
@@ -26838,6 +26962,7 @@ if(Math.random()<WORLD_TREE_DEW_FLASH_CHANCE){
   
   function worldTreeDewCueTick_(){
     if(!state.joined || !worldTreeS2Runtime.summary) return;
+    if(worldTreeRetired_()) return; 
     const now=Date.now();
     if(new Date(now).getMinutes()!==59) return;
     const hourKey=worldTreeDewHourKey_(now-(now%3600000)+3600000);
@@ -26955,6 +27080,92 @@ function worldTreeGuerrillaTick_(){
     }catch(e){ showToast("취소에 실패했어요 · 연결을 확인해 주세요",3000); }
   }
 
+function worldTreeBlessingTick_(){
+    if(!state.joined) return;
+    try{
+      const info=worldTreeBlessingInfo_();
+      const id=String(info.rec?.id||"");
+      if(id){
+        if(info.phase==="scheduled" && info.atMs-info.now<=70000 && worldTreeS2Runtime.blessCueId!==id){
+          worldTreeS2Runtime.blessCueId=id;
+          showDewGlowToast_("1분 뒤, 세계수의 축복이 시작돼요! 🌟 작업중이면 코인이 3배로 쌓여요",5000,true);
+        }
+        
+        if(info.phase==="active" && info.now-info.atMs<5*60*1000 && worldTreeS2Runtime.blessStartId!==id){
+          worldTreeS2Runtime.blessStartId=id;
+          showDewGlowToast_(`🌟 세계수의 축복이 시작됐어요! ${worldTreeBlessTimeText_(info.endMs)}까지 작업 코인 3배 (5초에 3코인)`,6000,true);
+        }
+        if(info.phase==="ended" && info.now-info.endMs<5*60*1000 && worldTreeS2Runtime.blessEndId!==id){
+          worldTreeS2Runtime.blessEndId=id;
+          showDewGlowToast_("세계수가 축복을 남기고 빛이 되어 떠났어요… 🌳✨ 코인 3배가 끝났어요",6000,false);
+        }
+      }
+    }catch(e){}
+    try{ applyWorldTreeBlessingUi_(); }catch(e){}
+  }
+  
+  async function setWorldTreeBlessing_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.joined || !state.roomId){ showToast("작업방 입장 후 예약할 수 있어요"); return; }
+    const atVal=String(document.getElementById("worldTreeBlessAt")?.value||"").trim();
+    if(!atVal){ showToast("시작 시각을 선택해 주세요"); return; }
+    const atMs=new Date(atVal).getTime();
+    if(!Number.isFinite(atMs)){ showToast("시작 시각을 선택해 주세요"); return; }
+    const hours=Math.round(Number(document.getElementById("worldTreeBlessHours")?.value)||0);
+    if(!(hours>=1) || hours>WORLD_TREE_BLESS_MAX_HOURS){ showToast(`지속 시간은 1~${WORLD_TREE_BLESS_MAX_HOURS}시간 사이로 정해 주세요`,3200); return; }
+    if(atMs-mkGraceNowMs_()<3*60*1000){ showToast("예고가 모두에게 퍼지도록 최소 3분 뒤 시각으로 정해 주세요",3400); return; }
+    
+    const t=worldTreeMergedForRender_();
+    if(t.level<t.config.maxLevel){ showToast(`세계수가 최대 레벨에 도달한 뒤에 예약할 수 있어요 (지금 Lv.${t.level} / MAX ${t.config.maxLevel})`,3600); return; }
+    const rec={
+      id:`bls-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      atMs, endMs:atMs+hours*3600000, hours,
+      mult:WORLD_TREE_BLESS_MULT, by:String(state.uid||""), createdAtMs:Date.now()
+    };
+    const btn=document.getElementById("worldTreeBlessSet");
+    if(btn) btn.disabled=true;
+    try{
+      
+      await rUpdate(rWorldTreeSummaryRef(state.roomId),{blessing:rec});
+      worldTreeS2Runtime.summary=Object.assign({},worldTreeS2Runtime.summary||{},{blessing:rec});
+      worldTreeS2Runtime.blessCueId=""; worldTreeS2Runtime.blessStartId=""; worldTreeS2Runtime.blessEndId="";
+      renderWorldTreeBlessStatus_();
+      applyWorldTreeBlessingUi_();
+      showToast(`축복 예약 완료! ${worldTreeBlessTimeText_(atMs)} 시작 · ${hours}시간 · 1분 전에 예고가 나가요 🌟`,3400);
+    }catch(e){ showToast("예약에 실패했어요 · 연결을 확인해 주세요",3000); }
+    finally{ if(btn) btn.disabled=false; }
+  }
+  async function cancelWorldTreeBlessing_(){
+    if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+    if(!state.joined || !state.roomId){ showToast("작업방 입장 후 취소할 수 있어요"); return; }
+    try{
+      await rUpdate(rWorldTreeSummaryRef(state.roomId),{blessing:null});
+      if(worldTreeS2Runtime.summary) delete worldTreeS2Runtime.summary.blessing;
+      worldTreeS2Runtime.blessCueId=""; worldTreeS2Runtime.blessStartId=""; worldTreeS2Runtime.blessEndId="";
+      renderWorldTreeBlessStatus_();
+      applyWorldTreeBlessingUi_();
+      showToast("세계수의 축복 예약을 취소했어요 (세계수가 다시 나타나요)",3000);
+    }catch(e){ showToast("취소에 실패했어요 · 연결을 확인해 주세요",3000); }
+  }
+  function renderWorldTreeBlessStatus_(){
+    const el=document.getElementById("worldTreeBlessStatus");
+    if(!el) return;
+    const info=worldTreeBlessingInfo_();
+    if(info.phase==="none"){ el.textContent="예약된 축복이 없어요. 세계수가 MAX 레벨에 도달하면 시작 시각과 지속 시간을 정해 예약해 보세요."; return; }
+    const startText=worldTreeBlessTimeText_(info.atMs), endText=worldTreeBlessTimeText_(info.endMs);
+    const hours=Math.max(1,Math.round(Number(info.rec.hours)||((info.endMs-info.atMs)/3600000)));
+    if(info.phase==="scheduled"){
+      el.textContent=`${startText} 시작 예약됨 · ${hours}시간 동안 코인 ×${info.mult} · ${endText} 종료 · 시작 1분 전 예고 발송`;
+      return;
+    }
+    if(info.phase==="active"){
+      const leftMin=Math.max(0,Math.floor((info.endMs-info.now)/60000));
+      el.textContent=`🌟 진행 중 · ${endText} 종료(남은 ${Math.floor(leftMin/60)}시간 ${leftMin%60}분) · 코인 ×${info.mult}`;
+      return;
+    }
+    el.textContent=`축복 종료(${endText}) · 세계수는 떠났어요(대시보드·메뉴에서 숨김). 되돌리려면 [예약 취소].`;
+  }
+
 function worldTreeHandleReloadReq_(){
     try{
       const rr=worldTreeS2Runtime.summary?.reloadReq;
@@ -27050,6 +27261,7 @@ function ghostSweepStatusLabel_(s){
 
 async function maybeSpawnWorldTreeDew_(){
     if(!state.joined || !state.uid || !state.roomId) return;
+    if(worldTreeRetired_()) return; 
     const summary=worldTreeS2Runtime.summary;
     if(!summary) return;
     maybeRollWorldTreeDew50_().catch(()=>{});
@@ -27449,6 +27661,7 @@ const casRes=await rRunTransaction(rWorldTreeItemsRef(state.roomId,`bags/${uid}/
   }
   async function syncWorldTreeContribution_(reason="timer"){
     if(worldTreeS2Runtime.syncLock || !state.joined || !state.uid || !state.roomId) return;
+    if(worldTreeRetired_()) return; 
     const uid=String(state.uid);
     const team=worldTreeS2Runtime.snapshot?.members?.[uid]?.team||"";
     if(team!=="angel" && team!=="demon") return;
@@ -27632,6 +27845,9 @@ let anchor=null;
     document.getElementById("worldTreeGuerrillaSet")?.addEventListener("click",()=>setWorldTreeGuerrilla_());
     document.getElementById("worldTreeGuerrillaCancel")?.addEventListener("click",()=>cancelWorldTreeGuerrilla_());
     
+    document.getElementById("worldTreeBlessSet")?.addEventListener("click",()=>setWorldTreeBlessing_());
+    document.getElementById("worldTreeBlessCancel")?.addEventListener("click",()=>cancelWorldTreeBlessing_());
+    
     document.getElementById("worldTreeReloadAll")?.addEventListener("click",()=>requestWorldTreeReloadAll_());
     
     document.getElementById("ghostSweepScan")?.addEventListener("click",()=>ghostSweepScan_());
@@ -27657,7 +27873,7 @@ let anchor=null;
 
 setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SAFETY_SYNC_MS);
     
-    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} try{ worldTreeGuerrillaTick_(); }catch(e){} try{ worldTreeHandleReloadReq_(); }catch(e){} },20000);
+    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} try{ worldTreeGuerrillaTick_(); }catch(e){} try{ worldTreeHandleReloadReq_(); }catch(e){} try{ worldTreeBlessingTick_(); }catch(e){} },20000);
     renderWorldTreeS2_({});
     window.__MK_WORLD_TREE_S2__={
       open:openWorldTreeS2_,close:closeWorldTreeS2_,sync:()=>syncWorldTreeContribution_("force"),
@@ -27665,7 +27881,11 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       
       getDashInfo:worldTreeDashInfo_,
       
-      refresh:()=>loadWorldTreeSummaryOnce_()
+      refresh:()=>loadWorldTreeSummaryOnce_(),
+      
+      coinMult:worldTreeCoinMult_,
+      blessing:worldTreeBlessingInfo_,
+      isRetired:worldTreeRetired_
     };
   }catch(e){ console.warn("[world tree s2] init failed",e); }
 
@@ -28778,6 +28998,16 @@ const joined = !!(window.__mk_state && window.__mk_state.joined);
         if(box.dataset.dashMode === 'tree') paintWorldTreeDash(fresh);
       }catch(e){} }).catch(()=>{});
     }
+
+const retired = !!(info && info.retired);
+    const tg = document.getElementById('petDashToggle');
+    if(tg) tg.style.display = retired ? 'none' : '';
+    if(retired){
+      try{ paintWorldTreeDewBadge(null); }catch(e){}
+      
+      if(box.dataset.dashMode === 'tree') setDashCardMode('pet');
+      return;
+    }
     paintWorldTreeDewBadge(joined ? info : null);
     if(box.dataset.dashMode === 'tree') paintWorldTreeDash(joined ? info : (info && info.ready ? info : null));
   }
@@ -28812,7 +29042,8 @@ const joined = !!(window.__mk_state && window.__mk_state.joined);
     }
     if(art.dataset.align !== info.alignment) art.dataset.align = info.alignment;
     if(art.dataset.stage !== String(info.stageIndex)) art.dataset.stage = String(info.stageIndex);
-    const nextLv = `Lv.${Number(info.level).toLocaleString('ko-KR')}`;
+    
+    const nextLv = `Lv.${Number(info.level).toLocaleString('ko-KR')}${info.blessing === 'active' ? ' 🌟' : ''}`;
     if(lv.textContent !== nextLv) lv.textContent = nextLv;
     
     if(inner){
@@ -33810,6 +34041,10 @@ var COIN = '<span class="mkCoinIcon"></span>';
     var s = readStats();
 
 var html = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' ' + s.coins.toLocaleString('ko-KR');
+    
+    var coinMult = 1;
+    try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
+    if(coinMult > 1) html += ' · 🌟×' + coinMult + ' 축복 중';
     if(el.__mkWalletHtml !== html){ el.__mkWalletHtml = html; el.innerHTML = html; }
     if(!el.__mkWalletTitle){ el.__mkWalletTitle = 1; el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; } 
   }
@@ -33869,10 +34104,13 @@ var COIN_SEC_PER_COIN = 5;
 var s = readStats();
     s.totalSec += delta;
     var carry = Math.max(0, Math.floor(Number(s.coinCarrySec) || 0)) + delta;
-    s.coins += Math.floor(carry / COIN_SEC_PER_COIN);
+
+var coinMult = 1;
+    try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
+    s.coins += Math.floor(carry / COIN_SEC_PER_COIN) * coinMult;
     s.coinCarrySec = carry % COIN_SEC_PER_COIN;
     writeStats(s);
-    out.walletTotalSec = s.totalSec; out.coins = s.coins;
+    out.walletTotalSec = s.totalSec; out.coins = s.coins; out.coinMult = coinMult;
 
 if(api){
       var picks = getPicks();
