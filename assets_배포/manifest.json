@@ -1,5 +1,7 @@
 {
-  "_version": "20260906061010",
+  "_version": "20260906164746",
+  "_webp": true,
+  "_webpQuality": 92,
   "01_body": [
     "01_body_auto_01.png",
     "01_body_auto_02.png",

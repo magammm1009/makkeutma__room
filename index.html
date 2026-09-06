@@ -90,6 +90,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -26065,7 +26066,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17126; 
+const MK_APP_BUILD = 17127; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32663,6 +32664,54 @@ var MASK_CACHE_MAX = 16;
   var ASSET_DIR = 'assets_배포';
   var LS_KEY = 'mk_chara_state';
   
+  window.__mkWebpOk__ = function(){
+    if(window.__MK_FORCE_PNG__ === true) return false;       
+    if(typeof window.__MK_WEBP_OK__ === 'boolean') return window.__MK_WEBP_OK__;
+    var ok = false;
+    try{
+      var cv = document.createElement('canvas'); cv.width = 1; cv.height = 1;
+      ok = cv.toDataURL('image/webp').indexOf('data:image/webp') === 0; 
+    }catch(e){ ok = false; }
+    window.__MK_WEBP_OK__ = ok;
+    return ok;
+  };
+  window.mkPartUrlFile_ = function(name, webpOn){
+    var s = String(name == null ? '' : name);
+    return (webpOn && /\.png$/i.test(s)) ? s.slice(0, -4) + '.webp' : s;
+  };
+  window.__mkWebpDown__ = function(){
+    if(window.__MK_WEBP_OK__ === false) return;              
+    window.__MK_WEBP_OK__ = false;
+    try{ console.warn('[V246_WEBP] .webp를 받지 못했습니다 → 이번 세션은 PNG로 갑니다'); }catch(e){}
+    
+    try{
+      var n = 0;
+      var fix = function(p){
+        if(p && typeof p.url === 'string' && /\.webp(\?|$)/i.test(p.url)){
+          p.url = p.url.replace(/\.webp(\?|$)/i, '.png$1'); n++;
+        }
+      };
+      ((chara && chara.cats) || []).forEach(function(c){
+        (c.parts || []).forEach(fix);
+        if(c.backParts && typeof c.backParts.forEach === 'function') c.backParts.forEach(fix); 
+      });
+      if(n && chara.phase === 'ready') renderChara();
+    }catch(e){}
+  };
+  
+  var PART_URL_RE = /\/\d\d_[a-z_]+\/[^\/?]*\.webp(\?|$)/i;
+  if(!window.__MK_WEBP_ERRHOOK__){
+    window.__MK_WEBP_ERRHOOK__ = 1;
+    document.addEventListener('error', function(ev){
+      var t = ev && ev.target;
+      if(!t || t.tagName !== 'IMG') return;
+      var s = t.src || '';
+      if(!PART_URL_RE.test(s)) return;
+      t.src = s.replace(/\.webp(\?|$)/i, '.png$1');
+      if(window.__mkWebpDown__) window.__mkWebpDown__();
+    }, true);
+  }
+  
   var KNOWN_LABELS = { body:'몸통', hair:'헤어', face:'얼굴', look:'룩', acc:'액세서리', facedeco:'얼굴 꾸미기', background:'배경', hair_back:'뒷머리', gear:'장비'  };
   
   var COLOR_CAT_EN = { body:'BODY', hair:'HAIR', face:'FACE', look:'LOOK', acc:'ACC', facedeco:'DECO', background:'BG', hair_back:'BACK', gear:'GEAR' };
@@ -32689,6 +32738,7 @@ var MASK_CACHE_MAX = 16;
   var chara = {
     phase:'idle',   
     ver:'',         
+    webp:false,     
     cats:[],        
     sel:{},         
     adj:{},         
@@ -33441,6 +33491,7 @@ var b = rectBoxFor(catKey, name);
     var size = (RECT_BASE / b.box * 100).toFixed(3);
     return 'width:' + size + '%;height:' + size + '%;left:' + (-b.bx / b.box * 100).toFixed(3) + '%;top:' + (-b.by / b.box * 100).toFixed(3) + '%;';
   }
+  
   function thumbImgHtml(catKey, name, url, extraStyle){ 
     var st = rectStyleFor(catKey, name);
     var style = st + (extraStyle || '');
@@ -33693,6 +33744,8 @@ function loadManifest(){
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
       .then(function(mf){
         var ver = (mf && mf._version!=null && typeof mf._version!=='object') ? String(mf._version) : '';
+        
+        var webpOn = !!(mf && mf._webp) && window.__mkWebpOk__();
         chara.prices = (mf && mf._prices && typeof mf._prices==='object') ? mf._prices : {}; 
         chara.rects = (mf && mf._rects && typeof mf._rects==='object') ? mf._rects : {}; 
         chara.special = (mf && mf._special && typeof mf._special==='object') ? mf._special : {}; 
@@ -33719,7 +33772,8 @@ function loadManifest(){
               else if(ma || mb) return ma ? -1 : 1;
               return a<b?-1:a>b?1:0;
             })
-            .map(function(f){ return { name:f, url: ASSET_DIR+'/'+encodeURIComponent(key)+'/'+encodeURIComponent(f)+(ver?('?v='+encodeURIComponent(ver)):'') }; });
+            
+            .map(function(f){ return { name:f, url: ASSET_DIR+'/'+encodeURIComponent(key)+'/'+encodeURIComponent(window.mkPartUrlFile_(f, webpOn))+(ver?('?v='+encodeURIComponent(ver)):'') }; });
           if(!parts.length) return;
           cats.push({ key:key, order:parseInt(key,10)||0, label:labelFor(key), parts:parts });
         });
@@ -33727,7 +33781,7 @@ function loadManifest(){
         if(!cats.length) throw new Error('manifest에 파츠 카테고리가 없음');
         cats.forEach(splitBackParts);
 
-        chara.cats=cats; chara.ver=ver; chara.sel={}; chara.adj={}; chara.flip={}; 
+        chara.cats=cats; chara.ver=ver; chara.webp=webpOn; chara.sel={}; chara.adj={}; chara.flip={}; 
         cats.forEach(function(c){ chara.sel[c.key] = isMultiCat(c.key) ? [] : null; }); 
 
 applySavedToSel();
@@ -35395,7 +35449,9 @@ var maniPromise = null;
           });
         }
         
-        maniLast = { ver: ver, folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack,
+        maniLast = { ver: ver,
+                 webp: !!(mf && mf._webp), 
+                 folders: folders, files: files, hairBackOf: hairBackOf, eyes: eyes, gearBack: gearBack,
                  gearBackdrop: gearBackdrop, 
                  gearCostumeOk: gearCostumeOk,
                  partTypes: partTypes, partSets: partSets, partSide: partSide }; 
@@ -35406,7 +35462,9 @@ var maniPromise = null;
   }
   function urlFor(mani, shortCat, name){
     var folder = mani.folders[shortCat];
-    return ASSET_DIR + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(name)
+    
+    var file = window.mkPartUrlFile_ ? window.mkPartUrlFile_(name, !!mani.webp && window.__mkWebpOk__()) : name;
+    return ASSET_DIR + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(file)
       + (mani.ver ? ('?v=' + encodeURIComponent(mani.ver)) : '');
   }
   
@@ -35435,7 +35493,17 @@ var maniPromise = null;
       var img = new Image();
       img.decoding = 'async';
       img.onload = function(){ res(img); };
-      img.onerror = function(){ rej(new Error('img load fail: ' + url)); };
+      
+      var webpRetried = false;
+      img.onerror = function(){
+        if(!webpRetried && /\.webp(\?|$)/i.test(img.src)){
+          webpRetried = true;
+          img.src = img.src.replace(/\.webp(\?|$)/i, '.png$1');
+          if(window.__mkWebpDown__) window.__mkWebpDown__();
+          return;
+        }
+        rej(new Error('img load fail: ' + url));
+      };
       img.src = url;
     });
     pr.catch(function(){ imgCache.delete(url); });
