@@ -89,6 +89,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -1893,6 +1894,13 @@
       position:relative;
     }
     .idPhoto img{width:100%; height:100%; object-fit:cover; display:block;}
+    
+    .avatar.slotPhotoIn img{width:100%; height:100%; object-fit:cover; display:block;}
+    
+    .avatar.slotPhotoIn{font-size:12px; font-weight:1100; color: rgba(255,255,255,.78);}
+    
+    .idPhoto.slotEmojiIn{font-size: calc(var(--photoSize, 108px) * 0.55); line-height:1; display:flex; align-items:center; justify-content:center; border:none;}
+    .avatar.slotOff, .idPhoto.slotOff{visibility:hidden; pointer-events:none;}
     .idPhoto.petSlotOn{
       background: var(--petSlotBg, rgba(0,0,0,.24));
       border: 1px solid rgba(255,255,255,.14);
@@ -6001,6 +6009,12 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
     #attendOverlay .atCard{ width:100%; height:100%; max-width:none; border-radius:0; border:none; }
   }
 </style>
+
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&amp;family=Jua&amp;display=swap" rel="stylesheet">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&amp;display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="topbar">
@@ -6293,114 +6307,34 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="closeProfile">닫기</button>
 </div>
 <div class="modalBody">
-<div class="row">
-<label>🎇이모지</label>
-<input id="emoji" maxlength="4" placeholder="예: 😍, ✍️, 💓, 💝, 💗," style="width:120px"/>
-<span class="tiny">프로필 타일에 표시돼요.</span>
-</div>
-<div class="row">
-<label>🎇이모지 크기</label>
-<input id="emojiSize" max="100" min="26" style="flex:1" type="range" value="40"/>
-<input id="emojiSizeNum" max="100" min="26" style="width:76px" type="number" value="40"/>
-</div>
-<div class="row">
-<label>🎇사진 사용</label>
-<input checked="" id="photoEnabled" style="transform:scale(1.15); margin-right:8px;" type="checkbox"/>
-<span class="tiny">끄면 타일에서 사진 칸이 사라져요.</span>
-</div>
-<div class="row" id="petInPhotoSlotRow">
-<label>🐾펫 보여주기</label>
+
+<div class="pfStore" hidden>
+
 <select id="petDisplaySlot">
 <option value="none">표시 안 함</option>
 <option value="photo">사진칸에 펫</option>
 <option value="emoji">이모지칸에 펫</option>
 </select>
-<input id="showPetInPhotoSlot" style="display:none;" type="checkbox"/>
-<span class="tiny">사진칸 또는 이모지칸 중 하나에 현재 선택한 펫을 보여줘요. 사진과 이모지는 삭제되지 않아요.</span>
-</div>
+<input id="showPetInPhotoSlot" type="checkbox"/>
 
-<div class="row" id="charaDisplayRow">
-<label>✨캐릭터 보여주기</label>
 <select id="charaDisplaySlot">
 <option value="none">표시 안 함</option>
 <option value="photo">사진칸에 캐릭터</option>
 <option value="emoji">이모지칸에 캐릭터</option>
 </select>
-<span class="tiny">꾸민 캐릭터를 사진칸/이모지칸에 보여줘요. 펫과 다른 칸을 고르면 캐릭터와 펫이 동시에 보여요.</span>
-</div>
 
-<div class="row" id="charaMotionRow">
-<label>✨캐릭터 움직임</label>
 <select id="charaMotionMode">
 <option value="stand">👤 서 있기</option>
 <option value="move">🚶 움직이기</option>
 </select>
-<span class="tiny">움직이기를 고르면 캐릭터가 내 프로필 타일 안을 자유롭게 돌아다녀요. 캐릭터 보여주기를 켰을 때만 골라요.</span>
-</div>
-<div class="row" id="petSlotBgRow">
-<label>🐾펫 배경</label>
-<div class="colorControls">
-<input id="petSlotBgPicker" type="color" value="#1b1720">
-<input id="petSlotBgColor" style="width:110px" value="#1b1720">
-<label style="display:flex;align-items:center;gap:6px;min-width:auto;max-width:none;flex:0 0 auto;">
-<input id="petSlotBgTransparent" style="transform:scale(1.05);" type="checkbox"/> 투명
-            </label>
-</div>
-<span class="tiny">펫 보이기를 켰을 때 사진칸 배경만 바꿔요. 사진 파일은 그대로 보관돼요.</span>
-</div>
-<div class="row" id="petSlotMotionRow">
-<label>🐾펫 움직임</label>
 <select id="petSlotMotion">
 <option value="bounce">가끔 통통</option>
 <option value="sway">살짝 흔들</option>
 <option value="none">움직임 없음</option>
 </select>
-<span class="tiny">펫을 사진칸/이모지칸에 보여줄 때 적용돼요. 너무 산만하면 ‘가끔 통통’이나 ‘움직임 없음’을 추천해요.</span>
-</div>
-<div class="row" id="photoUploadRow">
-<label>🎇사진 업로드</label>
-<input accept="image/*,.gif" id="photoFile" type="file">
-<button class="primary tight" id="uploadPhotoBtn">업로드</button>
-</div>
-<div class="row" id="photoSizeRow">
-<label>사진 크기</label>
-<input id="photoSize" max="100" min="52" style="flex:1" type="range" value="68"/>
-<input id="photoSizeNum" max="100" min="52" style="width:76px" type="number" value="68"/>
-</div>
-<div class="row">
-<label>🎇이모지 배경</label>
-<div class="colorControls">
-<input id="emojiBgPicker" type="color" value="#2b2b2b">
-<input id="emojiBgColor" style="width:110px" value="#2b2b2b">
-</div>
-<span class="tiny"></span>
-</div>
-<div class="row">
-<label>🎇이모지 배경 투명</label>
-<div style="display:flex; align-items:center; gap:10px;">
-<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-<input id="emojiBgTransparent" style="transform:scale(1.15);" type="checkbox">
-<span class="tiny"></span>
-</label>
-</div>
-<span class="tiny"></span>
-</div>
-<div class="row" style="align-items:flex-start;">
-<label>🎇배경색</label>
-<div class="swatches" id="swatches" style="display:none"></div>
-<div class="colorControls">
-<input id="bgPicker" type="color" value="#ffd0e2">
-<input id="bgColor" style="width:110px" value="#ffd0e2">
-</div>
-</div>
-<div class="row">
-<label>🎇닉네임</label>
-<input id="profileNick" maxlength="20" placeholder="닉네임 (최대 20자)" type="text"/>
-<span class="tiny">저장하면 상단/채팅/접속자 목록에 즉시 반영돼요.</span>
-</div>
-<div class="row">
-<label>🎇배경 패턴</label>
-<select class="ghost" id="bgPattern" style="flex:1; background:#111; color:#fff; border:1px solid rgba(255,255,255,.18);">
+
+<input checked="" id="photoEnabled" type="checkbox"/>
+<select class="ghost" id="bgPattern">
 <option value="none">없음</option>
 <option value="dots">도트</option>
 <option value="hearts">하트</option>
@@ -6415,71 +6349,264 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <option value="waves">웨이브</option>
 <option value="sparkles">반짝이</option>
 <option value="confetti">콘페티</option>
+
+<option value="nib">펜촉</option>
+<option value="coffee">커피</option>
+<option value="gingham">체크</option>
+<option value="clover">클로버</option>
+<option value="ribbon">리본</option>
+<option value="notes">음표</option>
 </select>
-<span class="tiny"></span>
+
+<input id="pfPatternAlpha" type="hidden" value=""/>
+<input id="pfSlotBaseEmoji" type="hidden" value="emoji"/>
+<input id="pfSlotBasePhoto" type="hidden" value="photo"/>
 </div>
-<div class="row">
-<label>🎇패턴 색</label>
-<div class="colorControls">
-<input id="patternPicker" type="color" value="#ffffff">
-<input id="patternColor" style="width:110px" value="#ffffff">
-</div>
-<span class="tiny">패턴(도트/하트/줄무늬 등) 색만 바꿔요.</span>
-</div>
-<div class="row">
-<label>🎇말풍선(최대 15자)</label>
-<textarea id="bubbleText" maxlength="15" placeholder="지금 상태 한 마디!"></textarea>
-</div>
-<div class="row">
-<label>🎇말풍선 배경</label>
-<div class="colorControls">
-<input id="bubblePicker" type="color" value="#ffd0e2">
-<input id="bubbleColor" style="width:110px" value="#ffd0e2">
-</div>
-</div>
-<div class="row">
-<label>🎇타이머 색</label>
-<div class="colorControls">
-<input id="timePicker" type="color" value="#ffffff">
-<input id="timeColor" style="width:110px" value="#ffffff"/>
-</div>
-<span class="tiny">집중=선택색, 휴식/자리비움=회색 고정</span>
-</div>
-<div class="row">
-<label>🎇타일 닉네임</label>
-<div class="colorControls">
-<input id="nameColorPicker" type="color" value="#ffffff"/>
-<input id="nameColor" style="width:110px" value="#ffffff"/>
-</div>
-<span class="tiny">🎇프로필 타일</span>
-</div>
-<div class="row">
-<label>🎇채팅 닉네임</label>
-<div class="colorControls">
-<input id="chatNameColorPicker" type="color" value="#ffffff"/>
-<input id="chatNameColor" style="width:110px" value="#ffffff"/>
-</div>
-<span class="tiny"></span>
-</div>
-<div class="row">
-<label>🎇현재상태</label>
-<div class="colorControls">
-<input id="statusTextColorPicker" type="color" value="#ffffff"/>
-<input id="statusTextColor" style="width:110px" value="#ffffff"/>
-</div>
-<span class="tiny">작업중/휴식중/자리비움 배지 글씨</span>
-</div>
-<div class="row">
-<label>🎇말풍선 글씨</label>
-<div class="colorControls">
-<input id="bubbleTextColorPicker" type="color" value="#ffffff"/>
-<input id="bubbleTextColor" style="width:110px" value="#ffffff"/>
-</div>
-<span class="tiny"></span>
+<div class="pfLayout" id="pfLayout">
+<aside class="pfPreviewCol" id="pfPreviewCol">
+<p class="pfLabel">미리보기</p>
+<div class="pfChips pfStatusChips" data-pfseg="status" id="pfStatusChips" role="radiogroup" aria-label="상태 미리보기">
+<button type="button" role="radio" data-value="work" aria-checked="true">작업중</button>
+<button type="button" role="radio" data-value="break" aria-checked="false" tabindex="-1">휴식중</button>
+<button type="button" role="radio" data-value="idle" aria-checked="false" tabindex="-1">자리비움</button>
 </div>
 
-<div class="row">
-<button class="ghost" id="applyProfile">저장</button>
+<div class="pfTileFrame" id="pfTileFrame"></div>
+<div class="pfChatPrev" id="pfChatPrev" data-pfpart="chatName" role="button" tabindex="0" title="채팅 닉네임 색 설정으로 가요">
+<div class="pfCpTitle">채팅에서는 이렇게 보여요</div>
+<div class="pfChatRow"><span class="chatName pfChatNick" id="pfChatNick">리로</span><span class="pfChatMsg">오늘도 달립니다</span></div>
+</div>
+<p class="pfCaption">타일의 부분을 누르면 그 설정으로 이동해요.</p>
+</aside>
+<div class="pfSetCol">
+<nav class="pfTabs" id="pfTabs" aria-label="설정 구역 이동">
+<button type="button" class="pfTab" data-target="pfG-basic" aria-current="true">기본</button>
+<button type="button" class="pfTab" data-target="pfG-slots" aria-current="false" tabindex="-1">칸 채우기</button>
+<button type="button" class="pfTab" data-target="pfG-bg" aria-current="false" tabindex="-1">배경</button>
+<button type="button" class="pfTab" data-target="pfG-color" aria-current="false" tabindex="-1">색상</button>
+</nav>
+
+
+<section class="pfGroup" id="pfG-basic" aria-labelledby="pfT-basic">
+<h2 class="pfGTitle" id="pfT-basic">기본</h2>
+<div class="pfBlock" id="pfField-nick" data-pfhl="name">
+<div class="pfFieldTop">
+<label class="pfBTitle" for="profileNick">닉네임</label>
+<span class="pfCount" id="pfCntNick">0/20</span>
+</div>
+<input class="pfTxt" id="profileNick" maxlength="20" placeholder="닉네임 (최대 20자)" type="text"/>
+<p class="pfBDesc">타일 이름표와 채팅·접속자 목록에 함께 쓰여요.</p>
+</div>
+<div class="pfBlock" id="pfField-bubble" data-pfhl="bubble">
+<div class="pfFieldTop">
+<label class="pfBTitle" for="bubbleText">말풍선 한마디</label>
+<span class="pfCount" id="pfCntBubble">0/15</span>
+</div>
+<input class="pfTxt" id="bubbleText" maxlength="15" placeholder="지금 상태 한 마디!" type="text"/>
+<p class="pfBDesc">비워 두면 타일에 점 세 개(…)만 떠요.</p>
+</div>
+</section>
+
+
+<section class="pfGroup" id="pfG-slots" aria-labelledby="pfT-slots">
+<h2 class="pfGTitle" id="pfT-slots">칸 채우기</h2>
+<p class="pfGDesc">타일 아래엔 칸이 둘 있어요. 두 칸 모두 다섯 가지 중에서 고르고, 같은 내용은 한 칸에만 들어가요.</p>
+<div class="pfSlotCards">
+<div class="pfSlotCard" id="pfCard-emoji" data-pfhl="emojiSlot">
+<div class="pfScHead">
+<div class="idPhoto pfMini" id="pfMini-emoji" aria-hidden="true"></div>
+<div>
+<div class="pfScName">왼쪽 칸</div>
+<div class="pfScWhat">타일 아래 왼쪽 · 예전 이름 이모지칸</div>
+</div>
+</div>
+<div class="pfSeg pfSeg5" data-pfseg="emojiSlot" role="radiogroup" aria-label="왼쪽 칸에 넣을 것">
+<button type="button" role="radio" data-value="emoji" aria-checked="true">이모지</button>
+<button type="button" role="radio" data-value="photo" aria-checked="false" tabindex="-1">사진</button>
+<button type="button" role="radio" data-value="chara" aria-checked="false" tabindex="-1">캐릭터</button>
+<button type="button" role="radio" data-value="pet" aria-checked="false" tabindex="-1">펫</button>
+<button type="button" role="radio" data-value="off" aria-checked="false" tabindex="-1">끄기</button>
+</div>
+<p class="pfSlotNote" id="pfNote-emoji" role="status" aria-live="polite" hidden></p>
+</div>
+<div class="pfSlotCard" id="pfCard-photo" data-pfhl="photoSlot">
+<div class="pfScHead">
+<div class="idPhoto pfMini" id="pfMini-photo" aria-hidden="true"></div>
+<div>
+<div class="pfScName">오른쪽 칸</div>
+<div class="pfScWhat">타일 아래 오른쪽 · 예전 이름 사진칸</div>
+</div>
+</div>
+<div class="pfSeg pfSeg5" data-pfseg="photoSlot" role="radiogroup" aria-label="오른쪽 칸에 넣을 것">
+<button type="button" role="radio" data-value="emoji" aria-checked="false" tabindex="-1">이모지</button>
+<button type="button" role="radio" data-value="photo" aria-checked="true">사진</button>
+<button type="button" role="radio" data-value="chara" aria-checked="false" tabindex="-1">캐릭터</button>
+<button type="button" role="radio" data-value="pet" aria-checked="false" tabindex="-1">펫</button>
+<button type="button" role="radio" data-value="off" aria-checked="false" tabindex="-1">끄기</button>
+</div>
+<p class="pfSlotNote" id="pfNote-photo" role="status" aria-live="polite" hidden></p>
+</div>
+</div>
+
+<div class="pfBlock" id="pfSub-emoji" data-pfhl="emojiSlot photoSlot" hidden>
+<div class="pfBTitle">🙂 이모지 <span class="pfWhere" id="pfWhere-emoji"></span></div>
+<div class="pfSubTitle">어떤 이모지를 쓸까요</div>
+<div class="pfEmojiChips" id="pfEmojiChips"></div>
+<div class="pfInline">
+<input class="pfTxt pfEmoInput" id="emoji" maxlength="4" placeholder="💗" type="text" aria-label="이모지 직접 입력"/>
+<button type="button" class="pfChipBtn" id="pfEmojiClear">비우기</button>
+</div>
+<p class="pfBDesc">첫 글자 한 개만 저장돼요. 비워 두면 그 칸이 그냥 빈 칸이 돼요.</p>
+</div>
+
+<div class="pfBlock" id="pfSub-photo" data-pfhl="emojiSlot photoSlot" hidden>
+<div class="pfBTitle">🖼️ 사진 <span class="pfWhere" id="pfWhere-photo"></span></div>
+<div class="pfInline">
+<div class="pfPhotoThumb" id="pfPhotoThumb"></div>
+<button type="button" class="pfChipBtn" id="pfPhotoPick">사진 고르기</button>
+<button class="primary pfChipBtn pfHidden" id="uploadPhotoBtn" type="button">업로드</button>
+<span class="pfCDesc" id="pfPhotoName"></span>
+<input accept="image/*,.gif" id="photoFile" type="file" hidden/>
+</div>
+<p class="pfBDesc">2MB 이하 사진을 권해요. 사진을 고른 뒤 [업로드]까지 눌러야 다른 사람에게도 보여요.</p>
+</div>
+
+<div class="pfBlock" id="pfSub-chara" data-pfhl="emojiSlot photoSlot" hidden>
+<div class="pfBTitle">✨ 캐릭터 <span class="pfWhere" id="pfWhere-chara"></span></div>
+<div>
+<div class="pfSubTitle">캐릭터 움직임</div>
+<div class="pfChips" data-pfseg="charaMotion" role="radiogroup" aria-label="캐릭터 움직임">
+<button type="button" role="radio" data-value="stand" aria-checked="true">서 있기</button>
+<button type="button" role="radio" data-value="move" aria-checked="false" tabindex="-1">움직이기</button>
+</div>
+</div>
+<p class="pfBDesc">'움직이기'를 고르면 캐릭터가 칸을 벗어나 타일 안을 돌아다녀요.</p>
+</div>
+
+<div class="pfBlock" id="pfSub-pet" data-pfhl="emojiSlot photoSlot" hidden>
+<div class="pfBTitle">🐾 펫 <span class="pfWhere" id="pfWhere-pet"></span></div>
+<div class="pfInline">
+<span class="pfCDesc">펫 배경색</span>
+<input id="petSlotBgPicker" type="color" value="#1b1720" aria-label="펫 배경색"/>
+<input class="pfHex" id="petSlotBgColor" value="#1b1720" aria-label="펫 배경색 코드" spellcheck="false"/>
+<label class="pfToggle"><input id="petSlotBgTransparent" type="checkbox"/> 투명</label>
+</div>
+<div>
+<div class="pfSubTitle">펫 움직임</div>
+<div class="pfChips" data-pfseg="petMotion" role="radiogroup" aria-label="펫 움직임">
+<button type="button" role="radio" data-value="bounce" aria-checked="true">가끔 통통</button>
+<button type="button" role="radio" data-value="sway" aria-checked="false" tabindex="-1">살짝 흔들</button>
+<button type="button" role="radio" data-value="none" aria-checked="false" tabindex="-1">움직임 없음</button>
+</div>
+</div>
+<p class="pfBDesc">너무 산만하면 '가끔 통통'이나 '움직임 없음'을 추천해요.</p>
+</div>
+</section>
+
+
+<section class="pfGroup" id="pfG-bg" aria-labelledby="pfT-bg">
+<h2 class="pfGTitle" id="pfT-bg">배경</h2>
+<div class="pfBlock" id="pfBlock-bgColor" data-pfhl="bg">
+<div class="pfBTitle">배경색</div>
+<div class="pfSwatchRow" data-pfseg="bgSwatch" id="pfBgSwatches" role="radiogroup" aria-label="배경색 고르기"></div>
+<div class="pfPickWrap">
+<input id="bgPicker" type="color" value="#ffd0e2" aria-label="배경색 직접 고르기"/>
+<input class="pfHex" id="bgColor" value="#ffd0e2" aria-label="배경색 코드" spellcheck="false"/>
+<span class="pfCDesc">직접 고르기</span>
+</div>
+
+<div class="swatches" id="swatches" style="display:none"></div>
+</div>
+<div class="pfBlock" id="pfBlock-pattern" data-pfhl="bg">
+<div class="pfBTitle">패턴</div>
+<p class="pfBDesc">지금 배경색 위에 어떻게 보이는지 그대로 그려 뒀어요.</p>
+<div class="pfPatGrid" data-pfseg="pattern" id="pfPatGrid" role="radiogroup" aria-label="배경 패턴 고르기"></div>
+</div>
+<div class="pfBlock" id="pfBlock-patternColor" data-pfhl="bg">
+<div class="pfBTitle">패턴 색</div>
+<div class="pfChipsWrap" id="pfPatQuick"></div>
+<div class="pfPickWrap">
+<input id="patternPicker" type="color" value="#ffffff" aria-label="패턴 색 직접 고르기"/>
+<input class="pfHex" id="patternColor" value="#ffffff" aria-label="패턴 색 코드" spellcheck="false"/>
+<span class="pfCDesc">직접 고르기</span>
+</div>
+</div>
+<div class="pfBlock" id="pfBlock-patternAlpha" data-pfhl="bg">
+<div class="pfBTitle">
+<label for="pfPatternAlphaRange">패턴 진하기</label>
+<span class="pfBNote">100%면 고른 색 그대로예요.</span>
+</div>
+<div class="pfRangeRow">
+<input id="pfPatternAlphaRange" max="100" min="30" step="5" type="range" value="100" aria-valuetext="100%"/>
+<output class="pfRangeVal" for="pfPatternAlphaRange" id="pfPatternAlphaVal">100%</output>
+</div>
+<p class="pfBDesc">이미 저장돼 있는 타일은 슬라이더를 건드리기 전까지 지금 모습 그대로예요.</p>
+</div>
+</section>
+
+
+<section class="pfGroup" id="pfG-color" aria-labelledby="pfT-color">
+<h2 class="pfGTitle" id="pfT-color">색상</h2>
+<div class="pfBlock" id="pfBlock-preset">
+<div class="pfBTitle">한 번에 맞추기</div>
+<p class="pfBDesc">배경색·패턴 색·말풍선 배경·타일 닉네임·타이머·말풍선 글씨를 어울리는 조합으로 한 번에 바꿔요. 패턴 모양과 이모지·사진은 그대로 둬요.</p>
+<div class="pfPresetRow" id="pfPresetRow"></div>
+</div>
+<div class="pfBlock">
+<div class="pfBTitle">타일 글씨</div>
+<div class="pfColorRow" id="pfRow-nameColor" data-pfhl="name">
+<input id="nameColorPicker" type="color" value="#ffffff" aria-label="타일 닉네임 색"/>
+<div class="pfCText"><div class="pfCName">타일 닉네임</div><div class="pfCDesc">타일 위 이름표 글씨예요.</div></div>
+<input class="pfHex" id="nameColor" value="#ffffff" aria-label="타일 닉네임 색 코드" spellcheck="false"/>
+</div>
+<div class="pfColorRow" id="pfRow-statusTextColor" data-pfhl="badge">
+<input id="statusTextColorPicker" type="color" value="#ffffff" aria-label="현재상태 배지 글씨 색"/>
+<div class="pfCText"><div class="pfCName">현재상태</div><div class="pfCDesc">작업중·휴식중·자리비움 배지 글씨예요.</div></div>
+<input class="pfHex" id="statusTextColor" value="#ffffff" aria-label="현재상태 글씨 색 코드" spellcheck="false"/>
+</div>
+<div class="pfColorRow" id="pfRow-timeColor" data-pfhl="timer">
+<input id="timePicker" type="color" value="#ffffff" aria-label="타이머 색"/>
+<div class="pfCText"><div class="pfCName">타이머</div><div class="pfCDesc">집중일 때만 적용돼요. 휴식·자리비움은 회색으로 고정이에요.</div></div>
+<input class="pfHex" id="timeColor" value="#ffffff" aria-label="타이머 색 코드" spellcheck="false"/>
+</div>
+<div class="pfColorRow" id="pfRow-bubbleTextColor" data-pfhl="bubble">
+<input id="bubbleTextColorPicker" type="color" value="#ffffff" aria-label="말풍선 글씨 색"/>
+<div class="pfCText"><div class="pfCName">말풍선 글씨</div><div class="pfCDesc">타일 말풍선 안 글씨예요.</div></div>
+<input class="pfHex" id="bubbleTextColor" value="#ffffff" aria-label="말풍선 글씨 색 코드" spellcheck="false"/>
+</div>
+</div>
+<div class="pfBlock">
+<div class="pfBTitle">타일 배경</div>
+<div class="pfColorRow" id="pfRow-bubbleColor" data-pfhl="bubble name">
+<input id="bubblePicker" type="color" value="#ffd0e2" aria-label="말풍선 배경색"/>
+<div class="pfCText"><div class="pfCName">말풍선 배경</div><div class="pfCDesc">닉네임 이름표 배경도 이 색을 따라가요.</div></div>
+<input class="pfHex" id="bubbleColor" value="#ffd0e2" aria-label="말풍선 배경색 코드" spellcheck="false"/>
+</div>
+<div class="pfColorRow" id="pfRow-emojiBg" data-pfhl="emojiSlot">
+<input id="emojiBgPicker" type="color" value="#2b2b2b" aria-label="이모지 배경색"/>
+<div class="pfCText"><div class="pfCName">이모지 배경</div><div class="pfCDesc">이모지를 넣은 칸의 배경색이에요. 투명을 켜면 사진 없는 칸도 같이 투명해져요.</div></div>
+<label class="pfToggle"><input id="emojiBgTransparent" type="checkbox"/> 투명</label>
+<input class="pfHex" id="emojiBgColor" value="#2b2b2b" aria-label="이모지 배경색 코드" spellcheck="false"/>
+</div>
+</div>
+<div class="pfBlock">
+<div class="pfBTitle">채팅</div>
+<div class="pfColorRow" id="pfRow-chatNameColor" data-pfhl="chatName">
+<input id="chatNameColorPicker" type="color" value="#ffffff" aria-label="채팅 닉네임 색"/>
+<div class="pfCText"><div class="pfCName">채팅 닉네임</div><div class="pfCDesc">타일이 아니라 채팅 목록에 뜨는 내 이름 색이에요.</div></div>
+<input class="pfHex" id="chatNameColor" value="#ffffff" aria-label="채팅 닉네임 색 코드" spellcheck="false"/>
+</div>
+</div>
+</section>
+</div>
+</div>
+
+<div class="pfFoot">
+<p class="pfFootNote">저장하면 상단/채팅/접속자 목록에 즉시 반영돼요.</p>
+<div class="pfFootBtns">
+<button class="ghost" id="pfCloseBtn" type="button">닫기</button>
+<button class="primary" id="applyProfile" type="button">저장</button>
+</div>
 </div>
 </div>
 </div>
@@ -12629,24 +12756,43 @@ function setEmojiSizeAll(v){
 
 }
 
-    function bgStyle(color, pattern, patColor){
+const PATTERN_MAX = {
+      dots:.32, microdots:.28, grid:.18, papergrid:.08, stripes:.22, diagonal:.22,
+      checker:.18, waves:.22, sparkles:.26, confetti:.30, stars:.24, moon:.22,
+      flowers:.30, clouds:.18, catpaws:.22, dogpaws:.22, hearts:.28,
+      nib:.24, coffee:.28, gingham:.36, clover:.24, ribbon:.24, notes:.24
+    };
+    function patternMaxAlpha(p){
+      const v = PATTERN_MAX[p];
+      return (typeof v === "number" && v > 0) ? v : .32;
+    }
+
+function bgStyle(color, pattern, patColor, alpha){
       const c = clampHexColor(color);
       const p = (pattern || "none").trim();
 
       const pc = clampHexColor(patColor || "#ffffff");
-      const pc32 = hexToRgba(pc, 0.32);
-      const pc30 = hexToRgba(pc, 0.30);
-      const pc28 = hexToRgba(pc, 0.28);
-      const pc26 = hexToRgba(pc, 0.26);
-      const pc24 = hexToRgba(pc, 0.24);
-      const pc22 = hexToRgba(pc, 0.22);
-      const pc20 = hexToRgba(pc, 0.20);
-      const pc18 = hexToRgba(pc, 0.18);
-      const pc16 = hexToRgba(pc, 0.16);
-      const pc14 = hexToRgba(pc, 0.14);
-      const pc12 = hexToRgba(pc, 0.12);
-      const pc10 = hexToRgba(pc, 0.10);
-      const pc08 = hexToRgba(pc, 0.08);
+      const maxA = patternMaxAlpha(p);
+      const a = (alpha === undefined || alpha === null || !isFinite(Number(alpha)))
+        ? maxA
+        : Math.max(0.3, Math.min(1, Number(alpha)));
+      function pcAt(step){
+        const v = Math.min(1, (step / 100) / maxA * a);
+        return hexToRgba(pc, Math.round(v * 1e6) / 1e6);
+      }
+      const pc32 = pcAt(32);
+      const pc30 = pcAt(30);
+      const pc28 = pcAt(28);
+      const pc26 = pcAt(26);
+      const pc24 = pcAt(24);
+      const pc22 = pcAt(22);
+      const pc20 = pcAt(20);
+      const pc18 = pcAt(18);
+      const pc16 = pcAt(16);
+      const pc14 = pcAt(14);
+      const pc12 = pcAt(12);
+      const pc10 = pcAt(10);
+      const pc08 = pcAt(8);
 
 const layers = [];
 
@@ -12819,10 +12965,95 @@ layers.push(base);
         layers.push(base);
         return layers.join(", ");
       }
+      
+      if(p === "nib"){
+        const svgNib = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">' +
+          '<path fill-rule="evenodd" fill="' + pc24 + '" d="M28 8 C38 8 42 18 42 28 L28 50 L14 28 C14 18 18 8 28 8 Z M28 17 a3 3 0 1 0 0.01 0 Z M27 23 h2 v21 h-2 z"/>' +
+          '</svg>';
+        layers.push(`url("data:image/svg+xml,${encodeURIComponent(svgNib)}")`);
+        layers.push(base);
+        return layers.join(", ");
+      }
+      if(p === "coffee"){
+        const svgCof = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+          '<g fill="none" stroke="' + pc28 + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M18 28 h24 v10 a12 12 0 0 1 -12 12 a12 12 0 0 1 -12 -12 z"/>' +
+          '<path d="M42 31 h4 a5 5 0 0 1 0 10 h-4"/>' +
+          '<path d="M14 54 h32"/>' +
+          '<path d="M25 22 c-3 -4 3 -6 0 -10 M33 22 c-3 -4 3 -6 0 -10"/>' +
+          '</g></svg>';
+        layers.push(`url("data:image/svg+xml,${encodeURIComponent(svgCof)}")`);
+        layers.push(base);
+        return layers.join(", ");
+      }
+      if(p === "gingham"){
+        
+        layers.push("linear-gradient(90deg, " + pc18 + " 0 50%, transparent 50% 100%)");
+        layers.push("linear-gradient(0deg, " + pc18 + " 0 50%, transparent 50% 100%)");
+        layers.push(base);
+        return layers.join(", ");
+      }
+      if(p === "clover"){
+        const leaf = "M0 0 C-3 -5 -9 -6 -9 -13 C-9 -18 -3 -20 0 -15 C3 -20 9 -18 9 -13 C9 -6 3 -5 0 0 Z";
+        const cloverLeaves = function(){
+          return '<path d="' + leaf + '" transform="rotate(0)"/>' +
+            '<path d="' + leaf + '" transform="rotate(90)"/>' +
+            '<path d="' + leaf + '" transform="rotate(180)"/>' +
+            '<path d="' + leaf + '" transform="rotate(270)"/>';
+        };
+        const svgClv = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">' +
+          '<g fill="' + pc24 + '" transform="translate(24 24)">' + cloverLeaves() +
+          '<path d="M1 2 q4 6 5 13" stroke="' + pc24 + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+          '</g>' +
+          '<g fill="' + pc16 + '" transform="translate(47 49) scale(.55)">' + cloverLeaves() + '</g>' +
+          '</svg>';
+        layers.push(`url("data:image/svg+xml,${encodeURIComponent(svgClv)}")`);
+        layers.push(base);
+        return layers.join(", ");
+      }
+      if(p === "ribbon"){
+        const bowAt = function(tf, fill){
+          return '<g fill="' + fill + '" transform="' + tf + '">' +
+            '<path fill-rule="evenodd" d="M-21 0 a10 6.5 0 1 0 20 0 a10 6.5 0 1 0 -20 0 z M-16 0 a5 2.6 0 1 0 10 0 a5 2.6 0 1 0 -10 0 z" transform="rotate(-14)"/>' +
+            '<path fill-rule="evenodd" d="M1 0 a10 6.5 0 1 0 20 0 a10 6.5 0 1 0 -20 0 z M6 0 a5 2.6 0 1 0 10 0 a5 2.6 0 1 0 -10 0 z" transform="rotate(14)"/>' +
+            '<circle r="4.2"/>' +
+            '<path d="M-4 3 L-11 18 L-5 16 L-1 5 z"/>' +
+            '<path d="M4 3 L11 18 L5 16 L1 5 z"/>' +
+            '</g>';
+        };
+        const svgRib = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+          bowAt("translate(32 25)", pc24) +
+          bowAt("translate(10 53) scale(.5)", pc16) +
+          '</svg>';
+        layers.push(`url("data:image/svg+xml,${encodeURIComponent(svgRib)}")`);
+        layers.push(base);
+        return layers.join(", ");
+      }
+      if(p === "notes"){
+        const svgNot = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">' +
+          '<g fill="' + pc24 + '">' +
+          '<g transform="translate(16 36)">' +
+          '<ellipse rx="5" ry="3.6" transform="rotate(-22)"/>' +
+          '<rect x="3.2" y="-22" width="2" height="23"/>' +
+          '<path d="M5.2 -22 c6 2 8 7 5 12 c0 -5 -2 -7 -5 -8 z"/>' +
+          '</g>' +
+          '<g transform="translate(36 22) scale(.8)">' +
+          '<ellipse cx="0" cy="8" rx="5" ry="3.6" transform="rotate(-22 0 8)"/>' +
+          '<ellipse cx="14" cy="4" rx="5" ry="3.6" transform="rotate(-22 14 4)"/>' +
+          '<rect x="3.2" y="-14" width="2" height="22"/>' +
+          '<rect x="17.2" y="-18" width="2" height="22"/>' +
+          '<path d="M3.2 -14 L19.2 -18 v4 L3.2 -10 z"/>' +
+          '</g></g></svg>';
+        layers.push(`url("data:image/svg+xml,${encodeURIComponent(svgNot)}")`);
+        layers.push(base);
+        return layers.join(", ");
+      }
+
       if(p === "hearts"){
+        
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
           <path d="M18 30s-9-5.6-12.3-10.7C3 14.6 5.4 10 10 10c2.2 0 4.1 1.1 5.2 2.7C16.2 11.1 18.1 10 20.3 10 24.9 10 27.3 14.6 30.3 19.3 27 24.4 18 30 18 30z"
-            fill="rgba(255,255,255,0.28)"/>
+            fill="${pc28}"/>
         </svg>`;
         layers.push(`url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
         layers.push(base);
@@ -14219,6 +14450,20 @@ if(!meNow || String(meNow.status || "") !== String(nextStatus)) patch.statusSinc
         emojiSize: 82,
         photoSize: 82
       };
+      
+      try{
+        const a = document.getElementById("pfPatternAlpha");
+        if(a && a.value !== ""){
+          const v = Number(a.value) / 100;
+          if(isFinite(v)) theme.patternAlpha = Math.min(1, Math.max(0.3, v));
+        }
+        const e = document.getElementById("pfSlotBaseEmoji");
+        const ph = document.getElementById("pfSlotBasePhoto");
+        if(e && ph){
+          const E = ["emoji","photo","off"], P = ["photo","emoji","off"];
+          if(E.includes(e.value) && P.includes(ph.value)) theme.slotBase = { emoji:e.value, photo:ph.value };
+        }
+      }catch(_e){}
       const bubbleText = (els.bubbleText.value || "").trim().slice(0, 15);
       const appearanceUpdatedAtMs = Date.now();
       const newNick = (els.profileNick?.value || "").trim().slice(0,20);
@@ -16831,41 +17076,42 @@ function emojiPickHandleSend_(text){
     }
 
 const MK_STICKERS = [
-      { id:"run",      label:"도망" },
-      { id:"grip",     label:"꽈악" },
-      { id:"charisma", label:"카리스마" },
-      { id:"checkin",  label:"출근" },
-      { id:"checkout", label:"퇴근" },
-      { id:"hold",     label:"존버" },
-      { id:"wail",     label:"오열" },
-      { id:"blank",    label:"무념무상" },
-      { id:"streak",   label:"연참각" },
-      { id:"calm",     label:"여유" },
-      { id:"gasp",     label:"헉" },
-      { id:"best",     label:"최고" },
-      { id:"nope",     label:"하기싫다" },
-      { id:"stare",    label:"정색" },
-      { id:"me",       label:"저요?" },
-      { id:"plotting", label:"구상중" },
-      { id:"sleepy",   label:"자고싶다" },
-      { id:"pray",     label:"제발" },
-      { id:"cheer",    label:"응원" },
-      { id:"congrats", label:"축하" },
-      { id:"gnight",   label:"잘자" },
+
+{ id:"hello",    label:"안녕하세요", grp:"인사" },
+      { id:"welcome",  label:"어서오세요", grp:"인사" },
+      { id:"checkin",  label:"출근",       grp:"인사" },
+      { id:"goodbye",  label:"굿바이",     grp:"인사" },
+      { id:"farewell", label:"잘가요",     grp:"인사" },
+      { id:"checkout", label:"퇴근",       grp:"인사" },
+      { id:"gnight",   label:"잘자",       grp:"인사" },
       
-      { id:"sulk",     label:"무룩" },
-      { id:"lol",      label:"ㅋㅋㅋㅋ" },
-      { id:"uncomfy",  label:"불편" },
-      { id:"crumple",  label:"꾸깃" },
-      { id:"hmph",     label:"흥" },
-      { id:"onfire",   label:"활활" },
-      { id:"noway",    label:"아니" },
-      { id:"forbid",   label:"불허한다" },
+      { id:"charisma", label:"카리스마",   grp:"기분" },
+      { id:"calm",     label:"여유",       grp:"기분" },
+      { id:"onfire",   label:"활활",       grp:"기분" },
+      { id:"lol",      label:"ㅋㅋㅋㅋ",   grp:"기분" },
+      { id:"gasp",     label:"헉",         grp:"기분" },
+      { id:"wail",     label:"오열",       grp:"기분" },
+      { id:"sulk",     label:"무룩",       grp:"기분" },
+      { id:"hmph",     label:"흥",         grp:"기분" },
+      { id:"uncomfy",  label:"불편",       grp:"기분" },
+      { id:"stare",    label:"정색",       grp:"기분" },
+      { id:"blank",    label:"무념무상",   grp:"기분" },
+      { id:"sleepy",   label:"자고싶다",   grp:"기분" },
+      { id:"nope",     label:"하기싫다",   grp:"기분" },
       
-      { id:"hello",    label:"안녕하세요" },
-      { id:"welcome",  label:"어서오세요" },
-      { id:"goodbye",  label:"굿바이" },
-      { id:"farewell", label:"잘가요" },
+      { id:"cheer",    label:"응원",       grp:"행동" },
+      { id:"congrats", label:"축하",       grp:"행동" },
+      { id:"best",     label:"최고",       grp:"행동" },
+      { id:"pray",     label:"제발",       grp:"행동" },
+      { id:"me",       label:"저요?",      grp:"행동" },
+      { id:"noway",    label:"아니",       grp:"행동" },
+      { id:"forbid",   label:"불허한다",   grp:"행동" },
+      { id:"plotting", label:"구상중",     grp:"행동" },
+      { id:"streak",   label:"연참각",     grp:"행동" },
+      { id:"hold",     label:"존버",       grp:"행동" },
+      { id:"grip",     label:"꽈악",       grp:"행동" },
+      { id:"crumple",  label:"꾸깃",       grp:"행동" },
+      { id:"run",      label:"도망",       grp:"행동" },
     ];
     const MK_STICKER_MAP = {};
     for(const __s of MK_STICKERS) MK_STICKER_MAP[__s.id] = __s;
@@ -16885,7 +17131,7 @@ const MK_STICKERS = [
         el.innerHTML =
           `<div class="emojiPickHead"><span>이모티콘을 누르면 바로 전송돼요</span><button type="button" class="emojiPickClose" data-close="1" aria-label="닫기">✕</button></div>` +
           `<div class="stkPickGrid">` +
-          MK_STICKERS.map((s)=>`<button type="button" data-stk="${s.id}" title="${escapeHtml(s.label)}" aria-label="${escapeHtml(s.label)} 보내기"><svg viewBox="0 0 240 240" aria-hidden="true"><use href="#mkstk-${s.id}"></use></svg></button>`).join("") +
+          MK_STICKERS.map((s, i)=>((i === 0 || s.grp !== MK_STICKERS[i-1].grp) ? `<div class="stkGrp" aria-hidden="true">${escapeHtml(s.grp || "")}</div>` : "") + `<button type="button" data-stk="${s.id}" title="${escapeHtml(s.label)}" aria-label="${escapeHtml(s.label)} 보내기"><svg viewBox="0 0 240 240" aria-hidden="true"><use href="#mkstk-${s.id}"></use></svg></button>`).join("") +  
           `</div>`;
         
         el.addEventListener("mousedown", (e)=>{ try{ if(e.target && e.target.closest && e.target.closest("button")) e.preventDefault(); }catch(_e){} });
@@ -17125,6 +17371,34 @@ function statusBadge(p){
       if(p.status === "break") return { text:"휴식중", cls:"bBreak", emoji:"☕", emojiHtml:'<span class="coffeeSteam" aria-hidden="true">☕</span>' };
       return { text:"자리비움", cls:"bIdle", emoji:"🌙" };
     }
+    
+    function mkPatternAlphaOf_(theme){
+      try{
+        const raw = (theme || {}).patternAlpha;
+        
+        if(raw === undefined || raw === null || raw === "" || typeof raw === "boolean") return null;
+        const v = Number(raw);
+        if(!isFinite(v)) return null;
+        return Math.max(0.3, Math.min(1, v));
+      }catch(_e){ return null; }
+    }
+
+function mkSlotBaseOf_(theme){
+      const t = theme || {};
+      const legacyPhoto = (t.photoEnabled === false || t.photoEnabled === "false" || t.photoEnabled === 0) ? "off" : "photo";
+      try{
+        const sb = t.slotBase;
+        if(sb && typeof sb === "object"){
+          const e = String(sb.emoji || "");
+          const ph = String(sb.photo || "");
+          if((e === "emoji" || e === "photo" || e === "off") && (ph === "photo" || ph === "emoji" || ph === "off")){
+            return { emoji:e, photo:ph };
+          }
+        }
+      }catch(_e){}
+      return { emoji:"emoji", photo:legacyPhoto };
+    }
+
     function tileKey(p){
       return JSON.stringify({
 
@@ -17143,6 +17417,8 @@ timerHidden:p.timerHidden,
         
         charaTile:(window.__MK_CHARA_TILE_V169__ ? window.__MK_CHARA_TILE_V169__.tileKeyOf(p) : ""),
         bg:p.theme?.bgColor, bubbleColor:p.theme?.bubbleColor, pat:(p.theme?.pattern||p.theme?.bgPattern), patColor:p.theme?.patternColor, photo:p.theme?.photoUrl, photoEnabled:p.theme?.photoEnabled, showPet:p.theme?.showPetInPhotoSlot, petDisplaySlot:p.theme?.petDisplaySlot, petId:p.theme?.petSlotId, petLv:p.theme?.petSlotLv,
+        
+        patAlpha:p.theme?.patternAlpha, slotBase:p.theme?.slotBase,
         
         nameColor:p.theme?.nameColor, statusTextColor:p.theme?.statusTextColor, bubbleTextColor:p.theme?.bubbleTextColor, timeColor:p.theme?.timeColor,
         online:isOnlinePresence(p),
@@ -17185,11 +17461,14 @@ timerHidden:p.timerHidden,
 
       const bg = document.createElement("div");
       bg.className = "bg";
-      bg.style.background = bgStyle(p.theme?.bgColor || "#ffd0e2", (p.theme?.pattern || p.theme?.bgPattern || "none"), (p.theme?.patternColor || p.theme?.patColor || "#ffffff"));
+      
+      bg.style.background = bgStyle(p.theme?.bgColor || "#ffd0e2", (p.theme?.pattern || p.theme?.bgPattern || "none"), (p.theme?.patternColor || p.theme?.patColor || "#ffffff"), mkPatternAlphaOf_(p.theme));
       
       if(((p.theme?.pattern||p.theme?.bgPattern||"")) === "dots"){ bg.style.backgroundSize = "22px 22px, 22px 22px, auto"; }
       if(((p.theme?.pattern||p.theme?.bgPattern||"")) === "grid"){ bg.style.backgroundSize = "18px 18px, 18px 18px, auto"; }
       if(((p.theme?.pattern||p.theme?.bgPattern||"")) === "stripes"){ bg.style.backgroundSize = "auto, auto"; }
+      
+      if(((p.theme?.pattern||p.theme?.bgPattern||"")) === "gingham"){ bg.style.backgroundSize = "28px 28px, 28px 28px, auto"; }
       if(((p.theme?.pattern||p.theme?.bgPattern||"")) === "hearts"){ bg.style.backgroundRepeat = "repeat, no-repeat"; bg.style.backgroundSize = "36px 36px, auto"; }
 
       const shade = document.createElement("div");
@@ -17290,6 +17569,29 @@ if(emoBgTransparent){
   avatar.style.borderColor = hexToRgba(emoBg, 0.95);
 }
 
+const slotBase = mkSlotBaseOf_(p.theme || {});
+
+function mkFillPhotoBox_(box){
+  const photoUrl = (p.theme?.photoUrl || "").trim();
+  if(photoUrl){
+    const img = document.createElement("img");
+    img.src = photoUrl;
+    img.loading = "lazy";
+     img.decoding = "async";
+     try{ img.fetchPriority = "low"; }catch(e){}
+    img.onerror = ()=>{ box.textContent = "사진"; };
+    box.appendChild(img);
+  }else{
+    box.textContent = "사진";
+    
+    if(emoBgTransparent){
+      box.style.background = "transparent";
+      box.style.border = "1px solid rgba(255,255,255,.18)";
+      box.style.color = "rgba(255,255,255,.72)";
+    }
+  }
+}
+
 if(charaSlot === "emoji"){
   
   avatar.textContent = "";
@@ -17297,40 +17599,36 @@ if(charaSlot === "emoji"){
 }else if(petDisplaySlot === "emoji"){
   avatar.textContent = "";
   fillPetSlotBox(avatar, p, { nameTag:true });
+}else if(slotBase.emoji === "photo"){
+  
+  avatar.classList.add("slotPhotoIn");
+  mkFillPhotoBox_(avatar);
+}else if(slotBase.emoji === "off"){
+  
+  avatar.classList.add("slotOff");
+  avatar.textContent = "";
 }else{
   avatar.textContent = (p.theme?.emoji || "");
 }
 
-const photoEnabled = !(p.theme && (p.theme.photoEnabled === false || p.theme.photoEnabled === "false" || p.theme.photoEnabled === 0));
+const photoBase = slotBase.photo;
 
 const idPhoto = document.createElement("div");
-idPhoto.className = "idPhoto" + (photoEnabled ? "" : " photoOff");
+idPhoto.className = "idPhoto" + (photoBase === "off" ? " photoOff slotOff" : "");
 
-if(photoEnabled){
+if(photoBase !== "off"){
   if(charaSlot === "photo"){
     
     window.__MK_CHARA_TILE_V169__.fillSlot(idPhoto, p);
   }else if(petDisplaySlot === "photo"){
     fillPetSlotBox(idPhoto, p, { nameTag:true });
+  }else if(photoBase === "emoji"){
+    
+    idPhoto.classList.add("slotEmojiIn");
+    idPhoto.style.background = emoBgFinal;
+    idPhoto.textContent = (p.theme?.emoji || "");
   }else{
-    const photoUrl = (p.theme?.photoUrl || "").trim();
-    if(photoUrl){
-      const img = document.createElement("img");
-      img.src = photoUrl;
-      img.loading = "lazy";
-       img.decoding = "async";
-       try{ img.fetchPriority = "low"; }catch(e){}
-      img.onerror = ()=>{ idPhoto.textContent = "사진"; };
-      idPhoto.appendChild(img);
-    }else{
-      idPhoto.textContent = "사진";
-      
-      if(emoBgTransparent){
-        idPhoto.style.background = "transparent";
-        idPhoto.style.border = "1px solid rgba(255,255,255,.18)";
-        idPhoto.style.color = "rgba(255,255,255,.72)";
-      }
-    }
+    mkFillPhotoBox_(idPhoto);
   }
 }else{
   
@@ -17412,6 +17710,21 @@ coinEl: (timer && timer.querySelector) ? timer.querySelector('.coinTick') : null
       });
       return t;
     }
+
+try{
+      window.__MK_PROFILE_DEBUG__ = {
+        renderTile, bgStyle,
+        slotBaseOf: mkSlotBaseOf_,
+        patternAlphaOf: mkPatternAlphaOf_,
+        PATTERN_MAX,
+        
+        forgetTile: (uid)=>{ try{ return !!state.lastRendered?.delete?.(String(uid||"")); }catch(_e){ return false; } },
+        petInfo: getLocalPetSlotInfo,
+        fillPet: fillPetSlotBox,
+        myPhotoUrl: ()=>{ try{ return String(state.myPhotoUrl || ""); }catch(_e){ return ""; } }
+      };
+    }catch(_e){}
+
     function updateTimersLive(){
       try{ state.__uiTickAtMs = Date.now(); }catch(_e){}   
 
@@ -18730,7 +19043,9 @@ const stableThemeKeys = [
           "petDisplaySlot","showPetInPhotoSlot","petSlotBgColor","petSlotBgTransparent",
           "petSlotMotion","petSlotId","petSlotLv","petSlotName","petSlotVersion",
           "emojiBg","emojiBgTransparent","bubbleColor","timeColor","nameColor",
-          "chatNameColor","statusTextColor","bubbleTextColor","emojiSize","photoSize"
+          "chatNameColor","statusTextColor","bubbleTextColor","emojiSize","photoSize",
+          
+          "patternAlpha","slotBase"
         ];
         const profileTheme = (prof.theme && typeof prof.theme === "object") ? prof.theme : {};
         const theme = Object.assign({}, p.theme || {});
@@ -20493,11 +20808,6 @@ function preloadPetPlaygroundAssetsV72(){
     window.__MK_PET_PLAY_BG_IMAGES__ = paths.map(src=>{ const img = new Image(); img.decoding = "async"; img.loading = "eager"; img.src = src; return img; });
   }catch(e){}
 }
-try{
-  const kick = ()=>requestIdleOrTimeoutV72(preloadPetPlaygroundAssetsV72, 1200);
-  if(document.readyState === "complete") kick();
-  else window.addEventListener("load", kick, {once:true});
-}catch(e){}
 
 try{
   const __setLayoutModeDirectV71 = setLayoutModeDirect;
@@ -21813,6 +22123,8 @@ if(els.nameColor) els.nameColor.value = clampHexColor(theme.nameColor || "#fffff
 }catch(e){}
       try{ updatePhotoEnabledUI(); }catch(e){}
       showModal(els.profileModal);
+      
+      setTimeout(()=>{ try{ window.__MK_PF_UI__ && window.__MK_PF_UI__.open(); }catch(e){} }, 0);
     });
     els.closeProfile.addEventListener("click", ()=>hideModal(els.profileModal));
     if(els.guideBtn){
@@ -25753,7 +26065,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17125; 
+const MK_APP_BUILD = 17126; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30706,11 +31018,7 @@ body.joined #dashboardCard .dashLinksBox{
 
 
 
-<link href="https://fonts.googleapis.com" rel="preconnect">
-<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&amp;family=Jua&amp;display=swap" rel="stylesheet">
 
-<link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&amp;display=swap" rel="stylesheet">
 <style id="v231Stickers">
   
   .msg.stkOnly,
@@ -30745,6 +31053,9 @@ body.joined #dashboardCard .dashLinksBox{
   .stkPickGrid button{ border:0; background:transparent; padding:2px; border-radius:10px; cursor:pointer; }
   .stkPickGrid button svg{ width:100%; height:auto; aspect-ratio:1/1; display:block; }
   .stkPickGrid button:hover{ background:rgba(var(--pink2rgb),.20); }
+  
+  .stkPickGrid .stkGrp{ grid-column:1 / -1; font-size:11px; font-weight:800; opacity:.62; padding:7px 4px 1px; letter-spacing:.3px; line-height:1; }
+  .stkPickGrid .stkGrp:first-child{ padding-top:2px; }
   @media (max-width:520px){
     .msg .stkArt{ width:112px; height:112px; }
     .stkPickGrid{ grid-template-columns:repeat(auto-fill, minmax(56px, 1fr)); }
@@ -35098,10 +35409,28 @@ var maniPromise = null;
     return ASSET_DIR + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(name)
       + (mani.ver ? ('?v=' + encodeURIComponent(mani.ver)) : '');
   }
-  var imgCache = new Map(); 
+  
+  var imgCache = new Map();   
+  var imgSettled = new Map(); 
+  var IMG_CACHE_MAX = 96;
+  function imgCacheTrim(){
+    if(imgCache.size <= IMG_CACHE_MAX) return;
+    var it = imgCache.keys(), step;
+    while(imgCache.size > IMG_CACHE_MAX){
+      step = it.next();
+      if(step.done) break;              
+      var old = step.value;
+      if(!imgSettled.get(old)) continue; 
+      imgCache.delete(old);
+      imgSettled.delete(old);
+    }
+  }
   function loadImg(url){
     var hit = imgCache.get(url);
-    if(hit) return hit;
+    if(hit){
+      if(imgSettled.get(url)){ imgCache.delete(url); imgCache.set(url, hit); } 
+      return hit;
+    }
     var pr = new Promise(function(res, rej){
       var img = new Image();
       img.decoding = 'async';
@@ -35111,6 +35440,9 @@ var maniPromise = null;
     });
     pr.catch(function(){ imgCache.delete(url); });
     imgCache.set(url, pr);
+    pr.then(function(){ if(imgCache.get(url) === pr) imgSettled.set(url, true); imgCacheTrim();  },
+            function(){ imgSettled.delete(url); });
+    imgCacheTrim();
     return pr;
   }
 
@@ -36588,6 +36920,1293 @@ window.__MK_BINDER_V176__ = {
   body.joined .gridHead .right .modeSegBtn{ min-height:24px !important; padding:0 7px !important; }
 }
 </style>
+
+<style id="v245ProfileUi">
+
+#profileModal .modal{ width:min(920px,100%); }
+
+#profileModal .modalBody{ padding:0; gap:0; }
+
+#profileModal .pfLayout{ display:flex; gap:14px; padding:0 14px 14px; align-items:flex-start; flex:0 0 auto; }
+
+
+#profileModal .pfPreviewCol{
+  flex:0 0 300px; width:300px; align-self:flex-start;
+  position:sticky; top:0; z-index:20;
+  background:#191a1e; padding:12px 0 10px;
+}
+#profileModal .pfLabel{ font-size:11px; font-weight:800; letter-spacing:.6px; color:var(--muted); margin:0 0 8px; }
+#profileModal .pfTileFrame{ width:230px; margin:0 auto; }
+
+#profileModal .pfTileFrame .tile{ width:230px; max-width:230px; cursor:pointer; }
+#profileModal .pfTileFrame .tile:hover{ outline:1px solid rgba(var(--pink2rgb),.30); outline-offset:2px; }
+#profileModal .pfTileFrame [data-pfpart]:hover{ outline:1px dashed rgba(var(--pink2rgb),.75); outline-offset:2px; }
+#profileModal [data-pfpart].pfHl{ outline:2px solid var(--pinkMid) !important; outline-offset:2px; }
+#profileModal .pfCaption{ margin:10px 0 0; font-size:11.5px; color:var(--muted); text-align:center; line-height:1.45; }
+
+#profileModal .pfChatPrev{
+  margin:12px 0 0; padding:9px 10px; border-radius:14px;
+  background:var(--panel); border:1px solid var(--line); cursor:pointer;
+}
+#profileModal .pfChatPrev:hover{ border-color:rgba(var(--pink2rgb),.45); }
+#profileModal .pfCpTitle{ font-size:10.5px; color:var(--muted); margin-bottom:6px; letter-spacing:.3px; }
+#profileModal .pfChatRow{ display:flex; align-items:baseline; gap:7px; min-width:0; }
+#profileModal .pfChatNick{ font-weight:800; font-size:12.5px; flex:0 0 auto; }
+#profileModal .pfChatMsg{
+  font-size:12.5px; color:var(--text); background:var(--panel);
+  border:1px solid var(--line); border-radius:11px; padding:4px 9px; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+
+
+#profileModal .pfSetCol{
+  flex:1 1 auto; min-width:0; align-self:flex-start;
+  display:flex; flex-direction:column; gap:12px; padding-top:12px;
+}
+#profileModal .pfTabs{
+  position:sticky; top:0; z-index:15; display:flex; gap:4px; padding:4px;
+  background:#141418; border:1px solid var(--line); border-radius:14px;
+}
+#profileModal .pfTab{
+  flex:1; padding:8px 6px; border:0; border-radius:10px; background:transparent;
+  color:var(--muted); font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap;
+}
+#profileModal .pfTab:hover{ color:var(--text); background:rgba(255,255,255,.05); }
+#profileModal .pfTab[aria-current="true"]{
+  background:rgba(var(--pink2rgb),.18); color:var(--text); font-weight:800;
+  box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55);
+}
+
+#profileModal .pfGroup{ scroll-margin-top:60px; display:flex; flex-direction:column; gap:10px; }
+#profileModal .pfGTitle{ font-weight:800; font-size:18px; letter-spacing:-.3px; margin:6px 0 0; color:var(--text); }
+#profileModal .pfGDesc{ margin:-4px 0 0; font-size:12.5px; color:var(--muted); }
+#profileModal .pfBlock{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:12px; display:flex; flex-direction:column; gap:9px;
+}
+#profileModal .pfBTitle{ font-size:12.5px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+#profileModal .pfBDesc{ margin:0; font-size:11.5px; color:var(--muted); line-height:1.5; }
+#profileModal .pfBNote{ font-size:11px; font-weight:500; color:var(--muted); }
+#profileModal .pfSubTitle{ font-size:11.5px; font-weight:800; color:var(--text); margin-bottom:6px; }
+#profileModal .pfWhere{ font-size:10.5px; font-weight:500; color:var(--muted); }
+#profileModal .pfHidden{ display:none !important; }
+
+
+#profileModal .pfFieldTop{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+#profileModal .pfCount{ font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+#profileModal .pfTxt{
+  width:100%; padding:10px 12px; border-radius:10px;
+  background:rgba(0,0,0,.34); border:1px solid var(--line); color:var(--text);
+}
+#profileModal .pfTxt:hover{ border-color:rgba(255,255,255,.20); }
+#profileModal .pfHex{
+  flex:0 0 auto; width:92px; padding:6px 8px; border-radius:9px; text-align:center;
+  background:rgba(0,0,0,.34); border:1px solid var(--line); color:var(--muted);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px;
+}
+#profileModal .pfEmoInput{ width:74px; flex:0 0 auto; text-align:center; font-size:18px; padding:7px; }
+#profileModal .pfInline{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#profileModal .pfToggle{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted); cursor:pointer; flex:0 0 auto; }
+#profileModal .pfToggle input{ width:15px; height:15px; accent-color:var(--pinkMid); cursor:pointer; }
+
+
+#profileModal .pfSeg{
+  display:flex; gap:2px; padding:3px; border-radius:12px;
+  background:rgba(0,0,0,.30); border:1px solid var(--line);
+}
+#profileModal .pfSeg5{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }
+#profileModal .pfSeg [role="radio"]{
+  padding:8px 2px; border:0; border-radius:9px; background:transparent;
+  color:var(--muted); font-weight:600; font-size:12px; letter-spacing:-.2px; cursor:pointer; white-space:nowrap;
+}
+#profileModal .pfSeg [role="radio"]:hover{ color:var(--text); background:rgba(255,255,255,.06); }
+#profileModal .pfSeg [role="radio"][aria-checked="true"]{
+  background:rgba(var(--pink2rgb),.18); color:var(--text); font-weight:800;
+  box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55);
+}
+
+#profileModal .pfSeg [role="radio"][aria-disabled="true"]{ opacity:.38; color:var(--muted); cursor:not-allowed; font-weight:500; }
+#profileModal .pfSeg [role="radio"][aria-disabled="true"]:hover{ background:transparent; color:var(--muted); }
+#profileModal .pfChips,
+#profileModal .pfChipsWrap{ display:flex; flex-wrap:wrap; gap:6px; }
+#profileModal .pfChips [role="radio"],
+#profileModal .pfChipBtn,
+#profileModal .pfChipsWrap .pfChipBtn{
+  flex:0 0 auto; padding:7px 12px; border-radius:999px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line);
+  color:var(--muted); font-size:12.5px; font-weight:600; cursor:pointer;
+}
+#profileModal .pfChips [role="radio"]:hover,
+#profileModal .pfChipBtn:hover{ color:var(--text); border-color:rgba(255,255,255,.20); background:rgba(255,255,255,.09); }
+#profileModal .pfChips [role="radio"][aria-checked="true"]{
+  background:rgba(var(--pink2rgb),.20); color:var(--text); font-weight:800; border-color:rgba(var(--pink2rgb),.60);
+}
+#profileModal .pfChipBtn[aria-pressed="true"]{ color:var(--text); border-color:rgba(var(--pink2rgb),.60); background:rgba(var(--pink2rgb),.18); }
+#profileModal .pfStatusChips{ margin:0 0 10px; }
+
+
+#profileModal .pfSlotCards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(236px,1fr)); gap:10px; }
+#profileModal .pfSlotCard{
+  background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:14px;
+  padding:11px; display:flex; flex-direction:column; gap:9px;
+}
+#profileModal .pfScHead{ display:flex; align-items:center; gap:10px; }
+#profileModal .pfScName{ font-size:12.5px; font-weight:800; }
+#profileModal .pfScWhat{ font-size:11px; color:var(--muted); margin-top:1px; }
+
+#profileModal .pfMini{
+  --photoSize:64px;
+  width:64px; height:64px; flex:0 0 auto; border-radius:14px;
+  font-size:30px; box-shadow:none;
+}
+#profileModal .pfMini.pfMiniOff{
+  border:1px dashed rgba(255,255,255,.28); background:rgba(255,255,255,.03);
+  font-size:11px; font-weight:800; color:var(--muted);
+}
+#profileModal .pfMini .petSlotNameTag{ display:none; }
+
+#profileModal .pfSlotNote{
+  margin:0; font-size:11px; line-height:1.45; color:var(--muted);
+  background:rgba(255,255,255,.04); border:1px dashed var(--line);
+  border-radius:10px; padding:6px 8px;
+}
+#profileModal .pfSlotNote.pfWarn{
+  color:var(--pink1); background:rgba(var(--pink2rgb),.10);
+  border-style:solid; border-color:rgba(var(--pink2rgb),.45);
+}
+#profileModal .pfEmojiChips{ display:flex; flex-wrap:wrap; gap:5px; }
+#profileModal .pfEmoChip{
+  width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); cursor:pointer;
+  font-size:19px; line-height:1; padding:0; color:var(--text);
+}
+#profileModal .pfEmoChip:hover{ border-color:rgba(255,255,255,.20); background:rgba(255,255,255,.10); }
+#profileModal .pfEmoChip[aria-pressed="true"]{ border-color:rgba(var(--pink2rgb),.75); background:rgba(var(--pink2rgb),.18); }
+
+#profileModal #uploadPhotoBtn{
+  background:linear-gradient(180deg, var(--pink2), var(--pinkMid));
+  border-color:rgba(var(--pink2rgb),.75); color:#2a0d1c; font-weight:800;
+}
+#profileModal .pfPhotoThumb{
+  width:52px; height:52px; border-radius:12px; overflow:hidden; flex:0 0 auto;
+  border:1px solid var(--line); background:rgba(0,0,0,.34);
+  display:flex; align-items:center; justify-content:center; font-size:10.5px; color:var(--muted);
+}
+#profileModal .pfPhotoThumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+
+#profileModal .pfSwatchRow{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+#profileModal .pfSw{ width:34px; height:34px; border-radius:10px; cursor:pointer; padding:0; border:1px solid rgba(255,255,255,.22); }
+#profileModal .pfSw[aria-checked="true"]{ box-shadow:0 0 0 2px rgba(0,0,0,.75), 0 0 0 4px var(--pinkMid); }
+#profileModal .pfPickWrap{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+#profileModal input[type="color"]{
+  -webkit-appearance:none; appearance:none; width:44px; height:34px; padding:0; cursor:pointer;
+  background:transparent; border:1px solid rgba(255,255,255,.20); border-radius:10px; flex:0 0 auto;
+}
+#profileModal input[type="color"]::-webkit-color-swatch-wrapper{ padding:2px; }
+#profileModal input[type="color"]::-webkit-color-swatch{ border:none; border-radius:8px; }
+#profileModal input[type="color"]::-moz-color-swatch{ border:none; border-radius:8px; }
+#profileModal .pfPatGrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:7px; }
+#profileModal .pfPatCell{
+  padding:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; cursor:pointer;
+  background:transparent; display:flex; flex-direction:column;
+}
+#profileModal .pfPatCell:hover{ border-color:rgba(255,255,255,.20); }
+#profileModal .pfPatCell[aria-checked="true"]{ border-color:var(--pinkMid); box-shadow:0 0 0 1px var(--pinkMid); }
+#profileModal .pfPatSwatch{ height:52px; width:100%; display:block; }
+#profileModal .pfPatName{ font-size:10.5px; padding:5px 4px; color:var(--muted); background:rgba(0,0,0,.34); text-align:center; }
+#profileModal .pfPatCell[aria-checked="true"] .pfPatName{ color:var(--text); font-weight:800; }
+#profileModal .pfRangeRow{ display:flex; align-items:center; gap:11px; }
+#profileModal .pfRangeRow input[type="range"]{
+  flex:1 1 auto; min-width:0; height:22px; margin:0; padding:0;
+  background:transparent; accent-color:var(--pinkMid); cursor:pointer;
+}
+#profileModal .pfRangeVal{ flex:0 0 auto; min-width:46px; text-align:right; font-size:12.5px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; }
+
+
+#profileModal .pfColorRow{
+  display:flex; align-items:center; gap:11px; padding:8px; border-radius:14px;
+  background:rgba(255,255,255,.03); border:1px solid transparent; flex-wrap:wrap;
+}
+#profileModal .pfColorRow:hover{ background:rgba(255,255,255,.06); border-color:var(--line); }
+#profileModal .pfCText{ flex:1 1 140px; min-width:0; }
+#profileModal .pfCName{ font-size:12.5px; font-weight:800; }
+#profileModal .pfCDesc{ font-size:11px; color:var(--muted); line-height:1.4; margin-top:1px; flex:0 0 auto; }
+#profileModal .pfPresetRow{ display:flex; flex-wrap:wrap; gap:7px; }
+#profileModal .pfPresetBtn{
+  display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--text);
+  font-size:12.5px; font-weight:600; cursor:pointer;
+}
+#profileModal .pfPresetBtn:hover{ border-color:rgba(var(--pink2rgb),.60); background:rgba(var(--pink2rgb),.12); }
+#profileModal .pfPresetBtn .pfDots{ display:inline-flex; gap:3px; margin-left:2px; }
+#profileModal .pfPresetBtn .pfDots i{ width:9px; height:9px; border-radius:50%; display:block; border:1px solid rgba(0,0,0,.28); }
+
+
+#profileModal .pfFoot{
+  position:sticky; bottom:0; z-index:22; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  padding:11px 14px; border-top:1px solid var(--line); background:#16161a;
+}
+#profileModal .pfFootNote{ font-size:11.5px; color:var(--muted); margin:0; }
+#profileModal .pfFootBtns{ display:flex; gap:8px; }
+#profileModal .pfFoot .primary{ padding:8px 20px; font-weight:800; }
+
+
+@keyframes mkPfPulse{
+  0%{ box-shadow:0 0 0 0 rgba(var(--pink2rgb),.55); background-color:rgba(var(--pink2rgb),.16); }
+  70%{ box-shadow:0 0 0 10px rgba(var(--pink2rgb),0); background-color:rgba(var(--pink2rgb),.06); }
+  100%{ box-shadow:0 0 0 0 rgba(var(--pink2rgb),0); background-color:transparent; }
+}
+#profileModal .pfPulse{ animation:mkPfPulse 1.2s ease-out 1; border-radius:14px; }
+
+
+@media (max-width:640px){
+  #profileModal .pfLayout{ display:block; padding:0 10px 10px; }
+  #profileModal .pfPreviewCol{
+    width:auto; flex:none; height:136px;
+    display:flex; align-items:center; gap:12px;
+    padding:8px 4px; margin-bottom:6px; border-bottom:1px solid var(--line);
+  }
+  #profileModal .pfLabel,
+  #profileModal .pfCaption,
+  #profileModal .pfChatPrev{ display:none; }
+  #profileModal .pfTileFrame{ width:120px; height:120px; flex:0 0 auto; margin:0; }
+  #profileModal .pfTileFrame .tile{ width:230px; height:230px; transform:scale(.5217); transform-origin:top left; }
+  #profileModal .pfStatusChips{ flex-direction:column; margin:0; gap:5px; }
+  #profileModal .pfStatusChips [role="radio"]{ padding:6px 10px; font-size:12px; }
+  #profileModal .pfTabs{ top:136px; }
+  #profileModal .pfGroup{ scroll-margin-top:192px; }
+  #profileModal .pfSetCol{ gap:10px; padding-top:0; }
+  #profileModal .pfSlotCards{ grid-template-columns:1fr; }
+  #profileModal .pfFoot{ padding:10px; }
+  #profileModal .pfFootNote{ flex:1 1 100%; order:2; }
+}
+@media (prefers-reduced-motion:reduce){
+  #profileModal .pfPulse{ animation:none !important; box-shadow:0 0 0 2px var(--pinkMid); }
+}
+</style>
+
+<script id="v245ProfileUiScript">
+
+(function(){
+  "use strict";
+
+  var PREVIEW_ID = "__pfPreview";
+
+var PF_SLOTS = ["emoji", "photo", "chara", "pet", "off"];
+  function pfNormSlot_(v, fallback){
+    v = String(v == null ? "" : v).toLowerCase();
+    for(var i = 0; i < PF_SLOTS.length; i++){ if(PF_SLOTS[i] === v) return v; }
+    return fallback;
+  }
+  
+  function pfSlotBlocked_(mine, theirs, value){
+    if(value === "off") return false;
+    return String(theirs) === String(value);
+  }
+  
+  function pfSlotFields_(left, right){
+    left = pfNormSlot_(left, "emoji");
+    right = pfNormSlot_(right, "photo");
+    var chara = (left === "chara") ? "emoji" : (right === "chara") ? "photo" : "none";
+    var pet   = (left === "pet")   ? "emoji" : (right === "pet")   ? "photo" : "none";
+    var baseE = (left === "emoji" || left === "photo" || left === "off") ? left : "emoji";
+    var baseP = (right === "photo" || right === "emoji" || right === "off") ? right : "photo";
+    return {
+      charaDisplaySlot: chara,
+      petDisplaySlot: pet,
+      slotBase: { emoji: baseE, photo: baseP },
+      photoEnabled: (baseP !== "off")
+    };
+  }
+  
+  function pfResolveSlots_(charaSlot, petSlot, base){
+    var b = base || {};
+    var be = (b.emoji === "emoji" || b.emoji === "photo" || b.emoji === "off") ? b.emoji : "emoji";
+    var bp = (b.photo === "photo" || b.photo === "emoji" || b.photo === "off") ? b.photo : "photo";
+    var cs = (charaSlot === "emoji" || charaSlot === "photo") ? charaSlot : "none";
+    var ps = (petSlot === "emoji" || petSlot === "photo") ? petSlot : "none";
+    var left  = (cs === "emoji") ? "chara" : (ps === "emoji") ? "pet" : be;
+    var right = (cs === "photo") ? "chara" : (ps === "photo") ? "pet" : bp;
+    
+    if(left === right && left !== "off"){
+      if(left === "photo") left = "off";
+      else right = "off";
+    }
+    return { left: left, right: right };
+  }
+
+var PF = {
+    left: "emoji",
+    right: "photo",
+    status: "work",          
+    localPhotoUrl: "",       
+    alphaTouched: false,
+    built: false,
+    opened: false
+  };
+
+  var QUICK_EMOJI = ["💗", "✍️", "🔥", "🌙", "☕", "📚", "🐱", "✨"];
+  var BG_SWATCHES = ["#ffd0e2", "#ffe3b8", "#fff3b0", "#d6f5d0", "#c9ecf5", "#d9d2ff", "#ffd6c9", "#e8e8ea", "#3a2f3a", "#1b1720"];
+  var PATTERNS = [
+    ["none", "없음"], ["dots", "도트"], ["hearts", "하트"], ["stars", "별"], ["moon", "달"],
+    ["flowers", "꽃"], ["clouds", "구름"], ["catpaws", "고양이 발바닥"], ["dogpaws", "강아지 발바닥"],
+    ["stripes", "스트라이프"], ["grid", "그리드"], ["waves", "웨이브"], ["sparkles", "반짝이"], ["confetti", "콘페티"],
+    ["nib", "펜촉"], ["coffee", "커피"], ["gingham", "체크"], ["clover", "클로버"], ["ribbon", "리본"], ["notes", "음표"]
+  ];
+  var PRESETS = [
+    { id:"sakura", emoji:"🌸", name:"벚꽃",   bgColor:"#ffd0e2", patternColor:"#ffffff", bubbleColor:"#ff8dc2", nameColor:"#6b2340", timeColor:"#c2185b", bubbleTextColor:"#5c1f3a" },
+    { id:"mint",   emoji:"🍃", name:"민트",   bgColor:"#d6f5d0", patternColor:"#ffffff", bubbleColor:"#4fc3a1", nameColor:"#1f4d3d", timeColor:"#1a7f5e", bubbleTextColor:"#17423a" },
+    { id:"night",  emoji:"🌙", name:"밤하늘", bgColor:"#1b1720", patternColor:"#c9c4ff", bubbleColor:"#4a4270", nameColor:"#ffffff", timeColor:"#b9b3ff", bubbleTextColor:"#ece9ff" },
+    { id:"peach",  emoji:"🍑", name:"피치",   bgColor:"#ffd6c9", patternColor:"#ffffff", bubbleColor:"#ff9a76", nameColor:"#7a3520", timeColor:"#d2541f", bubbleTextColor:"#5e2716" },
+    { id:"mono",   emoji:"🖤", name:"모노",   bgColor:"#e8e8ea", patternColor:"#8a8a92", bubbleColor:"#6b6b74", nameColor:"#1c1c20", timeColor:"#2b2b30", bubbleTextColor:"#14141a" }
+  ];
+  
+  var HOTSPOT = {
+    badge:     { group:"pfG-color", target:"pfRow-statusTextColor" },
+    name:      { group:"pfG-basic", target:"pfField-nick" },
+    timer:     { group:"pfG-color", target:"pfRow-timeColor" },
+    bubble:    { group:"pfG-basic", target:"pfField-bubble" },
+    emojiSlot: { group:"pfG-slots", target:"pfCard-emoji" },
+    photoSlot: { group:"pfG-slots", target:"pfCard-photo" },
+    bg:        { group:"pfG-bg",    target:"pfBlock-bgColor" },
+    chatName:  { group:"pfG-color", target:"pfRow-chatNameColor" }
+  };
+  var TAB_IDS = ["pfG-basic", "pfG-slots", "pfG-bg", "pfG-color"];
+  var SLOT_LABEL = {
+    emoji: { name:"이모지", topic:"는" },
+    photo: { name:"사진",   topic:"은" },
+    chara: { name:"캐릭터", topic:"는" },
+    pet:   { name:"펫",     topic:"은" },
+    off:   { name:"끄기",   topic:"는" }
+  };
+
+function $id(id){ return document.getElementById(id); }
+  function D(){ try{ return window.__MK_PROFILE_DEBUG__ || null; }catch(e){ return null; } }
+  function body_(){ return document.querySelector("#profileModal .modalBody"); }
+  function reduceMotion_(){
+    try{ return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }catch(e){ return false; }
+  }
+  function clampHex_(s){
+    s = String(s == null ? "" : s).trim();
+    if(/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+    if(/^#[0-9a-fA-F]{3}$/.test(s)) return "#" + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2) + s.charAt(3) + s.charAt(3);
+    return "";
+  }
+  function hexOf_(id, def){ var el = $id(id); return clampHex_(el ? el.value : "") || def; }
+  function valOf_(id, def){ var el = $id(id); return (el && el.value != null) ? String(el.value) : (def || ""); }
+  function chkOf_(id){ var el = $id(id); return !!(el && el.checked); }
+  function darken_(hex, k){
+    var c = clampHex_(hex) || "#ffd0e2", out = "#";
+    for(var i = 1; i < 7; i += 2){
+      var v = Math.max(0, Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * k)));
+      out += ("0" + v.toString(16)).slice(-2);
+    }
+    return out;
+  }
+  function fire_(el, type){ try{ el.dispatchEvent(new Event(type, { bubbles:true })); }catch(e){} }
+  
+  function toast_(msg, ms){
+    try{
+      if(typeof window.showToast === "function"){ window.showToast(msg, ms || 2200); return; }
+      var el = $id("toast");
+      if(el){
+        el.textContent = msg;
+        el.classList.add("show");
+        if(window.__toastTimer) clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(function(){ el.classList.remove("show"); }, ms || 2200);
+      }
+    }catch(e){}
+  }
+  function loadLp_(){
+    try{
+      var raw = localStorage.getItem("mk_profile_pref_v1");
+      var lp = raw ? JSON.parse(raw) : null;
+      return (lp && typeof lp === "object") ? lp : {};
+    }catch(e){ return {}; }
+  }
+  function photoUrl_(){
+    if(PF.localPhotoUrl) return PF.localPhotoUrl;
+    try{
+      var d = D();
+      if(d && typeof d.myPhotoUrl === "function"){
+        var u = d.myPhotoUrl();
+        if(u) return String(u);
+      }
+    }catch(e){}
+    try{ return String((loadLp_().theme || {}).photoUrl || ""); }catch(e){ return ""; }
+  }
+  function bgStyle_(color, pattern, patColor, alpha){
+    var d = D();
+    if(!d || typeof d.bgStyle !== "function") return color;
+    try{ return d.bgStyle(color, pattern, patColor, alpha); }catch(e){ return color; }
+  }
+  
+  function patternSizing_(el, pattern){
+    el.style.backgroundRepeat = "";
+    el.style.backgroundSize = "";
+    if(pattern === "dots"){ el.style.backgroundSize = "22px 22px, 22px 22px, auto"; }
+    if(pattern === "grid"){ el.style.backgroundSize = "18px 18px, 18px 18px, auto"; }
+    if(pattern === "stripes"){ el.style.backgroundSize = "auto, auto"; }
+    if(pattern === "gingham"){ el.style.backgroundSize = "28px 28px, 28px 28px, auto"; }
+    if(pattern === "hearts"){ el.style.backgroundRepeat = "repeat, no-repeat"; el.style.backgroundSize = "36px 36px, auto"; }
+  }
+
+function segItems_(box){ return Array.prototype.slice.call(box.querySelectorAll('[role="radio"]')); }
+  function segLocked_(it){ return it.getAttribute("aria-disabled") === "true"; }
+  function segSet_(box, value){
+    if(!box) return;
+    segItems_(box).forEach(function(it){
+      var on = (String(it.getAttribute("data-value")).toLowerCase() === String(value).toLowerCase());
+      it.setAttribute("aria-checked", on ? "true" : "false");
+      it.tabIndex = on ? 0 : -1;
+    });
+    
+    var items = segItems_(box);
+    var any = items.some(function(it){ return it.tabIndex === 0; });
+    if(!any && items.length) items[0].tabIndex = 0;
+  }
+  function focusNoScroll_(el){ try{ el.focus({ preventScroll:true }); }catch(e){ try{ el.focus(); }catch(e2){} } }
+  function firstPickable_(items, from, step){
+    for(var n = 0, j = from; n < items.length; n++, j += step){
+      if(j < 0 || j >= items.length) break;
+      if(!segLocked_(items[j])) return j;
+    }
+    return -1;
+  }
+  function initSeg_(box, onPick){
+    if(!box || box.getAttribute("data-pfbound") === "1") return;
+    box.setAttribute("data-pfbound", "1");
+    box.addEventListener("click", function(ev){
+      var it = ev.target && ev.target.closest ? ev.target.closest('[role="radio"]') : null;
+      if(!it || !box.contains(it)) return;
+      onPick(it.getAttribute("data-value"), it);   
+    });
+    box.addEventListener("keydown", function(ev){
+      var items = segItems_(box);
+      if(!items.length) return;
+      var i = items.indexOf(document.activeElement);
+      if(i < 0) return;
+      var step = 0, next = -1;
+      if(ev.key === "ArrowRight" || ev.key === "ArrowDown") step = 1;
+      else if(ev.key === "ArrowLeft" || ev.key === "ArrowUp") step = -1;
+      else if(ev.key === "Home") next = firstPickable_(items, 0, 1);
+      else if(ev.key === "End") next = firstPickable_(items, items.length - 1, -1);
+      else return;
+      ev.preventDefault();
+      if(step){
+        var j = i;
+        for(var n = 0; n < items.length; n++){
+          j = (j + step + items.length) % items.length;
+          if(!segLocked_(items[j])){ next = j; break; }
+        }
+      }
+      if(next < 0 || next === i) return;
+      focusNoScroll_(items[next]);
+      onPick(items[next].getAttribute("data-value"), items[next]);
+    });
+  }
+
+var noteTimer = { emojiSlot:null, photoSlot:null };
+  function otherKey_(which){ return (which === "emojiSlot") ? "photoSlot" : "emojiSlot"; }
+  function slotName_(which){ return (which === "emojiSlot") ? "왼쪽 칸" : "오른쪽 칸"; }
+  function slotValue_(which){ return (which === "emojiSlot") ? PF.left : PF.right; }
+  function noteEl_(which){ return $id(which === "emojiSlot" ? "pfNote-emoji" : "pfNote-photo"); }
+  function blockedNote_(which, value){
+    var L = SLOT_LABEL[value] || SLOT_LABEL.emoji;
+    var there = slotName_(otherKey_(which));
+    return L.name + L.topic + " 지금 " + there + "에 있어요. 옮기려면 " + there + "을 먼저 바꿔 주세요.";
+  }
+  function showNote_(which, msg, ms){
+    var el = noteEl_(which);
+    if(!el) return;
+    if(noteTimer[which]){ clearTimeout(noteTimer[which]); noteTimer[which] = null; }
+    var warn = !!msg;
+    var text = msg || ((slotValue_(which) === "off") ? "이 칸은 자리만 남기고 비어요. 넣어 둔 이모지·사진은 지워지지 않아요." : "");
+    el.textContent = text;
+    el.hidden = !text;
+    el.classList.toggle("pfWarn", warn);
+    if(warn && ms) noteTimer[which] = setTimeout(function(){ showNote_(which); }, ms);
+  }
+
+function applySlotFields_(){
+    var f = pfSlotFields_(PF.left, PF.right);
+    var chara = $id("charaDisplaySlot"), pet = $id("petDisplaySlot");
+    
+    var pairs = [];
+    if(chara) pairs.push([chara, f.charaDisplaySlot]);
+    if(pet) pairs.push([pet, f.petDisplaySlot]);
+    pairs.sort(function(a, b){ return (a[1] === "none" ? 0 : 1) - (b[1] === "none" ? 0 : 1); });
+    pairs.forEach(function(pr){
+      if(String(pr[0].value) !== String(pr[1])){
+        pr[0].value = pr[1];
+        fire_(pr[0], "change");
+      }
+    });
+    var be = $id("pfSlotBaseEmoji"), bp = $id("pfSlotBasePhoto");
+    if(be) be.value = f.slotBase.emoji;
+    if(bp) bp.value = f.slotBase.photo;
+    var pe = $id("photoEnabled");
+    if(pe && pe.checked !== f.photoEnabled){ pe.checked = f.photoEnabled; fire_(pe, "change"); }
+    var sp = $id("showPetInPhotoSlot");
+    if(sp) sp.checked = (f.petDisplaySlot === "photo");
+    return f;
+  }
+  function setSlot_(which, value){
+    value = pfNormSlot_(value, slotValue_(which));
+    if(pfSlotBlocked_(slotValue_(which), slotValue_(otherKey_(which)), value)){
+      showNote_(which, blockedNote_(which, value), 4000);
+      return false;
+    }
+    if(which === "emojiSlot") PF.left = value; else PF.right = value;
+    applySlotFields_();
+    syncSlots_();
+    renderSoon_();
+    return true;
+  }
+  function syncSlotSeg_(which){
+    var box = document.querySelector('#profileModal [data-pfseg="' + which + '"]');
+    if(!box) return;
+    var there = slotName_(otherKey_(which));
+    var theirs = slotValue_(otherKey_(which));
+    segItems_(box).forEach(function(it){
+      if(pfSlotBlocked_(slotValue_(which), theirs, it.getAttribute("data-value"))){
+        it.setAttribute("aria-disabled", "true");
+        it.title = there + "에서 쓰는 중";
+      }else{
+        it.removeAttribute("aria-disabled");
+        it.removeAttribute("title");
+      }
+    });
+    segSet_(box, slotValue_(which));
+  }
+  function syncSlots_(){
+    syncSlotSeg_("emojiSlot");
+    syncSlotSeg_("photoSlot");
+    showNote_("emojiSlot");
+    showNote_("photoSlot");
+    
+    var where = { emoji:[], photo:[], chara:[], pet:[] };
+    if(where[PF.left]) where[PF.left].push("왼쪽 칸");
+    if(where[PF.right]) where[PF.right].push("오른쪽 칸");
+    [["emoji", "pfSub-emoji", "pfWhere-emoji"], ["photo", "pfSub-photo", "pfWhere-photo"],
+     ["chara", "pfSub-chara", "pfWhere-chara"], ["pet", "pfSub-pet", "pfWhere-pet"]].forEach(function(t){
+      var at = where[t[0]], blk = $id(t[1]), lab = $id(t[2]);
+      if(blk) blk.hidden = (at.length === 0);
+      if(lab) lab.textContent = at.length ? ("지금 " + at.join("·") + "에 있어요") : "";
+    });
+    
+    var noChara = false;
+    try{
+      var api = window.__MK_CHARA_TILE_V169__;
+      noChara = !(api && typeof api.buildCharaV1 === "function" && api.buildCharaV1());
+    }catch(e){ noChara = false; }
+    var cn = $id("pfCharaNone");
+    if(cn) cn.hidden = !noChara;
+  }
+
+function charaShow_(){ var v = valOf_("charaDisplaySlot", "none"); return (v === "emoji" || v === "photo") ? v : "none"; }
+  function charaMode_(){ var v = valOf_("charaMotionMode", "stand"); return (v === "move") ? "move" : "stand"; }
+  function buildTheme_(){
+    var pattern = valOf_("bgPattern", "none") || "none";
+    var pet = { id:"cat", lv:0, name:"" };
+    try{ var d = D(); if(d && typeof d.petInfo === "function") pet = d.petInfo() || pet; }catch(e){}
+    var theme = {
+      emoji: valOf_("emoji", ""),
+      bgColor: hexOf_("bgColor", "#ffd0e2"),
+      pattern: pattern,
+      bgPattern: pattern,
+      patternColor: hexOf_("patternColor", "#ffffff"),
+      photoUrl: photoUrl_(),
+      photoEnabled: chkOf_("photoEnabled"),
+      petDisplaySlot: (function(){ var v = valOf_("petDisplaySlot", "none"); return (v === "photo" || v === "emoji") ? v : "none"; })(),
+      petSlotBgColor: hexOf_("petSlotBgColor", "#1b1720"),
+      petSlotBgTransparent: chkOf_("petSlotBgTransparent"),
+      petSlotMotion: valOf_("petSlotMotion", "bounce"),
+      petSlotId: pet.id,
+      petSlotLv: pet.lv,
+      petSlotName: pet.name || "",
+      petSlotVersion: "v56",
+      emojiBg: hexOf_("emojiBgColor", "#2b2b2b"),
+      emojiBgTransparent: chkOf_("emojiBgTransparent"),
+      bubbleColor: hexOf_("bubbleColor", "#ffd0e2"),
+      timeColor: hexOf_("timeColor", "#ffffff"),
+      nameColor: hexOf_("nameColor", "#ffffff"),
+      chatNameColor: hexOf_("chatNameColor", "#ffffff"),
+      statusTextColor: hexOf_("statusTextColor", "#ffffff"),
+      bubbleTextColor: hexOf_("bubbleTextColor", "#ffffff"),
+      emojiSize: 82,
+      photoSize: 82,
+      slotBase: { emoji: valOf_("pfSlotBaseEmoji", "emoji") || "emoji", photo: valOf_("pfSlotBasePhoto", "photo") || "photo" }
+    };
+    theme.showPetInPhotoSlot = (theme.petDisplaySlot === "photo");
+    
+    var a = valOf_("pfPatternAlpha", "");
+    if(a !== ""){
+      var v = Number(a) / 100;
+      if(isFinite(v)) theme.patternAlpha = Math.min(1, Math.max(0.3, v));
+    }
+    return theme;
+  }
+  function buildParticipant_(){
+    var now = Date.now();
+    var nick = String(valOf_("profileNick", "")).trim().slice(0, 20);
+    var p = {
+      id: PREVIEW_ID,                       
+      name: nick || "이름 없음",
+      status: PF.status,
+      bubbleText: String(valOf_("bubbleText", "")).trim().slice(0, 15),
+      theme: buildTheme_(),
+      lastSeenAtMs: now,                    
+      heartbeatAtMs: now,
+      petMotionSeedMs: 1
+    };
+    try{
+      var api = window.__MK_CHARA_TILE_V169__;
+      var base = (api && typeof api.buildCharaV1 === "function") ? api.buildCharaV1() : null;
+      if(base && typeof base === "object"){
+        p.charaV1 = Object.assign({}, base, { show: charaShow_(), mode: charaMode_() });
+      }
+    }catch(e){}
+    return p;
+  }
+  var PART_SELECTORS = [
+    [".badge", "badge", "현재상태 색 설정으로 가요"],
+    [".namePill", "name", "닉네임 설정으로 가요"],
+    [".bigTimer", "timer", "타이머 색 설정으로 가요"],
+    [".bubble", "bubble", "말풍선 설정으로 가요"],
+    [".avatar", "emojiSlot", "왼쪽 칸 설정으로 가요"],
+    [".idPhoto", "photoSlot", "오른쪽 칸 설정으로 가요"]
+  ];
+  function markParts_(el){
+    if(!el) return;
+    el.setAttribute("data-pfpart", "bg");
+    el.title = "배경을 누르면 배경 설정으로 가요";
+    PART_SELECTORS.forEach(function(s){
+      var n = el.querySelector(s[0]);
+      if(!n) return;
+      n.setAttribute("data-pfpart", s[1]);
+      n.title = s[2];
+    });
+  }
+  function paintTimer_(el, p){
+    if(!el) return;
+    var t = el.querySelector(".time");
+    if(!t) return;
+    t.textContent = "01:23:45";   
+    t.style.color = (p.status === "work") ? (clampHex_(p.theme.timeColor) || "#ffffff") : "#9aa0a6";
+  }
+  function fillMini_(box, content, p){
+    if(!box) return;
+    box.className = "idPhoto pfMini";
+    box.removeAttribute("style");
+    box.textContent = "";
+    if(content === "off"){
+      box.classList.add("pfMiniOff");
+      box.textContent = "숨김";
+      return;
+    }
+    if(content === "pet"){
+      var d = D();
+      if(d && typeof d.fillPet === "function"){ try{ d.fillPet(box, p, { nameTag:false }); return; }catch(e){} }
+      box.textContent = "🐾";
+      return;
+    }
+    if(content === "chara"){
+      var api = window.__MK_CHARA_TILE_V169__;
+      if(api && typeof api.fillSlot === "function"){ try{ api.fillSlot(box, p); return; }catch(e){} }
+      box.textContent = "✨";
+      return;
+    }
+    if(content === "photo"){
+      var url = String(p.theme.photoUrl || "");
+      if(url){
+        var img = document.createElement("img");
+        img.src = url;
+        img.alt = "";
+        box.appendChild(img);
+      }else{
+        box.style.fontSize = "11px";
+        box.textContent = "사진";
+      }
+      return;
+    }
+    
+    var clear = !!p.theme.emojiBgTransparent;
+    box.style.background = clear ? "transparent" : (clampHex_(p.theme.emojiBg) || "#2b2b2b");
+    if(clear) box.style.border = "1px solid rgba(255,255,255,.18)";
+    if(p.theme.emoji){ box.textContent = p.theme.emoji; }
+    else{ box.style.fontSize = "11px"; box.textContent = "비어 있음"; }
+  }
+  function syncChat_(){
+    var n = $id("pfChatNick");
+    if(!n) return;
+    n.textContent = String(valOf_("profileNick", "")).trim().slice(0, 20) || "이름 없음";
+    n.style.color = hexOf_("chatNameColor", "#ffffff");
+  }
+  function syncCounters_(){
+    var a = $id("pfCntNick"), b = $id("pfCntBubble");
+    if(a) a.textContent = Array.from(String(valOf_("profileNick", ""))).length + "/20";
+    if(b) b.textContent = Array.from(String(valOf_("bubbleText", ""))).length + "/15";
+  }
+  function syncPatternCells_(){
+    var grid = $id("pfPatGrid");
+    if(!grid) return;
+    var bg = hexOf_("bgColor", "#ffd0e2"), pc = hexOf_("patternColor", "#ffffff");
+    var a = valOf_("pfPatternAlpha", "");
+    var alpha = (a === "") ? null : Math.min(1, Math.max(0.3, Number(a) / 100));
+    Array.prototype.forEach.call(grid.querySelectorAll(".pfPatSwatch"), function(sw){
+      var pat = sw.getAttribute("data-pattern");
+      sw.style.background = bgStyle_(bg, pat, pc, alpha);
+      patternSizing_(sw, pat);
+    });
+    segSet_(grid, valOf_("bgPattern", "none"));
+    var sws = $id("pfBgSwatches");
+    if(sws) segSet_(sws, bg);
+    var pq = $id("pfPatQuick");
+    if(pq){
+      Array.prototype.forEach.call(pq.querySelectorAll("[data-quick]"), function(b){
+        var q = b.getAttribute("data-quick");
+        var v = (q === "dark") ? darken_(bg, 0.55) : q;
+        var dot = b.querySelector("i");
+        if(dot) dot.style.background = v;
+        b.setAttribute("aria-pressed", ((clampHex_(v) || "").toLowerCase() === (clampHex_(pc) || "").toLowerCase()) ? "true" : "false");
+      });
+    }
+  }
+  function syncAlphaUI_(){
+    var range = $id("pfPatternAlphaRange"), out = $id("pfPatternAlphaVal"), hid = $id("pfPatternAlpha");
+    if(!range) return;
+    var pct;
+    if(hid && hid.value !== ""){
+      pct = Math.max(30, Math.min(100, Math.round(Number(hid.value) / 5) * 5));
+    }else{
+      
+      var maxA = 0.32;
+      try{
+        var d = D();
+        var pm = (d && d.PATTERN_MAX) ? d.PATTERN_MAX[valOf_("bgPattern", "none")] : null;
+        if(typeof pm === "number" && pm > 0) maxA = pm;
+      }catch(e){}
+      pct = Math.max(30, Math.round(maxA * 100 / 5) * 5);
+    }
+    if(Number(range.value) !== pct) range.value = String(pct);
+    range.setAttribute("aria-valuetext", pct + "%");
+    if(out) out.textContent = pct + "%";
+  }
+  function syncEmojiChips_(){
+    var cur = valOf_("emoji", "");
+    Array.prototype.forEach.call(document.querySelectorAll("#profileModal .pfEmoChip"), function(c){
+      c.setAttribute("aria-pressed", (c.getAttribute("data-emoji") === cur && cur !== "") ? "true" : "false");
+    });
+  }
+  function syncPhotoThumb_(){
+    var t = $id("pfPhotoThumb");
+    if(!t) return;
+    t.textContent = "";
+    var url = photoUrl_();
+    if(url){
+      var img = document.createElement("img");
+      img.src = url;
+      img.alt = "";
+      t.appendChild(img);
+    }else{
+      t.textContent = "없음";
+    }
+  }
+  function render_(){
+    var d = D();
+    var frame = $id("pfTileFrame");
+    var p = buildParticipant_();
+    if(d && typeof d.renderTile === "function" && frame){
+      var el = null;
+      try{ el = d.renderTile(p); }catch(e){ el = null; }
+      if(el){
+        if(el.parentNode !== frame){ frame.textContent = ""; frame.appendChild(el); }
+        markParts_(el);
+        paintTimer_(el, p);
+      }
+    }
+    fillMini_($id("pfMini-emoji"), PF.left, p);
+    fillMini_($id("pfMini-photo"), PF.right, p);
+    segSet_($id("pfStatusChips"), PF.status);
+    segSet_(document.querySelector('#profileModal [data-pfseg="charaMotion"]'), charaMode_());
+    segSet_(document.querySelector('#profileModal [data-pfseg="petMotion"]'), valOf_("petSlotMotion", "bounce"));
+    syncChat_();
+    syncCounters_();
+    syncEmojiChips_();
+    syncPhotoThumb_();
+    syncAlphaUI_();
+    syncPatternCells_();
+  }
+  var renderTimer = null;
+  function renderSoon_(){
+    if(renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(function(){ renderTimer = null; try{ render_(); }catch(e){} }, 60);
+  }
+
+function stickyBottom_(){
+    var tabs = $id("pfTabs"), b = body_();
+    if(tabs) return tabs.getBoundingClientRect().bottom;
+    return b ? b.getBoundingClientRect().top : 0;
+  }
+  
+  function scrollToEl_(el){
+    var b = body_();
+    if(!el || !b) return;
+    var top = el.getBoundingClientRect().top - stickyBottom_() + b.scrollTop - 12;
+    var max = Math.max(0, b.scrollHeight - b.clientHeight);
+    top = Math.max(0, Math.min(max, top));
+    try{ b.scrollTo({ top: top, behavior: reduceMotion_() ? "auto" : "smooth" }); }
+    catch(e){ b.scrollTop = top; }
+  }
+  function pulse_(id){
+    var el = $id(id);
+    if(!el) return;
+    el.classList.remove("pfPulse");
+    void el.offsetWidth;
+    el.classList.add("pfPulse");
+    setTimeout(function(){ el.classList.remove("pfPulse"); }, 1300);
+  }
+  function setActiveTab_(id){
+    var tabs = $id("pfTabs");
+    if(!tabs) return;
+    Array.prototype.forEach.call(tabs.querySelectorAll(".pfTab"), function(t){
+      var on = (t.getAttribute("data-target") === id);
+      t.setAttribute("aria-current", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+    });
+  }
+  function goto_(part){
+    var map = HOTSPOT[part];
+    if(!map) return;
+    scrollToEl_($id(map.target) || $id(map.group));
+    setActiveTab_(map.group);
+    pulse_(map.target);
+  }
+  function spy_(){
+    if(!body_()) return;
+    var refTop = stickyBottom_() + 12, cur = TAB_IDS[0];
+    TAB_IDS.forEach(function(id){
+      var el = $id(id);
+      if(!el) return;
+      if(el.getBoundingClientRect().top - refTop <= 8) cur = id;
+    });
+    setActiveTab_(cur);
+  }
+  function highlight_(on, keys){
+    String(keys || "").split(/\s+/).forEach(function(k){
+      if(!k) return;
+      var el = document.querySelector('#profileModal [data-pfpart="' + k + '"]');
+      if(el) el.classList.toggle("pfHl", on);
+    });
+  }
+
+var COLOR_PAIRS = [
+    ["bgColor", "bgPicker"], ["patternColor", "patternPicker"], ["bubbleColor", "bubblePicker"],
+    ["timeColor", "timePicker"], ["nameColor", "nameColorPicker"], ["chatNameColor", "chatNameColorPicker"],
+    ["statusTextColor", "statusTextColorPicker"], ["bubbleTextColor", "bubbleTextColorPicker"],
+    ["emojiBgColor", "emojiBgPicker"], ["petSlotBgColor", "petSlotBgPicker"]
+  ];
+  function bindColorPair_(hexId, pickerId){
+    var hexEl = $id(hexId), pick = $id(pickerId);
+    if(!hexEl || !pick) return;
+    pick.addEventListener("input", function(){ hexEl.value = pick.value; renderSoon_(); });
+    var sync = function(){
+      var v = clampHex_(hexEl.value);
+      if(v){ hexEl.value = v; pick.value = v; }
+      else{ hexEl.value = pick.value; }
+      renderSoon_();
+    };
+    hexEl.addEventListener("change", sync);
+    hexEl.addEventListener("blur", sync);
+    hexEl.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); sync(); } });
+    hexEl.addEventListener("input", renderSoon_);
+  }
+  
+  function setColor_(hexId, pickerId, value){
+    var hexEl = $id(hexId), pick = $id(pickerId);
+    var v = clampHex_(value) || "#ffffff";
+    if(pick){ pick.value = v; fire_(pick, "input"); }
+    if(hexEl){ hexEl.value = v; fire_(hexEl, "input"); fire_(hexEl, "change"); }
+  }
+
+function build_(){
+    if(PF.built) return;
+    var root = $id("profileModal");
+    if(!root || !$id("pfLayout")) return;
+    PF.built = true;
+
+var subChara = $id("pfSub-chara");
+    if(subChara && !$id("pfCharaNone")){
+      var warn = document.createElement("p");
+      warn.className = "pfSlotNote pfWarn";
+      warn.id = "pfCharaNone";
+      warn.hidden = true;
+      warn.textContent = "아직 꾸민 캐릭터가 없어요. ✨캐릭터 꾸미기에서 먼저 만들고 오면 이 칸에 나와요.";
+      subChara.appendChild(warn);
+    }
+
+var ec = $id("pfEmojiChips");
+    if(ec && !ec.childNodes.length){
+      QUICK_EMOJI.forEach(function(e){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pfEmoChip";
+        b.setAttribute("data-emoji", e);
+        b.setAttribute("aria-pressed", "false");
+        b.setAttribute("aria-label", "이모지 " + e);
+        b.textContent = e;
+        b.addEventListener("click", function(){
+          var el = $id("emoji");
+          if(!el) return;
+          el.value = e;
+          fire_(el, "input"); fire_(el, "change");
+          render_();
+        });
+        ec.appendChild(b);
+      });
+    }
+
+var sws = $id("pfBgSwatches");
+    if(sws && !sws.childNodes.length){
+      BG_SWATCHES.forEach(function(c, i){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pfSw";
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", "false");
+        b.setAttribute("data-value", c);
+        b.tabIndex = (i === 0) ? 0 : -1;
+        b.style.background = c;
+        b.title = c;
+        b.setAttribute("aria-label", "배경색 " + c);
+        sws.appendChild(b);
+      });
+      initSeg_(sws, function(v){ setColor_("bgColor", "bgPicker", v); render_(); });
+    }
+
+var grid = $id("pfPatGrid");
+    if(grid && !grid.childNodes.length){
+      PATTERNS.forEach(function(p, i){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pfPatCell";
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", "false");
+        b.setAttribute("data-value", p[0]);
+        b.tabIndex = (i === 0) ? 0 : -1;
+        b.setAttribute("aria-label", "패턴 " + p[1]);
+        var sw = document.createElement("span");
+        sw.className = "pfPatSwatch";
+        sw.setAttribute("data-pattern", p[0]);
+        var nm = document.createElement("span");
+        nm.className = "pfPatName";
+        nm.textContent = p[1];
+        b.appendChild(sw);
+        b.appendChild(nm);
+        grid.appendChild(b);
+      });
+      initSeg_(grid, function(v){
+        var sel = $id("bgPattern");
+        if(!sel) return;
+        sel.value = v;
+        if(String(sel.value) !== String(v)){ toast_("이 패턴은 이 버전에서 아직 못 골라요"); return; }
+        fire_(sel, "change");
+        render_();
+      });
+    }
+
+var pq = $id("pfPatQuick");
+    if(pq && !pq.childNodes.length){
+      [["#ffffff", "흰색"], ["#000000", "검정"], ["#FF8DC2", "포인트 핑크"], ["dark", "배경보다 어둡게"]].forEach(function(q){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pfChipBtn";
+        b.setAttribute("data-quick", q[0]);
+        b.setAttribute("aria-pressed", "false");
+        var dot = document.createElement("i");
+        dot.style.cssText = "width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.3);margin-right:6px;vertical-align:-1px";
+        b.appendChild(dot);
+        b.appendChild(document.createTextNode(q[1]));
+        b.addEventListener("click", function(){
+          var v = (q[0] === "dark") ? darken_(hexOf_("bgColor", "#ffd0e2"), 0.55) : q[0];
+          setColor_("patternColor", "patternPicker", v);
+          render_();
+        });
+        pq.appendChild(b);
+      });
+    }
+
+var pr = $id("pfPresetRow");
+    if(pr && !pr.childNodes.length){
+      PRESETS.forEach(function(p){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pfPresetBtn";
+        var em = document.createElement("span");
+        em.textContent = p.emoji;
+        var nm = document.createElement("span");
+        nm.textContent = p.name;
+        var dots = document.createElement("span");
+        dots.className = "pfDots";
+        [p.bgColor, p.bubbleColor, p.timeColor].forEach(function(c){
+          var d = document.createElement("i");
+          d.style.background = c;
+          dots.appendChild(d);
+        });
+        b.appendChild(em); b.appendChild(nm); b.appendChild(dots);
+        b.setAttribute("aria-label", p.name + " 색 조합 적용");
+        b.addEventListener("click", function(){
+          setColor_("bgColor", "bgPicker", p.bgColor);
+          setColor_("patternColor", "patternPicker", p.patternColor);
+          setColor_("bubbleColor", "bubblePicker", p.bubbleColor);
+          setColor_("nameColor", "nameColorPicker", p.nameColor);
+          setColor_("timeColor", "timePicker", p.timeColor);
+          setColor_("bubbleTextColor", "bubbleTextColorPicker", p.bubbleTextColor);
+          render_();
+          toast_(p.emoji + " " + p.name + " 조합으로 맞췄어요");
+        });
+        pr.appendChild(b);
+      });
+    }
+
+initSeg_(document.querySelector('#profileModal [data-pfseg="emojiSlot"]'), function(v){ setSlot_("emojiSlot", v); });
+    initSeg_(document.querySelector('#profileModal [data-pfseg="photoSlot"]'), function(v){ setSlot_("photoSlot", v); });
+    ["emojiSlot", "photoSlot"].forEach(function(which){
+      var box = document.querySelector('#profileModal [data-pfseg="' + which + '"]');
+      if(!box) return;
+      function lockedIn(ev){
+        var it = ev.target && ev.target.closest ? ev.target.closest('[role="radio"]') : null;
+        if(it && box.contains(it) && segLocked_(it)) showNote_(which, blockedNote_(which, it.getAttribute("data-value")), 0);
+      }
+      function lockedOut(ev){
+        var it = ev.target && ev.target.closest ? ev.target.closest('[role="radio"]') : null;
+        if(it && box.contains(it) && segLocked_(it)) showNote_(which);
+      }
+      box.addEventListener("mouseover", lockedIn);
+      box.addEventListener("mouseout", lockedOut);
+      box.addEventListener("focusin", lockedIn);
+      box.addEventListener("focusout", lockedOut);
+    });
+    initSeg_($id("pfStatusChips"), function(v){ PF.status = (v === "break" || v === "idle") ? v : "work"; render_(); });
+    initSeg_(document.querySelector('#profileModal [data-pfseg="charaMotion"]'), function(v){
+      var sel = $id("charaMotionMode");
+      if(!sel) return;
+      sel.value = (v === "move") ? "move" : "stand";
+      fire_(sel, "change");
+      render_();
+    });
+    initSeg_(document.querySelector('#profileModal [data-pfseg="petMotion"]'), function(v){
+      var sel = $id("petSlotMotion");
+      if(!sel) return;
+      sel.value = (v === "sway" || v === "none") ? v : "bounce";
+      fire_(sel, "change");
+      render_();
+    });
+
+COLOR_PAIRS.forEach(function(pr2){ bindColorPair_(pr2[0], pr2[1]); });
+    ["emoji", "profileNick", "bubbleText", "emojiBgTransparent", "petSlotBgTransparent",
+     "photoEnabled", "petDisplaySlot", "charaDisplaySlot", "charaMotionMode", "petSlotMotion", "bgPattern"].forEach(function(id){
+      var el = $id(id);
+      if(!el) return;
+      el.addEventListener("input", renderSoon_);
+      el.addEventListener("change", renderSoon_);
+    });
+
+var range = $id("pfPatternAlphaRange");
+    if(range){
+      var onAlpha = function(){
+        var pct = Math.max(30, Math.min(100, Math.round(Number(range.value) / 5) * 5));
+        var hid = $id("pfPatternAlpha");
+        if(hid) hid.value = String(pct);
+        PF.alphaTouched = true;
+        render_();
+      };
+      range.addEventListener("input", onAlpha);
+      range.addEventListener("change", onAlpha);
+    }
+
+var clr = $id("pfEmojiClear");
+    if(clr) clr.addEventListener("click", function(){
+      var el = $id("emoji");
+      if(!el) return;
+      el.value = "";
+      fire_(el, "input"); fire_(el, "change");
+      render_();
+      toast_("이모지를 비웠어요");
+    });
+
+var pick = $id("pfPhotoPick");
+    if(pick) pick.addEventListener("click", function(){ var f = $id("photoFile"); if(f) f.click(); });
+    var file = $id("photoFile");
+    if(file) file.addEventListener("change", function(){
+      var f = file.files && file.files[0];
+      var nameEl = $id("pfPhotoName"), up = $id("uploadPhotoBtn");
+      if(!f){
+        if(nameEl) nameEl.textContent = "";
+        if(up) up.classList.add("pfHidden");
+        return;
+      }
+      if(nameEl) nameEl.textContent = String(f.name || "").slice(0, 24);
+      if(up) up.classList.remove("pfHidden");
+      if(f.size > 2 * 1024 * 1024) toast_("2MB보다 커요. 조금 더 작은 사진을 권해요.");
+      try{
+        var fr = new FileReader();
+        fr.onload = function(){
+          PF.localPhotoUrl = String(fr.result || "");
+          if(PF.left !== "photo" && PF.right !== "photo") setSlot_("photoSlot", "photo");
+          render_();
+          toast_("사진을 골랐어요. [업로드]까지 눌러야 다른 사람에게도 보여요.");
+        };
+        fr.readAsDataURL(f);
+      }catch(e){}
+    });
+    var up = $id("uploadPhotoBtn");
+    if(up) up.addEventListener("click", function(){
+      
+      [1500, 4000].forEach(function(ms){
+        setTimeout(function(){
+          var d = D(), served = "";
+          try{ served = (d && typeof d.myPhotoUrl === "function") ? String(d.myPhotoUrl() || "") : ""; }catch(e){}
+          if(served){
+            PF.localPhotoUrl = "";
+            var nameEl = $id("pfPhotoName");
+            if(nameEl) nameEl.textContent = "";
+            up.classList.add("pfHidden");
+          }
+          try{ render_(); }catch(e){}
+        }, ms);
+      });
+    });
+
+var frame = $id("pfTileFrame");
+    if(frame){
+      
+      frame.addEventListener("contextmenu", function(ev){ ev.preventDefault(); ev.stopPropagation(); }, true);
+      frame.addEventListener("click", function(ev){
+        var hit = ev.target && ev.target.closest ? ev.target.closest("[data-pfpart]") : null;
+        goto_(hit ? hit.getAttribute("data-pfpart") : "bg");
+      });
+    }
+    var chat = $id("pfChatPrev");
+    if(chat){
+      chat.addEventListener("click", function(){ goto_("chatName"); });
+      chat.addEventListener("keydown", function(ev){
+        if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); goto_("chatName"); }
+      });
+    }
+
+Array.prototype.forEach.call(root.querySelectorAll("[data-pfhl]"), function(node){
+      var keys = node.getAttribute("data-pfhl");
+      node.addEventListener("mouseenter", function(){ highlight_(true, keys); });
+      node.addEventListener("mouseleave", function(){ highlight_(false, keys); });
+      node.addEventListener("focusin", function(){ highlight_(true, keys); });
+      node.addEventListener("focusout", function(){ highlight_(false, keys); });
+    });
+
+var tabs = $id("pfTabs");
+    if(tabs){
+      tabs.addEventListener("click", function(ev){
+        var t = ev.target && ev.target.closest ? ev.target.closest(".pfTab") : null;
+        if(!t) return;
+        scrollToEl_($id(t.getAttribute("data-target")));
+        setActiveTab_(t.getAttribute("data-target"));
+      });
+      tabs.addEventListener("keydown", function(ev){
+        var list = Array.prototype.slice.call(tabs.querySelectorAll(".pfTab"));
+        var i = list.indexOf(document.activeElement);
+        if(i < 0) return;
+        var n = -1;
+        if(ev.key === "ArrowRight" || ev.key === "ArrowDown") n = (i + 1) % list.length;
+        else if(ev.key === "ArrowLeft" || ev.key === "ArrowUp") n = (i - 1 + list.length) % list.length;
+        else if(ev.key === "Home") n = 0;
+        else if(ev.key === "End") n = list.length - 1;
+        else return;
+        ev.preventDefault();
+        focusNoScroll_(list[n]);
+        list[n].click();
+      });
+    }
+    var b = body_();
+    if(b) b.addEventListener("scroll", spy_, { passive:true });
+
+var cb = $id("pfCloseBtn");
+    if(cb) cb.addEventListener("click", function(){
+      var real = $id("closeProfile");
+      if(real) real.click();
+    });
+
+var pm = $id("profileModal");
+    if(pm && typeof MutationObserver !== "undefined"){
+      new MutationObserver(function(){
+        if(pm.classList.contains("show")) return;
+        var fr = $id("pfTileFrame");
+        if(fr) fr.textContent = "";
+        try{ var d = D(); if(d && typeof d.forgetTile === "function") d.forgetTile(PREVIEW_ID); }catch(e){}
+        PF.opened = false;
+      }).observe(pm, { attributes:true, attributeFilter:["class"] });
+    }
+  }
+
+function open_(){
+    build_();
+    if(!$id("pfLayout")) return;
+    var d = D();
+    var lp = loadLp_();
+    var theme = (lp && lp.theme && typeof lp.theme === "object") ? lp.theme : {};
+
+var base = { emoji:"emoji", photo:"photo" };
+    try{ if(d && typeof d.slotBaseOf === "function") base = d.slotBaseOf(theme); }catch(e){}
+    var st = pfResolveSlots_(charaShow_(), valOf_("petDisplaySlot", "none"), base);
+    PF.left = st.left;
+    PF.right = st.right;
+    PF.localPhotoUrl = "";
+    PF.status = "work";
+
+var hid = $id("pfPatternAlpha");
+    var saved = null;
+    try{ if(d && typeof d.patternAlphaOf === "function") saved = d.patternAlphaOf(theme); }catch(e){}
+    if(hid){
+      if(saved == null){ hid.value = ""; PF.alphaTouched = false; }
+      else{ hid.value = String(Math.max(30, Math.min(100, Math.round(saved * 100 / 5) * 5))); PF.alphaTouched = true; }
+    }
+
+    var up = $id("uploadPhotoBtn");
+    if(up) up.classList.add("pfHidden");
+    var nameEl = $id("pfPhotoName");
+    if(nameEl) nameEl.textContent = "";
+
+    applySlotFields_();
+    syncSlots_();
+    render_();
+    setActiveTab_(TAB_IDS[0]);
+    var b = body_();
+    if(b){ try{ b.scrollTo(0, 0); }catch(e){ b.scrollTop = 0; } }
+    PF.opened = true;
+  }
+
+  function ready_(){ try{ build_(); }catch(e){} }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ready_);
+  else ready_();
+
+  window.__MK_PF_UI__ = {
+    open: function(){ try{ open_(); }catch(e){ try{ console.warn("[V245_PROFILE_UI] open", e); }catch(e2){} } },
+    render: function(){ try{ render_(); }catch(e){} },
+    setSlot: function(which, value){ return setSlot_(which === "photoSlot" ? "photoSlot" : "emojiSlot", value); },
+    goto: goto_,
+    state: PF,
+    
+    slotFields: pfSlotFields_,
+    resolveSlots: pfResolveSlots_,
+    blocked: pfSlotBlocked_,
+    PRESETS: PRESETS,
+    PATTERNS: PATTERNS
+  };
+})();
+</script>
 
 </body>
 </html>
