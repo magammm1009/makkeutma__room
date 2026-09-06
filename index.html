@@ -91,6 +91,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -8000,17 +8001,13 @@ const pomoFirebaseConfig = {
   };
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc,
-      collection, onSnapshot, serverTimestamp, addDoc, query, orderBy, limit, runTransaction
-    , enableIndexedDbPersistence, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    
     import { getAuth, signInAnonymously, onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence,
       sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, EmailAuthProvider, linkWithCredential,
       signOut,
 
 reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, onChildRemoved as rOnChildRemoved, onChildMoved as rOnChildMoved, off as rOff, onDisconnect as rOnDisconnect,
@@ -8021,7 +8018,30 @@ reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase
 ; (async ()=>{
 
 const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    
+    const FS_MOD_URL = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    const ST_MOD_URL = "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    
+    function mkDynImport_(u){ return import(u); }
+    let __fsModP = null, __fsDb = null, __stModP = null, __stInst = null;
+    function fsMod_(){
+      if(!__fsModP) __fsModP = mkDynImport_(FS_MOD_URL).catch((e)=>{ __fsModP = null; throw e; });
+      return __fsModP;
+    }
+    async function fsDb_(){
+      const m = await fsMod_();
+      if(!__fsDb) __fsDb = m.getFirestore(app);
+      return { m, db: __fsDb };
+    }
+    function stMod_(){
+      if(!__stModP) __stModP = mkDynImport_(ST_MOD_URL).catch((e)=>{ __stModP = null; throw e; });
+      return __stModP;
+    }
+    async function stInst_(){
+      const m = await stMod_();
+      if(!__stInst) __stInst = m.getStorage(app);
+      return { m, storage: __stInst };
+    }
 
 const auth = getAuth(app);
 
@@ -8371,7 +8391,7 @@ try{ setTimeout(()=>{ try{ mkShowAuthLost_({ guestOffer:true }); }catch(_e){} },
       });
       return __mainAuthReadyPromise;
     }
-    const storage = getStorage(app);
+    
     const rtdb = getDatabase(app);
     
     const sudaApp = initializeApp(sudaFirebaseConfig, "sudaApp");
@@ -8968,9 +8988,10 @@ function toast(msg, ms=1600){
       }
     }
 
-function safeOnSnapshot(refOrQuery, next){
+async function safeOnSnapshot(refOrQuery, next){
       try{
-        return onSnapshot(refOrQuery, next, (err)=>{
+        const { m } = await fsDb_();
+        return m.onSnapshot(refOrQuery, next, (err)=>{
           console.warn('onSnapshot error', err);
         });
         
@@ -13064,12 +13085,12 @@ layers.push(base);
 return base;
     }
 
-function roomRef(roomId){ return doc(db, "rooms", roomId); }
-    function meRef(roomId, uid){ return doc(db, "rooms", roomId, "participants", uid); }
-    function participantsCol(roomId){ return collection(db, "rooms", roomId, "participants"); }
-    function chatCol(roomId){ return collection(db, "rooms", roomId, "messages"); }
-    function kicksCol(roomId){ return collection(db, "rooms", roomId, "kicks"); }
-    function kickRef(roomId, uid){ return doc(db, "rooms", roomId, "kicks", uid); }
+async function roomRef(roomId){ const { m, db } = await fsDb_(); return m.doc(db, "rooms", roomId); }
+    async function meRef(roomId, uid){ const { m, db } = await fsDb_(); return m.doc(db, "rooms", roomId, "participants", uid); }
+    async function participantsCol(roomId){ const { m, db } = await fsDb_(); return m.collection(db, "rooms", roomId, "participants"); }
+    async function chatCol(roomId){ const { m, db } = await fsDb_(); return m.collection(db, "rooms", roomId, "messages"); }
+    async function kicksCol(roomId){ const { m, db } = await fsDb_(); return m.collection(db, "rooms", roomId, "kicks"); }
+    async function kickRef(roomId, uid){ const { m, db } = await fsDb_(); return m.doc(db, "rooms", roomId, "kicks", uid); }
 
 function rRoomBase(roomId){ return `rooms/${roomId}`; }
 function rSettingsRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/settings`); }
@@ -13156,18 +13177,23 @@ async function armPresenceOnDisconnect_(){
   }
 }
 
+const FS_ROOM_OK_KEY = "mk_fs_room_ok_v1";
     async function ensureRoom(roomId){
-      const r = roomRef(roomId);
-      const snap = await getDoc(r);
+      try{ if(localStorage.getItem(FS_ROOM_OK_KEY) === String(roomId)) return; }catch(e){}
+      const { m, db } = await fsDb_();
+      const r = m.doc(db, "rooms", roomId);
+      const snap = await m.getDoc(r);
       if(!snap.exists()){
-        await setDoc(r, {
-          createdAt: serverTimestamp(),
+        await m.setDoc(r, {
+          createdAt: m.serverTimestamp(),
           title: roomId,
           adminHash: null,
           dashboard: { pomoUrl:"", pomoApiUrl:"", sudaUrl:"", choolUrl:"", sheetUrl:"", homeworkUrl:"", dashApiUrl: DEFAULT_DASH_API_URL },
           dashCounts: { pomoCount:null, sudaCount:null, updatedAtMs: null }
         });
       }
+      
+      try{ localStorage.setItem(FS_ROOM_OK_KEY, String(roomId)); }catch(e){}
     }
     function getLocalPetSlotInfo(){
       try{
@@ -14579,11 +14605,13 @@ async function uploadPhoto(){
       if(!/^image\//.test(f.type) && !/\.gif$/i.test(f.name)){ showToast("이미지 파일만!"); return; }
 
       const path = `rooms/${state.roomId}/avatars/${state.uid}/profile`; 
-      const ref = sRef(storage, path);
 
       try{
-        await uploadBytes(ref, f, { contentType: f.type || "image/gif" });
-        const url = await getDownloadURL(ref);
+        
+        const { m, storage } = await stInst_();
+        const ref = m.ref(storage, path);
+        await m.uploadBytes(ref, f, { contentType: f.type || "image/gif" });
+        const url = await m.getDownloadURL(ref);
         state.myPhotoUrl = url;
         
         try{
@@ -15091,9 +15119,11 @@ const serverHash = await refreshAdminHashFromServer_();
           state.roomSettings.ownerUid = state.uid;
 
 try{
-            await setDoc(doc(db, "rooms", state.roomId), {
+            
+            const { m, db } = await fsDb_();
+            await m.setDoc(m.doc(db, "rooms", state.roomId), {
               ownerUid: state.uid,
-              updatedAt: serverTimestamp()
+              updatedAt: m.serverTimestamp()
             }, { merge: true });
           }catch(_e){}
 }
@@ -15120,9 +15150,11 @@ try{
         if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
 
 try{
-          await setDoc(doc(db, "rooms", state.roomId), {
+          
+          const { m, db } = await fsDb_();
+          await m.setDoc(m.doc(db, "rooms", state.roomId), {
             ownerUid: state.uid,
-            updatedAt: serverTimestamp()
+            updatedAt: m.serverTimestamp()
           }, { merge: true });
         }catch(_e){}
       }
@@ -15134,9 +15166,11 @@ try{
         state.roomSettings.ownerUid = state.uid;
 
 try{
-            await setDoc(doc(db, "rooms", state.roomId), {
+            
+            const { m, db } = await fsDb_();
+            await m.setDoc(m.doc(db, "rooms", state.roomId), {
               ownerUid: state.uid,
-              updatedAt: serverTimestamp()
+              updatedAt: m.serverTimestamp()
             }, { merge: true });
           }catch(_e){}
 }
@@ -16683,6 +16717,7 @@ const EMOJI_TOFU_PROBE = "\u{10FFFD}";
 
 let __emojiWebfontOk = false;
     (function emojiWebfontProbe_(){
+      
       let tries = 0;
       const probe = ()=>{
         try{
@@ -16697,11 +16732,27 @@ let __emojiWebfontOk = false;
           }).catch(()=>{});
         }catch(_e){}
       };
-      probe();
-      try{ if(document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(probe); }catch(_e){}
       
-      const late = ()=>{ tries++; probe(); if(!__emojiWebfontOk && tries < 3) setTimeout(late, 6000); };
-      setTimeout(late, 4000);
+      const emojiSystemOk_ = ()=>{
+        try{
+          if(!emojiDetectInit_()) return false;
+          return ["\u{1FAE8}", "\u{1FA77}", "\u{1FAF6}"].every((e)=> emojiCanRender_(e));
+        }catch(_e){ return false; }
+      };
+      const start = ()=>{
+        if(emojiSystemOk_()){
+          try{ console.log("[V232_EMOJIFONT] 시스템 이모지 폰트가 probe 이모지(🫨🩷🫶)를 그림 — 웹폰트 확인 생략(V247)"); }catch(_e){}
+          
+          return;
+        }
+        probe();
+        try{ if(document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(probe); }catch(_e){}
+        
+        const late = ()=>{ tries++; probe(); if(!__emojiWebfontOk && tries < 3) setTimeout(late, 6000); };
+        setTimeout(late, 4000);
+      };
+      
+      setTimeout(start, 0);
     })();
     let __emojiMeasureCtx = null;
     let __emojiDetectOn = null;              
@@ -17722,6 +17773,9 @@ try{
         forgetTile: (uid)=>{ try{ return !!state.lastRendered?.delete?.(String(uid||"")); }catch(_e){ return false; } },
         petInfo: getLocalPetSlotInfo,
         fillPet: fillPetSlotBox,
+        
+        bakeDebug: ()=>{ try{ const a = window.__MK_CHARA_TILE_V169__; return (a && a.bakeDebug) ? a.bakeDebug() : null; }catch(_e){ return null; } },
+        bakeSweepNow: ()=>{ try{ const a = window.__MK_CHARA_TILE_V169__; return (a && a.bakeSweepNow) ? a.bakeSweepNow() : null; }catch(_e){ return null; } },
         myPhotoUrl: ()=>{ try{ return String(state.myPhotoUrl || ""); }catch(_e){ return ""; } }
       };
     }catch(_e){}
@@ -20050,9 +20104,11 @@ await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId
                 if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
 
                 try{
-                  await setDoc(doc(db, "rooms", state.roomId), {
+                  
+                  const { m, db } = await fsDb_();
+                  await m.setDoc(m.doc(db, "rooms", state.roomId), {
                     ownerUid: state.uid,
-                    updatedAt: serverTimestamp()
+                    updatedAt: m.serverTimestamp()
                   }, { merge: true });
                 }catch(_e){}
               }
@@ -26066,7 +26122,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17127; 
+const MK_APP_BUILD = 17128; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -35609,6 +35665,7 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
   }
   function blinkLowSpec(){ try{ return document.body.classList.contains('mkLowSpecMode'); }catch(e){ return false; } }
   function blinkClearTimers(c){ c.t.forEach(clearTimeout); c.t.length = 0; }
+  
   function blinkSetFrame(c, closed){
     try{ c.el.src = closed ? c.closed : c.open; }catch(e){}
     if(closed) stats.blinkCount++;
@@ -35641,6 +35698,7 @@ var BLINK_MIN_MS = 3000, BLINK_RANGE_MS = 3000, BLINK_CLOSE_MS = 130, BLINK_DOUB
   
   function blinkDetach(el){
     blinkReg.forEach(function(c){ if(c.el === el || !c.el.isConnected){ blinkClearTimers(c); blinkUnobserve(c); blinkReg.delete(c); } });
+    revokeSweepSoon_(); 
   }
   function blinkAttach(el, openUrl, closedUrl){
     if(!el || !openUrl || !closedUrl) return null;
@@ -35680,6 +35738,7 @@ var MOVE_SIZE_TILE_PX = 82;
   }
   function moverSweep(root){
     moverReg.forEach(function(m){ if(!m.root.isConnected || m.root === root) moverDestroy(m); });
+    revokeSweepSoon_(); 
   }
   function moverHostOf(m){ 
     var box = null;
@@ -35947,7 +36006,107 @@ m.rot = rot || 0;
   }
 
 var bakeCache = new Map(); 
-  function adjOf(hue, key){
+
+var BAKE_USE_BLOB = true;      
+  var REVOKE_QUEUE_MAX = 400;    
+  
+  var REVOKE_MIN_AGE_MS = 30000;
+  
+  var revokeQueue = new Map();   
+  var bakeUrlStats = { revoked: 0, warn: 0 };
+  var revokeSweepTimer = null, revokeIdleId = null, revokeTicker = null;
+  function bakeBlobMode_(){ 
+    if(!BAKE_USE_BLOB) return false;
+    try{ return typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' && typeof URL.revokeObjectURL === 'function'; }
+    catch(e){ return false; }
+  }
+  function isBlobUrl_(u){ return typeof u === 'string' && u.slice(0, 5) === 'blob:'; }
+  
+  function canvasToUrl_(cv){
+    return new Promise(function(resolve){
+      if(!cv){ resolve(''); return; }
+      if(!bakeBlobMode_() || typeof cv.toBlob !== 'function'){ resolve(cv.toDataURL('image/png')); return; }
+      var done = false;
+      function fallback(){ if(done) return; done = true; try{ resolve(cv.toDataURL('image/png')); }catch(e){ resolve(''); } }
+      try{
+        cv.toBlob(function(b){
+          if(done) return;
+          if(b){ try{ var u = URL.createObjectURL(b); done = true; resolve(u); return; }catch(e){} }
+          fallback();
+        }, 'image/png');
+      }catch(e){ fallback(); }
+    });
+  }
+  
+  function bakeRetire_(p){
+    if(!p || typeof p.then !== 'function') return;
+    p.then(function(res){
+      if(!res) return;
+      revokeEnqueue_(res.url);
+      revokeEnqueue_(res.urlClosed);
+      revokeSweepSoon_();
+    }, function(){});
+  }
+  function revokeEnqueue_(u){
+    if(!isBlobUrl_(u)) return;              
+    if(revokeQueue.has(u)) return;
+    
+    if(revokeQueue.size >= REVOKE_QUEUE_MAX){ bakeUrlStats.warn++; return; }
+    revokeQueue.set(u, Date.now());
+  }
+  
+  function revokeHeldSet_(){
+    var held = new Set();
+    try{
+      var imgs = document.querySelectorAll('img');
+      for(var i = 0; i < imgs.length; i++){ var s = imgs[i].src || ''; if(isBlobUrl_(s)) held.add(s); }
+    }catch(e){}
+    try{ blinkReg.forEach(function(c){ if(isBlobUrl_(c.open)) held.add(c.open); if(isBlobUrl_(c.closed)) held.add(c.closed); }); }catch(e){}
+    try{ moverReg.forEach(function(m){ var s = (m && m.img && m.img.src) || ''; if(isBlobUrl_(s)) held.add(s); }); }catch(e){}
+    return held;
+  }
+  function revokeSweep_(force){ 
+    if(!revokeQueue || !revokeQueue.size) return 0;
+    var held = revokeHeldSet_(), now = Date.now(), n = 0;
+    revokeQueue.forEach(function(at, u){
+      if(held.has(u)) return;                                
+      if(!force && (now - at) < REVOKE_MIN_AGE_MS) return;   
+      try{ URL.revokeObjectURL(u); }catch(e){}
+      revokeQueue.delete(u); n++;                            
+    });
+    bakeUrlStats.revoked += n;
+    return n;
+  }
+  
+  function revokeSweepSoon_(){
+    if(!revokeQueue || !revokeQueue.size) return;
+    revokeTickerSync_();
+    if(revokeSweepTimer !== null || revokeIdleId !== null) return; 
+    if(typeof requestIdleCallback === 'function'){
+      try{ revokeIdleId = requestIdleCallback(function(){ revokeIdleId = null; revokeSweep_(); revokeTickerSync_(); }, { timeout: 3000 }); return; }
+      catch(e){ revokeIdleId = null; }
+    }
+    revokeSweepTimer = setTimeout(function(){ revokeSweepTimer = null; revokeSweep_(); revokeTickerSync_(); }, 800);
+  }
+  function revokeTickerSync_(){ 
+    if(revokeQueue && revokeQueue.size && revokeTicker === null){
+      revokeTicker = setInterval(function(){ revokeSweep_(); revokeTickerSync_(); }, 60000);
+    }else if((!revokeQueue || !revokeQueue.size) && revokeTicker !== null){
+      clearInterval(revokeTicker); revokeTicker = null;
+    }
+  }
+  function bakeDebug(){ 
+    var held = 0;
+    try{
+      var h = revokeHeldSet_();
+      revokeQueue.forEach(function(_at, u){ if(h.has(u)) held++; });
+    }catch(e){}
+    return { mode: bakeBlobMode_() ? 'blob' : 'dataurl', cacheSize: bakeCache.size,
+             revokeQueue: revokeQueue.size, revoked: bakeUrlStats.revoked, held: held, warn: bakeUrlStats.warn };
+  }
+  function bakeSweepNow(){ return revokeSweep_(true); } 
+
+function adjOf(hue, key){
     var a = hue && hue[key];
     
     if(!a && key){
@@ -36119,21 +36278,30 @@ var bakeCache = new Map();
           });
           return cv;
         }
-        var openUrl = drawFrame(null).toDataURL('image/png');
+        
+        var openCv = drawFrame(null);
         stats.bakeCount++; 
+        var openUrl = '';
         function result(closedUrl){
           return { url: openUrl, urlClosed: closedUrl || null, w: BAKE_SIZE, h: BAKE_SIZE,
                    facePart: meta.facePart, faceRect: meta.faceRect, layers: meta.layers };
         }
-        if(!meta.facePart) return result(null); 
-        return closedFaceCanvas(mani, meta.facePart).then(function(fcv){
-          return result(drawFrame(fcv).toDataURL('image/png'));
-        }, function(){ return result(null); }); 
+        return canvasToUrl_(openCv).then(function(u){
+          openUrl = u;
+          if(!meta.facePart) return result(null); 
+          return closedFaceCanvas(mani, meta.facePart).then(function(fcv){
+            return canvasToUrl_(drawFrame(fcv)).then(function(cu){ return result(cu); });
+          }, function(){ return result(null); }); 
+        });
       });
     });
     pr = pr.catch(function(err){ bakeCache.delete(key); throw err; });
     bakeCache.set(key, pr);
-    if(bakeCache.size > 60){ var oldest = bakeCache.keys().next().value; if(oldest !== key) bakeCache.delete(oldest); }
+    
+    if(bakeCache.size > 60){
+      var oldest = bakeCache.keys().next().value;
+      if(oldest !== key){ var dead = bakeCache.get(oldest); bakeCache.delete(oldest); bakeRetire_(dead); }
+    }
     return pr;
   }
 
@@ -36394,6 +36562,9 @@ window.__MK_CHARA_TILE_V169__ = {
     resetOwnedRepair: function(){ ownedRepairDone = false; },
     flushNow: flushWrite,      
     stats: stats,              
+    
+    bakeDebug: bakeDebug,       
+    bakeSweepNow: bakeSweepNow, 
     
     closedFaceUrl: closedFaceUrl, 
     closedFaceCanvas: closedFaceCanvasFor, 
