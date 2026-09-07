@@ -92,6 +92,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -5938,6 +5939,264 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .worldTreeScene[data-blessing="1"] #worldTreeBlessRibbon{display:block;}
 </style>
 
+<style id="dragonS3Styles">
+  
+  .dragonScene[data-el="neutral"],.dragonElTint[data-el="neutral"]{--el-light:#e7d9ff;--el-deep:#8b6cc9;--el-core:#fff7ff;--el-glow:rgba(190,160,255,.55);--el-iris:#c9a6ff;--el-ink:#3a2a5c;--scene-a:#1b1230;--scene-b:#07040c;}
+  .dragonScene[data-el="fire"],.dragonElTint[data-el="fire"]{--el-light:#ffd9a6;--el-deep:#e2452f;--el-core:#fff3c4;--el-glow:rgba(255,130,80,.6);--el-iris:#ffb14a;--el-ink:#6b1a12;--scene-a:#2a0f0c;--scene-b:#0b0506;}
+  .dragonScene[data-el="water"],.dragonElTint[data-el="water"]{--el-light:#dff4ff;--el-deep:#4aa8f0;--el-core:#ffffff;--el-glow:rgba(120,205,255,.6);--el-iris:#59c3ff;--el-ink:#1a4f8a;--scene-a:#0b1d3a;--scene-b:#04070f;}
+  .dragonScene[data-el="thunder"],.dragonElTint[data-el="thunder"]{--el-light:#ead9ff;--el-deep:#8b5cf6;--el-core:#fff7ff;--el-glow:rgba(190,150,255,.6);--el-iris:#c8a6ff;--el-ink:#3e2a7a;--scene-a:#1d0f33;--scene-b:#08040f;}
+  .dragonScene[data-el="mountain"],.dragonElTint[data-el="mountain"]{--el-light:#d9ecb4;--el-deep:#6a9a3a;--el-core:#f4ffd6;--el-glow:rgba(150,220,120,.55);--el-iris:#ffd166;--el-ink:#2c4a1d;--scene-a:#0f2414;--scene-b:#040a05;}
+  
+  .dragonScene,.dragonElTint{--el-light:#e7d9ff;--el-deep:#8b6cc9;--el-core:#fff7ff;--el-glow:rgba(190,160,255,.55);--el-iris:#c9a6ff;--el-ink:#3a2a5c;--scene-a:#1b1230;--scene-b:#07040c;}
+
+  #dragonModal{z-index:10120;}
+  #dragonModal .dragonModalPanel{border-color:rgba(255,214,166,.22); box-shadow:0 34px 100px rgba(0,0,0,.72), 0 0 70px rgba(211,132,91,.12);}
+  #dragonModal .worldTreeHeader{background:linear-gradient(90deg,rgba(255,240,222,.08),rgba(89,45,35,.10));}
+  
+  .dragonScene{
+    background:
+      radial-gradient(circle at 50% 25%, var(--el-glow), transparent 30%),
+      linear-gradient(180deg, var(--scene-a) 0%, var(--scene-b) 100%);
+    transition:background .45s ease;
+  }
+  .dragonAura{
+    position:absolute; left:50%; bottom:46px; translate:-50% 0; width:min(86%,520px); aspect-ratio:1; border-radius:50%; z-index:1;
+    background:radial-gradient(circle,var(--el-glow) 0,rgba(0,0,0,0) 62%);
+    opacity:.62; pointer-events:none;
+  }
+  .dragonShadow{
+    position:absolute; left:50%; bottom:44px; translate:-50% 0; width:min(330px,56%); height:26px; z-index:2;
+    border-radius:50%; pointer-events:none;
+    background:radial-gradient(closest-side, rgba(0,0,0,.6), rgba(0,0,0,0) 76%);
+  }
+  
+  .dragonFx{position:absolute; inset:0; z-index:4; pointer-events:none; overflow:hidden;}
+  .dragonSparkles i{
+    position:absolute; width:4px; height:4px; border-radius:50%; opacity:0; background:#fff;
+    box-shadow:0 0 8px 2px var(--el-light), 0 0 18px 4px var(--el-glow);
+    animation:dgTwinkle 3.8s ease-in-out infinite;
+  }
+  .dragonSparkles i:nth-child(1){left:20%;top:31%;animation-delay:-.4s}
+  .dragonSparkles i:nth-child(2){left:33%;top:23%;animation-delay:-1.7s}
+  .dragonSparkles i:nth-child(3){left:47%;top:18%;animation-delay:-2.8s}
+  .dragonSparkles i:nth-child(4){left:63%;top:25%;animation-delay:-.9s}
+  .dragonSparkles i:nth-child(5){left:78%;top:34%;animation-delay:-2.1s}
+  .dragonSparkles i:nth-child(6){left:26%;top:49%;animation-delay:-3.2s}
+  .dragonSparkles i:nth-child(7){left:72%;top:51%;animation-delay:-1.2s}
+  .dragonSparkles i:nth-child(8){left:41%;top:42%;animation-delay:-2.5s}
+  .dragonSparkles i:nth-child(9){left:58%;top:39%;animation-delay:-.2s}
+  .dragonSparkles i:nth-child(10){left:17%;top:61%;animation-delay:-2s}
+  .dragonSparkles i:nth-child(11){left:82%;top:62%;animation-delay:-3.5s}
+  .dragonSparkles i:nth-child(12){left:52%;top:57%;animation-delay:-1.4s}
+  .dragonScene[data-stage="0"] .dragonSparkles i,.dragonScene[data-stage="1"] .dragonSparkles i{width:3px; height:3px; opacity:.35;}
+  .dragonScene[data-stage="2"] .dragonSparkles i,.dragonScene[data-stage="3"] .dragonSparkles i{width:3px; height:3px; opacity:.5;}
+  .dragonScene[data-stage="4"] .dragonSparkles i,.dragonScene[data-stage="5"] .dragonSparkles i{width:4px; height:4px; opacity:.7;}
+  .dragonScene[data-stage="6"] .dragonSparkles i,.dragonScene[data-stage="7"] .dragonSparkles i{width:5px; height:5px; opacity:1;}
+  @keyframes dgTwinkle{0%,100%{transform:scale(.35);opacity:.2}48%{transform:scale(1.45);opacity:1}58%{transform:scale(.75);opacity:.6}}
+
+  
+  .dragonArt{
+    position:relative; z-index:3; width:520px; max-width:94%; aspect-ratio:6 / 5; height:auto; margin-bottom:26px;
+    filter:drop-shadow(0 0 25px var(--el-glow));
+    transition:transform .35s ease;
+  }
+  .dragonArt.dgBounce{animation:dgBounce .5s ease;}
+  @keyframes dgBounce{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-11px) scale(1.035)}100%{transform:translateY(0) scale(1)}}
+  .dragonSprite{
+    position:absolute; inset:0; background-repeat:no-repeat; background-size:400% 200%; background-position:0 0;
+  }
+  .dragonSprite[data-el="fire"],.dragonDashArt[data-el="fire"],.dragonChipArt[data-el="fire"]{background-image:url("assets_배포/dragon/fire-growth-atlas.webp");}
+  .dragonSprite[data-el="water"],.dragonDashArt[data-el="water"],.dragonChipArt[data-el="water"]{background-image:url("assets_배포/dragon/water-growth-atlas.webp");}
+  .dragonSprite[data-el="thunder"],.dragonDashArt[data-el="thunder"],.dragonChipArt[data-el="thunder"]{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp");}
+  .dragonSprite[data-el="mountain"],.dragonDashArt[data-el="mountain"],.dragonChipArt[data-el="mountain"]{background-image:url("assets_배포/dragon/mountain-growth-atlas.webp");}
+  .dragonSprite[data-el="neutral"],.dragonDashArt[data-el="neutral"],.dragonChipArt[data-el="neutral"]{background-image:url("assets_배포/dragon/neutral-growth-atlas.webp");}
+  .dragonSprite[data-stage="0"],.dragonDashArt[data-stage="0"],.dragonChipArt[data-stage="0"]{background-position:0 0;}
+  .dragonSprite[data-stage="1"],.dragonDashArt[data-stage="1"],.dragonChipArt[data-stage="1"]{background-position:33.333% 0;}
+  .dragonSprite[data-stage="2"],.dragonDashArt[data-stage="2"],.dragonChipArt[data-stage="2"]{background-position:66.667% 0;}
+  .dragonSprite[data-stage="3"],.dragonDashArt[data-stage="3"],.dragonChipArt[data-stage="3"]{background-position:100% 0;}
+  .dragonSprite[data-stage="4"],.dragonDashArt[data-stage="4"],.dragonChipArt[data-stage="4"]{background-position:0 100%;}
+  .dragonSprite[data-stage="5"],.dragonDashArt[data-stage="5"],.dragonChipArt[data-stage="5"]{background-position:33.333% 100%;}
+  .dragonSprite[data-stage="6"],.dragonDashArt[data-stage="6"],.dragonChipArt[data-stage="6"]{background-position:66.667% 100%;}
+  .dragonSprite[data-stage="7"],.dragonDashArt[data-stage="7"],.dragonChipArt[data-stage="7"]{background-position:100% 100%;}
+
+  
+  .dragonSprite .dgLid{position:absolute; overflow:hidden; border-radius:50%; pointer-events:none; z-index:2; transform-origin:50% 50%;}
+  .dragonSprite .dgLid b{position:absolute; display:block; background-repeat:no-repeat; background-size:400% 200%;}
+  .dragonSprite .dgLid > b{animation:dgLidBlinkV1 var(--dg-blink-dur,5.2s) linear infinite; animation-delay:var(--dg-blink-delay,0s); will-change:transform;}
+  .dragonSprite .dgLid > .dgLidSlide{
+    position:absolute; left:0; top:0; width:100%; height:100%; display:block; text-decoration:none;
+    animation:dgLidBlink var(--dg-blink-dur,5.2s) infinite; animation-delay:var(--dg-blink-delay,0s); will-change:transform;
+  }
+  .dragonSprite .dgLid.dgLid2 > .dgLidSlide{animation-name:dgLidBlink2;}
+  .dragonSprite[data-el="fire"] .dgLid b{background-image:url("assets_배포/dragon/fire-growth-atlas.webp");}
+  .dragonSprite[data-el="water"] .dgLid b{background-image:url("assets_배포/dragon/water-growth-atlas.webp");}
+  .dragonSprite[data-el="thunder"] .dgLid b{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp");}
+  .dragonSprite[data-el="mountain"] .dgLid b{background-image:url("assets_배포/dragon/mountain-growth-atlas.webp");}
+  .dragonSprite[data-el="neutral"] .dgLid b{background-image:url("assets_배포/dragon/neutral-growth-atlas.webp");}
+  .dragonSprite[data-stage="2"] .dgLid b{background-position:66.667% 0;}
+  .dragonSprite[data-stage="3"] .dgLid b{background-position:100% 0;}
+  .dragonSprite[data-stage="4"] .dgLid b{background-position:0 100%;}
+  .dragonSprite[data-stage="5"] .dgLid b{background-position:33.333% 100%;}
+  .dragonSprite[data-stage="6"] .dgLid b{background-position:66.667% 100%;}
+  .dragonSprite[data-stage="7"] .dgLid b{background-position:100% 100%;}
+  @keyframes dgLidBlinkV1{0%,94%{transform:translateY(0)} 95.5%,96.5%{transform:translateY(var(--dg-lid-y))} 98%,100%{transform:translateY(0)}}
+  
+  @keyframes dgLidBlink{
+    0%,93%{transform:translateY(0); animation-timing-function:ease-in}
+    94.6%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:linear}
+    95.4%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:ease-out}
+    97.6%,100%{transform:translateY(0)}
+  }
+  
+  @keyframes dgLidBlink2{
+    0%,86%{transform:translateY(0); animation-timing-function:ease-in}
+    87.6%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:linear}
+    88.4%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:ease-out}
+    90.6%,95.4%{transform:translateY(0); animation-timing-function:ease-in}
+    97%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:linear}
+    97.8%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:ease-out}
+    100%{transform:translateY(0)}
+  }
+
+  
+  .dragonTabs{
+    position:absolute; left:0; right:0; top:12px; z-index:6; display:flex; flex-wrap:wrap; gap:6px;
+    align-items:center; justify-content:center; padding:0 12px;
+  }
+  .dragonTab{
+    display:inline-flex; align-items:center; gap:5px; min-height:0; padding:5px 10px; border-radius:999px;
+    font-size:10px; font-weight:1000; line-height:1.4; white-space:nowrap; cursor:pointer;
+    color:rgba(255,255,255,.82); background:rgba(8,6,14,.62); border:1px solid rgba(255,255,255,.18);
+  }
+  .dragonTab.on{color:#fff; border-color:var(--el-light,#e7d9ff); box-shadow:0 0 0 1px var(--el-glow,rgba(190,160,255,.55));}
+  .dragonTab.isMine::after{content:"내 드래곤"; font-size:8px; font-weight:1100; letter-spacing:.4px; opacity:.8;}
+  .dragonTab[disabled]{opacity:.5; cursor:default;}
+  .dragonRibbon{
+    position:absolute; left:50%; bottom:17px; translate:-50% 0; z-index:5; white-space:nowrap;
+    padding:8px 14px; border-radius:999px; background:rgba(7,5,12,.76);
+    border:1px solid var(--el-light); color:var(--el-light); font-size:12px; font-weight:1000;
+  }
+  .dragonScene[data-blessing="1"] .dragonAura{opacity:.95; background:radial-gradient(circle,rgba(255,214,102,.78) 0,rgba(0,0,0,0) 62%);}
+  
+  .dragonScene .worldTreeLevelOrb{top:64px;}
+
+  
+  .dragonEggRow{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0;}
+  .dragonEggBtn{
+    position:relative; display:flex; align-items:center; gap:9px; min-height:64px; padding:10px 11px; text-align:left; overflow:hidden;
+    border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.045); cursor:pointer; color:inherit;
+  }
+  .dragonEggBtn .dragonChipArt{flex:0 0 auto; width:44px; aspect-ratio:6 / 5; background-repeat:no-repeat; background-size:400% 200%;}
+  .dragonEggBtn b{display:block; font-size:12.5px; color:var(--el-light);}
+  .dragonEggBtn span{display:block; margin-top:2px; font-size:9.5px; opacity:.62;}
+  .dragonEggBtn.on{box-shadow:0 0 0 2px var(--el-light,#ffd9a6) inset;}
+  .dragonEggBtn.on::after{content:"MY EGG"; position:absolute; right:9px; top:7px; font-size:8px; font-weight:1100; letter-spacing:.7px; color:var(--el-light);}
+  .dragonEggBtn[disabled]{opacity:.5; cursor:not-allowed;}
+  .dragonPool{margin-top:15px; padding:14px; border:1px solid rgba(255,255,255,.1); border-radius:15px; background:rgba(255,255,255,.035);}
+  .dragonPoolHead{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px; font-size:11px; color:rgba(255,255,255,.6);}
+  .dragonPoolHead b{color:#fff; font-size:13px;}
+  .dragonPoolRow{display:grid; grid-template-columns:78px 1fr 96px; align-items:center; gap:8px; margin-top:9px; font-size:11px;}
+  .dragonPoolRow strong{font-size:11px; color:var(--el-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dragonPoolRow output{text-align:right; color:rgba(255,255,255,.66); font-variant-numeric:tabular-nums; font-size:10px;}
+  .dragonPoolRow .worldTreeGauge > i{background:linear-gradient(90deg,var(--el-deep),var(--el-light)); box-shadow:0 0 12px var(--el-glow);}
+  .dragonPoolRow.isMine strong::after{content:" ·내"; font-size:9px; opacity:.8;}
+  .dragonFeed{margin-top:15px; padding:14px; border:1px solid rgba(255,214,166,.18); border-radius:15px; background:rgba(255,214,166,.045);}
+  .dragonFeedHead{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:11px; color:rgba(255,255,255,.6);}
+  .dragonFeedHead b{color:#fff; font-size:13px;}
+  .dragonFeedLore{margin:8px 0 0; font-size:10px; line-height:1.6; color:rgba(255,255,255,.55);}
+  .dragonFeedBtns{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .dragonFeedBtn{
+    flex:1 1 108px; display:flex; align-items:center; gap:8px; min-height:52px; padding:9px 10px; cursor:pointer; color:inherit;
+    border-radius:13px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); text-align:left;
+  }
+  .dragonFeedBtn .dgEm{font-size:19px; line-height:1;}
+  .dragonFeedBtn .dgNm{display:block; font-size:11.5px; font-weight:900;}
+  .dragonFeedBtn .dgCs{display:block; margin-top:2px; font-size:9.5px; opacity:.66; font-variant-numeric:tabular-nums;}
+  .dragonFeedBtn[disabled]{opacity:.45; cursor:not-allowed;}
+  .dragonFeedDay{margin-top:9px; font-size:10px; color:rgba(255,255,255,.5); font-variant-numeric:tabular-nums;}
+  .dragonRank,.dragonRoster{margin-top:15px; padding:14px; border:1px solid rgba(255,255,255,.1); border-radius:15px; background:rgba(255,255,255,.035);}
+  .dragonRankHead,.dragonRosterHead{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:9px; font-size:10px; color:rgba(255,255,255,.55);}
+  .dragonRankHead b,.dragonRosterHead b{color:#fff; font-size:12.5px;}
+  .dragonRankList{list-style:none; margin:0; padding:0; max-height:200px; overflow:auto;}
+  .dragonRankList li{display:grid; grid-template-columns:22px 1fr auto; gap:8px; align-items:center; padding:5px 6px; border-radius:9px; font-size:11px;}
+  .dragonRankList li.isMe{background:rgba(255,214,166,.1);}
+  .dragonRankList li .dgRk{font-variant-numeric:tabular-nums; color:var(--el-light); font-weight:1000; font-size:10px;}
+  .dragonRankList li .dgNick{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dragonRankList li .dgVal{font-variant-numeric:tabular-nums; color:rgba(255,255,255,.66); font-size:10px;}
+  .dragonRosterList{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:5px; max-height:150px; overflow:auto;}
+  .dragonRosterList li{padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.06); font-size:10px;}
+  .dragonEmpty{padding:9px 0; text-align:center; font-size:10px; color:rgba(255,255,255,.42);}
+  .dragonCacheNote{margin-top:7px; font-size:9px; color:rgba(255,255,255,.4);}
+  .dragonAdminNote{margin-top:12px; padding:9px 11px; border-radius:11px; background:rgba(150,200,255,.07); border:1px solid rgba(150,200,255,.16); font-size:9.5px; line-height:1.6; color:rgba(214,236,255,.75);}
+  
+  .dragonAdminEls{display:flex; flex-direction:column; gap:6px; margin:8px 0;}
+  .dragonAdminElRow{display:grid; grid-template-columns:76px 1fr 52px 52px 54px; gap:6px; align-items:center;}
+  .dragonAdminElRow input[type="text"],.dragonAdminElRow input[type="number"]{min-width:0; padding:6px 8px; font-size:11px;}
+  .dragonAdminElRow label{display:flex; align-items:center; gap:4px; font-size:10px; white-space:nowrap;}
+  .dragonAdminElRow label input{width:auto;}
+  @media (max-width:780px){
+    #dragonModal .dragonModalPanel{max-height:calc(100vh - 16px); width:calc(100vw - 16px);}
+    .dragonArt{width:400px; max-width:92%;}
+    .dragonEggRow{grid-template-columns:1fr;}
+    .dragonAdminElRow{grid-template-columns:1fr 1fr;}
+    .dragonTab{font-size:9.5px; padding:4px 8px;}
+    .dragonScene .worldTreeLevelOrb{top:92px; left:12px; min-width:84px; padding:8px 10px;}
+    .dragonScene .worldTreeLevelOrb b{font-size:19px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .dragonSparkles i{animation:none !important; opacity:.5;}
+    
+    .dragonSprite .dgLid{display:none !important;}
+    .dragonArt.dgBounce{animation:none !important;}
+  }
+  body.mkLowSpecMode .dragonSparkles i{animation:none;}
+
+  
+  html body #dashboardCard .petDashBox[data-dash-mode="dragon"] > #petDashInner,
+  html body #dashboardCard .petDashBox[data-dash-mode="dragon"] > #worldTreeDashInner,
+  html body #dashboardCard .petDashBox[data-dash-mode="pet"] > #dragonDashInner,
+  html body #dashboardCard .petDashBox[data-dash-mode="tree"] > #dragonDashInner{display:none !important;}
+  html body #dashboardCard .petDashBox > #dragonDashInner{height:100% !important; min-height:0 !important; max-height:100% !important;}
+  .petDashBox[data-dash-mode="dragon"] .charaDashToggle{display:none !important;}
+  .petDashBox[data-dash-mode="dragon"]{
+    border-color:rgba(255,214,166,.44) !important;
+    background:
+      radial-gradient(circle at 18% 48%, rgba(226,140,80,.20), transparent 34%),
+      radial-gradient(circle at 82% 10%, rgba(255,232,200,.12), transparent 36%),
+      linear-gradient(145deg, rgba(28,18,16,.96), rgba(12,8,10,.96)) !important;
+    box-shadow:0 0 0 1px rgba(247,178,120,.18), 0 18px 45px rgba(0,0,0,.34), 0 0 30px rgba(220,130,70,.14) !important;
+  }
+  .dragonDashInner{
+    position:relative; z-index:1; min-height:142px; height:100%; width:100%; padding:10px 8px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    box-sizing:border-box; cursor:pointer; overflow:hidden; min-width:0;
+  }
+  .dragonDashArtWrap{
+    position:relative; width:min(102px,74%); aspect-ratio:6 / 5; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center; border-radius:20px;
+    background:radial-gradient(circle at 50% 62%, var(--el-glow), transparent 62%), rgba(0,0,0,.10);
+  }
+  .dragonDashArt{width:100%; height:100%; background-repeat:no-repeat; background-size:400% 200%; filter:drop-shadow(0 0 10px var(--el-glow));}
+  .dragonDashLevel{
+    max-width:100%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-size:16px; font-weight:1100; letter-spacing:-.6px; font-variant-numeric:tabular-nums; line-height:1.2;
+    color:rgba(255,242,226,.96); text-shadow:0 0 12px var(--el-glow);
+  }
+  .dragonDashBar{width:min(104px,80%); height:6px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.09);}
+  .dragonDashBar > i{display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,var(--el-deep),var(--el-light)); transition:width .45s ease;}
+  .dragonDashPool{max-width:100%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; color:rgba(255,255,255,.5); font-variant-numeric:tabular-nums;}
+  .dragonDashCta{font-size:10px; font-weight:900; color:rgba(255,222,190,.9);}
+  @media (max-width:1100px){
+    body.joined #dashboardCard .dragonDashInner{min-height:0 !important; padding:6px 5px !important; gap:3px !important;}
+    body.joined #dashboardCard .dragonDashArtWrap{width:min(84px,84%) !important;}
+    body.joined #dashboardCard .dragonDashPool{display:none !important;}
+  }
+  @media (max-width:760px){
+    body.joined #dashboardCard .dragonDashArtWrap{width:min(64px,88%) !important;}
+    body.joined #dashboardCard .dragonDashLevel{font-size:13px !important;}
+  }
+</style>
+
 <style id="homeworkModalStyle">
   #homeworkOverlay{
     position:fixed; inset:0; z-index:10200; display:none; align-items:center; justify-content:center;
@@ -6167,6 +6426,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="vmViewDefault" type="button">기본 보기</button>
 <button class="ghost" id="vmViewMini" type="button">미니 보기</button>
 <button class="ghost" id="vmViewWorldTree" type="button">🌳 세계수🌳</button>
+
+<button class="ghost" id="vmViewDragon" type="button" style="display:none">🐉 드래곤 키우기</button>
 </div>
 </div>
 </div>
@@ -6815,6 +7076,58 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 
 
+
+<div aria-hidden="true" class="modalOverlay" id="dragonModal">
+<div aria-modal="true" class="modal worldTreeModalPanel dragonModalPanel" role="dialog" aria-labelledby="dragonTitle">
+<div class="worldTreeHeader">
+<div class="worldTreeHeaderTitle" id="dragonTitle">🐉 드래곤 키우기 <span style="color:#ffd0a0;">WORK PLAY 3</span><small>🥚세계수가 남긴 알에 코인을 먹여 키워봅시다🥚</small></div>
+<button class="ghost" id="dragonClose" type="button">닫기</button>
+</div>
+<div class="worldTreeBody">
+<section class="worldTreeScene dragonScene" id="dragonScene" data-el="neutral" data-stage="0" aria-label="현재 드래곤 모습">
+<div class="dragonTabs" id="dragonTabs" role="group" aria-label="드래곤 고르기"></div>
+<div class="dragonAura" aria-hidden="true"></div>
+<div class="dragonShadow" aria-hidden="true"></div>
+<div class="dragonFx" aria-hidden="true"><div class="dragonSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="dragonArt" id="dragonArt" aria-hidden="true"><div class="dragonSprite" id="dragonSprite" data-el="neutral" data-stage="0"></div></div>
+<div class="worldTreeLevelOrb"><b id="dragonLevel">Lv.0</b><span id="dragonLevelMax">MAX 100</span></div>
+<div class="dragonRibbon" id="dragonRibbon">부화 대기</div>
+</section>
+<section class="worldTreePanel dragonPanel">
+<div class="worldTreeKicker">THE DRAGONS OF THE WORLD TREE</div>
+<h2 id="dragonLineage">세계수가 남긴 알</h2>
+<p class="worldTreeLore" id="dragonLore">떠나간 세계수는 네 개의 알을 남겼습니다. 마음이 가는 기운을 고르고 코인을 먹여 알을 깨워 주세요.</p>
+<div class="dragonEggRow" id="dragonEggRow" aria-label="기운 고르기"></div>
+<div class="worldTreeMyStatus" id="dragonMyStatus">기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요.</div>
+<div class="dragonPool" id="dragonPool">
+<div class="dragonPoolHead"><b>🐣 마리별 게이지</b><span id="dragonPoolNote">레벨당 필요 코인은 관리자 칸에서 바뀔 수 있어요</span></div>
+<div id="dragonPoolRows"></div>
+</div>
+<div class="dragonFeed" id="dragonFeed">
+<div class="dragonFeedHead"><b>🍖 먹이 주기</b><span id="dragonWallet">🪙 0</span></div>
+<p class="dragonFeedLore" id="dragonFeedLore"></p>
+<div class="dragonFeedBtns" id="dragonFeedBtns"></div>
+<div class="dragonFeedDay" id="dragonFeedDay">오늘 먹인 양 0 · 한도 없음</div>
+</div>
+<div class="dragonRank" id="dragonRank">
+<div class="dragonRankHead"><b>🏆 먹이 랭킹</b><span id="dragonRankWho">-</span></div>
+<ol class="dragonRankList" id="dragonRankList"></ol>
+<div class="dragonEmpty" id="dragonRankEmpty">아직 먹이 기록이 없어요</div>
+<div class="dragonCacheNote" id="dragonMyRank">기운을 고르고 먹이를 주면 내 순위가 표시돼요.</div>
+<div class="dragonCacheNote">랭킹·명단은 1시간마다 갱신돼요</div>
+</div>
+<div class="dragonRoster" id="dragonRoster">
+<div class="dragonRosterHead"><b>🧑‍🤝‍🧑 이 기운의 작가</b><span id="dragonRosterCount">0명</span></div>
+<ul class="dragonRosterList" id="dragonRosterList"></ul>
+<div class="dragonEmpty" id="dragonRosterEmpty">아직 이 기운을 고른 작가가 없어요</div>
+</div>
+<div class="worldTreeRules" id="dragonRules">드래곤마다 자기 레벨과 게이지가 따로 있어요. 내 기운의 드래곤에게만 먹이를 줄 수 있고, 기운은 하루에 한 번 바꿀 수 있어요(이미 먹인 기여는 원래 드래곤에 남아요). 먹인 코인이 그대로 경험치가 되고, 레벨당 필요 코인은 관리자 칸에서 언제든 조정돼요 — 이미 먹인 코인은 사라지지 않아요. 하루 먹이 한도는 없어요. 어느 드래곤이든 Lv.100이 되면 고룡으로 졸업하고, 그 자리에 새 기운의 알이 하나 합류해 순환합니다.</div>
+<div class="dragonAdminNote" id="dragonAdminNote" style="display:none"></div>
+</section>
+</div>
+</div>
+</div>
+
 <div aria-hidden="true" class="modalOverlay" id="settingsModal">
 <div aria-modal="true" class="modal" role="dialog">
 <div class="modalHeader">
@@ -7004,6 +7317,40 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="worldTreeBlessCancel" type="button">예약 취소</button>
 </div>
 <div id="worldTreeBlessStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 축복이 없어요.</div>
+
+<div class="hr"></div>
+<div class="hint">🐉 드래곤 키우기 시즌 3 관리</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">세계수의 축복이 끝나면(은퇴) 드래곤 시즌이 <b>자동으로 시작</b>돼요. 먼저 열고 싶으면 [🐉 지금 시작]을 누르세요. 레벨당 필요 코인은 시즌 중에도 바꿀 수 있고, <b>이미 먹인 코인(게이지)은 그대로 보존</b>돼요 — 다음 먹이 때 새 필요량으로 다시 재서 이미 넘었으면 그 자리에서 레벨이 올라요. 하루 한도는 <b>0 = 없음</b>이 초기값이에요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminExpBase" style="min-width:110px;">레벨당 기본값</label>
+<input id="dragonAdminExpBase" min="1" max="100000000" step="100" type="number" value="25000" style="flex:1 1 120px;"/>
+<label for="dragonAdminExpSlope" style="min-width:110px;">레벨당 기울기</label>
+<input id="dragonAdminExpSlope" min="0" max="1000000" step="10" type="number" value="0" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminDailyCap" style="min-width:110px;">하루 한도(0=없음)</label>
+<input id="dragonAdminDailyCap" min="0" max="100000000" step="100" type="number" value="0" style="flex:1 1 120px;"/>
+<label for="dragonAdminHourly" style="min-width:110px;">레이스 매시 확률</label>
+<input id="dragonAdminHourly" min="0" max="1" step="0.05" type="number" value="0.6" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminDailyMin" style="min-width:110px;">레이스 하루 최소</label>
+<input id="dragonAdminDailyMin" min="0" max="48" step="1" type="number" value="2" style="flex:1 1 120px;"/>
+<label for="dragonAdminDailyMax" style="min-width:110px;">레이스 하루 상한</label>
+<input id="dragonAdminDailyMax" min="0" max="48" step="1" type="number" value="8" style="flex:1 1 120px;"/>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">속성 등록 — 키는 영소문자만(<code>[a-z]+</code>) 쓰고, 아틀라스를 <code>assets_배포/dragon/{키}-growth-atlas.webp</code>로 먼저 배포한 뒤 활성화하세요. 마지막 빈 줄에 새 속성을 적으면 등록돼요.</div>
+<div class="dragonAdminEls" id="dragonAdminEls"></div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
+<select id="dragonAdminNext" style="flex:1 1 160px;"><option value="">없음</option></select>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="dragonAdminSave" type="button">드래곤 설정 저장</button>
+<button class="ghost" id="dragonAdminStart" type="button">🐉 지금 시작</button>
+<button class="ghost" id="dragonAdminPause" type="button">일시정지</button>
+</div>
+<div id="dragonAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">드래곤 시즌은 아직 시작되지 않았어요.</div>
 
 <div class="hr"></div>
 <div class="hint">🔄 전원 새로고침 요청</div>
@@ -26122,7 +26469,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17128; 
+const MK_APP_BUILD = 17129; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -28253,7 +28600,7 @@ let anchor=null;
 
 setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SAFETY_SYNC_MS);
     
-    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} try{ worldTreeGuerrillaTick_(); }catch(e){} try{ worldTreeHandleReloadReq_(); }catch(e){} try{ worldTreeBlessingTick_(); }catch(e){} },20000);
+    setInterval(()=>{ try{ worldTreeDewCueTick_(); }catch(e){} try{ worldTreeGuerrillaTick_(); }catch(e){} try{ worldTreeHandleReloadReq_(); }catch(e){} try{ worldTreeBlessingTick_(); }catch(e){} try{ window.__MK_DRAGON_S3__?.tick?.(); }catch(e){}  },20000);
     renderWorldTreeS2_({});
     window.__MK_WORLD_TREE_S2__={
       open:openWorldTreeS2_,close:closeWorldTreeS2_,sync:()=>syncWorldTreeContribution_("force"),
@@ -28268,6 +28615,1129 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       isRetired:worldTreeRetired_
     };
   }catch(e){ console.warn("[world tree s2] init failed",e); }
+
+(()=>{
+    const DRAGON_MAX_LEVEL = 100;
+    const DRAGON_STAGE_NAMES = ["잠든 알","금 간 알","해치","해츨링","어린 용","젊은 용","성체","고룡"];
+    const DRAGON_ROSTER_CACHE_MS = 60 * 60 * 1000;   
+    const DRAGON_AUTOSTART_RETRY_MS = 10 * 60 * 1000; 
+    const DRAGON_LOCAL_CAMP = "mk_dragon_camp_v1";    
+    const DRAGON_STATS_KEY = "mk_chara_stats";        
+    const DRAGON_BLESS_MULT = 3;
+    
+    const DRAGON_DEFAULT_CONFIG = Object.freeze({
+      enabled:true, startAtMs:0,
+      expBase:25000, expSlope:0, dailyCap:0, skillCap:100,
+      race:{ hourlyChance:0.6, dailyMin:2, dailyMax:8 },
+      menu:{
+        egg:[{icon:"🌳",name:"세계수의 기운",coins:500}],
+        baby:[{icon:"🍼",name:"이유식",coins:500}],
+        grown:[{icon:"🍪",name:"간식",coins:100},{icon:"🍖",name:"한 끼",coins:500},{icon:"🍗",name:"진수성찬",coins:2000}]
+      },
+      elements:{
+        fire:{name:"불의 드래곤",emoji:"🔥",order:1,active:true},
+        water:{name:"물의 드래곤",emoji:"💧",order:2,active:true},
+        thunder:{name:"전기의 드래곤",emoji:"⚡",order:3,active:true},
+        mountain:{name:"산의 드래곤",emoji:"⛰️",order:4,active:true}
+      },
+      nextElement:""
+    });
+    
+    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":38.538,"cy":69.523,"a":5.213,"b":5.065,"angle":-35.2},"3":{"x":31.882,"y":63.737,"w":5.784,"h":5.092,"travel":1.0,"dir":"down","cx":34.774,"cy":65.878,"a":5.675,"b":5.408,"angle":-16.6},"4":{"x":29.284,"y":55.822,"w":4.905,"h":3.718,"travel":1.1,"dir":"down","cx":31.779,"cy":57.231,"a":4.393,"b":4.394,"angle":-18.8},"5":{"x":23.53,"y":49.864,"w":4.917,"h":3.658,"travel":1.1,"dir":"down","cx":25.664,"cy":51.469,"a":5.089,"b":4.425,"angle":-21.5},"6":{"x":20.17,"y":40.934,"w":3.467,"h":2.566,"travel":1.1,"dir":"down","cx":21.696,"cy":41.856,"a":3.589,"b":2.947,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.69,"cy":71.291,"a":5.404,"b":4.979,"angle":-36.6},"3":{"x":34.697,"y":64.738,"w":5.476,"h":5.544,"travel":1.0,"dir":"down","cx":37.285,"cy":67.166,"a":5.558,"b":5.121,"angle":-33.2},"4":{"x":28.996,"y":56.07,"w":2.691,"h":2.562,"travel":1.1,"dir":"down","cx":30.277,"cy":57.243,"a":3.122,"b":3.06,"angle":-27.5},"5":{"x":27.747,"y":49.971,"w":2.781,"h":2.336,"travel":1.1,"dir":"down","cx":28.766,"cy":50.705,"a":2.85,"b":2.898,"angle":-15.7},"6":{"x":19.996,"y":38.615,"w":3.278,"h":2.849,"travel":1.1,"dir":"down","cx":21.267,"cy":39.72,"a":3.261,"b":2.218,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.163,"cy":70.988,"a":6.066,"b":5.174,"angle":-38.4},"3":{"x":32.466,"y":65.235,"w":5.66,"h":5.808,"travel":1.0,"dir":"down","cx":34.689,"cy":67.79,"a":6.259,"b":5.478,"angle":-33.6},"4":{"x":29.639,"y":58.693,"w":2.75,"h":2.75,"travel":1.1,"dir":"down","cx":30.922,"cy":59.964,"a":2.883,"b":3.185,"angle":-36.8},"5":{"x":25.531,"y":52.57,"w":3.325,"h":2.622,"travel":1.1,"dir":"down","cx":27.374,"cy":53.681,"a":3.652,"b":3.146,"angle":-27.5},"6":{"x":20.512,"y":46.195,"w":2.965,"h":2.121,"travel":1.1,"dir":"down","cx":21.857,"cy":47.112,"a":3.227,"b":2.573,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":40.749,"y":70.737,"w":4.367,"h":4.636,"travel":1.0,"dir":"up","cx":42.801,"cy":73.148,"a":3.9,"b":4.289,"angle":-9.6},"3":{"x":37.065,"y":66.351,"w":3.256,"h":3.435,"travel":1.0,"dir":"down","cx":38.396,"cy":67.656,"a":3.327,"b":3.478,"angle":-32.8},"4":{"x":31.326,"y":57.135,"w":2.865,"h":2.636,"travel":1.1,"dir":"up","cx":32.71,"cy":58.367,"a":3.109,"b":2.705,"angle":-33.8},"5":{"x":33.376,"y":49.253,"w":2.84,"h":2.783,"travel":1.1,"dir":"down","cx":34.739,"cy":50.418,"a":3.308,"b":2.283,"angle":-37.5},"6":{"x":32.237,"y":42.611,"w":2.29,"h":1.917,"travel":1.1,"dir":"down","cx":33.174,"cy":43.531,"a":2.599,"b":2.026,"angle":-33.9},"7":{"x":23.565,"y":29.98,"w":2.928,"h":2.186,"travel":1.1,"dir":"down","cx":25.412,"cy":30.909,"a":2.986,"b":2.733,"angle":-25.0}}};
+
+    const dragonS3Runtime = {
+      config:null,            
+      dragons:null,           
+      members:null,           
+      fed:null,               
+      summary:null,           
+      unsub:null,             
+      rosterFetchedAtMs:0,
+      membersFetchedAtMs:0,
+      configFetchedAtMs:0,
+      viewEl:"",              
+      feedLock:false,
+      campLock:false,
+      autoStartTriedAtMs:0,
+      lastToastAtMs:0
+    };
+
+function rDragonRef_(sub){
+      return rRef(rtdb, `${rRoomBase(state.roomId)}/playground/dragonV1${sub?`/${sub}`:""}`);
+    }
+    function rDragonSummaryRef_(roomId){
+      return rRef(rtdb, `${rRoomBase(roomId||state.roomId)}/playground/dragonSummaryV1`);
+    }
+    
+    function rDragonPlaygroundRef_(){
+      return rRef(rtdb, `${rRoomBase(state.roomId)}/playground`);
+    }
+
+function dragonClamp_(v,min,max,fallback){
+      const n=Number(v);
+      return Number.isFinite(n) ? Math.max(min,Math.min(max,n)) : fallback;
+    }
+    function dragonText_(value,fallback,maxLength){
+      const t=String(value??"").replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim();
+      return (t||fallback).slice(0,maxLength);
+    }
+    function dragonEsc_(s){
+      return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    }
+    function dragonNumFmt_(n){ return Math.round(Number(n)||0).toLocaleString("ko-KR"); }
+    function dragonKeyOk_(k){ return /^[a-z]+$/.test(String(k||"")); }
+    function dragonSetText_(id,text){ const el=document.getElementById(id); if(el && el.textContent!==text) el.textContent=text; }
+    function dragonModalOpen_(){ return !!document.getElementById("dragonModal")?.classList.contains("show"); }
+
+function dragonMenuItem_(raw,fallback){
+      const src=(raw && typeof raw==="object")?raw:{};
+      const coins=Math.round(dragonClamp_(src.coins,1,100000000,fallback?fallback.coins:500));
+      return { icon:dragonText_(src.icon,fallback?fallback.icon:"🍖",6), name:dragonText_(src.name,fallback?fallback.name:"먹이",20), coins };
+    }
+    function dragonConfig_(){
+      const d=DRAGON_DEFAULT_CONFIG;
+      const src=(dragonS3Runtime.config && typeof dragonS3Runtime.config==="object")?dragonS3Runtime.config:{};
+      const raceSrc=(src.race && typeof src.race==="object")?src.race:{};
+      const menuSrc=(src.menu && typeof src.menu==="object")?src.menu:{};
+      const menu={};
+      ["egg","baby","grown"].forEach((k)=>{
+        const list=Array.isArray(menuSrc[k])?menuSrc[k]:null;
+        const items=list?list.map((it,i)=>dragonMenuItem_(it,d.menu[k][i]||d.menu[k][0])).filter(Boolean).slice(0,6):[];
+        menu[k]=items.length?items:d.menu[k].map((it)=>Object.assign({},it));
+      });
+      const elSrc=(src.elements && typeof src.elements==="object")?src.elements:{};
+      const elements={};
+      const keys=[];
+      Object.keys(d.elements).forEach((k)=>{ if(keys.indexOf(k)<0) keys.push(k); });
+      Object.keys(elSrc).forEach((k)=>{ if(dragonKeyOk_(k) && keys.indexOf(k)<0) keys.push(k); });
+      keys.forEach((k)=>{
+        const base=d.elements[k]||{name:k,emoji:"🐉",order:99,active:false};
+        const r=(elSrc[k] && typeof elSrc[k]==="object")?elSrc[k]:{};
+        elements[k]={
+          name:dragonText_(r.name,base.name,20),
+          emoji:dragonText_(r.emoji,base.emoji,6),
+          order:Math.round(dragonClamp_(r.order,1,99,base.order)),
+          active:(r.active===undefined || r.active===null) ? !!base.active : (r.active!==false),
+          addedAtMs:Math.max(0,Math.floor(Number(r.addedAtMs)||0))
+        };
+      });
+      const nextElement=dragonKeyOk_(src.nextElement)?String(src.nextElement):"";
+      return {
+        enabled:src.enabled!==false,
+        startAtMs:Math.max(0,Math.floor(Number(src.startAtMs)||0)),
+        expBase:Math.round(dragonClamp_(src.expBase,1,100000000,d.expBase)),
+        expSlope:Math.round(dragonClamp_(src.expSlope,0,1000000,d.expSlope)),
+        dailyCap:Math.round(dragonClamp_(src.dailyCap,0,100000000,d.dailyCap)),
+        skillCap:Math.round(dragonClamp_(src.skillCap,1,1000,d.skillCap)),
+        race:{
+          hourlyChance:dragonClamp_(raceSrc.hourlyChance,0,1,d.race.hourlyChance),
+          dailyMin:Math.round(dragonClamp_(raceSrc.dailyMin,0,48,d.race.dailyMin)),
+          dailyMax:Math.round(dragonClamp_(raceSrc.dailyMax,0,48,d.race.dailyMax))
+        },
+        menu, elements, nextElement
+      };
+    }
+    function dragonActiveKeys_(){
+      const cfg=dragonConfig_();
+      return Object.keys(cfg.elements)
+        .filter((k)=>cfg.elements[k].active)
+        .sort((a,b)=>(cfg.elements[a].order-cfg.elements[b].order)||a.localeCompare(b));
+    }
+
+function dragonGateState_(){
+      if(dragonS3Runtime.config && typeof dragonS3Runtime.config==="object"){
+        const c=dragonConfig_();
+        return {enabled:c.enabled,startAtMs:c.startAtMs};
+      }
+      const s=dragonS3Runtime.summary;
+      if(s && typeof s==="object") return {enabled:Number(s.on)!==0,startAtMs:Math.max(0,Math.floor(Number(s.startAtMs)||0))};
+      return {enabled:false,startAtMs:0};
+    }
+    function dragonStartedMs_(){ try{ return dragonGateState_().startAtMs; }catch(e){ return 0; } }
+    function dragonEnabled_(){
+      try{
+        const g=dragonGateState_();
+        
+        return !!g.enabled && g.startAtMs>0 && mkGraceNowMs_()>=g.startAtMs;
+      }catch(e){ return false; }
+    }
+
+function dragonGrowthStage_(level,maxLevel){
+      const max=Math.max(1,Number(maxLevel)||DRAGON_MAX_LEVEL);
+      const lv=Math.max(0,Math.min(max,Number(level)||0));
+      if(lv<=0) return {index:0,name:DRAGON_STAGE_NAMES[0]};
+      const ratio=lv/max;
+      if(ratio<.02) return {index:1,name:DRAGON_STAGE_NAMES[1]};
+      if(ratio<.08) return {index:2,name:DRAGON_STAGE_NAMES[2]};
+      if(ratio<.20) return {index:3,name:DRAGON_STAGE_NAMES[3]};
+      if(ratio<.40) return {index:4,name:DRAGON_STAGE_NAMES[4]};
+      if(ratio<.65) return {index:5,name:DRAGON_STAGE_NAMES[5]};
+      if(ratio<1) return {index:6,name:DRAGON_STAGE_NAMES[6]};
+      return {index:7,name:DRAGON_STAGE_NAMES[7]};
+    }
+    
+    function dragonNeedFor_(cfg,level){
+      return Math.max(1,Math.round((Number(cfg.expBase)||0)+(Number(cfg.expSlope)||0)*Math.max(0,Number(level)||0)));
+    }
+    function dragonMenuKey_(stageIndex){ const s=Math.max(0,Number(stageIndex)||0); return s<=1?"egg":(s<=3?"baby":"grown"); }
+    function dragonNormalizeRow_(raw){
+      const r=(raw && typeof raw==="object")?raw:{};
+      return {
+        level:Math.max(0,Math.min(DRAGON_MAX_LEVEL,Math.floor(Number(r.level)||0))),
+        exp:Math.max(0,Math.floor(Number(r.exp)||0)),
+        skill:Math.max(0,Math.floor(Number(r.skill)||0)),
+        totalFed:Math.max(0,Math.floor(Number(r.totalFed)||0)),
+        totalTickets:Math.max(0,Math.floor(Number(r.totalTickets)||0)),
+        graduatedAtMs:Math.max(0,Math.floor(Number(r.graduatedAtMs)||0)),
+        name:dragonText_(r.name,"",40),
+        updatedAtMs:Math.max(0,Math.floor(Number(r.updatedAtMs)||0))
+      };
+    }
+    
+    function dragonRow_(el){
+      const s=dragonS3Runtime.summary?.dragons?.[el];
+      const full=dragonS3Runtime.dragons?.[el];
+      if(s && typeof s==="object"){
+        return {
+          level:Math.max(0,Math.min(DRAGON_MAX_LEVEL,Math.floor(Number(s.lv)||0))),
+          exp:Math.max(0,Math.floor(Number(s.exp)||0)),
+          skill:Math.max(0,Math.floor(Number(s.sk)||0)),
+          totalFed:Math.max(0,Math.floor(Number(full?.totalFed)||0)),
+          totalTickets:Math.max(0,Math.floor(Number(full?.totalTickets)||0)),
+          graduatedAtMs:Math.max(0,Math.floor(Number(s.grad)||0)),
+          name:dragonText_(full?.name,"",40),
+          updatedAtMs:0
+        };
+      }
+      return dragonNormalizeRow_(full||{});
+    }
+
+function dragonReadStats_(){ try{ return JSON.parse(localStorage.getItem(DRAGON_STATS_KEY)||"null")||{}; }catch(e){ return {}; } }
+    function dragonReadCoins_(){ return Math.max(0,Math.floor(Number(dragonReadStats_().coins)||0)); }
+    function dragonWriteWallet_(delta){
+      const d=dragonReadStats_();
+      const now=Math.max(0,Math.floor(Number(d.coins)||0));
+      const next=now+Math.floor(Number(delta)||0);
+      if(next<0) return false;
+      const s={
+        totalSec:Math.max(0,Math.floor(Number(d.totalSec)||0)),
+        coins:next,
+        coinCarrySec:Math.max(0,Math.floor(Number(d.coinCarrySec)||0))
+      };
+      try{ localStorage.setItem(DRAGON_STATS_KEY,JSON.stringify(s)); }catch(e){ return false; }
+      
+      try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
+      try{ const a=window.__MK_PET_V24__; if(a && typeof a.updateWalletUI==="function") a.updateWalletUI(); }catch(e){}
+      return true;
+    }
+    function spendCoinsKeepCarry_(n){
+      const amt=Math.max(0,Math.floor(Number(n)||0));
+      if(!amt) return false;
+      if(dragonReadCoins_()<amt) return false;
+      return dragonWriteWallet_(-amt);
+    }
+    function dragonRefundCoins_(n){ return dragonWriteWallet_(Math.max(0,Math.floor(Number(n)||0))); }
+
+function dragonBlessingInfo_(){
+      const now=mkGraceNowMs_();
+      const rec=dragonS3Runtime.summary?.blessing;
+      const atMs=Number(rec?.atMs)||0, endMs=Number(rec?.endMs)||0;
+      if(!rec || typeof rec!=="object" || !(atMs>0) || !(endMs>0)) return {rec:null,phase:"none",atMs:0,endMs:0,mult:1,now};
+      const mult=Math.max(1,Math.min(10,Math.round(Number(rec.mult)||DRAGON_BLESS_MULT)));
+      const phase=(now<atMs)?"scheduled":((now<endMs)?"active":"ended");
+      return {rec,phase,atMs,endMs,mult,now};
+    }
+    function dragonCoinMult_(){
+      try{ const info=dragonBlessingInfo_(); return info.phase==="active"?info.mult:1; }catch(e){ return 1; }
+    }
+
+function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
+    function dragonP3_(v){ return v.toFixed(3)+"%"; }
+    function dragonLidOf_(box){
+      const kids=box.children;
+      for(let i=0;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains("dgLid")) return kids[i]; }
+      return null;
+    }
+    function dragonPaintLid_(box){
+      if(!DRAGON_EYES || !box) return;
+      const el=box.getAttribute("data-el");
+      const st=box.getAttribute("data-stage");
+      const e=(el && DRAGON_EYES[el])?DRAGON_EYES[el][st]:null;
+      let lid=dragonLidOf_(box), slide=null, b=null;
+      if(!e){ if(lid) box.removeChild(lid); return; }   
+      const v2=dragonIsNum_(e.cx)&&dragonIsNum_(e.cy)&&dragonIsNum_(e.a)&&dragonIsNum_(e.b)&&dragonIsNum_(e.angle)&&e.a>0&&e.b>0;
+      const kind=v2?"2":"1";
+      if(lid && lid.getAttribute("data-lid")!==kind){ box.removeChild(lid); lid=null; }
+      if(lid){
+        slide=v2?lid.firstElementChild:null;
+        b=v2?(slide?slide.firstElementChild:null):lid.firstElementChild;
+      }else{
+        lid=document.createElement("i");
+        
+        lid.className="dgLid"+(Math.random()<0.3?" dgLid2":"");
+        lid.setAttribute("data-lid",kind);
+        lid.setAttribute("aria-hidden","true");
+        b=document.createElement("b");
+        if(v2){
+          slide=document.createElement("u");
+          slide.className="dgLidSlide";
+          slide.appendChild(b);
+          lid.appendChild(slide);
+        }else{
+          lid.appendChild(b);
+        }
+        lid.style.setProperty("--dg-blink-dur",(4.2+Math.random()*3).toFixed(2)+"s");
+        lid.style.setProperty("--dg-blink-delay",(-Math.random()*6).toFixed(2)+"s");
+        box.appendChild(lid);
+      }
+      if(!b) return;
+      const travel=dragonIsNum_(e.travel)?e.travel:1;
+      const sign=(e.dir==="up")?-1:1;                   
+      if(v2){
+        const lx=e.cx-e.a/2, ly=e.cy-e.b/2;
+        lid.style.left=dragonP3_(lx);
+        lid.style.top=dragonP3_(ly);
+        lid.style.width=dragonP3_(e.a);
+        lid.style.height=dragonP3_(e.b);
+        lid.style.transform="rotate("+e.angle.toFixed(3)+"deg)";
+        lid.style.transformOrigin="50% 50%";
+        lid.style.setProperty("--dg-travel",(sign*travel).toFixed(3));
+        b.style.width=dragonP3_(100/e.a*100);
+        b.style.height=dragonP3_(100/e.b*100);
+        b.style.left=dragonP3_(-lx/e.a*100);
+        b.style.top=dragonP3_(-ly/e.b*100);
+        
+        b.style.transform="rotate("+(-e.angle).toFixed(3)+"deg)";
+        b.style.transformOrigin=dragonP3_(e.cx)+" "+dragonP3_(e.cy);
+      }else{
+        lid.style.left=dragonP3_(e.x);
+        lid.style.top=dragonP3_(e.y);
+        lid.style.width=dragonP3_(e.w);
+        lid.style.height=dragonP3_(e.h);
+        b.style.width=dragonP3_(100/e.w*100);
+        b.style.height=dragonP3_(100/e.h*100);
+        b.style.left=dragonP3_(-e.x/e.w*100);
+        b.style.top=dragonP3_(-e.y/e.h*100);
+        b.style.setProperty("--dg-lid-y",dragonP3_(sign*travel*e.h));
+      }
+    }
+
+function dragonMyCamp_(){
+      const uid=String(state.uid||"");
+      if(dragonS3Runtime.membersFetchedAtMs>0 && uid) return dragonText_(dragonS3Runtime.members?.[uid]?.camp,"",20);
+      try{ return dragonText_(localStorage.getItem(DRAGON_LOCAL_CAMP),"",20); }catch(e){ return ""; }
+    }
+    function dragonMyCampChangedDay_(){
+      const uid=String(state.uid||"");
+      return dragonText_(dragonS3Runtime.members?.[uid]?.campChangedDay,"",12);
+    }
+    function dragonSaveLocalCamp_(el){ try{ localStorage.setItem(DRAGON_LOCAL_CAMP,String(el||"")); }catch(e){} }
+    function dragonViewEl_(){
+      const active=dragonActiveKeys_();
+      if(dragonS3Runtime.viewEl && (dragonS3Runtime.viewEl==="__next__" || active.indexOf(dragonS3Runtime.viewEl)>=0)) return dragonS3Runtime.viewEl;
+      const mine=dragonMyCamp_();
+      if(mine && active.indexOf(mine)>=0) return mine;
+      return active[0]||"";
+    }
+
+async function loadDragonConfigOnce_(opts){
+      if(!state.roomId || !state.joined) return null;
+      const force=!!(opts&&opts.force);
+      if(!force && dragonS3Runtime.config && Date.now()-dragonS3Runtime.configFetchedAtMs<60000) return dragonS3Runtime.config;
+      try{
+        const snap=await rGet(rDragonRef_("config"));
+        dragonS3Runtime.config=snap.val()||null;
+        dragonS3Runtime.configFetchedAtMs=Date.now();
+      }catch(e){ console.warn("[dragon s3] config load failed",e); }
+      return dragonS3Runtime.config;
+    }
+    
+    async function ensureDragonRow_(el){
+
+const fresh={level:0,exp:0,skill:0,totalFed:0,totalTickets:0,graduatedAtMs:0,name:"",updatedAtMs:Date.now()};
+      let cur=null;
+      try{
+        const res=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+          if(raw && typeof raw==="object") return;   
+          return fresh;                              
+        });
+        cur=(res && res.snapshot)?res.snapshot.val():null;
+      }catch(e){ console.warn("[dragon s3] ensure row failed",e); }
+      if(!(cur && typeof cur==="object")){
+        const snap=await rGet(rDragonRef_(`dragons/${el}`));
+        cur=snap.val();
+      }
+      if(!(cur && typeof cur==="object")) cur=fresh;
+      dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons||{},{[el]:cur});
+      return dragonNormalizeRow_(cur);
+    }
+    async function ensureDragonMemberRow_(){
+      const uid=String(state.uid||"");
+      if(!uid) return null;
+      const snap=await rGet(rDragonRef_(`members/${uid}`));
+      const cur=snap.val();
+      if(cur && typeof cur==="object"){
+        dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:cur});
+        dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
+        return cur;
+      }
+      const fresh={camp:"",campChangedDay:"",name:dragonText_(state.nickname||els.name?.value,"익명",40),updatedAtMs:Date.now()};
+
+let made=null;
+      try{
+        const res=await rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
+          if(raw && typeof raw==="object") return;
+          return fresh;
+        });
+        made=(res && res.snapshot)?res.snapshot.val():null;
+      }catch(e){ console.warn("[dragon s3] ensure member failed",e); }
+      const row=(made && typeof made==="object")?made:fresh;
+      dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:row});
+      dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
+      return row;
+    }
+    
+    async function loadDragonRosterOnce_(opts){
+      if(!state.roomId || !state.joined) return;
+      const force=!!(opts&&opts.force);
+      if(!force && dragonS3Runtime.rosterFetchedAtMs && Date.now()-dragonS3Runtime.rosterFetchedAtMs<DRAGON_ROSTER_CACHE_MS) return;
+      try{
+        const [mSnap,fSnap,dSnap]=await Promise.all([
+          rGet(rDragonRef_("members")),
+          rGet(rDragonRef_("fed")),
+          rGet(rDragonRef_("dragons"))
+        ]);
+        dragonS3Runtime.members=mSnap.val()||{};
+        dragonS3Runtime.fed=fSnap.val()||{};
+        dragonS3Runtime.dragons=dSnap.val()||{};
+        dragonS3Runtime.rosterFetchedAtMs=Date.now();
+        dragonS3Runtime.membersFetchedAtMs=Date.now();
+        const mine=dragonMyCamp_();
+        if(mine) dragonSaveLocalCamp_(mine);
+      }catch(e){ console.warn("[dragon s3] roster load failed",e); }
+    }
+
+async function writeDragonSummary_(){
+      if(!state.roomId || !state.joined) return null;
+      try{
+        const [cSnap,dSnap]=await Promise.all([rGet(rDragonRef_("config")),rGet(rDragonRef_("dragons"))]);
+        dragonS3Runtime.config=cSnap.val()||null;
+        dragonS3Runtime.configFetchedAtMs=Date.now();
+        const rows=dSnap.val()||{};
+        dragonS3Runtime.dragons=rows;
+        const cfg=dragonConfig_();
+        const dragons={};
+        Object.keys(cfg.elements).forEach((k)=>{
+          const has=rows[k] && typeof rows[k]==="object";
+          if(!has && !cfg.elements[k].active) return;
+          const r=dragonNormalizeRow_(rows[k]||{});
+          dragons[k]={lv:r.level,exp:r.exp,sk:r.skill,grad:r.graduatedAtMs};
+        });
+        
+        const patch={
+          dragons,
+          active:dragonActiveKeys_(),
+          next:cfg.nextElement||"",
+          on:cfg.enabled?1:0,
+          startAtMs:cfg.startAtMs,
+          appBuild:MK_APP_BUILD,
+          updatedAtMs:Date.now()
+        };
+        await rUpdate(rDragonSummaryRef_(state.roomId),patch);
+        dragonS3Runtime.summary=Object.assign({},dragonS3Runtime.summary||{},patch);
+        return dragonS3Runtime.summary;
+      }catch(e){ console.warn("[dragon s3] summary write failed",e); return null; }
+    }
+    
+    async function loadDragonSummaryOnce_(){
+      if(!state.roomId || !state.joined) return null;
+      try{
+        const snap=await rGet(rDragonSummaryRef_(state.roomId));
+        const summary=snap.val();
+        if(summary && typeof summary==="object"){
+          dragonS3Runtime.summary=summary;
+          
+          const remoteBuild=Number(summary.appBuild)||0;
+          if(remoteBuild>0 && remoteBuild<MK_APP_BUILD){
+            rUpdate(rDragonSummaryRef_(state.roomId),{appBuild:MK_APP_BUILD}).catch(()=>{});
+            dragonS3Runtime.summary.appBuild=MK_APP_BUILD;
+          }else if(remoteBuild>MK_APP_BUILD){
+            showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200);
+          }
+        }
+        dragonSyncMenuButton_();
+        if(dragonModalOpen_()) renderDragonS3_();
+        return dragonS3Runtime.summary||null;
+      }catch(e){ console.warn("[dragon s3] summary load failed",e); return null; }
+    }
+
+function dragonApplyScene_(){
+      const scene=document.getElementById("dragonScene");
+      const sprite=document.getElementById("dragonSprite");
+      if(!scene || !sprite) return;
+      const cfg=dragonConfig_();
+      const view=dragonViewEl_();
+      const isNext=(view==="__next__");
+      const el=isNext?"neutral":(view||"neutral");
+      const row=isNext?{level:0,exp:0,graduatedAtMs:0}:dragonRow_(view);
+      const stage=isNext?{index:0,name:"다음에 깨어날 알"}:dragonGrowthStage_(row.level);
+      if(scene.dataset.el!==el) scene.dataset.el=el;
+      if(scene.dataset.stage!==String(stage.index)) scene.dataset.stage=String(stage.index);
+      if(dragonBlessingInfo_().phase==="active") scene.dataset.blessing="1"; else delete scene.dataset.blessing;
+      if(sprite.dataset.el!==el) sprite.dataset.el=el;
+      if(sprite.dataset.stage!==String(stage.index)) sprite.dataset.stage=String(stage.index);
+      dragonPaintLid_(sprite);
+      const label=isNext?"다음에 깨어날 세계수의 알":`${cfg.elements[view]?.name||"드래곤"} ${stage.index}단계 ${stage.name}, Lv.${row.level}`;
+      scene.setAttribute("aria-label",label);
+      dragonSetText_("dragonLevel",isNext?"Lv.—":`Lv.${dragonNumFmt_(row.level)}`);
+      dragonSetText_("dragonLevelMax",`MAX ${DRAGON_MAX_LEVEL}`);
+      const ribbon=isNext?"부화 대기 · 다음 알"
+        :(Number(row.graduatedAtMs)>0?"🐉 고룡 · 졸업":(stage.index<=1?`${stage.name} · 부화 대기`:stage.name));
+      dragonSetText_("dragonRibbon",ribbon);
+    }
+    function dragonBounce_(){
+      const art=document.getElementById("dragonArt");
+      if(!art) return;
+      try{
+        art.classList.remove("dgBounce");
+        void art.offsetWidth;
+        art.classList.add("dgBounce");
+        setTimeout(()=>{ try{ art.classList.remove("dgBounce"); }catch(e){} },600);
+      }catch(e){}
+    }
+
+function renderDragonTabs_(){
+      const wrap=document.getElementById("dragonTabs");
+      if(!wrap) return;
+      const cfg=dragonConfig_();
+      const mine=dragonMyCamp_();
+      const view=dragonViewEl_();
+      let html=dragonActiveKeys_().map((k)=>{
+        const e=cfg.elements[k];
+        const on=(k===view)?" on":"";
+        const isMine=(k===mine)?" isMine":"";
+        return `<button type="button" class="dragonTab${on}${isMine} dragonElTint" data-el="${dragonEsc_(k)}" aria-pressed="${k===view?"true":"false"}">${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</button>`;
+      }).join("");
+      const nextKey=cfg.nextElement;
+      const nextName=nextKey&&cfg.elements[nextKey]?cfg.elements[nextKey].name:"다음 알";
+      html+=`<button type="button" class="dragonTab dragonElTint${view==="__next__"?" on":""}" data-el="__next__" data-el2="neutral" title="다음에 깨어날 알">🥚 ${dragonEsc_(nextName)}</button>`;
+      if(wrap.innerHTML!==html) wrap.innerHTML=html;
+    }
+    function renderDragonEggs_(){
+      const wrap=document.getElementById("dragonEggRow");
+      if(!wrap) return;
+      const cfg=dragonConfig_();
+      const mine=dragonMyCamp_();
+      const members=dragonS3Runtime.members||{};
+      const counts={};
+      Object.keys(members).forEach((uid)=>{
+        const c=dragonText_(members[uid]?.camp,"",20);
+        if(c) counts[c]=(counts[c]||0)+1;
+      });
+      const html=dragonActiveKeys_().map((k)=>{
+        const e=cfg.elements[k];
+        const row=dragonRow_(k);
+        const st=dragonGrowthStage_(row.level);
+        const on=(k===mine)?" on":"";
+        const grad=Number(row.graduatedAtMs)>0;
+        return `<button type="button" class="dragonEggBtn dragonElTint${on}" data-el="${dragonEsc_(k)}" data-camp="1"${grad?" disabled":""}>`
+          +`<span class="dragonChipArt" data-el="${dragonEsc_(k)}" data-stage="${Math.min(st.index,1)}" aria-hidden="true"></span>`
+          +`<span><b>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</b><span>${grad?"졸업한 고룡":`Lv.${row.level} · 작가 ${counts[k]||0}명`}</span></span></button>`;
+      }).join("");
+      if(wrap.innerHTML!==html) wrap.innerHTML=html;
+      const status=document.getElementById("dragonMyStatus");
+      if(status){
+        const day=seoulDateKey();
+        const changed=dragonMyCampChangedDay_();
+        let text;
+        if(!mine) text="기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요. 기운은 하루에 한 번 바꿀 수 있어요.";
+        else if(changed===day) text=`지금 내 기운은 ${cfg.elements[mine]?.name||mine}이에요 · 오늘은 이미 기운을 바꿨어요(내일 다시 바꿀 수 있어요).`;
+        else text=`지금 내 기운은 ${cfg.elements[mine]?.name||mine}이에요 · 오늘 한 번 바꿀 수 있어요.`;
+        if(status.textContent!==text) status.textContent=text;
+      }
+    }
+    function renderDragonPool_(){
+      const wrap=document.getElementById("dragonPoolRows");
+      if(!wrap) return;
+      const cfg=dragonConfig_();
+      const mine=dragonMyCamp_();
+      const members=dragonS3Runtime.members||{};
+      const counts={};
+      Object.keys(members).forEach((uid)=>{
+        const c=dragonText_(members[uid]?.camp,"",20);
+        if(c) counts[c]=(counts[c]||0)+1;
+      });
+      const html=dragonActiveKeys_().map((k)=>{
+        const e=cfg.elements[k];
+        const row=dragonRow_(k);
+        const need=dragonNeedFor_(cfg,row.level+1);
+        const pct=Math.max(0,Math.min(100,(row.exp/need)*100));
+        return `<div class="dragonPoolRow dragonElTint${k===mine?" isMine":""}" data-el="${dragonEsc_(k)}">`
+          +`<strong>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</strong>`
+          +`<div class="worldTreeGauge" role="progressbar" aria-label="${dragonEsc_(e.name)} 진행률"><i style="width:${pct.toFixed(2)}%"></i></div>`
+          +`<output>Lv.${row.level} · ${dragonNumFmt_(row.exp)}/${dragonNumFmt_(need)} · ${counts[k]||0}명</output></div>`;
+      }).join("");
+      if(wrap.innerHTML!==html) wrap.innerHTML=html;
+      dragonSetText_("dragonPoolNote",`레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""} 코인`);
+    }
+    function renderDragonFeed_(){
+      const box=document.getElementById("dragonFeed");
+      const btns=document.getElementById("dragonFeedBtns");
+      if(!box || !btns) return;
+      const cfg=dragonConfig_();
+      const mine=dragonMyCamp_();
+      dragonSetText_("dragonWallet",`🪙 ${dragonNumFmt_(dragonReadCoins_())}`);
+      if(!mine){
+        if(btns.innerHTML!=="") btns.innerHTML="";
+        dragonSetText_("dragonFeedLore","기운을 먼저 골라 주세요 — 먹이는 내 드래곤에게만 줄 수 있어요.");
+        dragonSetText_("dragonFeedDay","");
+        return;
+      }
+      const row=dragonRow_(mine);
+      const stage=dragonGrowthStage_(row.level);
+      const key=dragonMenuKey_(stage.index);
+      const grad=Number(row.graduatedAtMs)>0;
+      const html=grad?"":cfg.menu[key].map((it)=>
+        `<button type="button" class="dragonFeedBtn" data-coins="${it.coins}"><span class="dgEm" aria-hidden="true">${dragonEsc_(it.icon)}</span>`
+        +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonNumFmt_(it.coins)} 코인</span></span></button>`).join("");
+      if(btns.innerHTML!==html) btns.innerHTML=html;
+      btns.setAttribute("data-menu",key);
+      const lore=grad?"이미 고룡으로 졸업한 드래곤이에요 🐉 다음 기운을 골라 주세요."
+        :(key==="egg"?"떠난 세계수가 남긴 기운을 알에 불어넣습니다."
+        :(key==="baby"?"아직 아기라 이유식만 먹을 수 있어요.":""));
+      const loreEl=document.getElementById("dragonFeedLore");
+      if(loreEl){ loreEl.textContent=lore; loreEl.hidden=!lore; }
+      const day=seoulDateKey();
+      const fedRec=dragonS3Runtime.members?.[String(state.uid||"")]?.fed;
+      const fedToday=(dragonText_(fedRec?.day,"",12)===day)?Math.max(0,Math.floor(Number(fedRec?.coins)||0)):0;
+      dragonSetText_("dragonFeedDay",cfg.dailyCap>0
+        ? `오늘 먹인 양 ${dragonNumFmt_(fedToday)} / 한도 ${dragonNumFmt_(cfg.dailyCap)}`
+        : `오늘 먹인 양 ${dragonNumFmt_(fedToday)} · 한도 없음`);
+    }
+    function renderDragonRank_(){
+      const list=document.getElementById("dragonRankList");
+      const empty=document.getElementById("dragonRankEmpty");
+      if(!list) return;
+      const cfg=dragonConfig_();
+      const view=dragonViewEl_();
+      const el=(view==="__next__")?"":view;
+      dragonSetText_("dragonRankWho",el?`${cfg.elements[el]?.emoji||""} ${cfg.elements[el]?.name||el}`:"-");
+      const fed=(el && dragonS3Runtime.fed && dragonS3Runtime.fed[el])?dragonS3Runtime.fed[el]:null;
+      const members=dragonS3Runtime.members||{};
+      const rows=[];
+      if(fed){
+        Object.keys(fed).forEach((uid)=>{
+          const coins=Math.max(0,Math.floor(Number(fed[uid]?.coins)||0));
+          if(coins<=0) return;
+          rows.push({uid,coins,name:dragonText_(members[uid]?.name,"익명",40)});
+        });
+      }
+      rows.sort((a,b)=>b.coins-a.coins);
+      const uid=String(state.uid||"");
+      const myIdx=rows.findIndex((r)=>r.uid===uid);
+      const html=rows.slice(0,10).map((r,i)=>
+        `<li class="${r.uid===uid?"isMe":""}"><span class="dgRk">${i+1}</span><span class="dgNick">${dragonEsc_(r.name)}</span><span class="dgVal">${dragonNumFmt_(r.coins)}</span></li>`).join("");
+      if(list.innerHTML!==html) list.innerHTML=html;
+      if(empty) empty.style.display=rows.length?"none":"";
+      dragonSetText_("dragonMyRank",myIdx>=0
+        ? `내 순위 ${myIdx+1}위 / ${rows.length}명 · 먹인 코인 ${dragonNumFmt_(rows[myIdx].coins)}`
+        : "기운을 고르고 먹이를 주면 내 순위가 표시돼요.");
+    }
+    function renderDragonRoster_(){
+      const list=document.getElementById("dragonRosterList");
+      const empty=document.getElementById("dragonRosterEmpty");
+      if(!list) return;
+      const view=dragonViewEl_();
+      const el=(view==="__next__")?"":view;
+      const members=dragonS3Runtime.members||{};
+      const names=[];
+      Object.keys(members).forEach((uid)=>{
+        if(dragonText_(members[uid]?.camp,"",20)!==el) return;
+        names.push(dragonText_(members[uid]?.name,"익명",40));
+      });
+      names.sort((a,b)=>a.localeCompare(b,"ko"));
+      const html=names.map((n)=>`<li>${dragonEsc_(n)}</li>`).join("");
+      if(list.innerHTML!==html) list.innerHTML=html;
+      if(empty) empty.style.display=names.length?"none":"";
+      dragonSetText_("dragonRosterCount",`${names.length}명`);
+    }
+    function renderDragonAdminNote_(){
+      const note=document.getElementById("dragonAdminNote");
+      if(!note) return;
+      if(!state.adminOk){ if(note.style.display!=="none") note.style.display="none"; return; }
+      note.style.display="";
+      const cfg=dragonConfig_();
+      const started=dragonStartedMs_();
+      const when=started?new Date(started).toLocaleString("ko-KR"):"미시작";
+      const text=`관리자 · 시즌 ${cfg.enabled?"진행":"일시정지"} · 시작 ${when} · 레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""}`
+        +` · 하루 한도 ${cfg.dailyCap>0?dragonNumFmt_(cfg.dailyCap):"없음"} · 레이스 ${Math.round(cfg.race.hourlyChance*100)}% ${cfg.race.dailyMin}~${cfg.race.dailyMax}회`
+        +` · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`;
+      if(note.textContent!==text) note.textContent=text;
+    }
+    function renderDragonS3_(){
+      try{
+        if(!dragonModalOpen_()) return;
+        dragonApplyScene_();
+        renderDragonTabs_();
+        renderDragonEggs_();
+        renderDragonPool_();
+        renderDragonFeed_();
+        renderDragonRank_();
+        renderDragonRoster_();
+        renderDragonAdminNote_();
+      }catch(e){ console.warn("[dragon s3] render failed",e); }
+    }
+
+async function selectDragonCamp_(el){
+      if(dragonS3Runtime.campLock) return;
+      if(!dragonKeyOk_(el)) return;
+      if(!state.joined || !state.uid){ showToast("작업방 입장 후 기운을 고를 수 있어요"); return; }
+      if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
+      const cfg=dragonConfig_();
+      if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("지금은 고를 수 없는 기운이에요"); return; }
+      const uid=String(state.uid);
+      const day=seoulDateKey();
+      const myName=dragonText_(state.nickname||els.name?.value,"익명",40);
+      dragonS3Runtime.campLock=true;
+      try{
+        const prev=await ensureDragonMemberRow_();
+        const prevCamp=dragonText_(prev?.camp,"",20);
+        if(prevCamp===el){ showToast(`이미 ${cfg.elements[el].name}이에요 ${cfg.elements[el].emoji}`); return; }
+        if(prevCamp && dragonText_(prev?.campChangedDay,"",12)===day){
+          showToast("기운은 하루에 한 번만 바꿀 수 있어요 · 내일 다시 골라 주세요",3200);
+          return;
+        }
+        if(prevCamp && !confirm(`${cfg.elements[el].name}으로 기운을 바꿀까요?\n이미 먹인 기여는 원래 드래곤에 그대로 남아요. 오늘은 더 못 바꿔요.`)) return;
+        let blocked=false;
+        const result=await rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
+
+if(raw===null) return null;
+          if(!raw || typeof raw!=="object") return;
+          const cur=Object.assign({},raw);
+          const curCamp=dragonText_(cur.camp,"",20);
+          if(curCamp===el) return;
+          if(curCamp && dragonText_(cur.campChangedDay,"",12)===day){ blocked=true; return; }
+          cur.camp=el;
+          if(curCamp) cur.campChangedDay=day;   
+          cur.name=myName;
+          cur.updatedAtMs=Date.now();
+          return cur;
+        });
+        if(blocked){ showToast("기운은 하루에 한 번만 바꿀 수 있어요 · 내일 다시 골라 주세요",3200); return; }
+        const val=result?.snapshot?.val();
+        if(!result?.committed || !val){ showToast("기운 고르기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
+        dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:val});
+        dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
+        dragonSaveLocalCamp_(el);
+        dragonS3Runtime.viewEl=el;
+        showToast(`${cfg.elements[el].emoji} ${cfg.elements[el].name}을 골랐어요!`,2800);
+        renderDragonS3_();
+        dragonBounce_();
+        try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.renderAll && window.__MK_PET_V24__.renderAll(); }catch(e){}
+      }catch(e){
+        console.warn("[dragon s3] camp select failed",e);
+        showToast("기운 고르기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
+      }finally{ dragonS3Runtime.campLock=false; }
+    }
+
+async function feedDragon_(coins){
+      if(dragonS3Runtime.feedLock) return;
+      const want=Math.max(0,Math.floor(Number(coins)||0));
+      if(!want) return;
+      if(!state.joined || !state.uid){ showToast("작업방 입장 후 먹이를 줄 수 있어요"); return; }
+      if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
+      const el=dragonMyCamp_();
+      if(!dragonKeyOk_(el)){ showToast("먼저 기운을 골라 주세요 🥚"); return; }
+      const uid=String(state.uid);
+      dragonS3Runtime.feedLock=true;
+      let spent=0;
+      try{
+        
+        await loadDragonConfigOnce_({force:true});
+        const cfg=dragonConfig_();
+        if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
+        const day=seoulDateKey();
+        let amount=want;
+        let fedToday=0;
+        if(cfg.dailyCap>0){
+          const fSnap=await rGet(rDragonRef_(`members/${uid}/fed`));
+          const rec=fSnap.val()||{};
+          fedToday=(dragonText_(rec.day,"",12)===day)?Math.max(0,Math.floor(Number(rec.coins)||0)):0;
+          const room=cfg.dailyCap-fedToday;
+          if(room<=0){ showToast("오늘은 배가 불러요 💤 자정에 다시 먹일 수 있어요",2800); return; }
+          amount=Math.min(amount,room);
+        }
+        const have=dragonReadCoins_();
+        if(have<=0){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
+        amount=Math.min(amount,have);
+        const before=await ensureDragonRow_(el);
+        if(Number(before.graduatedAtMs)>0){ showToast("이미 고룡으로 졸업한 드래곤이에요 🐉"); return; }
+        if(!spendCoinsKeepCarry_(amount)){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
+        spent=amount;
+        let after=null;
+        try{
+          const result=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+            
+            if(raw===null) return null;
+            if(!raw || typeof raw!=="object") return;      
+            const d=dragonNormalizeRow_(raw);
+            if(d.graduatedAtMs>0) return;                  
+            d.exp+=amount;
+            d.totalFed+=amount;
+            let need=dragonNeedFor_(cfg,d.level+1);
+            while(d.level<DRAGON_MAX_LEVEL && d.exp>=need){
+              d.exp-=need;
+              d.level+=1;
+              need=dragonNeedFor_(cfg,d.level+1);          
+            }
+            if(d.level>=DRAGON_MAX_LEVEL){
+              d.level=DRAGON_MAX_LEVEL;
+              
+              if(!(d.graduatedAtMs>0)) d.graduatedAtMs=Date.now();
+            }
+            d.updatedAtMs=Date.now();
+            return d;
+          });
+          const val=result?.committed?result.snapshot.val():null;
+          if(val && typeof val==="object") after=dragonNormalizeRow_(val);
+        }catch(e){ console.warn("[dragon s3] feed transaction failed",e); }
+        if(!after){
+          dragonRefundCoins_(spent);
+          spent=0;
+          showToast("먹이 주기에 실패했어요 · 코인은 돌려놨어요",3200);
+          return;
+        }
+        spent=0;
+        dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons||{},{[el]:after});
+        
+        const updates={};
+        updates[`dragonV1/fed/${el}/${uid}/coins`]=rIncrement(amount);
+        updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
+        if(cfg.dailyCap>0) updates[`dragonV1/members/${uid}/fed`]={day,coins:fedToday+amount};
+        try{ await rUpdate(rDragonPlaygroundRef_(),updates); }catch(e){ console.warn("[dragon s3] fed ledger update failed",e); }
+        
+        try{
+          const fed=dragonS3Runtime.fed=dragonS3Runtime.fed||{};
+          fed[el]=fed[el]||{};
+          fed[el][uid]=Object.assign({},fed[el][uid]||{},{coins:Math.max(0,Math.floor(Number(fed[el][uid]?.coins)||0))+amount,updatedAtMs:Date.now()});
+          if(cfg.dailyCap>0 && dragonS3Runtime.members?.[uid]) dragonS3Runtime.members[uid].fed={day,coins:fedToday+amount};
+        }catch(e){}
+        await writeDragonSummary_();
+        const ups=after.level-before.level;
+        const need=dragonNeedFor_(cfg,after.level+1);
+        if(after.graduatedAtMs>0 && !(before.graduatedAtMs>0)){
+          showToast(`${cfg.elements[el].emoji} ${cfg.elements[el].name}이 Lv.100 고룡이 되었어요! 🐉`,4200);
+        }else if(ups>0){
+          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요 · Lv.${after.level} 달성!${ups>1?` (${ups}레벨 연속)`:""} 다음 목표 ${dragonNumFmt_(need)}`,3600);
+        }else{
+          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요 · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))}코인`,3000);
+        }
+        renderDragonS3_();
+        dragonBounce_();
+      }catch(e){
+        console.warn("[dragon s3] feed failed",e);
+        if(spent>0){ dragonRefundCoins_(spent); spent=0; }
+        showToast("먹이 주기에 실패했어요 · 코인은 돌려놨어요",3200);
+      }finally{ dragonS3Runtime.feedLock=false; }
+    }
+
+function stopDragonRealtime_(){
+      try{ if(dragonS3Runtime.unsub) dragonS3Runtime.unsub(); }catch(e){}
+      dragonS3Runtime.unsub=null;
+    }
+    function subscribeDragonS3_(){
+      if(!state.roomId) return;
+      stopDragonRealtime_();
+      
+      dragonS3Runtime.unsub=rOnValue(rDragonSummaryRef_(state.roomId),(snap)=>{
+        const s=snap.val();
+        if(s && typeof s==="object") dragonS3Runtime.summary=s;
+        renderDragonS3_();
+      },(err)=>{ console.warn("[dragon s3] subscribe failed",err); });
+    }
+    function openDragonS3_(){
+      if(!state.joined){ showToast("작업방 입장 후 드래곤을 만날 수 있어요 🐉"); return; }
+      if(!dragonEnabled_() && !state.adminOk){ showToast("드래곤 시즌은 아직 시작되지 않았어요 🥚",3000); return; }
+      const modal=document.getElementById("dragonModal");
+      if(!modal) return;
+      try{ closeViewMenu(); }catch(e){}
+      showModal(modal);
+      renderDragonS3_();
+      subscribeDragonS3_();
+      loadDragonConfigOnce_({force:true})
+        .then(()=>loadDragonRosterOnce_())
+        .then(()=>{ renderDragonS3_(); renderDragonAdminPanel_(); })
+        .catch(()=>{});
+    }
+    function closeDragonS3_(){
+      const modal=document.getElementById("dragonModal");
+      if(modal) hideModal(modal);
+      stopDragonRealtime_();
+    }
+
+function dragonSyncMenuButton_(){
+      try{
+        const btn=document.getElementById("vmViewDragon");
+        if(!btn) return;
+        const show=dragonEnabled_() || (state.adminOk && dragonStartedMs_()>0);
+        btn.style.display=show?"":"none";
+      }catch(e){}
+    }
+
+async function dragonAutoStart_(){
+      
+      let pass=0;
+      const result=await rRunTransaction(rDragonRef_("config"),(raw)=>{
+        pass+=1;
+        const cur=(raw && typeof raw==="object")?raw:{};
+        if(Number(cur.startAtMs)>0) return;   
+
+return Object.assign({},cur,{
+          enabled:cur.enabled!==false,
+          startAtMs:Date.now(),
+          startedBy:String(state.uid||""),
+          startedAuto:1,
+          updatedAtMs:Date.now()
+        });
+      });
+      if(!result?.committed) return false;
+      const val=result.snapshot.val();
+      if(!val || !(Number(val.startAtMs)>0)) return false;
+      dragonS3Runtime.config=val;
+      dragonS3Runtime.configFetchedAtMs=Date.now();
+      await writeDragonSummary_();
+      dragonSyncMenuButton_();
+      if(pass>0 && Date.now()-dragonS3Runtime.lastToastAtMs>60000){
+        dragonS3Runtime.lastToastAtMs=Date.now();
+        showToast("세계수가 남긴 알이 깨어나려 해요 🥚 ☰ 보기 메뉴에서 🐉 드래곤 키우기를 열어 보세요",5000);
+      }
+      return true;
+    }
+    async function dragonSeasonTick_(){
+      if(!state.joined || !state.roomId) return;
+      dragonSyncMenuButton_();
+      if(dragonStartedMs_()>0) return;
+      let retired=false;
+      try{
+        const wt=window.__MK_WORLD_TREE_S2__;
+        retired=!!(wt && typeof wt.isRetired==="function" && wt.isRetired());
+      }catch(e){}
+      if(!retired) return;
+      const now=Date.now();
+      if(now-dragonS3Runtime.autoStartTriedAtMs<DRAGON_AUTOSTART_RETRY_MS) return;
+      dragonS3Runtime.autoStartTriedAtMs=now;
+      try{
+        await loadDragonConfigOnce_({force:true});
+        if(dragonStartedMs_()>0){ dragonSyncMenuButton_(); return; }
+        await dragonAutoStart_();
+      }catch(e){ console.warn("[dragon s3] auto start failed",e); }
+    }
+
+function dragonAdminRowHtml_(key,el,isNew){
+      return `<div class="dragonAdminElRow" data-new="${isNew?"1":"0"}">`
+        +`<input class="dgAdmKey" type="text" maxlength="16" placeholder="키(영소문자)" value="${dragonEsc_(key)}"${isNew?"":" readonly"}/>`
+        +`<input class="dgAdmName" type="text" maxlength="20" placeholder="이름" value="${dragonEsc_(el.name)}"/>`
+        +`<input class="dgAdmEmoji" type="text" maxlength="6" placeholder="이모지" value="${dragonEsc_(el.emoji)}"/>`
+        +`<input class="dgAdmOrder" type="number" min="1" max="99" step="1" value="${Math.round(Number(el.order)||99)}"/>`
+        +`<label><input class="dgAdmActive" type="checkbox"${el.active?" checked":""}/>활성</label></div>`;
+    }
+    function renderDragonAdminPanel_(){
+      const wrap=document.getElementById("dragonAdminEls");
+      if(!wrap) return;
+      const cfg=dragonConfig_();
+      
+      const act=document.activeElement;
+      const ids=["dragonAdminExpBase","dragonAdminExpSlope","dragonAdminDailyCap","dragonAdminHourly","dragonAdminDailyMin","dragonAdminDailyMax","dragonAdminNext"];
+      const editing=!!(act && (wrap.contains(act) || ids.indexOf(act.id)>=0));
+      if(!editing){
+        const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=String(v); };
+        set("dragonAdminExpBase",cfg.expBase);
+        set("dragonAdminExpSlope",cfg.expSlope);
+        set("dragonAdminDailyCap",cfg.dailyCap);
+        set("dragonAdminHourly",cfg.race.hourlyChance);
+        set("dragonAdminDailyMin",cfg.race.dailyMin);
+        set("dragonAdminDailyMax",cfg.race.dailyMax);
+        const keys=Object.keys(cfg.elements).sort((a,b)=>(cfg.elements[a].order-cfg.elements[b].order)||a.localeCompare(b));
+        const html=keys.map((k)=>dragonAdminRowHtml_(k,cfg.elements[k],false)).join("")
+          +dragonAdminRowHtml_("",{name:"",emoji:"",order:keys.length+1,active:false},true);
+        if(wrap.innerHTML!==html) wrap.innerHTML=html;
+        const sel=document.getElementById("dragonAdminNext");
+        if(sel){
+          const opts=`<option value="">없음</option>`+keys.filter((k)=>!cfg.elements[k].active)
+            .map((k)=>`<option value="${dragonEsc_(k)}">${dragonEsc_(cfg.elements[k].emoji)} ${dragonEsc_(cfg.elements[k].name)} (${dragonEsc_(k)})</option>`).join("");
+          if(sel.innerHTML!==opts) sel.innerHTML=opts;
+          sel.value=cfg.nextElement||"";
+        }
+      }
+      const pause=document.getElementById("dragonAdminPause");
+      if(pause) pause.textContent=cfg.enabled?"일시정지":"재개";
+      const status=document.getElementById("dragonAdminStatus");
+      if(status){
+        const started=dragonStartedMs_();
+        const text=started
+          ? `시즌 ${cfg.enabled?"진행 중":"일시정지"} · 시작 ${new Date(started).toLocaleString("ko-KR")} · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`
+          : "드래곤 시즌은 아직 시작되지 않았어요. 세계수가 은퇴하면 자동으로 시작되고, [🐉 지금 시작]으로 먼저 열 수도 있어요.";
+        if(status.textContent!==text) status.textContent=text;
+      }
+    }
+    async function saveDragonAdminConfig_(){
+      if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+      const num=(id)=>Number(document.getElementById(id)?.value);
+      const expBase=Math.round(num("dragonAdminExpBase"));
+      const expSlope=Math.round(num("dragonAdminExpSlope"));
+      const dailyCap=Math.round(num("dragonAdminDailyCap"));
+      const hourlyChance=num("dragonAdminHourly");
+      const dailyMin=Math.round(num("dragonAdminDailyMin"));
+      const dailyMax=Math.round(num("dragonAdminDailyMax"));
+      if(!(expBase>=1 && expBase<=100000000)){ showToast("레벨당 기본값은 1 이상으로 정해 주세요"); return; }
+      if(!(expSlope>=0 && expSlope<=1000000)){ showToast("레벨당 기울기는 0 이상으로 정해 주세요"); return; }
+      if(!(dailyCap>=0 && dailyCap<=100000000)){ showToast("하루 한도는 0(없음) 이상으로 정해 주세요"); return; }
+      if(!(hourlyChance>=0 && hourlyChance<=1)){ showToast("레이스 매시 확률은 0~1 사이로 정해 주세요"); return; }
+      if(!(dailyMin>=0 && dailyMax>=dailyMin && dailyMax<=48)){ showToast("레이스 하루 최소·상한을 다시 확인해 주세요"); return; }
+      const curCfg=dragonConfig_();
+      const elements={};
+      let bad="";
+      const rows=document.querySelectorAll("#dragonAdminEls .dragonAdminElRow");
+      Array.prototype.forEach.call(rows,(row)=>{
+        const key=String(row.querySelector(".dgAdmKey")?.value||"").trim().toLowerCase();
+        const name=String(row.querySelector(".dgAdmName")?.value||"").trim();
+        if(!key && !name) return;                    
+        if(!dragonKeyOk_(key)){ bad=bad||key||"(빈 키)"; return; }
+        elements[key]={
+          name:dragonText_(name,key,20),
+          emoji:dragonText_(row.querySelector(".dgAdmEmoji")?.value,"🐉",6),
+          order:Math.round(dragonClamp_(row.querySelector(".dgAdmOrder")?.value,1,99,99)),
+          active:!!(row.querySelector(".dgAdmActive")?.checked),
+          addedAtMs:Math.max(0,Math.floor(Number(curCfg.elements[key]?.addedAtMs)||0))||Date.now()
+        };
+      });
+      if(bad){ showToast(`속성 키는 영소문자만 쓸 수 있어요 (${bad})`,3200); return; }
+      if(!Object.keys(elements).length){ showToast("속성이 하나도 없어요"); return; }
+      const nextElement=String(document.getElementById("dragonAdminNext")?.value||"");
+      if(nextElement && !elements[nextElement]){ showToast("다음 알로 고른 속성이 표에 없어요"); return; }
+      const button=document.getElementById("dragonAdminSave");
+      if(button) button.disabled=true;
+      try{
+        
+        await rUpdate(rDragonRef_("config"),{
+          expBase,expSlope,dailyCap,
+          race:{hourlyChance,dailyMin,dailyMax},
+          elements,nextElement,
+          updatedAtMs:Date.now(),updatedBy:String(state.uid||"")
+        });
+        await loadDragonConfigOnce_({force:true});
+        await writeDragonSummary_();
+        renderDragonAdminPanel_();
+        renderDragonS3_();
+        dragonSyncMenuButton_();
+        showToast("드래곤 설정을 저장했어요 🐉",2600);
+      }catch(e){
+        console.warn("[dragon s3] admin config failed",e);
+        showToast("드래곤 설정 저장에 실패했어요",2800);
+      }finally{ if(button) button.disabled=false; }
+    }
+    async function dragonAdminStart_(){
+      if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+      try{
+        await rUpdate(rDragonRef_("config"),{enabled:true,startAtMs:Date.now(),startedBy:String(state.uid||""),startedAuto:0,updatedAtMs:Date.now()});
+        await loadDragonConfigOnce_({force:true});
+        await writeDragonSummary_();
+        dragonSyncMenuButton_();
+        renderDragonAdminPanel_();
+        showToast("드래곤 시즌을 시작했어요 🐉",2800);
+      }catch(e){ console.warn("[dragon s3] start failed",e); showToast("시즌 시작에 실패했어요",2800); }
+    }
+    async function dragonAdminTogglePause_(){
+      if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
+      try{
+        await loadDragonConfigOnce_({force:true});
+        const next=!dragonConfig_().enabled;
+        await rUpdate(rDragonRef_("config"),{enabled:next,updatedAtMs:Date.now(),updatedBy:String(state.uid||"")});
+        await loadDragonConfigOnce_({force:true});
+        await writeDragonSummary_();
+        dragonSyncMenuButton_();
+        renderDragonAdminPanel_();
+        showToast(next?"드래곤 시즌을 재개했어요 🐉":"드래곤 시즌을 일시정지했어요 ⏸️",2800);
+      }catch(e){ console.warn("[dragon s3] pause toggle failed",e); showToast("변경에 실패했어요",2800); }
+    }
+
+function dragonDashInfo_(){
+      try{
+        const cfg=dragonConfig_();
+        const active=dragonActiveKeys_();
+        const mine=dragonMyCamp_();
+        const showEl=(mine && active.indexOf(mine)>=0)?mine:(active[0]||"neutral");
+        const row=dragonRow_(showEl);
+        const stage=dragonGrowthStage_(row.level);
+        const need=dragonNeedFor_(cfg,row.level+1);
+        return {
+          ready:!!dragonS3Runtime.summary,
+          enabled:dragonEnabled_(),
+          myCamp:(mine && active.indexOf(mine)>=0)?mine:"",
+          el:showEl,
+          elName:cfg.elements[showEl]?.name||"드래곤",
+          elEmoji:cfg.elements[showEl]?.emoji||"🐉",
+          level:row.level,maxLevel:DRAGON_MAX_LEVEL,
+          exp:row.exp,need,
+          pct:Math.max(0,Math.min(100,(row.exp/need)*100)),
+          stageIndex:stage.index,stageName:stage.name,
+          graduated:Number(row.graduatedAtMs)>0,
+          pool:active.map((k)=>`${cfg.elements[k].emoji} Lv.${dragonRow_(k).level}`).join(" · "),
+          blessing:dragonBlessingInfo_().phase,
+          coinMult:dragonCoinMult_()
+        };
+      }catch(e){ return null; }
+    }
+
+try{
+      document.getElementById("vmViewDragon")?.addEventListener("click",openDragonS3_);
+      document.getElementById("dragonClose")?.addEventListener("click",closeDragonS3_);
+      document.getElementById("dragonModal")?.addEventListener("click",(ev)=>{ if(ev.target?.id==="dragonModal") closeDragonS3_(); });
+      document.addEventListener("keydown",(ev)=>{ if(ev.key==="Escape" && dragonModalOpen_()) closeDragonS3_(); });
+      document.getElementById("dragonTabs")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dragonTab");
+        if(!btn) return;
+        dragonS3Runtime.viewEl=String(btn.getAttribute("data-el")||"");
+        renderDragonS3_();
+      });
+      document.getElementById("dragonEggRow")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dragonEggBtn");
+        if(!btn || btn.disabled) return;
+        selectDragonCamp_(String(btn.getAttribute("data-el")||"")).catch(()=>{});
+      });
+      document.getElementById("dragonFeedBtns")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dragonFeedBtn");
+        if(!btn || btn.disabled) return;
+        feedDragon_(Number(btn.getAttribute("data-coins"))||0).catch(()=>{});
+      });
+      document.getElementById("dragonAdminSave")?.addEventListener("click",()=>{ saveDragonAdminConfig_().catch(()=>{}); });
+      document.getElementById("dragonAdminStart")?.addEventListener("click",()=>{ dragonAdminStart_().catch(()=>{}); });
+      document.getElementById("dragonAdminPause")?.addEventListener("click",()=>{ dragonAdminTogglePause_().catch(()=>{}); });
+      document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{
+        if(state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
+      },700));
+      document.addEventListener("visibilitychange",()=>{
+        if(document.hidden){ stopDragonRealtime_(); return; }
+        if(state.joined && dragonModalOpen_()) subscribeDragonS3_();
+      });
+      window.addEventListener("pagehide",()=>{ stopDragonRealtime_(); });
+      dragonSyncMenuButton_();
+      window.__MK_DRAGON_S3__={
+        open:openDragonS3_,
+        close:closeDragonS3_,
+        
+        isEnabled:dragonEnabled_,
+        getDashInfo:dragonDashInfo_,
+        refresh:()=>loadDragonSummaryOnce_(),
+        
+        coinMult:dragonCoinMult_,
+        blessing:dragonBlessingInfo_,
+        
+        tick:()=>{ dragonSeasonTick_().catch(()=>{}); },
+        getState:()=>({config:dragonS3Runtime.config,summary:dragonS3Runtime.summary})
+      };
+    }catch(e){ console.warn("[dragon s3] init failed",e); }
+  })();
 
 window.__MK_READY__ = true;
 })();
@@ -29153,19 +30623,22 @@ function displayNameHtml(id){
     box.innerHTML = `<button type="button" class="petDashToggle" id="petDashToggle" title="펫 / 세계수 전환"><span id="petDashToggleIcon">🌳</span> <span class="petDashToggleText" id="petDashToggleText">세계수</span></button>`
       + `<button type="button" class="charaDashToggle" id="charaDashToggle" title="캐릭터 보기로 전환"><span id="charaDashToggleIcon">✨</span></button>` 
       + `<div class="petDashInner petDashOnlyCurrent" id="petDashInner" title="펫 상세 정보 열기"><div class="petHeroArtWrap"><div id="petHeroArt"></div></div><div class="petHeroInfo"><div class="petHeroName" id="petHeroName">작은 고양이</div><div class="petHeroFullCount" id="petHeroFullCount">🏆 만렙 0/0</div></div></div>`
-      + `<div class="worldTreeDashInner" id="worldTreeDashInner" title="세계수 키우기 열기"><div class="worldTreeDashArtWrap"><div class="worldTreeDashArt" id="worldTreeDashArt" data-align="angel" data-stage="0"></div></div><div class="worldTreeDashLevel" id="worldTreeDashLevel">Lv.0</div></div>`;
+      + `<div class="worldTreeDashInner" id="worldTreeDashInner" title="세계수 키우기 열기"><div class="worldTreeDashArtWrap"><div class="worldTreeDashArt" id="worldTreeDashArt" data-align="angel" data-stage="0"></div></div><div class="worldTreeDashLevel" id="worldTreeDashLevel">Lv.0</div></div>`
+      
+      + `<div class="dragonDashInner dragonElTint" id="dragonDashInner" data-el="neutral" title="드래곤 키우기 열기"><div class="dragonDashArtWrap"><div class="dragonDashArt" id="dragonDashArt" data-el="neutral" data-stage="0"></div></div><div class="dragonDashLevel" id="dragonDashLevel">Lv.0</div><div class="dragonDashBar" id="dragonDashBar"><i></i></div><div class="dragonDashPool" id="dragonDashPool"></div><div class="dragonDashCta" id="dragonDashCta" style="display:none">알을 골라 주세요</div></div>`;
     box.dataset.dashMode = loadDashCardMode();
     box.addEventListener('click', (e)=>{
       if(e.target.closest('#petDashToggle')) return;   
       if(e.target.closest('#charaDashToggle')) return; 
       if(box.dataset.dashMode === 'tree') openWorldTreeFromDash();
+      else if(box.dataset.dashMode === 'dragon') openDragonFromDash();   
       else openModal();
     });
     const toggle = document.getElementById('petDashToggle');
     if(toggle){
       toggle.addEventListener('click', (e)=>{
         e.preventDefault(); e.stopPropagation();
-        setDashCardMode(box.dataset.dashMode === 'tree' ? 'pet' : 'tree');
+        setDashCardMode(nextDashCardMode());   
       });
     }
     syncDashToggleLabel();
@@ -29188,12 +30661,31 @@ function displayNameHtml(id){
   }
 
 const LS_DASH_CARD_MODE = 'mk_dash_card_mode_v1';
+  const LS_DASH_DRAGON_AUTO = 'mk_dragon_dash_auto_v1';   
   let worldTreeDashLastFetchMs = 0;
+  let dragonDashLastFetchMs = 0;                          
+  
+  function dashDragonApi(){ try{ return window.__MK_DRAGON_S3__ || null; }catch(e){ return null; } }
+  function dashDragonEnabled(){ try{ const a = dashDragonApi(); return !!(a && typeof a.isEnabled === 'function' && a.isEnabled()); }catch(e){ return false; } }
+  function dashTreeRetired(){ try{ const a = window.__MK_WORLD_TREE_S2__; const i = (a && typeof a.getDashInfo === 'function') ? a.getDashInfo() : null; return !!(i && i.retired); }catch(e){ return false; } }
+  function dashAvailableModes(){
+    const modes = ['pet'];
+    if(!dashTreeRetired()) modes.push('tree');
+    if(dashDragonEnabled()) modes.push('dragon');
+    return modes;
+  }
+  function nextDashCardMode(){
+    const modes = dashAvailableModes();
+    const box = document.querySelector('.petDashBox');
+    const cur = (box && box.dataset.dashMode) || 'pet';
+    const i = modes.indexOf(cur);
+    return modes[(i < 0 ? 0 : i + 1) % modes.length];
+  }
   function loadDashCardMode(){
-    try{ return localStorage.getItem(LS_DASH_CARD_MODE) === 'tree' ? 'tree' : 'pet'; }catch(e){ return 'pet'; }
+    try{ const v = localStorage.getItem(LS_DASH_CARD_MODE); return (v === 'tree' || v === 'dragon') ? v : 'pet'; }catch(e){ return 'pet'; }
   }
   function setDashCardMode(mode){
-    const next = (mode === 'tree') ? 'tree' : 'pet';
+    const next = (mode === 'tree' || mode === 'dragon') ? mode : 'pet';
     try{ localStorage.setItem(LS_DASH_CARD_MODE, next); }catch(e){}
     const box = document.querySelector('.petDashBox');
     if(box) box.dataset.dashMode = next;
@@ -29201,22 +30693,30 @@ const LS_DASH_CARD_MODE = 'mk_dash_card_mode_v1';
     if(next === 'tree'){
       worldTreeDashLastFetchMs = 0;   
       renderWorldTreeDash();
+    }else if(next === 'dragon'){
+      dragonDashLastFetchMs = 0;      
+      renderDragonDash();
     }else{
       renderDash();
     }
   }
+  const DASH_MODE_LABEL = { pet:{icon:'🐾',text:'펫'}, tree:{icon:'🌳',text:'세계수'}, dragon:{icon:'🐉',text:'드래곤'} };
   function syncDashToggleLabel(){
     const box = document.querySelector('.petDashBox');
     const btn = document.getElementById('petDashToggle');
     if(!box || !btn) return;
-    const isTree = box.dataset.dashMode === 'tree';
     
+    const modes = dashAvailableModes();
+    const show = (modes.length > 1) ? '' : 'none';
+    if(btn.style.display !== show) btn.style.display = show;
+    
+    const label = DASH_MODE_LABEL[nextDashCardMode()] || DASH_MODE_LABEL.pet;
     const icon = document.getElementById('petDashToggleIcon');
     const text = document.getElementById('petDashToggleText');
-    if(icon) icon.textContent = isTree ? '🐾' : '🌳';
-    if(text) text.textContent = isTree ? '펫' : '세계수';
-    btn.setAttribute('aria-label', isTree ? '펫 보기로 전환' : '세계수 보기로 전환');
-    btn.title = isTree ? '펫 보기로 전환' : '세계수 보기로 전환';
+    if(icon && icon.textContent !== label.icon) icon.textContent = label.icon;
+    if(text && text.textContent !== label.text) text.textContent = label.text;
+    btn.setAttribute('aria-label', label.text + ' 보기로 전환');
+    btn.title = label.text + ' 보기로 전환';
   }
 
 const LS_DASH_PET_VIEW = 'mk_profile_pref_v1';
@@ -29380,12 +30880,20 @@ const joined = !!(window.__mk_state && window.__mk_state.joined);
     }
 
 const retired = !!(info && info.retired);
-    const tg = document.getElementById('petDashToggle');
-    if(tg) tg.style.display = retired ? 'none' : '';
+    
+    syncDashToggleLabel();
     if(retired){
       try{ paintWorldTreeDewBadge(null); }catch(e){}
       
-      if(box.dataset.dashMode === 'tree') setDashCardMode('pet');
+      const dragonOn = dashDragonEnabled();
+      let autoDone = '';
+      try{ autoDone = localStorage.getItem(LS_DASH_DRAGON_AUTO) || ''; }catch(e){}
+      if(dragonOn && autoDone !== '1'){
+        try{ localStorage.setItem(LS_DASH_DRAGON_AUTO, '1'); }catch(e){}
+        if(box.dataset.dashMode !== 'dragon'){ setDashCardMode('dragon'); return; }
+      }
+      
+      if(box.dataset.dashMode === 'tree') setDashCardMode(dragonOn ? 'dragon' : 'pet');
       return;
     }
     paintWorldTreeDewBadge(joined ? info : null);
@@ -29432,6 +30940,58 @@ const retired = !!(info && info.retired);
     }
     
     try{ paintWorldTreeDewBadge(info); }catch(e){}
+  }
+  
+  function openDragonFromDash(){
+    try{
+      const api = dashDragonApi();
+      if(api && typeof api.open === 'function') api.open();
+      else toast('드래곤을 준비하는 중이에요');
+    }catch(e){ console.warn('[dash] dragon open failed', e); }
+  }
+  function renderDragonDash(){
+    const box = document.querySelector('.petDashBox');
+    if(!box) return;
+    const api = dashDragonApi();
+    if(!api) return;
+    const joined = !!(window.__mk_state && window.__mk_state.joined);
+    const now = Date.now();
+    if(joined && typeof api.refresh === 'function' && now - dragonDashLastFetchMs > 120000){
+      dragonDashLastFetchMs = now;
+      Promise.resolve(api.refresh()).then(()=>{ try{
+        syncDashToggleLabel();
+        if(box.dataset.dashMode === 'dragon') paintDragonDash(api.getDashInfo());
+      }catch(e){} }).catch(()=>{});
+    }
+    if(box.dataset.dashMode !== 'dragon') return;
+    
+    if(!dashDragonEnabled()){ setDashCardMode('pet'); return; }
+    try{ paintDragonDash(api.getDashInfo()); }catch(e){}
+  }
+  function paintDragonDash(info){
+    const inner = document.getElementById('dragonDashInner');
+    const art = document.getElementById('dragonDashArt');
+    const lv = document.getElementById('dragonDashLevel');
+    const bar = document.getElementById('dragonDashBar');
+    const pool = document.getElementById('dragonDashPool');
+    const cta = document.getElementById('dragonDashCta');
+    if(!art || !lv) return;
+    if(!info){ if(lv.textContent !== 'Lv.—') lv.textContent = 'Lv.—'; return; }
+    const el = info.myCamp || info.el || 'neutral';
+    if(art.dataset.el !== el) art.dataset.el = el;
+    if(art.dataset.stage !== String(info.stageIndex)) art.dataset.stage = String(info.stageIndex);
+    if(inner && inner.dataset.el !== el) inner.dataset.el = el;   
+    const nextLv = `Lv.${Number(info.level).toLocaleString('ko-KR')}${info.blessing === 'active' ? ' 🌟' : ''}`;
+    if(lv.textContent !== nextLv) lv.textContent = nextLv;
+    if(bar && bar.firstElementChild) bar.firstElementChild.style.width = Math.max(0, Math.min(100, Number(info.pct) || 0)).toFixed(2) + '%';
+    if(pool){ const t = info.pool || ''; if(pool.textContent !== t) pool.textContent = t; }
+    if(cta){
+      const need = !info.myCamp;
+      const show = need ? '' : 'none';
+      if(cta.style.display !== show) cta.style.display = show;
+    }
+    
+    if(inner) inner.title = `${info.elEmoji} ${info.elName} · ${info.graduated ? '졸업한 고룡' : info.stageName} · Lv.${info.level} / ${info.maxLevel}${info.myCamp ? '' : ' · 아직 기운을 안 골랐어요'} · 눌러서 자세히 보기`;
   }
   function renderDash(){
     replaceDashCard();
@@ -29481,6 +31041,7 @@ const art = document.getElementById('petHeroArt');
     const minis = document.getElementById('petHeroMiniList'); if(minis) minis.innerHTML = PETS.map(p => `<img class="petHeroMini ${p.id===id?'on':''}" src="${petSvg(p.id, levelOf(st.pets[p.id]?.totalSec || 0))}" alt="${displayNameHtml(p.id)}">`).join('');
     
     try{ renderWorldTreeDash(); }catch(e){}
+    try{ renderDragonDash(); }catch(e){}   
   }
   function ensureSizeControls(){
     const art = document.getElementById('petCurrentArt'); if(!art || document.getElementById('petSizeControlsV24')) return;
@@ -34765,6 +36326,8 @@ var html = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' 
     
     var coinMult = 1;
     try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
+    
+    try{ var dg = window.__MK_DRAGON_S3__; if(dg && typeof dg.coinMult === 'function') coinMult = Math.max(coinMult, Math.min(10, Math.round(Number(dg.coinMult())||1))); }catch(e){}
     if(coinMult > 1) html += ' · 🌟×' + coinMult + ' 축복 중';
     if(el.__mkWalletHtml !== html){ el.__mkWalletHtml = html; el.innerHTML = html; }
     if(!el.__mkWalletTitle){ el.__mkWalletTitle = 1; el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; } 
@@ -34828,6 +36391,8 @@ var s = readStats();
 
 var coinMult = 1;
     try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
+    
+    try{ var dg = window.__MK_DRAGON_S3__; if(dg && typeof dg.coinMult === 'function') coinMult = Math.max(coinMult, Math.min(10, Math.round(Number(dg.coinMult())||1))); }catch(e){}
     s.coins += Math.floor(carry / COIN_SEC_PER_COIN) * coinMult;
     s.coinCarrySec = carry % COIN_SEC_PER_COIN;
     writeStats(s);
