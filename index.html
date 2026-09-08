@@ -94,6 +94,9 @@
 
 
 
+
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6153,11 +6156,14 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
     .dgFx{display:none !important;}
     .dgFx i{animation:none !important; opacity:0 !important;}
     .dragonHalo{animation:none !important;}
+    
+    #dragonScene[data-graduated="1"] .dragonAura{animation:none !important;}
   }
   body.mkLowSpecMode .dragonSparkles i{animation:none;}
   
   body.mkLowSpecMode .dgFx{display:none !important;}
   body.mkLowSpecMode .dragonHalo{animation:none !important;}
+  body.mkLowSpecMode #dragonScene[data-graduated="1"] .dragonAura{animation:none !important;}   
 
 
   
@@ -6538,6 +6544,92 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   @media (max-width:760px){
     body.joined #dashboardCard .dragonDashArtWrap{width:min(64px,88%) !important;}
     body.joined #dashboardCard .dragonDashLevel{font-size:13px !important;}
+  }
+
+  
+  #dragonModal .dragonHall[hidden],#dragonModal .dragonHall [hidden],
+  #dragonModal .dragonName[hidden],#dragonModal .dragonName [hidden],
+  #dragonModal .dragonFeedQty[hidden]{display:none !important;}
+
+  
+  #dragonScene[data-graduated="1"] .dragonHalo{opacity:.74; animation:dgHaloPulse 5.2s ease-in-out infinite;}
+  #dragonScene[data-graduated="1"] .dragonSparkles i{width:6px; height:6px; opacity:1; filter:brightness(1.75);}
+  #dragonScene[data-graduated="1"] .dragonAura{
+    opacity:.92; width:min(100%,615px);
+    background:radial-gradient(circle,rgba(255,178,92,.72) 0,rgba(0,0,0,0) 62%);
+    animation:dgGradAura 4.6s ease-in-out infinite;
+  }
+  @keyframes dgGradAura{0%,100%{opacity:.7} 50%{opacity:1}}
+  #dragonScene[data-graduated="1"] .dragonRibbon{border-color:#ffcf8a; color:#ffe6c4; background:rgba(40,20,5,.82);}
+
+  
+  .dragonFeedQty{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; font-size:10px; color:rgba(255,255,255,.6);}
+  .dragonFeedQty .dgQtyBtn{
+    width:26px; height:26px; padding:0; flex:0 0 auto; cursor:pointer; color:inherit; line-height:1;
+    border-radius:9px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06);
+    font-size:14px; font-weight:1000;
+  }
+  .dragonFeedQty .dgQtyBtn[disabled]{opacity:.35; cursor:not-allowed;}
+  .dragonFeedQty input{
+    width:56px; flex:0 0 auto; padding:5px 7px; text-align:center; font-size:11px; font-weight:900;
+    font-variant-numeric:tabular-nums; border-radius:9px; border:1px solid rgba(255,255,255,.18);
+    background:rgba(0,0,0,.28); color:#fff;
+  }
+  .dragonFeedQty .dgQtySum{font-size:10.5px; font-weight:1000; color:var(--el-light,#ffd9a6); font-variant-numeric:tabular-nums;}
+  .dragonFeedQty .dgQtyNote{flex:1 1 100%; font-size:9px; color:rgba(255,255,255,.45);}
+
+  
+  .dragonName{margin-top:15px; padding:14px; border:1px solid rgba(255,214,166,.2); border-radius:15px; background:rgba(255,214,166,.045);}
+  .dragonNameHead{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:11px; color:rgba(255,255,255,.6);}
+  .dragonNameHead b{color:#fff; font-size:13px;}
+  .dragonNameHead span{font-variant-numeric:tabular-nums; font-weight:900; color:var(--el-light,#ffd9a6);}
+  .dragonNameLore{margin:8px 0 0; font-size:10px; line-height:1.6; color:rgba(255,255,255,.58);}
+  .dragonNameForm{display:flex; gap:6px; margin-top:10px;}
+  .dragonNameForm input{
+    flex:1 1 auto; min-width:0; padding:7px 9px; font-size:11.5px; border-radius:10px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.28); color:#fff;
+  }
+  .dragonNameBtn{
+    flex:0 0 auto; padding:7px 12px; cursor:pointer; color:inherit; font-size:11px; font-weight:900;
+    border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.07);
+  }
+  .dragonNameBtn[disabled]{opacity:.45; cursor:not-allowed;}
+  .dragonNameCands{display:flex; flex-direction:column; gap:6px; margin-top:10px; max-height:220px; overflow:auto;}
+  .dragonNameCand{
+    display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; text-align:left;
+    padding:7px 9px; cursor:pointer; color:inherit;
+    border-radius:11px; border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.045);
+  }
+  .dragonNameCand .dgCandText{font-size:11.5px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dragonNameCand .dgCandBy{font-size:9px; color:rgba(255,255,255,.45); white-space:nowrap;}
+  .dragonNameCand .dgCandVotes{font-size:10px; font-weight:1000; color:var(--el-light,#ffd9a6); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .dragonNameCand.on{border-color:var(--el-light,#ffd9a6); box-shadow:0 0 0 1px var(--el-glow,rgba(255,180,110,.5)) inset;}
+  .dragonNameCand.on .dgCandText::after{content:" · 내 표"; font-size:9px; font-weight:900; opacity:.75;}
+  .dragonNameCand.isWin{background:rgba(255,214,166,.12);}
+  .dragonNameCand.isWin .dgCandText::before{content:"🏷️ ";}
+  .dragonNameCand[disabled]{cursor:default;}
+
+  
+  .dragonHall{margin-top:15px; padding:14px; border:1px solid rgba(255,214,166,.22); border-radius:15px; background:rgba(255,196,120,.05);}
+  .dragonHallHead{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:9px; font-size:10px; color:rgba(255,255,255,.55);}
+  .dragonHallHead b{color:#fff; font-size:12.5px;}
+  .dragonHallHead span{font-variant-numeric:tabular-nums; font-weight:900; color:var(--el-light,#ffd9a6);}
+  .dragonHallRows{display:flex; flex-direction:column; gap:7px; max-height:280px; overflow:auto;}
+  .dragonHallRow{
+    display:flex; align-items:center; gap:9px; padding:8px 10px; text-align:left; cursor:pointer; color:inherit;
+    border-radius:13px; border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.04);
+  }
+  .dragonHallRow .dragonChipArt{flex:0 0 auto; width:46px; aspect-ratio:6 / 5; background-repeat:no-repeat; background-size:400% 200%;}
+  .dragonHallRow .dgHallBody{min-width:0; flex:1 1 auto;}
+  .dragonHallRow b{display:block; font-size:12px; color:var(--el-light); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dragonHallRow .dgHallName{display:block; margin-top:2px; font-size:10.5px; font-weight:900; color:rgba(255,240,220,.9);}
+  .dragonHallRow .dgHallDate{display:block; margin-top:1px; font-size:9px; color:rgba(255,255,255,.42); font-variant-numeric:tabular-nums;}
+  .dragonHallRow .dgHallTop3{display:flex; flex-wrap:wrap; gap:4px 8px; margin-top:4px; font-size:9.5px; color:rgba(255,255,255,.6);}
+  .dragonHallRow .dgHallTop3 span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  .dragonHallRow.on{box-shadow:0 0 0 2px var(--el-light,#ffd9a6) inset;}
+  @media (max-width:780px){
+    .dragonNameCand{grid-template-columns:1fr auto;}
+    .dragonNameCand .dgCandBy{display:none;}
   }
 </style>
 
@@ -7457,8 +7549,21 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <p class="dragonFeedLore" id="dragonFeedLore"></p>
 
 <div class="dragonFavLine" id="dragonFavLine" hidden></div>
+
+<div class="dragonFeedQty" id="dragonFeedQty" hidden></div>
 <div class="dragonFeedBtns" id="dragonFeedBtns"></div>
 <div class="dragonFeedDay" id="dragonFeedDay">오늘 먹인 양 0 · 한도 없음</div>
+</div>
+
+<div class="dragonName" id="dragonName" hidden>
+<div class="dragonNameHead"><b>🏷️ 고룡의 이름 짓기</b><span id="dragonNameLeft"></span></div>
+<p class="dragonNameLore" id="dragonNameLore"></p>
+<div class="dragonNameForm" id="dragonNameForm" hidden>
+<input id="dragonNameInput" type="text" maxlength="20" placeholder="이름을 지어 주세요(2~20자)"/>
+<button class="dragonNameBtn" id="dragonNamePropose" type="button">이름 제안</button>
+</div>
+<div class="dragonNameCands" id="dragonNameCands"></div>
+<div class="dragonEmpty" id="dragonNameEmpty">아직 후보가 없어요 — 첫 이름을 제안해 보세요</div>
 </div>
 
 <div class="dragonRace dragonElTint" id="dragonRace" data-el="neutral">
@@ -7500,7 +7605,13 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <ul class="dragonRosterList" id="dragonRosterList"></ul>
 <div class="dragonEmpty" id="dragonRosterEmpty">아직 이 기운을 고른 작가가 없어요</div>
 </div>
-<div class="worldTreeRules" id="dragonRules">드래곤마다 자기 레벨과 게이지가 따로 있어요. 내 기운의 드래곤에게만 먹이를 줄 수 있고, 기운은 하루에 한 번 바꿀 수 있어요(이미 먹인 기여는 원래 드래곤에 남아요). 먹인 코인이 그대로 경험치가 되고, 레벨당 필요 코인은 관리자 칸에서 언제든 조정돼요 — 이미 먹인 코인은 사라지지 않아요. 하루 먹이 한도는 없어요. 어린 용부터는 매일 정해지는 <b>오늘의 취향</b> 먹이가 경험치 ×1.5예요(먹인 코인은 원래대로 세요). 용비늘은 <b>🎴 용비늘 레이스</b>에서 벌어요 — 카드 18장을 다 뒤집으면 레버를 한 번 당겨 0~2장을 뽑습니다(오늘의 레이스는 하루 한 번, 게릴라 레이스는 하루에 몇 번씩 10분 동안만 열려요. 게릴라는 완주 순위 1위 +2장 · 2~3위 +1장). 결과는 서버 시드로 미리 정해져 있어서 다시 해도 바뀌지 않아요. 용비늘 5장은 레벨권 1장이 되고, 레벨권을 먹이면 스킬이 1 올라 오라와 파티클이 진해져요(순수 치장). 어느 드래곤이든 Lv.100이 되면 고룡으로 졸업하고, 그 자리에 새 기운의 알이 하나 합류해 순환합니다.</div>
+
+<div class="dragonHall" id="dragonHall">
+<div class="dragonHallHead"><b>🏛️ 수호룡의 전당</b><span id="dragonHallCount">0마리</span></div>
+<div class="dragonHallRows" id="dragonHallRows"></div>
+<div class="dragonEmpty" id="dragonHallEmpty">아직 졸업한 고룡이 없어요 — 첫 고룡을 함께 키워 봐요</div>
+</div>
+<div class="worldTreeRules" id="dragonRules">드래곤마다 자기 레벨과 게이지가 따로 있어요. 내 기운의 드래곤에게만 먹이를 줄 수 있고, 기운은 하루에 한 번 바꿀 수 있어요(이미 먹인 기여는 원래 드래곤에 남아요). 먹인 코인이 그대로 경험치가 되고, 레벨당 필요 코인은 관리자 칸에서 언제든 조정돼요 — 이미 먹인 코인은 사라지지 않아요. 하루 먹이 한도는 없어요. 알·아가 단계에서는 횟수를 정해 한 번에 여러 번 먹일 수 있어요. 어린 용부터는 매일 정해지는 <b>오늘의 취향</b> 먹이가 경험치 ×1.5예요(먹인 코인은 원래대로 세요). 용비늘은 <b>🎴 용비늘 레이스</b>에서 벌어요 — 카드 18장을 다 뒤집으면 레버를 한 번 당겨 0~2장을 뽑습니다(오늘의 레이스는 하루 한 번, 게릴라 레이스는 하루에 몇 번씩 10분 동안만 열려요. 게릴라는 완주 순위 1위 +2장 · 2~3위 +1장). 결과는 서버 시드로 미리 정해져 있어서 다시 해도 바뀌지 않아요. 용비늘 5장은 레벨권 1장이 되고, 레벨권을 먹이면 스킬이 1 올라 오라와 파티클이 진해져요(순수 치장). 어느 드래곤이든 Lv.100이 되면 고룡으로 졸업하고, 그 자리에 새 기운의 알이 하나 합류해 순환합니다.</div>
 <div class="dragonAdminNote" id="dragonAdminNote" style="display:none"></div>
 </section>
 </div>
@@ -26859,7 +26970,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17130; 
+const MK_APP_BUILD = 17133; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29023,6 +29134,19 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
     const DRAGON_STATS_KEY = "mk_chara_stats";        
     const DRAGON_BLESS_MULT = 3;
     
+    const DRAGON_BLESS_HOURS = 24;
+    const DRAGON_BLESS_MS = DRAGON_BLESS_HOURS * 60 * 60 * 1000;
+    const DRAGON_GRAD_GRACE_MS = 2 * 60 * 1000;        
+    const DRAGON_GRAD_RETRY_MS = 10 * 60 * 1000;       
+    const DRAGON_GRAD_SEEN_KEY = "mk_dragon_grad_seen_v1";   
+    const DRAGON_MINIMI_KEY = "mk_dragon_minimi_got_v1";     
+    const DRAGON_OWNED_KEY = "mk_chara_owned_v2";            
+    const DRAGON_NAME_VOTE_MS = 48 * 60 * 60 * 1000;         
+    const DRAGON_NAME_MAX = 20;                              
+    const DRAGON_NAME_CAND_MAX = 30;                          
+    const DRAGON_NAMES_CACHE_MS = 5 * 60 * 1000;              
+    const DRAGON_RESELECT_NAG_KEY = "mk_dragon_reselect_nag_v1";  
+    
     const DRAGON_TICKET_COST = 5;
     const DRAGON_FAV_MULT = 1.5;      
     
@@ -29101,7 +29225,24 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       pending:null,           
       leverBusy:false,
       leverTimers:[],
-      settledKey:""           
+      settledKey:"",          
+      
+      hall:null,              
+      hallFetchedAtMs:0,
+      gradLock:{},            
+      gradFollowupAt:{},      
+      hallDone:{},            
+      blessStartId:"",        
+      blessEndId:"",          
+      
+      names:{},               
+      namesFetchedAtMs:{},    
+      namesLoading:{},        
+      nameLock:false,         
+      nameDecideLock:{},      
+      
+      feedQty:1,
+      feedQtyKey:""
     };
 
 function rDragonRef_(sub){
@@ -29109,6 +29250,14 @@ function rDragonRef_(sub){
     }
     function rDragonSummaryRef_(roomId){
       return rRef(rtdb, `${rRoomBase(roomId||state.roomId)}/playground/dragonSummaryV1`);
+    }
+    
+    function rDragonBlessingRef_(){
+      return rRef(rtdb, `${rRoomBase(state.roomId)}/playground/dragonSummaryV1/blessing`);
+    }
+    
+    function rDragonNamesRef_(el){
+      return rDragonRef_(`names/${el}`);
     }
     
     function rDragonPlaygroundRef_(){
@@ -29450,13 +29599,19 @@ function dragonMenuItem_(raw,fallback){
         .filter((k)=>cfg.elements[k].active)
         .sort((a,b)=>(cfg.elements[a].order-cfg.elements[b].order)||a.localeCompare(b));
     }
+    
+    function dragonPoolKeys_(){
+      return dragonActiveKeys_().filter((k)=>!dragonGraduated_(k));
+    }
 
 function dragonGateState_(){
-      if(dragonS3Runtime.config && typeof dragonS3Runtime.config==="object"){
-        const c=dragonConfig_();
-        return {enabled:c.enabled,startAtMs:c.startAtMs};
-      }
+      
       const s=dragonS3Runtime.summary;
+      const sAt=(s && typeof s==="object")?Math.max(0,Math.floor(Number(s.updatedAtMs)||0)):0;
+      if(dragonS3Runtime.config && typeof dragonS3Runtime.config==="object"){
+        const cAt=Math.max(0,Math.floor(Number(dragonS3Runtime.config.updatedAtMs)||0));
+        if(!(sAt>cAt)){ const c=dragonConfig_(); return {enabled:c.enabled,startAtMs:c.startAtMs}; }
+      }
       if(s && typeof s==="object") return {enabled:Number(s.on)!==0,startAtMs:Math.max(0,Math.floor(Number(s.startAtMs)||0))};
       return {enabled:false,startAtMs:0};
     }
@@ -29530,6 +29685,93 @@ function dragonFavItem_(day){
       }
       return dragonNormalizeRow_(full||{});
     }
+    
+    function dragonGraduated_(el){
+      try{ return Number(dragonRow_(el).graduatedAtMs)>0; }catch(e){ return false; }
+    }
+    function dragonHallRow_(el){
+      const r=dragonS3Runtime.hall?.[el];
+      return (r && typeof r==="object")?r:null;
+    }
+    
+    function dragonGradAtMs_(el){
+      let g=0;
+      try{ g=Math.max(0,Math.floor(Number(dragonRow_(el).graduatedAtMs)||0)); }catch(e){ g=0; }
+      if(g>0) return g;
+      return Math.max(0,Math.floor(Number(dragonHallRow_(el)?.graduatedAtMs)||0));
+    }
+    function dragonNamesRow_(el){
+      const r=dragonS3Runtime.names?.[el];
+      return (r && typeof r==="object")?r:null;
+    }
+    function dragonNameDecided_(el){
+      const d=dragonNamesRow_(el)?.decided;
+      return (d && typeof d==="object")?d:null;
+    }
+    
+    function dragonNameCands_(names){
+      const src=(names && typeof names==="object" && names.candidates && typeof names.candidates==="object")?names.candidates:null;
+      if(!src) return [];
+      const votes=(names.votes && typeof names.votes==="object")?names.votes:{};
+      const tally={};
+      Object.keys(votes).forEach((u)=>{
+        const c=String(votes[u]||"");
+        if(c && src[c] && typeof src[c]==="object") tally[c]=(tally[c]||0)+1;
+      });
+      const list=[];
+      Object.keys(src).forEach((u)=>{
+        const raw=src[u];
+        if(!raw || typeof raw!=="object") return;
+        const text=dragonText_(raw.text,"",DRAGON_NAME_MAX);
+        if(!text) return;
+        list.push({
+          uid:u, text,
+          name:dragonText_(raw.name,"익명",40),
+          atMs:Math.max(0,Math.floor(Number(raw.atMs)||0)),
+          votes:tally[u]||0
+        });
+      });
+      list.sort((a,b)=>(b.votes-a.votes)||(a.atMs-b.atMs)||a.uid.localeCompare(b.uid));
+      return list;
+    }
+    
+    function dragonNameDecideFrom_(names,now,uid){
+      if(!names || typeof names!=="object") return undefined;
+      if(names.decided && typeof names.decided==="object") return undefined;
+      const closes=Math.max(0,Math.floor(Number(names.closesAtMs)||0));
+      const at=Math.max(0,Math.floor(Number(now)||0));
+      if(!(closes>0) || at<closes) return undefined;
+      const by=String((uid===undefined||uid===null)?(state.uid||""):uid);
+      const list=dragonNameCands_(names);
+      if(!list.length) return {none:1,atMs:at,by};
+      return {text:list[0].text,votes:list[0].votes,candUid:list[0].uid,atMs:at,by};
+    }
+    
+    function dragonDecidedName_(el){
+      const d=dragonNameDecided_(el);
+      if(d && !d.none){
+        const t=dragonText_(d.text,"",DRAGON_NAME_MAX);
+        if(t) return t;
+      }
+      const h=dragonText_(dragonHallRow_(el)?.name,"",DRAGON_NAME_MAX);
+      if(h) return h;
+      try{ return dragonText_(dragonRow_(el).name,"",DRAGON_NAME_MAX); }catch(e){ return ""; }
+    }
+    function dragonNameVoting_(el){
+      const grad=dragonGradAtMs_(el);
+      if(!(grad>0)) return false;
+      if(dragonNameDecided_(el)) return false;          
+      if(dragonDecidedName_(el)) return false;          
+      return Date.now()<grad+DRAGON_NAME_VOTE_MS;
+    }
+    function dragonHoursLeftText_(ms){
+      const t=Math.max(0,Math.floor(Number(ms)||0));
+      if(t>=3600000) return `${Math.ceil(t/3600000)}시간`;
+      return `${Math.max(1,Math.ceil(t/60000))}분`;
+    }
+    function dragonDateText_(ms){
+      try{ const d=new Date(Number(ms)||0); return `${d.getMonth()+1}/${d.getDate()}`; }catch(e){ return ""; }
+    }
 
 function dragonReadStats_(){ try{ return JSON.parse(localStorage.getItem(DRAGON_STATS_KEY)||"null")||{}; }catch(e){ return {}; } }
     function dragonReadCoins_(){ return Math.max(0,Math.floor(Number(dragonReadStats_().coins)||0)); }
@@ -29568,6 +29810,39 @@ function dragonBlessingInfo_(){
     }
     function dragonCoinMult_(){
       try{ const info=dragonBlessingInfo_(); return info.phase==="active"?info.mult:1; }catch(e){ return 1; }
+    }
+    
+    function dragonGlowToast_(msg,ms,bright){
+      showToast(msg,ms);
+      try{
+        const el=document.getElementById("toast");
+        if(!el) return;
+        el.classList.remove("dewCueSoft","dewCueBright");
+        void el.offsetWidth;   
+        el.classList.add(bright?"dewCueBright":"dewCueSoft");
+        setTimeout(()=>{ try{ el.classList.remove("dewCueSoft","dewCueBright"); }catch(e){} },ms);
+      }catch(e){}
+    }
+    
+    function dragonTimeText_(ms){
+      try{
+        const d=new Date(Number(ms)||0);
+        const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+        const today=new Date(mkGraceNowMs_());
+        const sameDay=d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+        return sameDay?`${hh}:${mm}`:`${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+      }catch(e){ return ""; }
+    }
+    
+    function dragonReadMarks_(key){
+      try{ const d=JSON.parse(localStorage.getItem(key)||"null"); return (d && typeof d==="object" && !Array.isArray(d))?d:{}; }catch(e){ return {}; }
+    }
+    function dragonMarkOnce_(key,el,value){
+      const m=dragonReadMarks_(key);
+      if(m[el]) return false;
+      m[el]=Math.max(1,Math.floor(Number(value)||Date.now()));
+      try{ localStorage.setItem(key,JSON.stringify(m)); }catch(e){ return false; }
+      return true;
     }
 
 function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
@@ -29652,11 +29927,14 @@ function dragonMyCamp_(){
     }
     function dragonSaveLocalCamp_(el){ try{ localStorage.setItem(DRAGON_LOCAL_CAMP,String(el||"")); }catch(e){} }
     function dragonViewEl_(){
-      const active=dragonActiveKeys_();
-      if(dragonS3Runtime.viewEl && (dragonS3Runtime.viewEl==="__next__" || active.indexOf(dragonS3Runtime.viewEl)>=0)) return dragonS3Runtime.viewEl;
+      
+      const cfg=dragonConfig_();
+      const cur=dragonS3Runtime.viewEl;
+      if(cur && (cur==="__next__" || (cfg.elements[cur] && typeof cfg.elements[cur]==="object"))) return cur;
+      const pool=dragonPoolKeys_();
       const mine=dragonMyCamp_();
-      if(mine && active.indexOf(mine)>=0) return mine;
-      return active[0]||"";
+      if(mine && pool.indexOf(mine)>=0) return mine;
+      return pool[0]||"";
     }
 
 async function loadDragonConfigOnce_(opts){
@@ -29721,19 +29999,45 @@ let made=null;
       const force=!!(opts&&opts.force);
       if(!force && dragonS3Runtime.rosterFetchedAtMs && Date.now()-dragonS3Runtime.rosterFetchedAtMs<DRAGON_ROSTER_CACHE_MS) return;
       try{
-        const [mSnap,fSnap,dSnap]=await Promise.all([
+        
+        const [mSnap,fSnap,dSnap,hSnap]=await Promise.all([
           rGet(rDragonRef_("members")),
           rGet(rDragonRef_("fed")),
-          rGet(rDragonRef_("dragons"))
+          rGet(rDragonRef_("dragons")),
+          rGet(rDragonRef_("hall"))
         ]);
         dragonS3Runtime.members=mSnap.val()||{};
         dragonS3Runtime.fed=fSnap.val()||{};
         dragonS3Runtime.dragons=dSnap.val()||{};
+        dragonS3Runtime.hall=hSnap.val()||{};                 
+        dragonS3Runtime.hallFetchedAtMs=Date.now();           
         dragonS3Runtime.rosterFetchedAtMs=Date.now();
         dragonS3Runtime.membersFetchedAtMs=Date.now();
+        
+        try{ dragonMinimiCheck_(); }catch(e){}
         const mine=dragonMyCamp_();
         if(mine) dragonSaveLocalCamp_(mine);
       }catch(e){ console.warn("[dragon s3] roster load failed",e); }
+    }
+    
+    async function loadDragonNamesOnce_(el,opts){
+      if(!state.roomId || !state.joined || !dragonKeyOk_(el)) return null;
+      const force=!!(opts&&opts.force);
+      const at=Math.max(0,Math.floor(Number(dragonS3Runtime.namesFetchedAtMs[el])||0));
+      if(!force && at>0 && Date.now()-at<DRAGON_NAMES_CACHE_MS) return dragonNamesRow_(el);
+      if(dragonS3Runtime.namesLoading[el]) return dragonNamesRow_(el);
+      dragonS3Runtime.namesLoading[el]=true;
+      try{
+        const snap=await rGet(rDragonNamesRef_(el));
+        const v=snap.val();
+        dragonS3Runtime.names[el]=(v && typeof v==="object")?v:null;
+      }catch(e){ console.warn("[dragon s3] names load failed",e); }
+      finally{
+        
+        dragonS3Runtime.namesFetchedAtMs[el]=Date.now();
+        dragonS3Runtime.namesLoading[el]=false;
+      }
+      return dragonNamesRow_(el);
     }
     
     async function ensureDragonBag_(){
@@ -29792,7 +30096,7 @@ async function writeDragonSummary_(){
           next:cfg.nextElement||"",
           on:cfg.enabled?1:0,
           startAtMs:cfg.startAtMs,
-          appBuild:MK_APP_BUILD,
+          appBuild:Math.max(MK_APP_BUILD,Number(dragonS3Runtime.summary?.appBuild)||0),   
           updatedAtMs:Date.now()
         };
         await rUpdate(rDragonSummaryRef_(state.roomId),patch);
@@ -29818,6 +30122,8 @@ async function writeDragonSummary_(){
             if(!dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200); }
           }
         }
+        
+        try{ dragonGradWatchTick_(); }catch(e){}
         dragonSyncMenuButton_();
         if(dragonModalOpen_()) renderDragonS3_();
         return dragonS3Runtime.summary||null;
@@ -29838,6 +30144,8 @@ function dragonApplyScene_(){
       if(scene.dataset.stage!==String(stage.index)) scene.dataset.stage=String(stage.index);
       if(dragonBlessingInfo_().phase==="active") scene.dataset.blessing="1"; else delete scene.dataset.blessing;
       
+      if(!isNext && Number(row.graduatedAtMs)>0) scene.dataset.graduated="1"; else delete scene.dataset.graduated;
+      
       const skillNow=isNext?0:Math.max(0,Math.floor(Number(row.skill)||0));
       const tierNow=String(dragonSkillTier_(skillNow));
       if(scene.dataset.skillTier!==tierNow) scene.dataset.skillTier=tierNow;
@@ -29850,11 +30158,20 @@ function dragonApplyScene_(){
       scene.setAttribute("aria-label",label);
       dragonSetText_("dragonLevel",isNext?"Lv.—":`Lv.${dragonNumFmt_(row.level)}`);
       dragonSetText_("dragonLevelMax",`MAX ${DRAGON_MAX_LEVEL}`);
+      
       const ribbon=isNext?"부화 대기 · 다음 알"
-        :(Number(row.graduatedAtMs)>0?"🐉 고룡 · 졸업":(stage.index<=1?`${stage.name} · 부화 대기`:stage.name));
+        :(Number(row.graduatedAtMs)>0?dragonGradRibbon_(view,row.graduatedAtMs):(stage.index<=1?`${stage.name} · 부화 대기`:stage.name));
       dragonSetText_("dragonRibbon",ribbon);
       
       dragonSetText_("dragonSkillTag",isNext?"":`✨ 스킬 Lv.${dragonNumFmt_(skillNow)} / ${dragonNumFmt_(cfg.skillCap)}`);
+    }
+    
+    function dragonGradRibbon_(el,grad){
+      const name=dragonDecidedName_(el);
+      const when=dragonDateText_(grad);
+      if(name) return `🐉 고룡 '${name}' · ${when} 졸업`;
+      if(dragonNameVoting_(el)) return "🐉 고룡 · 이름 투표 중";
+      return `🐉 고룡 · ${when} 졸업`;
     }
     function dragonBounce_(){
       const art=document.getElementById("dragonArt");
@@ -29873,7 +30190,7 @@ function renderDragonTabs_(){
       const cfg=dragonConfig_();
       const mine=dragonMyCamp_();
       const view=dragonViewEl_();
-      let html=dragonActiveKeys_().map((k)=>{
+      let html=dragonPoolKeys_().map((k)=>{   
         const e=cfg.elements[k];
         const on=(k===view)?" on":"";
         const isMine=(k===mine)?" isMine":"";
@@ -29895,7 +30212,7 @@ function renderDragonTabs_(){
         const c=dragonText_(members[uid]?.camp,"",20);
         if(c) counts[c]=(counts[c]||0)+1;
       });
-      const html=dragonActiveKeys_().map((k)=>{
+      const html=dragonPoolKeys_().map((k)=>{   
         const e=cfg.elements[k];
         const row=dragonRow_(k);
         const st=dragonGrowthStage_(row.level);
@@ -29912,6 +30229,8 @@ function renderDragonTabs_(){
         const changed=dragonMyCampChangedDay_();
         let text;
         if(!mine) text="기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요. 기운은 하루에 한 번 바꿀 수 있어요.";
+        
+        else if(dragonGraduated_(mine)) text=`졸업한 ${cfg.elements[mine]?.name||mine}의 작가예요 🎓 · 다음 기운을 골라 주세요(오늘 바꿔도 하루 1회 규칙에 안 걸려요)`;
         else if(changed===day) text=`지금 내 기운은 ${cfg.elements[mine]?.name||mine}이에요 · 오늘은 이미 기운을 바꿨어요(내일 다시 바꿀 수 있어요).`;
         else text=`지금 내 기운은 ${cfg.elements[mine]?.name||mine}이에요 · 오늘 한 번 바꿀 수 있어요.`;
         if(status.textContent!==text) status.textContent=text;
@@ -29928,7 +30247,7 @@ function renderDragonTabs_(){
         const c=dragonText_(members[uid]?.camp,"",20);
         if(c) counts[c]=(counts[c]||0)+1;
       });
-      const html=dragonActiveKeys_().map((k)=>{
+      const html=dragonPoolKeys_().map((k)=>{   
         const e=cfg.elements[k];
         const row=dragonRow_(k);
         const need=dragonNeedFor_(cfg,row.level+1);
@@ -29942,19 +30261,70 @@ function renderDragonTabs_(){
       if(wrap.innerHTML!==html) wrap.innerHTML=html;
       dragonSetText_("dragonPoolNote",`레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""} 코인`);
     }
+    
+    function dragonFeedCostText_(coins,qty){
+      const per=Math.max(0,Math.floor(Number(coins)||0));
+      const n=Math.max(1,Math.floor(Number(qty)||1));
+      return n>1?`${dragonNumFmt_(per)} 코인 × ${n} = ${dragonNumFmt_(per*n)}`:`${dragonNumFmt_(per)} 코인`;
+    }
+    
+    function dragonFeedQtyMax_(unit,wallet){
+      const u=Math.max(1,Math.floor(Number(unit)||0));
+      return Math.max(1,Math.floor(Math.max(0,Math.floor(Number(wallet)||0))/u));
+    }
+    
+    function dragonSetFeedQty_(n){
+      dragonS3Runtime.feedQty=Math.max(1,Math.floor(Number(n)||1));
+      renderDragonFeed_();
+      return dragonS3Runtime.feedQty;
+    }
+    
+    function dragonTypeFeedQty_(raw){
+      const btns=document.getElementById("dragonFeedBtns");
+      const key=String(btns?.getAttribute?.("data-menu")||dragonS3Runtime.feedQtyKey||"");
+      const cfg=dragonConfig_();
+      const unit=Math.max(1,Math.floor(Number(cfg.menu[key]?.[0]?.coins)||0));
+      const max=dragonFeedQtyMax_(unit,dragonReadCoins_());
+      const n=Math.max(1,Math.min(max,Math.floor(Number(raw)||1)));
+      dragonS3Runtime.feedQty=n;
+      dragonSetText_("dragonFeedQtySum",`= ${dragonNumFmt_(unit*n)} 코인`);
+      try{
+        const minus=document.getElementById("dragonFeedQtyMinus");
+        const plus=document.getElementById("dragonFeedQtyPlus");
+        if(minus) minus.disabled=(n<=1);
+        if(plus) plus.disabled=(n>=max);
+        const list=btns?.querySelectorAll?.(".dragonFeedBtn")||[];
+        for(let i=0;i<list.length;i++){
+          const b=list[i];
+          b.setAttribute("data-qty",String(n));
+          const cs=b.querySelector?.(".dgCs");
+          if(cs) cs.textContent=dragonFeedCostText_(Number(b.getAttribute("data-coins"))||0,n);
+        }
+      }catch(e){}
+      return n;
+    }
+    
+    function feedDragonFromMenu_(coins,menuIdx,qty){
+      const per=Math.max(0,Math.floor(Number(coins)||0));
+      const n=Math.max(1,Math.floor(Number(qty)||1));
+      return feedDragon_(per*n,menuIdx);
+    }
     function renderDragonFeed_(){
       const box=document.getElementById("dragonFeed");
       const btns=document.getElementById("dragonFeedBtns");
       if(!box || !btns) return;
       const cfg=dragonConfig_();
       const mine=dragonMyCamp_();
-      dragonSetText_("dragonWallet",`🪙 ${dragonNumFmt_(dragonReadCoins_())}`);
+      const wallet=dragonReadCoins_();
+      dragonSetText_("dragonWallet",`🪙 ${dragonNumFmt_(wallet)}`);
       const favLine=document.getElementById("dragonFavLine");
+      const qtyBox=document.getElementById("dragonFeedQty");   
       if(!mine){
         if(btns.innerHTML!=="") btns.innerHTML="";
         dragonSetText_("dragonFeedLore","기운을 먼저 골라 주세요 — 먹이는 내 드래곤에게만 줄 수 있어요.");
         dragonSetText_("dragonFeedDay","");
         if(favLine){ favLine.textContent=""; favLine.hidden=true; }   
+        if(qtyBox){ if(qtyBox.innerHTML!=="") qtyBox.innerHTML=""; qtyBox.hidden=true; }   
         return;
       }
       const row=dragonRow_(mine);
@@ -29963,15 +30333,41 @@ function renderDragonTabs_(){
       const grad=Number(row.graduatedAtMs)>0;
       
       const fav=(!grad && key==="grown")?dragonFavItem_():null;
+      
+      const qtyOn=!grad && (key==="egg" || key==="baby");
+      const unit=Math.max(1,Math.floor(Number(cfg.menu[key]?.[0]?.coins)||0));
+      const qtyMax=qtyOn?dragonFeedQtyMax_(unit,wallet):1;
+      if(dragonS3Runtime.feedQtyKey!==key){ dragonS3Runtime.feedQtyKey=key; dragonS3Runtime.feedQty=1; }
+      const qty=qtyOn?Math.max(1,Math.min(qtyMax,Math.floor(Number(dragonS3Runtime.feedQty)||1))):1;
+      dragonS3Runtime.feedQty=qty;
       const html=grad?"":cfg.menu[key].map((it,i)=>{
         const isFav=!!(fav && i===fav.index);
-        return `<button type="button" class="dragonFeedBtn${isFav?" isFav":""}" data-idx="${i}" data-coins="${it.coins}">`
+        return `<button type="button" class="dragonFeedBtn${isFav?" isFav":""}" data-idx="${i}" data-coins="${it.coins}" data-qty="${qty}">`
           +(isFav?`<span class="dgFavRibbon" aria-hidden="true">오늘의 취향 ×${DRAGON_FAV_MULT}</span>`:"")
           +`<span class="dgEm" aria-hidden="true">${dragonEsc_(it.icon)}</span>`
-          +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonNumFmt_(it.coins)} 코인</span></span></button>`;
+          +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonFeedCostText_(it.coins,qty)}</span></span></button>`;
       }).join("");
       if(btns.innerHTML!==html) btns.innerHTML=html;
       btns.setAttribute("data-menu",key);
+      
+      if(qtyBox){
+        if(!qtyOn){
+          if(qtyBox.innerHTML!=="") qtyBox.innerHTML="";
+          qtyBox.hidden=true;
+        }else{
+          qtyBox.hidden=false;
+          let editing=false;
+          
+          try{ const a=document.activeElement; editing=!!(a && a.id==="dragonFeedQtyInput" && typeof qtyBox.contains==="function" && qtyBox.contains(a)); }catch(e){}
+          
+          const qtyHtml=`<button type="button" class="dgQtyBtn" id="dragonFeedQtyMinus" data-step="-1" aria-label="횟수 줄이기"${qty<=1?` disabled=""`:""}>−</button>`
+            +`<input id="dragonFeedQtyInput" type="number" min="1" max="${qtyMax}" step="1" inputmode="numeric" value="${qty}" aria-label="한 번에 먹일 횟수">`
+            +`<button type="button" class="dgQtyBtn" id="dragonFeedQtyPlus" data-step="1" aria-label="횟수 늘리기"${qty>=qtyMax?` disabled=""`:""}>+</button>`
+            +`<span class="dgQtySum" id="dragonFeedQtySum">= ${dragonNumFmt_(unit*qty)} 코인</span>`
+            +`<span class="dgQtyNote">한 번에 여러 번 먹여요 · 지갑 기준 최대 ${dragonNumFmt_(qtyMax)}번</span>`;
+          if(!editing && qtyBox.innerHTML!==qtyHtml) qtyBox.innerHTML=qtyHtml;
+        }
+      }
       if(favLine){
         const favText=fav?`오늘의 취향 ${fav.item.icon} ${fav.item.name} — 경험치 ×${DRAGON_FAV_MULT}`:"";
         if(favLine.textContent!==favText) favLine.textContent=favText;
@@ -29988,6 +30384,286 @@ function renderDragonTabs_(){
       dragonSetText_("dragonFeedDay",cfg.dailyCap>0
         ? `오늘 먹인 양 ${dragonNumFmt_(fedToday)} / 한도 ${dragonNumFmt_(cfg.dailyCap)}`
         : `오늘 먹인 양 ${dragonNumFmt_(fedToday)} · 한도 없음`);
+    }
+    
+    function dragonNameEligible_(el){
+      const uid=String(state.uid||"");
+      if(!uid || !dragonKeyOk_(el)) return false;
+      const rec=dragonS3Runtime.fed?.[el]?.[uid];
+      if(!rec || typeof rec!=="object") return false;
+      return (Math.floor(Number(rec.coins)||0)>0) || (Math.floor(Number(rec.tickets)||0)>0);
+    }
+    function renderDragonName_(){
+      const box=document.getElementById("dragonName");
+      if(!box) return;
+      const view=dragonViewEl_();
+      const el=(view==="__next__")?"":view;
+      const grad=el?dragonGradAtMs_(el):0;
+      if(!el || !(grad>0)){ if(!box.hidden) box.hidden=true; return; }
+      if(box.hidden) box.hidden=false;
+
+if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLoading[el]){
+        loadDragonNamesOnce_(el).then(()=>{
+          if(dragonModalOpen_() && Number(dragonS3Runtime.namesFetchedAtMs[el])>0) renderDragonName_();
+        }).catch(()=>{});
+      }
+      const cfg=dragonConfig_();
+      const elName=dragonText_(cfg.elements[el]?.name,el,20);
+      const names=dragonNamesRow_(el);
+      const now=Date.now();
+      const closes=grad+DRAGON_NAME_VOTE_MS;
+      const decided=dragonNameDecided_(el);
+      
+      if(!decided && dragonNameDecideFrom_(names,now)) decideDragonName_(el).catch(()=>{});
+      const open=!decided && now<closes;
+      const eligible=dragonNameEligible_(el);
+      const uid=String(state.uid||"");
+      const cands=dragonNameCands_(names);
+      const name=dragonDecidedName_(el);
+      dragonSetText_("dragonNameLeft",open?`남은 ${dragonHoursLeftText_(closes-now)}`:"");
+      let lore;
+      if(decided && decided.none) lore="후보가 없어 이름 없이 남았어요";
+      else if(decided){
+        const by=dragonText_(names?.candidates?.[String(decided.candUid||"")]?.name,"익명",40);
+        lore=`이름 '${dragonText_(decided.text,"",DRAGON_NAME_MAX)}' · ${dragonNumFmt_(decided.votes)}표 · ${by}`;
+      }
+      else if(!open) lore=name?`이름 '${name}'`:"이름 투표가 끝났어요";
+      else if(!eligible) lore="이 드래곤에게 먹이를 준 작가만 참여할 수 있어요";
+      else lore=`${elName}에게 이름을 지어 주세요 · 마음에 드는 후보를 누르면 그쪽으로 투표돼요`;
+      const loreEl=document.getElementById("dragonNameLore");
+      if(loreEl && loreEl.textContent!==lore) loreEl.textContent=lore;
+      const form=document.getElementById("dragonNameForm");
+      if(form) form.hidden=!(open && eligible);
+      const list=document.getElementById("dragonNameCands");
+      if(list){
+        const html=cands.map((c)=>{
+          const voted=(uid && String(names?.votes?.[uid]||"")===c.uid);
+          const win=!!(decided && !decided.none && String(decided.candUid||"")===c.uid);
+          
+          return `<button type="button" class="dragonNameCand${voted?" on":""}${win?" isWin":""}" data-uid="${dragonEsc_(c.uid)}"${(open&&eligible)?"":` disabled=""`}>`
+            +`<span class="dgCandText">${dragonEsc_(c.text)}</span>`
+            +`<span class="dgCandBy">${dragonEsc_(c.name)}</span>`
+            +`<span class="dgCandVotes">${dragonNumFmt_(c.votes)}표</span></button>`;
+        }).join("");
+        if(list.innerHTML!==html) list.innerHTML=html;
+      }
+      const empty=document.getElementById("dragonNameEmpty");
+      if(empty){
+        const emptyText=open?"아직 후보가 없어요 — 첫 이름을 제안해 보세요":"올라온 후보가 없었어요";
+        if(empty.textContent!==emptyText) empty.textContent=emptyText;
+        empty.style.display=cands.length?"none":"";
+      }
+    }
+    
+    async function ensureDragonNameRoot_(el,grad){
+      const opensAtMs=Math.max(0,Math.floor(Number(grad)||0));
+      const fresh={opensAtMs,closesAtMs:opensAtMs+DRAGON_NAME_VOTE_MS,createdAtMs:Date.now()};
+      try{
+        await rRunTransaction(rDragonNamesRef_(el),(raw)=>{
+          if(raw && typeof raw==="object") return;   
+          return fresh;                              
+        });
+      }catch(e){ console.warn("[dragon s3] names root failed",e); }
+      return fresh;
+    }
+    
+    async function proposeDragonName_(){
+      if(dragonS3Runtime.nameLock) return false;
+      const view=dragonViewEl_();
+      const el=(view==="__next__")?"":view;
+      if(!dragonKeyOk_(el)) return false;
+      if(!state.joined || !state.uid){ showToast("작업방 입장 후 참여할 수 있어요"); return false; }
+      const grad=dragonGradAtMs_(el);
+      if(!(grad>0)) return false;
+      const input=document.getElementById("dragonNameInput");
+      const text=dragonText_(input?.value,"",DRAGON_NAME_MAX);
+      if(text.length<2){ showToast("이름은 2자 이상으로 지어 주세요",2800); return false; }
+      const uid=String(state.uid);
+      dragonS3Runtime.nameLock=true;
+      try{
+        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_();
+        if(!dragonNameEligible_(el)){ showToast("이 드래곤에게 먹이를 준 작가만 참여할 수 있어요",3200); return false; }
+        const names=await loadDragonNamesOnce_(el,{force:true});
+        if(Date.now()>=grad+DRAGON_NAME_VOTE_MS || (names?.decided && typeof names.decided==="object")){
+          showToast("이름 투표가 이미 끝났어요",2800); renderDragonS3_(); return false;
+        }
+        const cands=(names?.candidates && typeof names.candidates==="object")?names.candidates:{};
+        if(!cands[uid] && Object.keys(cands).length>=DRAGON_NAME_CAND_MAX){
+          showToast(`후보는 ${DRAGON_NAME_CAND_MAX}개까지만 받을 수 있어요`,3200); return false;
+        }
+        await ensureDragonNameRoot_(el,grad);
+        const row={text,name:dragonText_(state.nickname||els.name?.value,"익명",40),atMs:Date.now()};
+        await rSet(rDragonRef_(`names/${el}/candidates/${uid}`),row);
+        const cur=dragonNamesRow_(el)||{opensAtMs:grad,closesAtMs:grad+DRAGON_NAME_VOTE_MS};
+        dragonS3Runtime.names[el]=Object.assign({},cur,{candidates:Object.assign({},cur.candidates||{},{[uid]:row})});
+        if(input) input.value="";
+        showToast(`'${text}'를 후보로 올렸어요 🏷️`,2800);
+        renderDragonS3_();
+        return true;
+      }catch(e){
+        console.warn("[dragon s3] name propose failed",e);
+        showToast("이름 제안에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
+        return false;
+      }finally{ dragonS3Runtime.nameLock=false; }
+    }
+    async function voteDragonName_(candUid){
+      if(dragonS3Runtime.nameLock) return false;
+      const view=dragonViewEl_();
+      const el=(view==="__next__")?"":view;
+      const cand=String(candUid||"");
+      if(!dragonKeyOk_(el) || !cand) return false;
+      if(!state.joined || !state.uid){ showToast("작업방 입장 후 참여할 수 있어요"); return false; }
+      const grad=dragonGradAtMs_(el);
+      if(!(grad>0)) return false;
+      const uid=String(state.uid);
+      dragonS3Runtime.nameLock=true;
+      try{
+        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_();
+        if(!dragonNameEligible_(el)){ showToast("이 드래곤에게 먹이를 준 작가만 참여할 수 있어요",3200); return false; }
+        const names=await loadDragonNamesOnce_(el,{force:true});
+        if(Date.now()>=grad+DRAGON_NAME_VOTE_MS || (names?.decided && typeof names.decided==="object")){
+          showToast("이름 투표가 이미 끝났어요",2800); renderDragonS3_(); return false;
+        }
+        if(!(names?.candidates && typeof names.candidates==="object" && names.candidates[cand])){
+          showToast("그 후보가 사라졌어요 · 목록을 새로 불러왔어요",3000); renderDragonS3_(); return false;
+        }
+        await rSet(rDragonRef_(`names/${el}/votes/${uid}`),cand);
+        const cur=dragonNamesRow_(el)||{};
+        dragonS3Runtime.names[el]=Object.assign({},cur,{votes:Object.assign({},cur.votes||{},{[uid]:cand})});
+        showToast(`'${dragonText_(names.candidates[cand].text,"",DRAGON_NAME_MAX)}'에 투표했어요 🗳️`,2600);
+        renderDragonS3_();
+        return true;
+      }catch(e){
+        console.warn("[dragon s3] name vote failed",e);
+        showToast("투표에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
+        return false;
+      }finally{ dragonS3Runtime.nameLock=false; }
+    }
+    
+    async function decideDragonName_(el){
+      if(!dragonKeyOk_(el) || !state.roomId || !state.joined) return false;
+      if(dragonS3Runtime.nameDecideLock[el]) return false;
+      if(!dragonNameDecideFrom_(dragonNamesRow_(el),Date.now())) return false;   
+      dragonS3Runtime.nameDecideLock[el]=true;
+      try{
+        
+        let names=null;
+        try{ names=await loadDragonNamesOnce_(el,{force:true}); }catch(e){ names=null; }
+        if(!names) names=dragonNamesRow_(el);
+        const want=dragonNameDecideFrom_(names,Date.now());
+        if(!want){ try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){} return false; }
+        let committed=false, val=null;
+        try{
+          const res=await rRunTransaction(rDragonRef_(`names/${el}/decided`),(raw)=>{
+            if(raw && typeof raw==="object") return;   
+            return want;                                
+          });
+          committed=!!res?.committed;
+          val=res?.snapshot?.val();
+        }catch(e){ console.warn("[dragon s3] name decide failed",e); return false; }
+        const decided=(val && typeof val==="object")?val:want;
+        const cur=dragonNamesRow_(el)||{};
+        dragonS3Runtime.names[el]=Object.assign({},cur,{decided});
+        if(!committed){ try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){} return false; }
+        const text=decided.none?"":dragonText_(decided.text,"",DRAGON_NAME_MAX);
+        if(text){
+          
+          try{ await rUpdate(rDragonRef_(`dragons/${el}`),{name:text}); }catch(e){}
+          try{ await rUpdate(rDragonRef_(`hall/${el}`),{name:text}); }catch(e){}
+          try{
+            if(dragonS3Runtime.dragons && dragonS3Runtime.dragons[el] && typeof dragonS3Runtime.dragons[el]==="object"){
+              dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons,{[el]:Object.assign({},dragonS3Runtime.dragons[el],{name:text})});
+            }
+            const hall=dragonHallRow_(el);
+            if(hall) dragonHallMerge_(el,Object.assign({},hall,{name:text}));
+          }catch(e){}
+          try{
+            const meta=dragonConfig_().elements[el];
+            emitSys(`🏷️ ${dragonText_(meta?.emoji,"🐉",6)} 고룡의 이름이 '${text}'(으)로 정해졌어요!`);
+          }catch(e){}
+        }
+        console.log("[dragon s3] name decided",el,decided);
+        try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){}
+        return true;
+      }finally{ dragonS3Runtime.nameDecideLock[el]=false; }
+    }
+    
+    function dragonNameDecideTick_(){
+      if(!state.joined || !state.roomId) return;
+      const hall=dragonS3Runtime.hall;
+      if(!hall || typeof hall!=="object") return;
+      const now=Date.now();
+      Object.keys(hall).forEach((el)=>{
+        if(!dragonKeyOk_(el)) return;
+        const names=dragonNamesRow_(el);
+        if(!names) return;
+        if(!dragonNameDecideFrom_(names,now)) return;
+        decideDragonName_(el).catch(()=>{});
+      });
+    }
+    
+    function dragonHallList_(){
+      const hall=dragonS3Runtime.hall;
+      if(!hall || typeof hall!=="object") return [];
+      return Object.keys(hall)
+        .filter((k)=>dragonKeyOk_(k) && hall[k] && typeof hall[k]==="object")
+        .map((k)=>Object.assign({el:k},hall[k]))
+        .sort((a,b)=>((Math.floor(Number(a.graduatedAtMs)||0))-(Math.floor(Number(b.graduatedAtMs)||0)))||a.el.localeCompare(b.el));
+    }
+    function dragonHallNameText_(el,grad){
+      const name=dragonDecidedName_(el);
+      if(name) return `'${name}'`;
+      if(dragonNameVoting_(el)) return `이름 투표 중 · 남은 ${dragonHoursLeftText_(grad+DRAGON_NAME_VOTE_MS-Date.now())}`;
+      return "이름 없음";
+    }
+    
+    function dragonOpenHallEl_(el){
+      if(!dragonKeyOk_(el)) return false;
+      dragonS3Runtime.viewEl=el;
+      renderDragonS3_();
+      try{ document.getElementById("dragonScene")?.scrollIntoView?.({behavior:dragonCalmMotion_()?"auto":"smooth",block:"start"}); }catch(e){}
+      return true;
+    }
+    function renderDragonHall_(){
+      const wrap=document.getElementById("dragonHallRows");
+      if(!wrap) return;
+      const rows=dragonHallList_();
+      const view=dragonViewEl_();
+      const medals=["🥇","🥈","🥉"];
+      const html=rows.map((r)=>{
+        const grad=Math.max(0,Math.floor(Number(r.graduatedAtMs)||0));
+        const top3=Array.isArray(r.top3)?r.top3.slice(0,3):[];
+        const podium=top3.map((t,i)=>`<span>${medals[i]} ${dragonEsc_(dragonText_(t?.name,"익명",40))}</span>`).join("");
+        return `<button type="button" class="dragonHallRow dragonElTint${r.el===view?" on":""}" data-el="${dragonEsc_(r.el)}">`
+          +`<span class="dragonChipArt" data-el="${dragonEsc_(r.el)}" data-stage="7" aria-hidden="true"></span>`
+          +`<span class="dgHallBody">`
+          +`<b>${dragonEsc_(dragonText_(r.emoji,"🐉",6))} ${dragonEsc_(dragonText_(r.elName,r.el,20))}</b>`
+          +`<span class="dgHallName">${dragonEsc_(dragonHallNameText_(r.el,grad))}</span>`
+          +`<span class="dgHallDate">${dragonEsc_(dragonDateText_(grad))} 졸업</span>`
+          +(podium?`<span class="dgHallTop3">${podium}</span>`:"")
+          +`</span></button>`;
+      }).join("");
+      if(wrap.innerHTML!==html) wrap.innerHTML=html;
+      const empty=document.getElementById("dragonHallEmpty");
+      if(empty) empty.style.display=rows.length?"none":"";
+      dragonSetText_("dragonHallCount",`${rows.length}마리`);
+    }
+    
+    function dragonReselectNag_(){
+      try{
+        if(!state.joined) return false;
+        const info=dragonDashInfo_();
+        const el=String(info?.graduatedCamp||"");
+        if(!dragonKeyOk_(el)) return false;
+        const day=seoulDateKey();
+        let last="";
+        try{ last=String(localStorage.getItem(DRAGON_RESELECT_NAG_KEY)||""); }catch(e){}
+        if(last===day) return false;
+        try{ localStorage.setItem(DRAGON_RESELECT_NAG_KEY,day); }catch(e){}
+        const elName=dragonText_(dragonHallRow_(el)?.elName||dragonConfig_().elements[el]?.name,el,20);
+        showToast(`🎓 ${elName}이(가) 졸업했어요 · 다음 기운을 골라 주세요`,4200);
+        return true;
+      }catch(e){ return false; }
     }
     
     function renderDragonBag_(){
@@ -30012,10 +30688,10 @@ function renderDragonTabs_(){
       else note=`${cfg.elements[mine]?.name||mine} 스킬 Lv.${dragonNumFmt_(row?row.skill:0)} / ${dragonNumFmt_(cfg.skillCap)} · 레벨권 1장 = 스킬 +1`;
       dragonSetText_("dragonBagNote",note);
     }
-    
-    function dragonRankRows_(el){
-      const fed=(el && dragonS3Runtime.fed && dragonS3Runtime.fed[el])?dragonS3Runtime.fed[el]:null;
-      const members=dragonS3Runtime.members||{};
+
+function dragonRankRowsFrom_(fedEl,members){
+      const fed=(fedEl && typeof fedEl==="object")?fedEl:null;
+      const mem=(members && typeof members==="object")?members:{};
       const rows=[];
       if(fed){
         Object.keys(fed).forEach((uid)=>{
@@ -30025,7 +30701,7 @@ function renderDragonTabs_(){
           rows.push({
             uid,coins,tickets,
             updatedAtMs:Math.max(0,Math.floor(Number(fed[uid]?.updatedAtMs)||0)),
-            name:dragonText_(members[uid]?.name,"익명",40)
+            name:dragonText_(mem[uid]?.name,"익명",40)
           });
         });
       }
@@ -30040,6 +30716,21 @@ function renderDragonTabs_(){
       const when=(r)=>(r.updatedAtMs>0?r.updatedAtMs:Infinity);
       rows.sort((a,b)=>(b.total-a.total)||(b.tickets-a.tickets)||(when(a)-when(b))||a.uid.localeCompare(b.uid));
       return rows;
+    }
+    
+    function dragonRankRows_(el){
+      const fed=(el && dragonS3Runtime.fed && dragonS3Runtime.fed[el])?dragonS3Runtime.fed[el]:null;
+      return dragonRankRowsFrom_(fed,dragonS3Runtime.members||{});
+    }
+    
+    function dragonTop3From_(rows){
+      return (Array.isArray(rows)?rows:[]).slice(0,3).map((r)=>({
+        uid:String(r.uid||""),
+        name:dragonText_(r.name,"익명",40),
+        coins:Math.max(0,Math.floor(Number(r.coins)||0)),
+        tickets:Math.max(0,Math.floor(Number(r.tickets)||0)),
+        total:Math.round((Number(r.total)||0)*10)/10
+      }));
     }
     function renderDragonRank_(){
       const list=document.getElementById("dragonRankList");
@@ -30098,7 +30789,8 @@ function renderDragonTabs_(){
       const when=started?new Date(started).toLocaleString("ko-KR"):"미시작";
       const text=`관리자 · 시즌 ${cfg.enabled?"진행":"일시정지"} · 시작 ${when} · 레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""}`
         +` · 하루 한도 ${cfg.dailyCap>0?dragonNumFmt_(cfg.dailyCap):"없음"} · 레이스 ${Math.round(cfg.race.hourlyChance*100)}% ${cfg.race.dailyMin}~${cfg.race.dailyMax}회`
-        +` · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`;
+        +` · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`
+        +` · 전당 ${dragonHallList_().length}마리`;   
       if(note.textContent!==text) note.textContent=text;
     }
     function renderDragonS3_(){
@@ -30109,10 +30801,12 @@ function renderDragonTabs_(){
         renderDragonEggs_();
         renderDragonPool_();
         renderDragonFeed_();
+        renderDragonName_();  
         renderDragonBag_();   
         renderDragonRace_();  
         renderDragonRank_();
         renderDragonRoster_();
+        renderDragonHall_();  
         renderDragonAdminNote_();
       }catch(e){ console.warn("[dragon s3] render failed",e); }
     }
@@ -30124,6 +30818,8 @@ async function selectDragonCamp_(el){
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
       const cfg=dragonConfig_();
       if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("지금은 고를 수 없는 기운이에요"); return; }
+      
+      if(dragonGraduated_(el)){ showToast("졸업한 고룡은 고를 수 없어요 🎓",3000); return; }
       const uid=String(state.uid);
       const day=seoulDateKey();
       const myName=dragonText_(state.nickname||els.name?.value,"익명",40);
@@ -30132,11 +30828,15 @@ async function selectDragonCamp_(el){
         const prev=await ensureDragonMemberRow_();
         const prevCamp=dragonText_(prev?.camp,"",20);
         if(prevCamp===el){ showToast(`이미 ${cfg.elements[el].name}이에요 ${cfg.elements[el].emoji}`); return; }
-        if(prevCamp && dragonText_(prev?.campChangedDay,"",12)===day){
+        
+        const gradCamp=(prevCamp && dragonGraduated_(prevCamp))?prevCamp:"";
+        if(prevCamp && prevCamp!==gradCamp && dragonText_(prev?.campChangedDay,"",12)===day){
           showToast("기운은 하루에 한 번만 바꿀 수 있어요 · 내일 다시 골라 주세요",3200);
           return;
         }
-        if(prevCamp && !confirm(`${cfg.elements[el].name}으로 기운을 바꿀까요?\n이미 먹인 기여는 원래 드래곤에 그대로 남아요. 오늘은 더 못 바꿔요.`)) return;
+        if(prevCamp && !confirm(prevCamp===gradCamp
+          ? `${cfg.elements[el].name}으로 기운을 옮길까요?\n이미 먹인 기여는 졸업한 고룡에 그대로 남아요. 졸업 뒤 재선택은 하루 1회 규칙에 걸리지 않아요.`
+          : `${cfg.elements[el].name}으로 기운을 바꿀까요?\n이미 먹인 기여는 원래 드래곤에 그대로 남아요. 오늘은 더 못 바꿔요.`)) return;
         let blocked=false;
         const result=await rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
 
@@ -30145,9 +30845,10 @@ if(raw===null) return null;
           const cur=Object.assign({},raw);
           const curCamp=dragonText_(cur.camp,"",20);
           if(curCamp===el) return;
-          if(curCamp && dragonText_(cur.campChangedDay,"",12)===day){ blocked=true; return; }
+          
+          if(curCamp && curCamp!==gradCamp && dragonText_(cur.campChangedDay,"",12)===day){ blocked=true; return; }
           cur.camp=el;
-          if(curCamp) cur.campChangedDay=day;   
+          if(curCamp && curCamp!==gradCamp) cur.campChangedDay=day;   
           cur.name=myName;
           cur.updatedAtMs=Date.now();
           return cur;
@@ -30183,18 +30884,28 @@ async function feedDragon_(coins,menuIdx){
       try{
         
         await loadDragonConfigOnce_({force:true});
+        
+        if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
         const day=seoulDateKey();
         let amount=want;
         let fedToday=0;
+        let capBlocked=false;
         if(cfg.dailyCap>0){
-          const fSnap=await rGet(rDragonRef_(`members/${uid}/fed`));
-          const rec=fSnap.val()||{};
-          fedToday=(dragonText_(rec.day,"",12)===day)?Math.max(0,Math.floor(Number(rec.coins)||0)):0;
-          const room=cfg.dailyCap-fedToday;
-          if(room<=0){ showToast("오늘은 배가 불러요 💤 자정에 다시 먹일 수 있어요",2800); return; }
-          amount=Math.min(amount,room);
+          
+          const capRes=await rRunTransaction(rDragonRef_(`members/${uid}/fed`),(raw)=>{
+            capBlocked=false;
+            const cur=(raw && typeof raw==="object")?raw:{};
+            const base=(dragonText_(cur.day,"",12)===day)?Math.max(0,Math.floor(Number(cur.coins)||0)):0;
+            const room=cfg.dailyCap-base;
+            if(room<=0){ capBlocked=true; return; }
+            amount=Math.min(amount,room);
+            fedToday=base;
+            return {day,coins:base+amount};
+          });
+          if(capBlocked){ showToast("오늘은 배가 불러요 💤 자정에 다시 먹일 수 있어요",2800); return; }
+          if(!capRes?.committed){ showToast("먹이 주기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
         }
         const have=dragonReadCoins_();
         if(have<=0){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
@@ -30246,7 +30957,7 @@ async function feedDragon_(coins,menuIdx){
         const updates={};
         updates[`dragonV1/fed/${el}/${uid}/coins`]=rIncrement(amount);
         updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
-        if(cfg.dailyCap>0) updates[`dragonV1/members/${uid}/fed`]={day,coins:fedToday+amount};
+        
         try{ await rUpdate(rDragonPlaygroundRef_(),updates); }catch(e){ console.warn("[dragon s3] fed ledger update failed",e); }
         
         try{
@@ -30256,6 +30967,11 @@ async function feedDragon_(coins,menuIdx){
           if(cfg.dailyCap>0 && dragonS3Runtime.members?.[uid]) dragonS3Runtime.members[uid].fed={day,coins:fedToday+amount};
         }catch(e){}
         await writeDragonSummary_();
+        
+        if(after.graduatedAtMs>0 && !(before.graduatedAtMs>0)){
+          dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,after.graduatedAtMs);
+          dragonGraduationFollowup_(el,"feeder").catch(()=>{});
+        }
         const ups=after.level-before.level;
         const need=dragonNeedFor_(cfg,after.level+1);
         const favTail=isFav?` · 오늘의 취향 ×${DRAGON_FAV_MULT} (경험치 ${dragonNumFmt_(expGain)})`:"";   
@@ -30264,7 +30980,8 @@ async function feedDragon_(coins,menuIdx){
         }else if(ups>0){
           showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail} · Lv.${after.level} 달성!${ups>1?` (${ups}레벨 연속)`:""} 다음 목표 ${dragonNumFmt_(need)}`,3600);
         }else{
-          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail} · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))}코인`,3000);
+          
+          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail} · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))}${isFav?" 경험치":"코인"}`,3000);
         }
         renderDragonS3_();
         dragonBounce_();
@@ -30414,6 +31131,259 @@ if(raw===null) return null;
         if(taken){ await refundDragonTicket_(); taken=false; }
         showToast("레벨권 먹이기에 실패했어요 · 레벨권은 돌려놨어요",3200);
       }finally{ dragonS3Runtime.bagLock=false; }
+    }
+
+function dragonHallFollowupDone_(hall){
+      const f=(hall && typeof hall==="object" && hall.followup && typeof hall.followup==="object")?hall.followup:null;
+      return !!(f && f.blessed && f.activated && f.sys);
+    }
+    function dragonHallMerge_(el,row){
+      if(!(row && typeof row==="object")) return;
+      dragonS3Runtime.hall=Object.assign({},dragonS3Runtime.hall||{},{[el]:row});
+    }
+    
+    function dragonBlessingUpdater_(raw,el,grad,uid,now){
+      const g=Math.max(0,Math.floor(Number(grad)||0));
+      if(!(g>0) || !dragonKeyOk_(el)) return;
+      const cur=(raw && typeof raw==="object")?raw:null;
+      if(cur && Math.floor(Number(cur.srcGrad)||0)===g && String(cur.el||"")===el) return;   
+      const id=`dbl-${g}-${el}`;
+      const at=Math.max(0,Math.floor(Number(now)||0));
+      if(cur && Math.max(0,Math.floor(Number(cur.endMs)||0))>g){
+        return Object.assign({},cur,{
+          id, prevId:String(cur.id||""),
+          endMs:Math.floor(Number(cur.endMs))+DRAGON_BLESS_MS,
+          hours:Math.max(0,Math.floor(Number(cur.hours)||0))+DRAGON_BLESS_HOURS,
+          mult:DRAGON_BLESS_MULT, el, srcGrad:g, by:String(uid||""), createdAtMs:at
+        });
+      }
+      return {id, atMs:g, endMs:g+DRAGON_BLESS_MS, hours:DRAGON_BLESS_HOURS, mult:DRAGON_BLESS_MULT,
+              el, srcGrad:g, by:String(uid||""), createdAtMs:at};
+    }
+    
+    async function dragonApplyBlessing_(el,grad){
+      const g=Math.max(0,Math.floor(Number(grad)||0));
+      const uid=String(state.uid||"");
+      let res=null;
+      try{
+        res=await rRunTransaction(rDragonBlessingRef_(),(raw)=>dragonBlessingUpdater_(raw,el,g,uid,Date.now()));
+      }catch(e){ console.warn("[dragon s3] blessing tx failed",e); return ""; }
+      const val=res?.snapshot?.val();
+      if(!(val && typeof val==="object")) return "";
+      if(!(Math.floor(Number(val.srcGrad)||0)===g && String(val.el||"")===el)) return "";
+      dragonS3Runtime.summary=Object.assign({},dragonS3Runtime.summary||{},{blessing:val});
+      try{ dragonSyncMenuButton_(); }catch(e){}
+      try{ window.__MK_PET_V24__?.renderAll?.(); }catch(e){}
+      return String(val.id||"");
+    }
+    
+    async function dragonJoinNextEgg_(el,grad){
+      const g=Math.max(0,Math.floor(Number(grad)||0));
+      let joined="";
+      let res=null;
+      try{
+        res=await rRunTransaction(rDragonRef_("config"),(raw)=>{
+          joined="";
+          if(raw===null) return null;
+          if(!raw || typeof raw!=="object") return;
+          const cur=Object.assign({},raw);
+          const applied=(cur.gradApplied && typeof cur.gradApplied==="object")?cur.gradApplied:{};
+          if(Math.floor(Number(applied[el])||0)===g) return;      
+          const next=dragonKeyOk_(cur.nextElement)?String(cur.nextElement):"";
+          const rows=(cur.elements && typeof cur.elements==="object")?Object.assign({},cur.elements):{};
+          if(next && rows[next] && typeof rows[next]==="object"){
+            const row=Object.assign({},rows[next]);
+            row.active=true;
+            if(!(Number(row.addedAtMs)>0)) row.addedAtMs=Date.now();
+            rows[next]=row;
+            cur.elements=rows;
+            cur.nextElement="";
+            joined=next;
+          }
+          
+          cur.gradApplied=Object.assign({},applied,{[el]:g});
+          cur.updatedAtMs=Date.now();
+          return cur;
+        });
+      }catch(e){ console.warn("[dragon s3] next egg tx failed",e); return null; }
+      const val=res?.snapshot?.val();
+      if(!(val && typeof val==="object" && Math.floor(Number(val.gradApplied?.[el])||0)===g)) return null;
+      if(res?.committed){ dragonS3Runtime.config=val; dragonS3Runtime.configFetchedAtMs=Date.now(); }
+      try{ await loadDragonConfigOnce_({force:true}); }catch(e){}
+      try{ await writeDragonSummary_(); }catch(e){}
+      return {joined};
+    }
+    async function dragonGraduationFollowup_(el,origin){
+      if(!dragonKeyOk_(el) || !state.roomId || !state.joined) return false;
+      if(dragonS3Runtime.gradLock[el]) return false;
+      dragonS3Runtime.gradLock[el]=true;
+      dragonS3Runtime.gradFollowupAt[el]=Date.now();
+      try{
+        
+        let row=null;
+        try{ const snap=await rGet(rDragonRef_(`dragons/${el}`)); row=snap.val(); }catch(e){ return false; }
+        const grad=Math.max(0,Math.floor(Number(row?.graduatedAtMs)||0));
+        if(!(grad>0)) return false;
+        const cfg=dragonConfig_();
+        const meta=(cfg.elements[el] && typeof cfg.elements[el]==="object")?cfg.elements[el]:null;
+        const elName=dragonText_(meta?.name,el,20);
+        const emoji=dragonText_(meta?.emoji,"🐉",6);
+        const uid=String(state.uid||"");
+
+let hall=dragonHallRow_(el);
+        let madeHall=false;
+        if(!dragonHallFollowupDone_(hall)){
+          
+          try{ const snap=await rGet(rDragonRef_(`hall/${el}`)); const v=snap.val(); hall=(v && typeof v==="object")?v:null; }catch(e){}
+        }
+        if(!hall){
+          let fresh=null;
+          try{
+            const [fSnap,mSnap]=await Promise.all([rGet(rDragonRef_(`fed/${el}`)),rGet(rDragonRef_("members"))]);
+            fresh={
+              graduatedAtMs:grad, elName, emoji,
+              top3:dragonTop3From_(dragonRankRowsFrom_(fSnap.val()||{},mSnap.val()||{})),
+              createdAtMs:Date.now(), by:uid, name:""
+            };
+          }catch(e){ console.warn("[dragon s3] hall top3 read failed",e); }
+          if(fresh){
+            try{
+              const res=await rRunTransaction(rDragonRef_(`hall/${el}`),(raw)=>{
+                
+                if(raw && typeof raw==="object") return;   
+                return fresh;
+              });
+              const val=res?.snapshot?.val();
+              if(val && typeof val==="object") hall=val;
+              madeHall=!!(res?.committed && uid && String(val?.by||"")===uid);
+            }catch(e){ console.warn("[dragon s3] hall create failed",e); }
+          }
+        }
+        if(!hall) return false;
+        dragonHallMerge_(el,hall);
+        try{ dragonMinimiCheck_(); }catch(e){}   
+        const fu=Object.assign({},(hall.followup && typeof hall.followup==="object")?hall.followup:{});
+
+if(!fu.blessed){
+          const id=await dragonApplyBlessing_(el,grad);
+          if(id){
+            fu.blessed=id;
+            try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{blessed:id}); }catch(e){}
+          }
+        }
+        
+        if(!fu.activated){
+          const joinRes=await dragonJoinNextEgg_(el,grad);
+          if(joinRes){
+            fu.activated=1;
+            try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{activated:1}); }catch(e){}
+          }
+        }
+        
+        if(madeHall && !fu.sys){
+          try{ emitSys(`🐉 ${emoji} ${elName}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 · 작업 코인 ×3 🌟`); }catch(e){}
+          const at=Date.now();
+          fu.sys=at;
+          try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{sys:at}); }catch(e){}
+        }
+        dragonHallMerge_(el,Object.assign({},hall,{followup:fu}));
+        
+        if(fu.blessed && fu.activated && (fu.sys || !madeHall)) dragonS3Runtime.hallDone[el]=true;
+        console.log("[dragon s3] graduation followup",el,String(origin||""),{blessed:!!fu.blessed,activated:!!fu.activated,sys:!!fu.sys,made:madeHall});
+        try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){}
+        return true;
+      }catch(e){
+        console.warn("[dragon s3] graduation followup failed",e);
+        return false;
+      }finally{ dragonS3Runtime.gradLock[el]=false; }
+    }
+    
+    function dragonGradWatchTick_(){
+      if(!state.joined || !state.roomId) return;
+      const dragons=dragonS3Runtime.summary?.dragons;
+      if(!dragons || typeof dragons!=="object") return;
+      const now=Date.now();
+      Object.keys(dragons).forEach((el)=>{
+        if(!dragonKeyOk_(el)) return;
+        const grad=Math.max(0,Math.floor(Number(dragons[el]?.grad)||0));
+        if(!(grad>0)) return;
+
+if(dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,grad) && now-grad<DRAGON_BLESS_MS){
+          const meta=dragonConfig_().elements[el];
+          dragonGlowToast_(`🐉 ${dragonText_(meta?.emoji,"🐉",6)} ${dragonText_(meta?.name,el,20)}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 🌟`,6000,true);
+          try{ if(dragonModalOpen_()) dragonBounce_(); }catch(e){}
+        }
+        if(dragonS3Runtime.hallDone[el]) return;
+        if(now-grad<DRAGON_GRAD_GRACE_MS) return;                  
+        const last=Math.max(0,Math.floor(Number(dragonS3Runtime.gradFollowupAt[el])||0));
+        if(last>0 && now-last<DRAGON_GRAD_RETRY_MS) return;         
+        dragonS3Runtime.gradFollowupAt[el]=now;
+        dragonGraduationFollowup_(el,"observer").catch(()=>{});
+      });
+    }
+    
+    function dragonBlessingTick_(){
+      if(!state.joined) return;
+      try{
+        const info=dragonBlessingInfo_();
+        const id=String(info.rec?.id||"");
+        if(!id) return;
+        const prevId=String(info.rec?.prevId||"");
+        
+        const cueAt=prevId?(Math.max(0,Math.floor(Number(info.rec?.createdAtMs)||0))||info.atMs):info.atMs;
+        if(info.phase==="active" && info.now-cueAt<5*60*1000 && dragonS3Runtime.blessStartId!==id){
+          dragonS3Runtime.blessStartId=id;
+          dragonGlowToast_(prevId
+            ? `고룡의 축복이 하루 더 이어져요! ${dragonTimeText_(info.endMs)}까지 ×3`
+            : `🐉 고룡의 축복이 시작됐어요! ${dragonTimeText_(info.endMs)}까지 작업 코인 ×3 (5초에 3코인) 🌟`,6000,true);
+        }
+        if(info.phase==="ended" && info.now-info.endMs<5*60*1000 && dragonS3Runtime.blessEndId!==id){
+          dragonS3Runtime.blessEndId=id;
+          dragonGlowToast_("고룡의 축복이 끝났어요 · 코인 ×3 종료",6000,false);
+        }
+      }catch(e){}
+    }
+    
+    function dragonMinimiFile_(el){ return `05_acc_special_dragon_${el}.png`; }
+    function dragonGrantMinimi_(el){
+      const file=dragonMinimiFile_(el);
+      let ok=false;
+      
+      try{ ok=!!window.__MK_CHARA_V169__?.award?.grant?.("05_acc",file); }catch(e){}
+      if(!ok){
+        try{
+          const raw=localStorage.getItem(DRAGON_OWNED_KEY);
+          const parsed=raw?JSON.parse(raw):null;
+          const owned=(parsed && typeof parsed==="object" && !Array.isArray(parsed))?parsed:{};
+          owned[`05_acc/${file}`]=true;
+          localStorage.setItem(DRAGON_OWNED_KEY,JSON.stringify(owned));
+          ok=true;
+        }catch(e){}
+        try{ window.__MK_OWNED_SYNC__?.markDirty?.(); }catch(e){}
+      }
+      if(!ok) return false;                                  
+      if(!dragonMarkOnce_(DRAGON_MINIMI_KEY,el,Date.now())) return true;
+      const elName=dragonText_(dragonHallRow_(el)?.elName||dragonConfig_().elements[el]?.name,el,20);
+      let tail="";
+      
+      try{
+        const isSpecial=window.__MK_CHARA_V169__?.award?.isSpecial;
+        if(typeof isSpecial==="function" && !isSpecial("05_acc",file)) tail=" · 파츠 파일이 아직 배포되지 않았어요";
+      }catch(e){}
+      showToast(`🎖️ 고룡 미니미 · ${elName}을(를) 받았어요! 캐릭터 꾸미기 → 액세서리에서 착용하고 [💾 저장]${tail}`,6000);
+      return true;
+    }
+    function dragonMinimiCheck_(){
+      const uid=String(state.uid||"");
+      const hall=dragonS3Runtime.hall;
+      if(!uid || !hall || typeof hall!=="object") return;
+      const got=dragonReadMarks_(DRAGON_MINIMI_KEY);
+      Object.keys(hall).forEach((el)=>{
+        if(!dragonKeyOk_(el) || got[el]) return;
+        const top3=Array.isArray(hall[el]?.top3)?hall[el].top3:[];
+        if(!top3.some((t)=>String(t?.uid||"")===uid)) return;
+        dragonGrantMinimi_(el);
+      });
     }
 
 function dragonRaceHourKey_(ms){ return new Date(ms+9*3600000).toISOString().slice(0,13); }
@@ -30622,6 +31592,8 @@ async function maybeSpawnDragonRace_(){
       if(!summary) return;
       maybeRollDragonRace_().catch(()=>{});
       if(dragonRaceOpen_()) return;                       
+      
+      try{ await maybeCloseDragonRace_(); }catch(e){}
       const now=Date.now();
       const race=dragonRaceSummary_();
       const roll=(race.roll && typeof race.roll==="object")?race.roll:null;
@@ -30646,7 +31618,7 @@ async function maybeSpawnDragonRace_(){
       try{
         
         const res=await rRunTransaction(rDragonItemsRef_("sched"),(raw)=>{
-          if(raw===null) return null;                     
+          
           const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
           if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<DRAGON_RACE_SPAWN_LEASE_MS) return; 
           const nowT=Date.now();
@@ -30666,7 +31638,7 @@ async function maybeSpawnDragonRace_(){
             cr.done=1; cur.roll=cr;
             cur.dRace=(Number(cur.dRace)||0)+1;
             k="guerrilla";
-          }else return;
+          }else return (raw===null)?cur:undefined;       
           cur.spawning={id:spawnId,by:uid,atMs:Date.now(),kind:k};
           cur.seq=(Number(cur.seq)||0)+1;
           return cur;
@@ -30698,8 +31670,8 @@ async function maybeSpawnDragonRace_(){
       const res=await rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
         busy=false;
         const cur=(raw && typeof raw==="object")?raw:null;
-        
-        if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>Date.now()){ busy=true; return; }
+
+if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>0){ busy=true; return; }
         
         return fresh;
       });
@@ -30736,7 +31708,8 @@ async function maybeCloseDragonRace_(){
       const now=mkGraceNowMs_();
       const a=dragonRaceActive_();
       if(!a) return;
-      if(Number(a.closedAtMs)>0) return;
+      
+      if(Number(a.closedAtMs)>0 && Number(a.bonusDone)>0) return;
       const endMs=Number(a.endMs)||0;
       if(!(endMs>0) || now<endMs) return;
       const uid=String(state.uid);
@@ -30747,19 +31720,24 @@ async function maybeCloseDragonRace_(){
           mine=false;
           if(raw===null) return null;                     
           if(!raw || typeof raw!=="object" || !raw.id) return;
-          if(Number(raw.closedAtMs)>0) return;            
           if(!(Number(raw.endMs)>0) || Date.now()<Number(raw.endMs)) return;
           const cur=Object.assign({},raw);
-          cur.closedAtMs=Date.now();
-          cur.closedBy=uid;
-          mine=true;
+          if(Number(raw.closedAtMs)>0){
+            
+            if(Number(raw.bonusDone)>0) return;                                  
+            if(raw.payBy && Date.now()-(Number(raw.payAtMs)||0)<60000) return;   
+            cur.payBy=uid; cur.payAtMs=Date.now(); mine=true;
+            return cur;
+          }
+          cur.closedAtMs=Date.now(); cur.closedBy=uid;
+          cur.payBy=uid; cur.payAtMs=Date.now(); mine=true;
           return cur;
         });
         const val=(res && res.snapshot)?res.snapshot.val():null;
         if(val && typeof val==="object") dragonS3Runtime.race=val;
         if(!mine || !res.committed){
           
-          if(dragonRaceSummary_().active) dragonRaceMergeSummary_({active:null});
+          if(Number(val?.bonusDone)>0 && dragonRaceSummary_().active) dragonRaceMergeSummary_({active:null});
           if(dragonModalOpen_()) renderDragonS3_();
           return;
         }
@@ -30805,6 +31783,8 @@ async function submitDragonRaceResult_(ms,flips){
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 이용할 수 있어요"); return false; }
       const uid=String(state.uid);
       const myName=dragonText_(state.nickname||els.name?.value,"익명",40);
+      
+      if(act.seed===undefined){ showToast("레이스 판을 불러오는 중이에요 · 잠시 후 다시 시도해 주세요",2800); return false; }
       const seedNow=Math.max(0,Math.floor(Number(act.seed)||0));
       const draw=dragonSlotDraw_(dragonHash32_(`${uid}|${String(act.id)}|${seedNow}`));
       
@@ -31231,6 +32211,8 @@ function stopDragonRealtime_(){
       dragonS3Runtime.unsub=rOnValue(rDragonSummaryRef_(state.roomId),(snap)=>{
         const s=snap.val();
         if(s && typeof s==="object") dragonS3Runtime.summary=s;
+        
+        try{ dragonGradWatchTick_(); }catch(e){}
         renderDragonS3_();
       },(err)=>{ console.warn("[dragon s3] subscribe failed",err); });
       
@@ -31254,6 +32236,7 @@ function stopDragonRealtime_(){
       
       loadDragonConfigOnce_({force:true})
         .then(()=>loadDragonRosterOnce_())
+        .then(()=>{ try{ dragonReselectNag_(); }catch(e){} })   
         .then(()=>loadDragonBagOnce_({force:true}))
         .then(()=>loadDragonDailyOnce_({force:true}))
         .then(()=>ensureDragonDailySeed_())
@@ -31299,13 +32282,22 @@ async function dragonAutoStart_(){
 
 return Object.assign({},cur,{
           enabled:cur.enabled!==false,
-          startAtMs:Date.now(),
+          startAtMs:mkGraceNowMs_(),   
           startedBy:String(state.uid||""),
           startedAuto:1,
           updatedAtMs:Date.now()
         });
       });
-      if(!result?.committed) return false;
+      if(!result?.committed){
+        
+        const cur=result?.snapshot?.val();
+        if(cur && typeof cur==="object" && Number(cur.startAtMs)>0){
+          dragonS3Runtime.config=cur;
+          dragonS3Runtime.configFetchedAtMs=Date.now();
+          dragonSyncMenuButton_();
+        }
+        return false;
+      }
       const val=result.snapshot.val();
       if(!val || !(Number(val.startAtMs)>0)) return false;
       dragonS3Runtime.config=val;
@@ -31327,6 +32319,12 @@ return Object.assign({},cur,{
         try{ dragonRaceStartTick_(); }catch(e){}
         maybeSpawnDragonRace_().catch(()=>{});
         maybeCloseDragonRace_().catch(()=>{});
+        
+        try{ dragonBlessingTick_(); }catch(e){}
+        try{ dragonGradWatchTick_(); }catch(e){}
+        
+        try{ dragonNameDecideTick_(); }catch(e){}
+        try{ dragonReselectNag_(); }catch(e){}
       }
       if(dragonStartedMs_()>0) return;
       let retired=false;
@@ -31425,6 +32423,14 @@ function dragonAdminRowHtml_(key,el,isNew){
         };
       });
       if(bad){ showToast(`속성 키는 영소문자만 쓸 수 있어요 (${bad})`,3200); return; }
+      
+      if(!rows.length){
+        
+        await loadDragonConfigOnce_({force:true});
+        renderDragonAdminPanel_();
+        showToast("관리 칸을 방금 불러왔어요 · 값을 확인하고 다시 [저장]을 눌러 주세요",3600);
+        return;
+      }
       if(!Object.keys(elements).length){ showToast("속성이 하나도 없어요"); return; }
       const nextElement=String(document.getElementById("dragonAdminNext")?.value||"");
       if(nextElement && !elements[nextElement]){ showToast("다음 알로 고른 속성이 표에 없어요"); return; }
@@ -31452,7 +32458,8 @@ function dragonAdminRowHtml_(key,el,isNew){
     async function dragonAdminStart_(){
       if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
       try{
-        await rUpdate(rDragonRef_("config"),{enabled:true,startAtMs:Date.now(),startedBy:String(state.uid||""),startedAuto:0,updatedAtMs:Date.now()});
+        
+        await rUpdate(rDragonRef_("config"),{enabled:true,startAtMs:mkGraceNowMs_(),startedBy:String(state.uid||""),startedAuto:0,updatedAtMs:Date.now()});
         await loadDragonConfigOnce_({force:true});
         await writeDragonSummary_();
         dragonSyncMenuButton_();
@@ -31477,18 +32484,22 @@ function dragonAdminRowHtml_(key,el,isNew){
 function dragonDashInfo_(){
       try{
         const cfg=dragonConfig_();
-        const active=dragonActiveKeys_();
+        
+        const active=dragonPoolKeys_();
         const mine=dragonMyCamp_();
-        const showEl=(mine && active.indexOf(mine)>=0)?mine:(active[0]||"neutral");
+        const inPool=!!(mine && active.indexOf(mine)>=0);
+        const gradCamp=(mine && !inPool && dragonGraduated_(mine))?mine:"";
+        const showEl=inPool?mine:(active[0]||"neutral");
         const row=dragonRow_(showEl);
         const stage=dragonGrowthStage_(row.level);
         const need=dragonNeedFor_(cfg,row.level+1);
         
-        const favDash=(mine && active.indexOf(mine)>=0 && stage.index>=4)?dragonFavItem_():null;
+        const favDash=(inPool && stage.index>=4)?dragonFavItem_():null;
         return {
           ready:!!dragonS3Runtime.summary,
           enabled:dragonEnabled_(),
-          myCamp:(mine && active.indexOf(mine)>=0)?mine:"",
+          myCamp:inPool?mine:"",
+          graduatedCamp:gradCamp,                                       
           el:showEl,
           elName:cfg.elements[showEl]?.name||"드래곤",
           elEmoji:cfg.elements[showEl]?.emoji||"🐉",
@@ -31529,8 +32540,45 @@ try{
       document.getElementById("dragonFeedBtns")?.addEventListener("click",(ev)=>{
         const btn=ev.target?.closest?.(".dragonFeedBtn");
         if(!btn || btn.disabled) return;
+
+feedDragonFromMenu_(Number(btn.getAttribute("data-coins"))||0,Number(btn.getAttribute("data-idx")),Number(btn.getAttribute("data-qty"))||1).catch(()=>{});
+      });
+      
+      document.getElementById("dragonFeedQty")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dgQtyBtn");
+        if(!btn || btn.disabled) return;
+        const focusId=String(btn.id||"");
+        dragonSetFeedQty_((Math.floor(Number(dragonS3Runtime.feedQty)||1))+(Number(btn.getAttribute("data-step"))||0));
         
-        feedDragon_(Number(btn.getAttribute("data-coins"))||0,Number(btn.getAttribute("data-idx"))).catch(()=>{});
+        try{ const nb=focusId?document.getElementById(focusId):null; if(nb && !nb.disabled && typeof nb.focus==="function") nb.focus({preventScroll:true}); }catch(e){}
+      });
+      
+      document.getElementById("dragonFeedQty")?.addEventListener("input",(ev)=>{
+        if(ev.target?.id!=="dragonFeedQtyInput") return;
+        dragonTypeFeedQty_(ev.target.value);
+      });
+      document.getElementById("dragonFeedQty")?.addEventListener("change",(ev)=>{
+        if(ev.target?.id!=="dragonFeedQtyInput") return;
+        const n=dragonTypeFeedQty_(ev.target.value);
+        if(String(ev.target.value)!==String(n)) ev.target.value=String(n);   
+      });
+      
+      document.getElementById("dragonHallRows")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dragonHallRow");
+        if(!btn) return;
+        dragonOpenHallEl_(String(btn.getAttribute("data-el")||""));
+      });
+      
+      document.getElementById("dragonNamePropose")?.addEventListener("click",()=>{ proposeDragonName_().catch(()=>{}); });
+      document.getElementById("dragonNameInput")?.addEventListener("keydown",(ev)=>{
+        if(ev.key!=="Enter") return;
+        try{ ev.preventDefault(); }catch(e){}
+        proposeDragonName_().catch(()=>{});
+      });
+      document.getElementById("dragonNameCands")?.addEventListener("click",(ev)=>{
+        const btn=ev.target?.closest?.(".dragonNameCand");
+        if(!btn || btn.disabled) return;
+        voteDragonName_(String(btn.getAttribute("data-uid")||"")).catch(()=>{});
       });
       
       document.getElementById("dragonBuyTicket")?.addEventListener("click",()=>{ buyDragonTicket_().catch(()=>{}); });
@@ -31555,6 +32603,18 @@ try{
       document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{
         if(state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
       },700));
+      
+      try{
+        const adminArea=document.getElementById("adminArea");
+        if(adminArea && typeof MutationObserver==="function"){
+          let adminShown=(adminArea.style.display==="block");
+          new MutationObserver(()=>{
+            const shown=(adminArea.style.display==="block");
+            if(shown && !adminShown && state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
+            adminShown=shown;
+          }).observe(adminArea,{attributes:true,attributeFilter:["style"]});
+        }
+      }catch(e){}
       document.addEventListener("visibilitychange",()=>{
         if(document.hidden){ stopDragonRealtime_(); return; }
         if(state.joined && dragonModalOpen_()) subscribeDragonS3_();
@@ -38175,8 +39235,9 @@ window.__MK_CHARA_V169__ = {
       saveOutfit:saveOutfit, isDirty:isDirty, currentSavePayload:currentSavePayload,
       applySavedToSel:applySavedToSel, sanitizeName:sanitizeName, revertTryOn:revertTryOn
     },
-    
-    award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo },
+
+award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, isSpecial:isSpecial, specialInfo:specialInfo,
+            grant:function(catKey,name){ try{ if(chara && Array.isArray(chara.cats)) grantOwned(catKey,name); else { var o=loadOwned()||{}; o[ownedKeyFor(catKey,name)]=true; saveOwned(o); } return true; }catch(e){ return false; } } },
     
     stageLayers:stageLayers, isGearBack:isGearBack,
     
