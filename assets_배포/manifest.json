@@ -1,5 +1,5 @@
 {
-  "_version": "20260908012618",
+  "_version": "20260908214121",
   "_webp": true,
   "_webpQuality": 92,
   "01_body": [
@@ -3020,28 +3020,28 @@
       462
     ],
     "05_acc/05_acc_special_dragon_fire.png": [
-      662,
-      459,
-      247,
-      302
+      296,
+      419,
+      658,
+      590
     ],
     "05_acc/05_acc_special_dragon_mountain.png": [
-      660,
-      459,
-      250,
-      302
+      339,
+      417,
+      611,
+      371
     ],
     "05_acc/05_acc_special_dragon_thunder.png": [
-      666,
-      459,
-      237,
-      302
+      216,
+      404,
+      728,
+      383
     ],
     "05_acc/05_acc_special_dragon_water.png": [
-      667,
-      459,
-      236,
-      302
+      609,
+      429,
+      301,
+      339
     ],
     "05_acc/05_acc_special_gaegeun.png": [
       106,
