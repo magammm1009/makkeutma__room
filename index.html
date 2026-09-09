@@ -99,6 +99,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6063,6 +6064,43 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
     97.8%{transform:translateY(calc(var(--dg-travel,1) * 100%)); animation-timing-function:ease-out}
     100%{transform:translateY(0)}
   }
+  
+  .dragonSprite .dgLid.dgLidPaint{
+    -webkit-mask-image:radial-gradient(closest-side,#000 var(--dg-feather,80%),rgba(0,0,0,0) 100%);
+    mask-image:radial-gradient(closest-side,#000 var(--dg-feather,80%),rgba(0,0,0,0) 100%);
+  }
+  
+  .dragonSprite .dgLid > .dgLidSkin{
+    position:absolute; left:-4%; top:0; width:108%; height:100%; display:block; text-decoration:none;
+    background:linear-gradient(180deg,var(--dg-skin-top,#d8b49a) 0%,var(--dg-skin-top,#d8b49a) 52%,var(--dg-skin-bot,#c39678) 100%);
+    border-radius:0 0 46% 46% / 0 0 26% 26%;
+    transform:translateY(-100%);
+    animation:dgLidSkinBlink var(--dg-blink-dur,5.2s) infinite; animation-delay:var(--dg-blink-delay,0s); will-change:transform;
+  }
+  .dragonSprite .dgLid.dgLid2 > .dgLidSkin{animation-name:dgLidSkinBlink2;}
+  .dragonSprite .dgLid > .dgLidSkin > .dgLash{
+    position:absolute; left:0; right:0; bottom:var(--dg-lash-b,13%); height:var(--dg-lash-h,16%);
+    display:block; text-decoration:none;
+    background:linear-gradient(180deg,rgba(0,0,0,0) 0%,var(--dg-lash,#3a2530) 62%,var(--dg-lash,#3a2530) 100%);
+    border-radius:0 0 46% 46% / 0 0 30% 30%;
+  }
+  
+  @keyframes dgLidSkinBlink{
+    0%,93%{transform:translateY(-100%); animation-timing-function:ease-in}
+    94.6%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-out}
+    95.4%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-out}
+    97.8%,100%{transform:translateY(-100%)}
+  }
+  
+  @keyframes dgLidSkinBlink2{
+    0%,86%{transform:translateY(-100%); animation-timing-function:ease-in}
+    87.6%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-out}
+    88.4%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-in}
+    90.8%,95.4%{transform:translateY(-100%); animation-timing-function:ease-in}
+    97%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-out}
+    97.8%{transform:translateY(var(--dg-shut,-3%)); animation-timing-function:ease-out}
+    100%{transform:translateY(-100%)}
+  }
 
   
   .dragonTabs{
@@ -6140,11 +6178,25 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .dragonAdminElRow input[type="text"],.dragonAdminElRow input[type="number"]{min-width:0; padding:6px 8px; font-size:11px;}
   .dragonAdminElRow label{display:flex; align-items:center; gap:4px; font-size:10px; white-space:nowrap;}
   .dragonAdminElRow label input{width:auto;}
+  
+  .dragonAdminAtlas{margin-top:12px; padding:12px; border:1px solid rgba(255,214,166,.20); border-radius:15px; background:#0d0907;}
+  .dragonAdminAtlasHead{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+  .dragonAdminAtlasHead b{font-size:12px}
+  .dragonAdminAtlasHead span{font-size:10px; color:rgba(255,255,255,.5)}
+  .dragonAdminSideBtns{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+  .dragonAdminSideBtns button{flex:1 1 116px; min-width:0;}
+  .dragonAdminSideBtns button.on{box-shadow:0 0 0 2px var(--el-light,#ffd9a6); color:#fff;}
+  .dragonAdminPreviewScene.worldTreeScene{min-height:400px; height:400px; border:1px solid rgba(255,255,255,.1); border-radius:14px;}
+  .dragonAdminPreviewScene .dragonArt{width:380px; max-width:70%;}
+  .dragonAdminAtlas .worldTreeGrowthPreview{margin:10px 0 0;}
+  .dragonAdminAtlas .worldTreeGrowthPreview input[type="range"]{accent-color:var(--el-light,#ffd9a6);}
   @media (max-width:780px){
     #dragonModal .dragonModalPanel{max-height:calc(100vh - 16px); width:calc(100vw - 16px);}
     .dragonArt{width:400px; max-width:92%;}
     .dragonEggRow{grid-template-columns:1fr;}
     .dragonAdminElRow{grid-template-columns:1fr 1fr;}
+    .dragonAdminPreviewScene.worldTreeScene{min-height:300px; height:300px;}
+    .dragonAdminPreviewScene .dragonArt{width:260px; max-width:86%;}
     .dragonTab{font-size:9.5px; padding:4px 8px;}
     .dragonScene .worldTreeLevelOrb{top:92px; left:12px; min-width:84px; padding:8px 10px;}
     .dragonScene .worldTreeLevelOrb b{font-size:19px;}
@@ -7771,6 +7823,9 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div id="petAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">아직 조회한 펫 백업이 없어요.</div>
 
 <div class="hr"></div>
+
+<div class="hint" style="display:flex; align-items:center; justify-content:space-between; gap:10px;"><span>🌳 세계수 시즌 2 (은퇴) · 관리 3칸</span><button class="ghost worldTreeRosterToggle" id="worldTreeAdminFoldToggle" type="button" aria-expanded="false" aria-controls="worldTreeAdminFold">펼치기</button></div>
+<div id="worldTreeAdminFold" style="display:none">
 <div class="hint">🌳 세계수 시즌 2 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">기본값은 최대 777레벨, 레벨당 팀별 100시간이에요. 변경값은 다음 선점부터 적용되며 현재까지 선점한 레벨은 보존됩니다.</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -7846,6 +7901,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="worldTreeBlessCancel" type="button">예약 취소</button>
 </div>
 <div id="worldTreeBlessStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 축복이 없어요.</div>
+</div>
 
 <div class="hr"></div>
 <div class="hint">🐉 드래곤 키우기 시즌 3 관리</div>
@@ -7884,6 +7940,25 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
 <select id="dragonAdminNext" style="flex:1 1 160px;"><option value="">없음</option></select>
+</div>
+
+<div class="dragonAdminAtlas dragonElTint" id="dragonAdminAtlas" data-el="fire">
+<div class="dragonAdminAtlasHead"><b>🐉 관리자 전용 성장 미리보기</b><span>눈 깜빡임까지 실제 화면과 같아요</span></div>
+<div class="dragonAdminSideBtns" id="dragonAdminPreviewEls" role="group" aria-label="기운 고르기">
+<button class="ghost on" type="button" data-el="fire">🔥 불</button><button class="ghost" type="button" data-el="water">💧 물</button><button class="ghost" type="button" data-el="thunder">⚡ 전기</button><button class="ghost" type="button" data-el="mountain">⛰️ 산</button><button class="ghost" type="button" data-el="neutral">🥚 무속성</button>
+</div>
+<section class="worldTreeScene dragonScene dragonAdminPreviewScene" id="dragonAdminPreviewScene" data-el="fire" data-stage="0" aria-label="관리자 드래곤 성장 미리보기">
+<div class="dragonAura" aria-hidden="true"></div>
+<div class="dragonShadow" aria-hidden="true"></div>
+<div class="dragonFx" aria-hidden="true"><div class="dragonSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="dragonArt" id="dragonAdminPreviewArt" aria-hidden="true"><div class="dragonSprite" id="dragonAdminPreviewSprite" data-el="fire" data-stage="0"></div></div>
+</section>
+<div class="worldTreeGrowthPreview">
+<div class="worldTreeGrowthPreviewHead"><b>성장 단계 선택</b><span id="dragonAdminPreviewLabel">0단계 · 잠든 알</span></div>
+<input aria-label="관리자가 미리 볼 드래곤 단계" id="dragonAdminPreviewRange" min="0" max="7" step="1" type="range" value="0"/>
+<div class="worldTreeGrowthPreviewFoot"><span>0단계 알</span><span id="dragonAdminPreviewName">불의 드래곤</span><span>7단계 고룡</span></div>
+</div>
+<div class="tiny" style="opacity:.7; line-height:1.5; margin-top:8px;">무속성은 0·1단계(알)만 그려져 있어요. ☁️ 저사양 모드나 OS의 "동작 줄이기"가 켜져 있으면 눈 깜빡임이 보이지 않아요.</div>
 </div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="primary" id="dragonAdminSave" type="button">드래곤 설정 저장</button>
@@ -27009,7 +27084,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17135; 
+const MK_APP_BUILD = 17136; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -27031,6 +27106,7 @@ const MK_PAGE_LOADED_AT = Date.now();
     lastErrorAt:0,
     lastSyncAtMs:0,
     rosterCollapsed:false,
+    adminFoldOpen:false,     
     
     anchor:null,             
     summary:null,            
@@ -27586,6 +27662,17 @@ function worldTreeMemberRows_(tree){
     if(button){
       button.textContent=collapsed?"펼치기":"접기";
       button.setAttribute("aria-expanded",String(!collapsed));
+    }
+  }
+  
+  function applyWorldTreeAdminFold_(){
+    const body=document.getElementById("worldTreeAdminFold");
+    const button=document.getElementById("worldTreeAdminFoldToggle");
+    const open=!!worldTreeS2Runtime.adminFoldOpen;
+    if(body) body.style.display=open?"":"none";
+    if(button){
+      button.textContent=open?"접기":"펼치기";
+      button.setAttribute("aria-expanded",String(open));
     }
   }
   function worldTreeRankTeam_(rows,team){
@@ -29095,6 +29182,10 @@ let anchor=null;
       worldTreeS2Runtime.rosterCollapsed=!worldTreeS2Runtime.rosterCollapsed;
       applyWorldTreeRosterCollapsed_();
     });
+    document.getElementById("worldTreeAdminFoldToggle")?.addEventListener("click",()=>{
+      worldTreeS2Runtime.adminFoldOpen=!worldTreeS2Runtime.adminFoldOpen;
+      applyWorldTreeAdminFold_();
+    });
     document.getElementById("worldTreePreviewRange")?.addEventListener("input",(ev)=>{
       if(!state.adminOk) return;
       worldTreeS2Runtime.previewLevel=Math.max(0,Math.round(Number(ev.target?.value)||0));
@@ -29222,7 +29313,7 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       nextElement:""
     });
     
-    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":38.538,"cy":69.523,"a":5.213,"b":5.065,"angle":-35.2},"3":{"x":31.882,"y":63.737,"w":5.784,"h":5.092,"travel":1.0,"dir":"down","cx":34.774,"cy":65.878,"a":5.675,"b":5.408,"angle":-16.6},"4":{"x":29.284,"y":55.822,"w":4.905,"h":3.718,"travel":1.1,"dir":"down","cx":31.779,"cy":57.231,"a":4.393,"b":4.394,"angle":-18.8},"5":{"x":23.53,"y":49.864,"w":4.917,"h":3.658,"travel":1.1,"dir":"down","cx":25.664,"cy":51.469,"a":5.089,"b":4.425,"angle":-21.5},"6":{"x":20.17,"y":40.934,"w":3.467,"h":2.566,"travel":1.1,"dir":"down","cx":21.696,"cy":41.856,"a":3.589,"b":2.947,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.69,"cy":71.291,"a":5.404,"b":4.979,"angle":-36.6},"3":{"x":34.697,"y":64.738,"w":5.476,"h":5.544,"travel":1.0,"dir":"down","cx":37.285,"cy":67.166,"a":5.558,"b":5.121,"angle":-33.2},"4":{"x":28.996,"y":56.07,"w":2.691,"h":2.562,"travel":1.1,"dir":"down","cx":30.277,"cy":57.243,"a":3.122,"b":3.06,"angle":-27.5},"5":{"x":27.747,"y":49.971,"w":2.781,"h":2.336,"travel":1.1,"dir":"down","cx":28.766,"cy":50.705,"a":2.85,"b":2.898,"angle":-15.7},"6":{"x":19.996,"y":38.615,"w":3.278,"h":2.849,"travel":1.1,"dir":"down","cx":21.267,"cy":39.72,"a":3.261,"b":2.218,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.163,"cy":70.988,"a":6.066,"b":5.174,"angle":-38.4},"3":{"x":32.466,"y":65.235,"w":5.66,"h":5.808,"travel":1.0,"dir":"down","cx":34.689,"cy":67.79,"a":6.259,"b":5.478,"angle":-33.6},"4":{"x":29.639,"y":58.693,"w":2.75,"h":2.75,"travel":1.1,"dir":"down","cx":30.922,"cy":59.964,"a":2.883,"b":3.185,"angle":-36.8},"5":{"x":25.531,"y":52.57,"w":3.325,"h":2.622,"travel":1.1,"dir":"down","cx":27.374,"cy":53.681,"a":3.652,"b":3.146,"angle":-27.5},"6":{"x":20.512,"y":46.195,"w":2.965,"h":2.121,"travel":1.1,"dir":"down","cx":21.857,"cy":47.112,"a":3.227,"b":2.573,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":40.749,"y":70.737,"w":4.367,"h":4.636,"travel":1.0,"dir":"up","cx":42.801,"cy":73.148,"a":3.9,"b":4.289,"angle":-9.6},"3":{"x":37.065,"y":66.351,"w":3.256,"h":3.435,"travel":1.0,"dir":"down","cx":38.396,"cy":67.656,"a":3.327,"b":3.478,"angle":-32.8},"4":{"x":31.326,"y":57.135,"w":2.865,"h":2.636,"travel":1.1,"dir":"up","cx":32.71,"cy":58.367,"a":3.109,"b":2.705,"angle":-33.8},"5":{"x":33.376,"y":49.253,"w":2.84,"h":2.783,"travel":1.1,"dir":"down","cx":34.739,"cy":50.418,"a":3.308,"b":2.283,"angle":-37.5},"6":{"x":32.237,"y":42.611,"w":2.29,"h":1.917,"travel":1.1,"dir":"down","cx":33.174,"cy":43.531,"a":2.599,"b":2.026,"angle":-33.9},"7":{"x":23.565,"y":29.98,"w":2.928,"h":2.186,"travel":1.1,"dir":"down","cx":25.412,"cy":30.909,"a":2.986,"b":2.733,"angle":-25.0}}};
+    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":39.086,"cy":69.334,"a":7.498,"b":5.858,"angle":-28.4,"lid":"paint","skinTop":"#fc3e1e","skinBot":"#fcedd8","lash":"#260505"},"3":{"x":31.882,"y":63.737,"w":5.784,"h":5.092,"travel":1.0,"dir":"down","cx":35.183,"cy":66.031,"a":9.734,"b":6.751,"angle":-21.4,"lid":"paint","skinTop":"#fc331c","skinBot":"#fcebd6","lash":"#1b0304"},"4":{"x":29.284,"y":55.822,"w":4.905,"h":3.718,"travel":1.1,"dir":"down","cx":31.779,"cy":57.231,"a":4.393,"b":4.394,"angle":-18.8},"5":{"x":23.53,"y":49.864,"w":4.917,"h":3.658,"travel":1.1,"dir":"down","cx":25.664,"cy":51.469,"a":5.089,"b":4.425,"angle":-21.5},"6":{"x":20.17,"y":40.934,"w":3.467,"h":2.566,"travel":1.1,"dir":"down","cx":21.696,"cy":41.856,"a":3.589,"b":2.947,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.771,"cy":71.449,"a":6.867,"b":5.368,"angle":-29.6,"lid":"paint","skinTop":"#88cffc","skinBot":"#fbf9f6","lash":"#03114a"},"3":{"x":34.697,"y":64.738,"w":5.476,"h":5.544,"travel":1.0,"dir":"down","cx":37.473,"cy":67.252,"a":7.132,"b":5.294,"angle":-22.4,"lid":"paint","skinTop":"#8ad2fc","skinBot":"#fcf9f8","lash":"#031148"},"4":{"x":28.996,"y":56.07,"w":2.691,"h":2.562,"travel":1.1,"dir":"down","cx":30.277,"cy":57.243,"a":3.122,"b":3.06,"angle":-27.5},"5":{"x":27.747,"y":49.971,"w":2.781,"h":2.336,"travel":1.1,"dir":"down","cx":28.766,"cy":50.705,"a":2.85,"b":2.898,"angle":-15.7},"6":{"x":19.996,"y":38.615,"w":3.278,"h":2.849,"travel":1.1,"dir":"down","cx":21.267,"cy":39.72,"a":3.261,"b":2.218,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.67,"cy":71.532,"a":7.876,"b":5.369,"angle":-45.8,"lid":"paint","skinTop":"#f0d4fc","skinBot":"#fcfafc","lash":"#1d042d"},"3":{"x":32.466,"y":65.235,"w":5.66,"h":5.808,"travel":1.0,"dir":"down","cx":35.178,"cy":67.721,"a":8.027,"b":5.582,"angle":-44.3,"lid":"paint","skinTop":"#f5ebfc","skinBot":"#fcfbfd","lash":"#0b030c"},"4":{"x":29.639,"y":58.693,"w":2.75,"h":2.75,"travel":1.1,"dir":"down","cx":30.922,"cy":59.964,"a":2.883,"b":3.185,"angle":-36.8},"5":{"x":25.531,"y":52.57,"w":3.325,"h":2.622,"travel":1.1,"dir":"down","cx":27.374,"cy":53.681,"a":3.652,"b":3.146,"angle":-27.5},"6":{"x":20.512,"y":46.195,"w":2.965,"h":2.121,"travel":1.1,"dir":"down","cx":21.857,"cy":47.112,"a":3.227,"b":2.573,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":40.749,"y":70.737,"w":4.367,"h":4.636,"travel":1.0,"dir":"up","cx":43.144,"cy":73.365,"a":5.059,"b":4.745,"angle":-35.5,"lid":"paint","skinTop":"#fdfaf1","skinBot":"#fdf5e6","lash":"#0b0c04"},"3":{"x":37.065,"y":66.351,"w":3.256,"h":3.435,"travel":1.0,"dir":"down","cx":38.625,"cy":67.815,"a":4.48,"b":3.143,"angle":-43.9,"lid":"paint","skinTop":"#fdf8ea","skinBot":"#fdf8ed","lash":"#090904"},"4":{"x":31.326,"y":57.135,"w":2.865,"h":2.636,"travel":1.1,"dir":"up","cx":32.71,"cy":58.367,"a":3.109,"b":2.705,"angle":-33.8},"5":{"x":33.376,"y":49.253,"w":2.84,"h":2.783,"travel":1.1,"dir":"down","cx":34.739,"cy":50.418,"a":3.308,"b":2.283,"angle":-37.5},"6":{"x":32.237,"y":42.611,"w":2.29,"h":1.917,"travel":1.1,"dir":"down","cx":33.174,"cy":43.531,"a":2.599,"b":2.026,"angle":-33.9},"7":{"x":23.565,"y":29.98,"w":2.928,"h":2.186,"travel":1.1,"dir":"down","cx":25.412,"cy":30.909,"a":2.986,"b":2.733,"angle":-25.0}}};
 
     const dragonS3Runtime = {
       config:null,            
@@ -29235,6 +29326,7 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       membersFetchedAtMs:0,
       configFetchedAtMs:0,
       viewEl:"",              
+      adminPreview:{el:"fire",stage:0},   
       feedLock:false,
       campLock:false,
       autoStartTriedAtMs:0,
@@ -29892,6 +29984,8 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
       for(let i=0;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains("dgLid")) return kids[i]; }
       return null;
     }
+    
+    function dragonHex_(v){ return (typeof v==="string" && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : ""; }
     function dragonPaintLid_(box){
       if(!DRAGON_EYES || !box) return;
       const el=box.getAttribute("data-el");
@@ -29900,31 +29994,44 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
       let lid=dragonLidOf_(box), slide=null, b=null;
       if(!e){ if(lid) box.removeChild(lid); return; }   
       const v2=dragonIsNum_(e.cx)&&dragonIsNum_(e.cy)&&dragonIsNum_(e.a)&&dragonIsNum_(e.b)&&dragonIsNum_(e.angle)&&e.a>0&&e.b>0;
-      const kind=v2?"2":"1";
+      const skinTop=dragonHex_(e.skinTop), skinBot=dragonHex_(e.skinBot), lashCol=dragonHex_(e.lash);
+      const paint=v2 && e.lid==="paint" && !!skinTop && !!skinBot && !!lashCol;   
+      const kind=paint?"3":(v2?"2":"1");
       if(lid && lid.getAttribute("data-lid")!==kind){ box.removeChild(lid); lid=null; }
       if(lid){
-        slide=v2?lid.firstElementChild:null;
-        b=v2?(slide?slide.firstElementChild:null):lid.firstElementChild;
+        slide=(kind==="1")?null:lid.firstElementChild;
+        b=(kind==="3")?null:((kind==="2")?(slide?slide.firstElementChild:null):lid.firstElementChild);
       }else{
         lid=document.createElement("i");
         
-        lid.className="dgLid"+(Math.random()<0.3?" dgLid2":"");
+        const twice=(Math.random()<0.3?" dgLid2":"");
+        lid.className=(paint?"dgLid dgLidPaint":"dgLid")+twice;
         lid.setAttribute("data-lid",kind);
         lid.setAttribute("aria-hidden","true");
-        b=document.createElement("b");
-        if(v2){
+        if(paint){
+          
           slide=document.createElement("u");
-          slide.className="dgLidSlide";
-          slide.appendChild(b);
+          slide.className="dgLidSkin";
+          const lash=document.createElement("s");
+          lash.className="dgLash";
+          slide.appendChild(lash);
           lid.appendChild(slide);
         }else{
-          lid.appendChild(b);
+          b=document.createElement("b");
+          if(v2){
+            slide=document.createElement("u");
+            slide.className="dgLidSlide";
+            slide.appendChild(b);
+            lid.appendChild(slide);
+          }else{
+            lid.appendChild(b);
+          }
         }
         lid.style.setProperty("--dg-blink-dur",(4.2+Math.random()*3).toFixed(2)+"s");
         lid.style.setProperty("--dg-blink-delay",(-Math.random()*6).toFixed(2)+"s");
         box.appendChild(lid);
       }
-      if(!b) return;
+      if(paint ? !slide : !b) return;
       const travel=dragonIsNum_(e.travel)?e.travel:1;
       const sign=(e.dir==="up")?-1:1;                   
       if(v2){
@@ -29935,6 +30042,13 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
         lid.style.height=dragonP3_(e.b);
         lid.style.transform="rotate("+e.angle.toFixed(3)+"deg)";
         lid.style.transformOrigin="50% 50%";
+        if(paint){
+          
+          lid.style.setProperty("--dg-skin-top",skinTop);
+          lid.style.setProperty("--dg-skin-bot",skinBot);
+          lid.style.setProperty("--dg-lash",lashCol);
+          return;
+        }
         lid.style.setProperty("--dg-travel",(sign*travel).toFixed(3));
         b.style.width=dragonP3_(100/e.a*100);
         b.style.height=dragonP3_(100/e.b*100);
@@ -32417,6 +32531,41 @@ function dragonAdminRowHtml_(key,el,isNew){
         +`<input class="dgAdmOrder" type="number" min="1" max="99" step="1" value="${Math.round(Number(el.order)||99)}"/>`
         +`<label><input class="dgAdmActive" type="checkbox"${el.active?" checked":""}/>활성</label></div>`;
     }
+    
+    function renderDragonAdminPreview_(){
+      const scene=document.getElementById("dragonAdminPreviewScene");
+      const sprite=document.getElementById("dragonAdminPreviewSprite");
+      if(!scene || !sprite) return;
+      const p=dragonS3Runtime.adminPreview||(dragonS3Runtime.adminPreview={el:"fire",stage:0});
+      const el=String(p.el||"fire");
+      const maxStage=(el==="neutral")?1:7;
+      const stage=Math.max(0,Math.min(maxStage,Math.floor(Number(p.stage)||0)));
+      p.el=el; p.stage=stage;
+      const box=document.getElementById("dragonAdminAtlas");
+      if(box && box.getAttribute("data-el")!==el) box.setAttribute("data-el",el);
+      if(scene.getAttribute("data-el")!==el) scene.setAttribute("data-el",el);
+      if(scene.getAttribute("data-stage")!==String(stage)) scene.setAttribute("data-stage",String(stage));
+      if(sprite.getAttribute("data-el")!==el) sprite.setAttribute("data-el",el);
+      if(sprite.getAttribute("data-stage")!==String(stage)) sprite.setAttribute("data-stage",String(stage));
+      dragonPaintLid_(sprite);   
+      const range=document.getElementById("dragonAdminPreviewRange");
+      if(range){
+        if(range.max!==String(maxStage)) range.max=String(maxStage);
+        if(range.value!==String(stage)) range.value=String(stage);
+      }
+      const name=(el==="neutral")?"무속성(알)":(dragonConfig_().elements[el]?.name||el);
+      dragonSetText_("dragonAdminPreviewLabel",`${stage}단계 · ${DRAGON_STAGE_NAMES[stage]||""}`);
+      dragonSetText_("dragonAdminPreviewName",name);
+      const btns=document.getElementById("dragonAdminPreviewEls");
+      if(btns){
+        const kids=btns.children;
+        for(let i=0;i<kids.length;i++){
+          const k=kids[i];
+          if(k && k.classList) k.classList.toggle("on",k.getAttribute("data-el")===el);
+        }
+      }
+      scene.setAttribute("aria-label",`${name} ${stage}단계 ${DRAGON_STAGE_NAMES[stage]||""} 미리보기`);
+    }
     function renderDragonAdminPanel_(){
       const wrap=document.getElementById("dragonAdminEls");
       if(!wrap) return;
@@ -32456,6 +32605,7 @@ function dragonAdminRowHtml_(key,el,isNew){
           : "드래곤 시즌은 아직 시작되지 않았어요. 세계수가 은퇴하면 자동으로 시작되고, [🐉 지금 시작]으로 먼저 열 수도 있어요.";
         if(status.textContent!==text) status.textContent=text;
       }
+      try{ renderDragonAdminPreview_(); }catch(e){}   
     }
     async function saveDragonAdminConfig_(){
       if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
@@ -32666,6 +32816,19 @@ feedDragonFromMenu_(Number(btn.getAttribute("data-coins"))||0,Number(btn.getAttr
       document.getElementById("dragonAdminSave")?.addEventListener("click",()=>{ saveDragonAdminConfig_().catch(()=>{}); });
       document.getElementById("dragonAdminStart")?.addEventListener("click",()=>{ dragonAdminStart_().catch(()=>{}); });
       document.getElementById("dragonAdminPause")?.addEventListener("click",()=>{ dragonAdminTogglePause_().catch(()=>{}); });
+      
+      document.getElementById("dragonAdminPreviewEls")?.addEventListener("click",(ev)=>{
+        const btn=ev.target && ev.target.closest ? ev.target.closest("button[data-el]") : null;
+        if(!btn) return;
+        dragonS3Runtime.adminPreview={el:String(btn.getAttribute("data-el")||"fire"),stage:Number(dragonS3Runtime.adminPreview?.stage)||0};
+        renderDragonAdminPreview_();
+      });
+      document.getElementById("dragonAdminPreviewRange")?.addEventListener("input",(ev)=>{
+        const v=Math.max(0,Math.round(Number(ev.target?.value)||0));
+        dragonS3Runtime.adminPreview={el:String(dragonS3Runtime.adminPreview?.el||"fire"),stage:v};
+        renderDragonAdminPreview_();
+      });
+      try{ renderDragonAdminPreview_(); }catch(e){}
       document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{
         if(state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
       },700));
@@ -35034,6 +35197,19 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
 #settingsModal #adminArea > .row{
   margin:2px 0;
 }
+
+#settingsModal #adminArea > #worldTreeAdminFold > .hr{
+  margin:8px 0 !important;
+}
+#settingsModal #adminArea > #worldTreeAdminFold > .hint{
+  margin-top:2px;
+}
+#settingsModal #adminArea > #worldTreeAdminFold > .tiny{
+  margin:0 0 4px !important;
+}
+#settingsModal #adminArea > #worldTreeAdminFold > .row{
+  margin:2px 0;
+}
 #settingsModal #saveDash,
 #settingsModal #sudaOpenRoom,
 #settingsModal #sudaCloseRoom,
@@ -35055,6 +35231,9 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
     gap:13px !important;
   }
   #settingsModal #adminArea > .row{
+    gap:9px 10px !important;
+  }
+  #settingsModal #adminArea > #worldTreeAdminFold > .row{
     gap:9px 10px !important;
   }
   #settingsModal #saveDash,
