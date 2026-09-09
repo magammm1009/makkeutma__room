@@ -98,6 +98,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6897,7 +6898,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="vmViewMini" type="button">미니 보기</button>
 <button class="ghost" id="vmViewWorldTree" type="button">🌳 세계수🌳</button>
 
-<button class="ghost" id="vmViewDragon" type="button" style="display:none">🐉 드래곤 키우기</button>
+
+<button class="ghost" id="vmViewDragon" type="button" style="display:none">🐉 드래곤</button>
 </div>
 </div>
 </div>
@@ -27007,7 +27009,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17134; 
+const MK_APP_BUILD = 17135; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29259,6 +29261,7 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       dailySeedDay:"",
       board:null,             
       boardKey:"",            
+      boardHold:"",           
       pending:null,           
       leverBusy:false,
       leverTimers:[],
@@ -31941,10 +31944,12 @@ function dragonMountReels_(){
         if(lever) lever.disabled=true;
         dragonSpinReels_(p.faces,()=>{
           dragonS3Runtime.settledKey=p.key;
+          dragonS3Runtime.boardHold=dragonS3Runtime.boardKey;   
           dragonSlotSettle_(p.roll,p.roll>0?" · 가방에 담았어요":"");
           dragonS3Runtime.leverBusy=false;
           dragonS3Runtime.pending=null;
           renderDragonS3_();
+          try{ document.getElementById("dragonSlotOut")?.scrollIntoView?.({behavior:dragonCalmMotion_()?"auto":"smooth",block:"nearest"}); }catch(e){}   
         });
         return;
       }
@@ -31994,10 +31999,12 @@ function dragonMountReels_(){
       if(draw.n>0) await addDragonScales_(draw.n);
       dragonSpinReels_(draw.faces,()=>{
         dragonS3Runtime.settledKey=`daily:${day}`;
+        dragonS3Runtime.boardHold=dragonS3Runtime.boardKey;   
         dragonSlotSettle_(draw.n,draw.n>0?" · 가방에 담았어요":"");
         dragonS3Runtime.leverBusy=false;
         dragonS3Runtime.pending=null;
         renderDragonS3_();
+        try{ document.getElementById("dragonSlotOut")?.scrollIntoView?.({behavior:dragonCalmMotion_()?"auto":"smooth",block:"nearest"}); }catch(e){}   
       });
     }
     
@@ -32011,9 +32018,15 @@ function dragonMountReels_(){
     }
 
 function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guerrilla":"daily"; }
+    
+    function dragonRaceHoldKey_(){
+      const hold=String(dragonS3Runtime.boardHold||"");
+      return (hold && hold===String(dragonS3Runtime.boardKey||""))?hold:"";
+    }
     function dragonRaceResetSlotView_(){
       dragonClearLeverTimers_();
       dragonS3Runtime.settledKey="";
+      dragonS3Runtime.boardHold="";   
       const wrap=document.getElementById("dragonReels");
       if(wrap) wrap.className="dragonReels";
       const out=document.getElementById("dragonSlotOut");
@@ -32073,6 +32086,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
           cardHtml=`오늘 완주 · 뒤집기 ${dragonNumFmt_(rec.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(roll)}장`
             +`<small>기록 ${dragonMsText_(rec.ms)} · 자정(KST)에 새 판이 열려요</small>`;
           showSlot=true;
+          wantKey=dragonRaceHoldKey_();   
           settle={key:`daily:${day}`,faces:d.faces,n:roll,tail:""};
           loreText="오늘의 레이스는 하루 한 번이에요. 결과는 서버 시드로 미리 정해져 있어 다시 해도 바뀌지 않아요.";
         }else if(!dragonS3Runtime.dailySeed){
@@ -32104,6 +32118,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
             cardHtml=`완주 완료 · 기록 ${dragonMsText_(mineRes.ms)} · 뒤집기 ${dragonNumFmt_(mineRes.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(roll)}장`
               +`<small>지금까지 완주 ${count}명 · 순위 보너스는 레이스가 끝나면 들어와요</small>`;
             showSlot=true;
+            wantKey=dragonRaceHoldKey_();   
             if(open.seed!==undefined) settle={key:`race:${String(open.id)}`,faces:d.faces,n:roll,tail:""};
             loreText=`${flashLore}남은 시간 동안 다른 작가들의 완주를 기다려요.`;
           }else if(open.seed===undefined){
@@ -32133,6 +32148,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
         try{ if(dragonS3Runtime.board && typeof dragonS3Runtime.board.destroy==="function") dragonS3Runtime.board.destroy(); }catch(e){}
         dragonS3Runtime.board=null;
         dragonS3Runtime.boardKey="";
+        dragonS3Runtime.boardHold="";   
         if(boardWrap) boardWrap.innerHTML="";
         if(wantKey && boardWrap){
           const modeNow=mode;
@@ -32300,6 +32316,7 @@ function stopDragonRealtime_(){
       try{ if(dragonS3Runtime.board && typeof dragonS3Runtime.board.destroy==="function") dragonS3Runtime.board.destroy(); }catch(e){}
       dragonS3Runtime.board=null;
       dragonS3Runtime.boardKey="";
+      dragonS3Runtime.boardHold="";   
       dragonS3Runtime.pending=null;
       dragonS3Runtime.leverBusy=false;
       dragonS3Runtime.settledKey="";
@@ -39800,7 +39817,7 @@ function onModalShown(){
   var HOOD_HAIR_CLIP_CIRCLE = { cx:0.5, cy:0.322, r:0.21 };
   var WRITE_DEBOUNCE_MS = 1500;
 
-  var stats = { bakeCount:0, bakeCacheHit:0, writeFlushCount:0, writeAttemptCount:0, writeOkCount:0, blinkCount:0, moverAttachCount:0 }; 
+  var stats = { bakeCount:0, bakeCacheHit:0, bakePartial:0, writeFlushCount:0, writeAttemptCount:0, writeOkCount:0, blinkCount:0, moverAttachCount:0 }; 
 
   function bridge(){ return window.__MK_CHARA_TILE_BRIDGE__ || null; }
   function selfUid(){
@@ -40255,11 +40272,21 @@ var maniPromise = null;
       img.onload = function(){ res(img); };
       
       var webpRetried = false;
+      var retried = 0;   
       img.onerror = function(){
         if(!webpRetried && /\.webp(\?|$)/i.test(img.src)){
           webpRetried = true;
           img.src = img.src.replace(/\.webp(\?|$)/i, '.png$1');
           if(window.__mkWebpDown__) window.__mkWebpDown__();
+          return;
+        }
+        
+        if(retried < 1){
+          retried++;
+          setTimeout(function(){
+            var base = img.src.replace(/[?&]mkretry=\d+/, '');
+            img.src = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'mkretry=' + retried;
+          }, 1500);
           return;
         }
         rej(new Error('img load fail: ' + url));
@@ -40634,6 +40661,8 @@ m.rot = rot || 0;
         moverSizeSync(m, b);
         moverSetPos(m, Math.random() * b.mx, Math.random() * b.my, 0); 
         m.t.push(setTimeout(function(){ moverStep(m); }, 400 + Math.random() * 2200)); 
+        
+        bakeHealLater_(res, c, function(){ return moverReg.has(m); }, function(r2){ try{ blinkDetach(img); img.src = r2.url; if(r2.urlClosed) blinkAttach(img, r2.url, r2.urlClosed); ensureManifest().then(function(mani){ m.eyes = computeEyeFracs(mani, r2); }, function(){}); }catch(e){} });
       }, function(){
         moverDestroy(m); 
         moverRetryBackoffUntil = Date.now() + 8000; 
@@ -40710,6 +40739,9 @@ m.rot = rot || 0;
   }
 
 var bakeCache = new Map(); 
+  
+  var BAKE_PARTIAL_TTL_MS = 15000;
+  var bakePartialWarned = new Set();   
 
 var BAKE_USE_BLOB = true;      
   var REVOKE_QUEUE_MAX = 400;    
@@ -40806,7 +40838,8 @@ var BAKE_USE_BLOB = true;
       revokeQueue.forEach(function(_at, u){ if(h.has(u)) held++; });
     }catch(e){}
     return { mode: bakeBlobMode_() ? 'blob' : 'dataurl', cacheSize: bakeCache.size,
-             revokeQueue: revokeQueue.size, revoked: bakeUrlStats.revoked, held: held, warn: bakeUrlStats.warn };
+             revokeQueue: revokeQueue.size, revoked: bakeUrlStats.revoked, held: held, warn: bakeUrlStats.warn,
+             partial: stats.bakePartial };   
   }
   function bakeSweepNow(){ return revokeSweep_(true); } 
 
@@ -40921,7 +40954,15 @@ function adjOf(hue, key){
         return loadImg(L.url).then(function(img){ L.img = img; return L; }, function(){ L.img = null; return L; });
       })).then(function(ls){
         var ok = ls.filter(function(L){ return L.img; });
+        var missed = ls.filter(function(L){ return !L.img; });
         if(!ok.length) throw new Error('no images');
+        
+        var partial = missed.length > 0;
+        if(partial){
+          stats.bakePartial++;
+          if(bakePartialWarned.size < 40 && !bakePartialWarned.has(key)){ bakePartialWarned.add(key);
+            console.warn('[V253_BAKEPARTIAL] 파츠 일부 로드 실패 → 벗겨진 채 임시 표시, ' + (BAKE_PARTIAL_TTL_MS/1000) + '초 뒤 다시 굽는다:', missed.map(function(L){ return L.cat + '/' + L.name; }).join(', ')); }
+        }
         var meta = { facePart: null, faceRect: null, layers: [] };
         
         var hoodTmpCv = null, hoodMaskCv = null;
@@ -40988,7 +41029,8 @@ function adjOf(hue, key){
         var openUrl = '';
         function result(closedUrl){
           return { url: openUrl, urlClosed: closedUrl || null, w: BAKE_SIZE, h: BAKE_SIZE,
-                   facePart: meta.facePart, faceRect: meta.faceRect, layers: meta.layers };
+                   facePart: meta.facePart, faceRect: meta.faceRect, layers: meta.layers,
+                   partial: partial };   
         }
         return canvasToUrl_(openCv).then(function(u){
           openUrl = u;
@@ -41002,11 +41044,32 @@ function adjOf(hue, key){
     pr = pr.catch(function(err){ bakeCache.delete(key); throw err; });
     bakeCache.set(key, pr);
     
+    pr.then(function(res){
+      if(!res || !res.partial) return;
+      setTimeout(function(){ if(bakeCache.get(key) === pr){ bakeCache.delete(key); bakeRetire_(pr); } }, BAKE_PARTIAL_TTL_MS);
+    }, function(){});
+    
     if(bakeCache.size > 60){
       var oldest = bakeCache.keys().next().value;
       if(oldest !== key){ var dead = bakeCache.get(oldest); bakeCache.delete(oldest); bakeRetire_(dead); }
     }
     return pr;
+  }
+
+function bakeHealLater_(res, c, isAlive, apply){
+    if(!res || !res.partial || !c) return;
+    var tries = 0;
+    function again(){
+      setTimeout(function(){
+        if(!isAlive()) return;
+        bakeChara(c.parts, c.hue, c.flip).then(function(r2){
+          if(!isAlive() || !r2) return;
+          if(!r2.partial){ apply(r2); return; }
+          if(++tries < 3) again();
+        }, function(){});
+      }, BAKE_PARTIAL_TTL_MS + 800 + Math.random() * 1500);
+    }
+    again();
   }
 
 function fillSlot(box, p){
@@ -41039,6 +41102,8 @@ function fillSlot(box, p){
           img.src = res.url;
           
           if(res.urlClosed) blinkAttach(img, res.url, res.urlClosed);
+          
+          bakeHealLater_(res, c, function(){ return !!(img.isConnected && box.contains(img)); }, function(r2){ try{ blinkDetach(img); img.src = r2.url; if(r2.urlClosed) blinkAttach(img, r2.url, r2.urlClosed); }catch(e){} });
         }catch(e){}
       }, function(){
         try{ if(box.contains(img)) box.removeChild(img); box.textContent = '✨'; }catch(e){}
