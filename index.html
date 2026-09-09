@@ -97,6 +97,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6273,7 +6274,15 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .dragonBagHead{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:11px; color:rgba(255,255,255,.6);}
   .dragonBagHead b{color:#fff; font-size:13px;}
   .dragonBagHead span{font-variant-numeric:tabular-nums;}
-  .dragonBagLore{margin:8px 0 0; font-size:10px; line-height:1.6; color:rgba(255,255,255,.55);}
+  
+  .dragonBagHead .dgOnTouch{font-size:9.5px; text-align:right;}
+  .dragonBagStats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .dragonBagStat{display:flex; align-items:center; gap:9px; min-width:0; padding:9px 11px; border-radius:12px; border:1px solid rgba(200,180,255,.22); background:rgba(190,170,255,.08);}
+  .dragonBagStat .dgBagIc{width:28px; height:28px; flex:0 0 auto;}
+  .dragonBagStat .dgBagEm{font-size:22px; line-height:1; flex:0 0 auto;}
+  .dragonBagStat small{display:block; font-size:9px; color:rgba(255,255,255,.55);}
+  .dragonBagStat b{font-size:19px; font-weight:1000; color:#eadcff; font-variant-numeric:tabular-nums; line-height:1.15;}
+  .dragonBagStat em{font-style:normal; margin-left:2px; font-size:10px; font-weight:800; color:rgba(255,255,255,.6);}
   .dragonBagBtns{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
   .dragonBagBtn{
     flex:1 1 150px; min-height:40px; padding:9px 10px; cursor:pointer; color:inherit; text-align:center;
@@ -6577,6 +6586,31 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   }
   .dragonFeedQty .dgQtySum{font-size:10.5px; font-weight:1000; color:var(--el-light,#ffd9a6); font-variant-numeric:tabular-nums;}
   .dragonFeedQty .dgQtyNote{flex:1 1 100%; font-size:9px; color:rgba(255,255,255,.45);}
+
+  
+  #dragonModal .dgTip{position:relative;}
+  #dragonModal .dgTip::after{
+    content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 7px); translate:-50% 0; z-index:30;
+    width:max-content; max-width:min(250px,80vw); padding:6px 9px; border-radius:9px; white-space:normal; text-align:center;
+    font-size:10px; font-weight:800; line-height:1.5; color:#fff; background:rgba(12,8,20,.96);
+    border:1px solid rgba(255,255,255,.18); box-shadow:0 6px 18px rgba(0,0,0,.45);
+    opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s ease;
+  }
+  #dragonModal .dgTip:first-child::after{left:0; translate:0 0;}
+  #dragonModal .dgTip:last-child:not(:first-child)::after{left:auto; right:0; translate:0 0;}
+  #dragonModal .dgTip:focus-visible::after,#dragonModal .dgTipTap:focus::after{opacity:1; visibility:visible;}
+  #dragonModal .dgGaugeWrap{display:block; border-radius:999px; outline:none;}
+  #dragonModal .dgGaugeWrap:focus-visible{box-shadow:0 0 0 2px var(--el-glow,rgba(255,180,110,.5));}
+  #dragonModal .worldTreePanel{overflow-x:hidden;}
+  @media (hover:hover){
+    #dragonModal .dgTip:hover::after{opacity:1; visibility:visible;}
+    #dragonModal .dgOnTouch{display:none;}
+    #dragonModal .dragonFeedBtn .dgCs{display:none;}
+  }
+  @media (hover:none){
+    #dragonModal .dgOnHover{display:none;}
+  }
+  @media (prefers-reduced-motion:reduce){#dragonModal .dgTip::after{transition:none;}}
 
   
   .dragonName{margin-top:15px; padding:14px; border:1px solid rgba(255,214,166,.2); border-radius:15px; background:rgba(255,214,166,.045);}
@@ -7541,7 +7575,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="dragonEggRow" id="dragonEggRow" aria-label="기운 고르기"></div>
 <div class="worldTreeMyStatus" id="dragonMyStatus">기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요.</div>
 <div class="dragonPool" id="dragonPool">
-<div class="dragonPoolHead"><b>🐣 마리별 게이지</b><span id="dragonPoolNote">레벨당 필요 코인은 관리자 칸에서 바뀔 수 있어요</span></div>
+<div class="dragonPoolHead"><b>🐣 마리별 게이지</b><span id="dragonPoolNote"><span class="dgOnHover">게이지에 마우스를 올리면</span><span class="dgOnTouch">게이지를 누르면</span> 필요 코인이 보여요</span></div>
 <div id="dragonPoolRows"></div>
 </div>
 <div class="dragonFeed" id="dragonFeed">
@@ -7583,12 +7617,16 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="dragonRaceRank" id="dragonRaceRank"></div>
 </div>
 
+
 <div class="dragonBag" id="dragonBag">
-<div class="dragonBagHead"><b>🐉 용비늘 · 레벨권</b><span id="dragonBagCount">비늘 0 · 레벨권 0</span></div>
-<p class="dragonBagLore">용비늘 레이스에서 모은 비늘 5장을 레벨권 1장으로 바꿔요. 레벨권은 내 드래곤의 스킬을 1 올리고, 스킬은 오라·파티클 세기만 바꾸는 순수 치장이에요.</p>
+<div class="dragonBagHead"><b>🐉 용비늘 · 레벨권</b><span class="dgOnTouch">비늘 5장 = 레벨권 1장 · 레벨권 1장 = 스킬 +1</span></div>
+<div class="dragonBagStats">
+<div class="dragonBagStat dgTip" data-tip="🎴 용비늘 레이스에서 벌어요 · 5장을 모으면 레벨권 1장으로 바꿀 수 있어요"><svg class="dgBagIc" aria-hidden="true"><use href="#dc-ic-scale"></use></svg><span><small>내 용비늘</small><b id="dragonBagScales">0</b><em>장</em></span></div>
+<div class="dragonBagStat dgTip" data-tip="레벨권 1장을 쓰면 내 드래곤의 스킬이 1 올라요 · 스킬은 오라·파티클 세기만 바꾸는 치장이에요"><span class="dgBagEm" aria-hidden="true">🎟️</span><span><small>내 레벨권</small><b id="dragonBagTickets">0</b><em>장</em></span></div>
+</div>
 <div class="dragonBagBtns">
-<button class="dragonBagBtn" id="dragonBuyTicket" type="button" disabled>비늘 5장 → 레벨권 1장</button>
-<button class="dragonBagBtn" id="dragonFeedTicket" type="button" disabled>레벨권 1장 먹이기 → 내 드래곤 스킬 +1</button>
+<button class="dragonBagBtn dgTip" id="dragonBuyTicket" type="button" disabled data-tip="용비늘 5장 → 레벨권 1장">레벨권 구매</button>
+<button class="dragonBagBtn dgTip" id="dragonFeedTicket" type="button" disabled data-tip="레벨권 1장 → 내 드래곤 스킬 +1">레벨권 사용</button>
 </div>
 <div class="dragonBagNote" id="dragonBagNote"></div>
 </div>
@@ -7611,7 +7649,6 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="dragonHallRows" id="dragonHallRows"></div>
 <div class="dragonEmpty" id="dragonHallEmpty">아직 졸업한 고룡이 없어요 — 첫 고룡을 함께 키워 봐요</div>
 </div>
-<div class="worldTreeRules" id="dragonRules">드래곤마다 자기 레벨과 게이지가 따로 있어요. 내 기운의 드래곤에게만 먹이를 줄 수 있고, 기운은 하루에 한 번 바꿀 수 있어요(이미 먹인 기여는 원래 드래곤에 남아요). 먹인 코인이 그대로 경험치가 되고, 레벨당 필요 코인은 관리자 칸에서 언제든 조정돼요 — 이미 먹인 코인은 사라지지 않아요. 하루 먹이 한도는 없어요. 알·아가 단계에서는 횟수를 정해 한 번에 여러 번 먹일 수 있어요. 어린 용부터는 매일 정해지는 <b>오늘의 취향</b> 먹이가 경험치 ×1.5예요(먹인 코인은 원래대로 세요). 용비늘은 <b>🎴 용비늘 레이스</b>에서 벌어요 — 카드 18장을 다 뒤집으면 레버를 한 번 당겨 0~2장을 뽑습니다(오늘의 레이스는 하루 한 번, 게릴라 레이스는 하루에 몇 번씩 10분 동안만 열려요. 게릴라는 완주 순위 1위 +2장 · 2~3위 +1장). 결과는 서버 시드로 미리 정해져 있어서 다시 해도 바뀌지 않아요. 용비늘 5장은 레벨권 1장이 되고, 레벨권을 먹이면 스킬이 1 올라 오라와 파티클이 진해져요(순수 치장). 어느 드래곤이든 Lv.100이 되면 고룡으로 졸업하고, 그 자리에 새 기운의 알이 하나 합류해 순환합니다.</div>
 <div class="dragonAdminNote" id="dragonAdminNote" style="display:none"></div>
 </section>
 </div>
@@ -26970,7 +27007,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17133; 
+const MK_APP_BUILD = 17134; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30252,20 +30289,29 @@ function renderDragonTabs_(){
         const row=dragonRow_(k);
         const need=dragonNeedFor_(cfg,row.level+1);
         const pct=Math.max(0,Math.min(100,(row.exp/need)*100));
+        
+        const tip=`🪙 ${dragonNumFmt_(row.exp)} / ${dragonNumFmt_(need)} 코인 · ${Math.floor(pct)}%`;
         return `<div class="dragonPoolRow dragonElTint${k===mine?" isMine":""}" data-el="${dragonEsc_(k)}">`
           +`<strong>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</strong>`
-          +`<div class="worldTreeGauge" role="progressbar" aria-label="${dragonEsc_(e.name)} 진행률"><i style="width:${pct.toFixed(2)}%"></i></div>`
-          +`<output>Lv.${row.level} · ${dragonNumFmt_(row.exp)}/${dragonNumFmt_(need)} · ${counts[k]||0}명`
+          +`<div class="dgGaugeWrap dgTip dgTipTap" tabindex="0" data-tip="${dragonEsc_(tip)}" aria-label="${dragonEsc_(e.name)} 경험치 ${dragonNumFmt_(row.exp)} / ${dragonNumFmt_(need)} 코인">`
+          +`<div class="worldTreeGauge" role="progressbar" aria-label="${dragonEsc_(e.name)} 진행률"><i style="width:${pct.toFixed(2)}%"></i></div></div>`
+          +`<output>Lv.${row.level} · ${counts[k]||0}명`
           +`<small>✨ 스킬 Lv.${dragonNumFmt_(row.skill)} / ${dragonNumFmt_(cfg.skillCap)}</small></output></div>`;   
       }).join("");
       if(wrap.innerHTML!==html) wrap.innerHTML=html;
-      dragonSetText_("dragonPoolNote",`레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""} 코인`);
     }
     
     function dragonFeedCostText_(coins,qty){
       const per=Math.max(0,Math.floor(Number(coins)||0));
       const n=Math.max(1,Math.floor(Number(qty)||1));
       return n>1?`${dragonNumFmt_(per)} 코인 × ${n} = ${dragonNumFmt_(per*n)}`:`${dragonNumFmt_(per)} 코인`;
+    }
+    
+    function dragonFeedTipText_(coins,qty,isFav){
+      const per=Math.max(0,Math.floor(Number(coins)||0));
+      const n=Math.max(1,Math.floor(Number(qty)||1));
+      const exp=isFav?Math.round(per*n*DRAGON_FAV_MULT):per*n;
+      return `${dragonFeedCostText_(per,n)} · 경험치 +${dragonNumFmt_(exp)}${isFav?` (오늘의 취향 ×${DRAGON_FAV_MULT})`:""}`;
     }
     
     function dragonFeedQtyMax_(unit,wallet){
@@ -30299,6 +30345,7 @@ function renderDragonTabs_(){
           b.setAttribute("data-qty",String(n));
           const cs=b.querySelector?.(".dgCs");
           if(cs) cs.textContent=dragonFeedCostText_(Number(b.getAttribute("data-coins"))||0,n);
+          b.setAttribute("data-tip",dragonFeedTipText_(Number(b.getAttribute("data-coins"))||0,n,!!b.classList?.contains?.("isFav")));   
         }
       }catch(e){}
       return n;
@@ -30342,7 +30389,7 @@ function renderDragonTabs_(){
       dragonS3Runtime.feedQty=qty;
       const html=grad?"":cfg.menu[key].map((it,i)=>{
         const isFav=!!(fav && i===fav.index);
-        return `<button type="button" class="dragonFeedBtn${isFav?" isFav":""}" data-idx="${i}" data-coins="${it.coins}" data-qty="${qty}">`
+        return `<button type="button" class="dragonFeedBtn dgTip${isFav?" isFav":""}" data-idx="${i}" data-coins="${it.coins}" data-qty="${qty}" data-tip="${dragonEsc_(dragonFeedTipText_(it.coins,qty,isFav))}">`
           +(isFav?`<span class="dgFavRibbon" aria-hidden="true">오늘의 취향 ×${DRAGON_FAV_MULT}</span>`:"")
           +`<span class="dgEm" aria-hidden="true">${dragonEsc_(it.icon)}</span>`
           +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonFeedCostText_(it.coins,qty)}</span></span></button>`;
@@ -30676,16 +30723,18 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       const on=dragonEnabled_() && !!state.joined;
       const grad=!!(row && Number(row.graduatedAtMs)>0);
       const capped=!!(row && row.skill>=cfg.skillCap);
-      dragonSetText_("dragonBagCount",`비늘 ${dragonNumFmt_(bag.scales)} · 레벨권 ${dragonNumFmt_(bag.tickets)}`);
+      
+      dragonSetText_("dragonBagScales",dragonNumFmt_(bag.scales));
+      dragonSetText_("dragonBagTickets",dragonNumFmt_(bag.tickets));
       const buy=document.getElementById("dragonBuyTicket");
       const feed=document.getElementById("dragonFeedTicket");
       if(buy) buy.disabled=!(on && bag.scales>=DRAGON_TICKET_COST);
       if(feed) feed.disabled=!(on && !!mine && bag.tickets>0 && !grad && !capped);
       let note;
-      if(!mine) note="기운을 먼저 골라야 레벨권을 먹일 수 있어요.";
-      else if(grad) note="졸업한 고룡에게는 레벨권을 먹일 수 없어요 🐉";
+      if(!mine) note="기운을 먼저 골라야 레벨권을 쓸 수 있어요.";
+      else if(grad) note="졸업한 고룡에게는 레벨권을 쓸 수 없어요 🐉";
       else if(capped) note=`${cfg.elements[mine]?.name||mine}의 스킬이 Lv.${dragonNumFmt_(cfg.skillCap)}까지 찼어요 ✨`;
-      else note=`${cfg.elements[mine]?.name||mine} 스킬 Lv.${dragonNumFmt_(row?row.skill:0)} / ${dragonNumFmt_(cfg.skillCap)} · 레벨권 1장 = 스킬 +1`;
+      else note=`${cfg.elements[mine]?.name||mine} 스킬 Lv.${dragonNumFmt_(row?row.skill:0)} / ${dragonNumFmt_(cfg.skillCap)}`;   
       dragonSetText_("dragonBagNote",note);
     }
 
