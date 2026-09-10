@@ -6611,7 +6611,15 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   
   #dragonModal .dragonHall[hidden],#dragonModal .dragonHall [hidden],
   #dragonModal .dragonName[hidden],#dragonModal .dragonName [hidden],
+  #dragonModal .dragonPerkLine[hidden],
   #dragonModal .dragonFeedQty[hidden]{display:none !important;}
+
+  
+  .dragonPerkLine{
+    margin-top:15px; padding:11px 13px; border-radius:14px; line-height:1.55;
+    font-size:11px; font-weight:900; color:#ffe9c8;
+    border:1px solid rgba(255,214,166,.34); background:rgba(255,196,120,.09);
+  }
 
   
   #dragonScene[data-graduated="1"] .dragonHalo{opacity:.74; animation:dgHaloPulse 5.2s ease-in-out infinite;}
@@ -7697,6 +7705,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <ul class="dragonRosterList" id="dragonRosterList"></ul>
 <div class="dragonEmpty" id="dragonRosterEmpty">아직 이 기운을 고른 작가가 없어요</div>
 </div>
+
+<div class="dragonPerkLine" id="dragonPerkLine" hidden></div>
 
 <div class="dragonHall" id="dragonHall">
 <div class="dragonHallHead"><b>🏛️ 수호룡의 전당</b><span id="dragonHallCount">0마리</span></div>
@@ -27084,7 +27094,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17136; 
+const MK_APP_BUILD = 17137; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29280,6 +29290,18 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
     const DRAGON_TICKET_COST = 5;
     const DRAGON_FAV_MULT = 1.5;      
     
+    const DRAGON_PERKS = Object.freeze({
+      fire:     Object.freeze({kind:"scales", mult:2,   emoji:"🔥", label:"용비늘 2배"}),
+      water:    Object.freeze({kind:"feed",   rate:0.9, emoji:"💧", label:"드래곤 먹이 10% 할인"}),
+      thunder:  Object.freeze({kind:"coin",   mult:2,   emoji:"⚡", label:"작업 코인 2배"}),
+      mountain: Object.freeze({kind:"parts",  rate:0.9, emoji:"⛰️", label:"파츠 10% 할인"})
+    });
+    const DRAGON_PERK_LOCAL = "mk_dragon_perk_v1";        
+    const DRAGON_PERK_SEEN = "mk_dragon_perk_seen_v1";    
+    const DRAGON_PERK_RECHECK_MS = 30 * 60 * 1000;        
+    const DRAGON_PERK_RECHECK_MAX = 3;                    
+    const DRAGON_ROSTER_FREEZE_MAX = 500;                 
+    
     const DRAGON_RACE_WINDOW_MS = 10 * 60 * 1000;        
     const DRAGON_RACE_FLASH_CHANCE = 0.01;               
     const DRAGON_RACE_SPAWN_LEASE_MS = 2 * 60 * 1000;    
@@ -29313,7 +29335,7 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       nextElement:""
     });
     
-    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":39.086,"cy":69.334,"a":7.498,"b":5.858,"angle":-28.4,"lid":"paint","skinTop":"#fc3e1e","skinBot":"#fcedd8","lash":"#260505"},"3":{"x":31.882,"y":63.737,"w":5.784,"h":5.092,"travel":1.0,"dir":"down","cx":35.183,"cy":66.031,"a":9.734,"b":6.751,"angle":-21.4,"lid":"paint","skinTop":"#fc331c","skinBot":"#fcebd6","lash":"#1b0304"},"4":{"x":29.284,"y":55.822,"w":4.905,"h":3.718,"travel":1.1,"dir":"down","cx":31.779,"cy":57.231,"a":4.393,"b":4.394,"angle":-18.8},"5":{"x":23.53,"y":49.864,"w":4.917,"h":3.658,"travel":1.1,"dir":"down","cx":25.664,"cy":51.469,"a":5.089,"b":4.425,"angle":-21.5},"6":{"x":20.17,"y":40.934,"w":3.467,"h":2.566,"travel":1.1,"dir":"down","cx":21.696,"cy":41.856,"a":3.589,"b":2.947,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.771,"cy":71.449,"a":6.867,"b":5.368,"angle":-29.6,"lid":"paint","skinTop":"#88cffc","skinBot":"#fbf9f6","lash":"#03114a"},"3":{"x":34.697,"y":64.738,"w":5.476,"h":5.544,"travel":1.0,"dir":"down","cx":37.473,"cy":67.252,"a":7.132,"b":5.294,"angle":-22.4,"lid":"paint","skinTop":"#8ad2fc","skinBot":"#fcf9f8","lash":"#031148"},"4":{"x":28.996,"y":56.07,"w":2.691,"h":2.562,"travel":1.1,"dir":"down","cx":30.277,"cy":57.243,"a":3.122,"b":3.06,"angle":-27.5},"5":{"x":27.747,"y":49.971,"w":2.781,"h":2.336,"travel":1.1,"dir":"down","cx":28.766,"cy":50.705,"a":2.85,"b":2.898,"angle":-15.7},"6":{"x":19.996,"y":38.615,"w":3.278,"h":2.849,"travel":1.1,"dir":"down","cx":21.267,"cy":39.72,"a":3.261,"b":2.218,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.67,"cy":71.532,"a":7.876,"b":5.369,"angle":-45.8,"lid":"paint","skinTop":"#f0d4fc","skinBot":"#fcfafc","lash":"#1d042d"},"3":{"x":32.466,"y":65.235,"w":5.66,"h":5.808,"travel":1.0,"dir":"down","cx":35.178,"cy":67.721,"a":8.027,"b":5.582,"angle":-44.3,"lid":"paint","skinTop":"#f5ebfc","skinBot":"#fcfbfd","lash":"#0b030c"},"4":{"x":29.639,"y":58.693,"w":2.75,"h":2.75,"travel":1.1,"dir":"down","cx":30.922,"cy":59.964,"a":2.883,"b":3.185,"angle":-36.8},"5":{"x":25.531,"y":52.57,"w":3.325,"h":2.622,"travel":1.1,"dir":"down","cx":27.374,"cy":53.681,"a":3.652,"b":3.146,"angle":-27.5},"6":{"x":20.512,"y":46.195,"w":2.965,"h":2.121,"travel":1.1,"dir":"down","cx":21.857,"cy":47.112,"a":3.227,"b":2.573,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":40.749,"y":70.737,"w":4.367,"h":4.636,"travel":1.0,"dir":"up","cx":43.144,"cy":73.365,"a":5.059,"b":4.745,"angle":-35.5,"lid":"paint","skinTop":"#fdfaf1","skinBot":"#fdf5e6","lash":"#0b0c04"},"3":{"x":37.065,"y":66.351,"w":3.256,"h":3.435,"travel":1.0,"dir":"down","cx":38.625,"cy":67.815,"a":4.48,"b":3.143,"angle":-43.9,"lid":"paint","skinTop":"#fdf8ea","skinBot":"#fdf8ed","lash":"#090904"},"4":{"x":31.326,"y":57.135,"w":2.865,"h":2.636,"travel":1.1,"dir":"up","cx":32.71,"cy":58.367,"a":3.109,"b":2.705,"angle":-33.8},"5":{"x":33.376,"y":49.253,"w":2.84,"h":2.783,"travel":1.1,"dir":"down","cx":34.739,"cy":50.418,"a":3.308,"b":2.283,"angle":-37.5},"6":{"x":32.237,"y":42.611,"w":2.29,"h":1.917,"travel":1.1,"dir":"down","cx":33.174,"cy":43.531,"a":2.599,"b":2.026,"angle":-33.9},"7":{"x":23.565,"y":29.98,"w":2.928,"h":2.186,"travel":1.1,"dir":"down","cx":25.412,"cy":30.909,"a":2.986,"b":2.733,"angle":-25.0}}};
+    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":39.086,"cy":69.334,"a":7.498,"b":5.858,"angle":-28.4,"lid":"paint","skinTop":"#fc3e1e","skinBot":"#fcedd8","lash":"#260505"},"3":{"x":31.882,"y":63.737,"w":5.784,"h":5.092,"travel":1.0,"dir":"down","cx":35.183,"cy":66.031,"a":9.734,"b":6.751,"angle":-21.4,"lid":"paint","skinTop":"#fc331c","skinBot":"#fcebd6","lash":"#1b0304"},"4":{"x":29.284,"y":55.822,"w":4.905,"h":3.718,"travel":1.1,"dir":"down","cx":31.779,"cy":57.231,"a":4.393,"b":4.394,"angle":-18.8},"5":{"x":23.53,"y":49.864,"w":4.917,"h":3.658,"travel":1.1,"dir":"down","cx":25.664,"cy":51.469,"a":5.089,"b":4.425,"angle":-21.5},"6":{"x":20.17,"y":40.934,"w":3.467,"h":2.566,"travel":1.1,"dir":"down","cx":21.696,"cy":41.856,"a":3.589,"b":2.947,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.771,"cy":71.449,"a":6.867,"b":5.368,"angle":-29.6,"lid":"paint","skinTop":"#88cffc","skinBot":"#fbf9f6","lash":"#03114a"},"3":{"x":34.697,"y":64.738,"w":5.476,"h":5.544,"travel":1.0,"dir":"down","cx":37.473,"cy":67.252,"a":7.132,"b":5.294,"angle":-22.4,"lid":"paint","skinTop":"#8ad2fc","skinBot":"#fcf9f8","lash":"#031148"},"4":{"x":28.996,"y":56.07,"w":2.691,"h":2.562,"travel":1.1,"dir":"down","cx":30.277,"cy":57.243,"a":3.122,"b":3.06,"angle":-27.5},"5":{"x":27.747,"y":49.971,"w":2.781,"h":2.336,"travel":1.1,"dir":"down","cx":28.766,"cy":50.705,"a":2.85,"b":2.898,"angle":-15.7},"6":{"x":19.996,"y":38.615,"w":3.278,"h":2.849,"travel":1.1,"dir":"down","cx":21.267,"cy":39.72,"a":3.261,"b":2.218,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.67,"cy":71.532,"a":7.876,"b":5.369,"angle":-45.8,"lid":"paint","skinTop":"#f0d4fc","skinBot":"#fcfafc","lash":"#1d042d","eye2":{"cx":35.541,"cy":70.674,"a":1.492,"b":5.412,"angle":0.0,"skinTop":"#fcf9fc","skinBot":"#fbf5fa","lash":"#170333"}},"3":{"x":32.466,"y":65.235,"w":5.66,"h":5.808,"travel":1.0,"dir":"down","cx":35.178,"cy":67.721,"a":8.027,"b":5.582,"angle":-44.3,"lid":"paint","skinTop":"#f5ebfc","skinBot":"#fcfbfd","lash":"#0b030c"},"4":{"x":29.639,"y":58.693,"w":2.75,"h":2.75,"travel":1.1,"dir":"down","cx":30.922,"cy":59.964,"a":2.883,"b":3.185,"angle":-36.8},"5":{"x":25.531,"y":52.57,"w":3.325,"h":2.622,"travel":1.1,"dir":"down","cx":27.374,"cy":53.681,"a":3.652,"b":3.146,"angle":-27.5},"6":{"x":20.512,"y":46.195,"w":2.965,"h":2.121,"travel":1.1,"dir":"down","cx":21.857,"cy":47.112,"a":3.227,"b":2.573,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":40.749,"y":70.737,"w":4.367,"h":4.636,"travel":1.0,"dir":"up","cx":43.144,"cy":73.365,"a":5.059,"b":4.745,"angle":-35.5,"lid":"paint","skinTop":"#fdfaf1","skinBot":"#fdf5e6","lash":"#0b0c04","eye2":{"cx":37.644,"cy":72.64,"a":1.626,"b":4.85,"angle":-2.1,"skinTop":"#fcf7eb","skinBot":"#fdf7ec","lash":"#060b04"}},"3":{"x":37.065,"y":66.351,"w":3.256,"h":3.435,"travel":1.0,"dir":"down","cx":38.625,"cy":67.815,"a":4.48,"b":3.143,"angle":-43.9,"lid":"paint","skinTop":"#fdf8ea","skinBot":"#fdf8ed","lash":"#090904","eye2":{"cx":34.808,"cy":67.905,"a":0.726,"b":2.417,"angle":-8.1,"skinTop":"#fcf0d5","skinBot":"#fdf4df","lash":"#070705"}},"4":{"x":31.326,"y":57.135,"w":2.865,"h":2.636,"travel":1.1,"dir":"up","cx":32.71,"cy":58.367,"a":3.109,"b":2.705,"angle":-33.8},"5":{"x":33.376,"y":49.253,"w":2.84,"h":2.783,"travel":1.1,"dir":"down","cx":34.739,"cy":50.418,"a":3.308,"b":2.283,"angle":-37.5},"6":{"x":32.237,"y":42.611,"w":2.29,"h":1.917,"travel":1.1,"dir":"down","cx":33.174,"cy":43.531,"a":2.599,"b":2.026,"angle":-33.9},"7":{"x":23.565,"y":29.98,"w":2.928,"h":2.186,"travel":1.1,"dir":"down","cx":25.412,"cy":30.909,"a":2.986,"b":2.733,"angle":-25.0}}};
 
     const dragonS3Runtime = {
       config:null,            
@@ -29364,6 +29386,12 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
       gradLock:{},            
       gradFollowupAt:{},      
       hallDone:{},            
+      
+      perkRaw:null,           
+      perkVal:null,           
+      perkLock:false,         
+      perkTries:{},           
+      perkDone:{},            
       blessStartId:"",        
       blessEndId:"",          
       
@@ -29940,8 +29968,126 @@ function dragonBlessingInfo_(){
       const phase=(now<atMs)?"scheduled":((now<endMs)?"active":"ended");
       return {rec,phase,atMs,endMs,mult,now};
     }
+    
+    function dragonPerkOf_(el){
+      try{
+        if(!dragonKeyOk_(el)) return null;
+        if(!Object.prototype.hasOwnProperty.call(DRAGON_PERKS,el)) return null;   
+        const p=DRAGON_PERKS[el];
+        return (p && typeof p==="object")?p:null;
+      }catch(e){ return null; }
+    }
+    
+    function dragonLatestGradPair_(){
+      let best="", bestGrad=0;
+      const scan=(src,field)=>{
+        if(!(src && typeof src==="object")) return;
+        Object.keys(src).forEach((el)=>{
+          if(!dragonKeyOk_(el)) return;
+          const row=src[el];
+          if(!(row && typeof row==="object")) return;
+          const g=Math.max(0,Math.floor(Number(row[field])||0));
+          if(!(g>0)) return;
+          if(g>bestGrad || (g===bestGrad && (!best || el<best))){ best=el; bestGrad=g; }
+        });
+      };
+      try{ scan(dragonS3Runtime.summary?.dragons,"grad"); }catch(e){}
+      if(!best){ try{ scan(dragonS3Runtime.hall,"graduatedAtMs"); }catch(e){} }
+      return {el:best,grad:bestGrad};
+    }
+    function dragonLatestGradEl_(){ try{ return dragonLatestGradPair_().el; }catch(e){ return ""; } }
+    
+    function dragonPerkCache_(){
+      let raw="";
+      try{ raw=String(localStorage.getItem(DRAGON_PERK_LOCAL)||""); }catch(e){ return null; }
+      try{ if(raw===dragonS3Runtime.perkRaw) return dragonS3Runtime.perkVal; }catch(e){}
+      let val=null;
+      try{ const d=JSON.parse(raw||"null"); val=(d && typeof d==="object" && !Array.isArray(d))?d:null; }catch(e){ val=null; }
+      try{ dragonS3Runtime.perkRaw=raw; dragonS3Runtime.perkVal=val; }catch(e){}
+      return val;
+    }
+    function dragonPerkCacheWrite_(row){
+      try{
+        const s=JSON.stringify(row);
+        localStorage.setItem(DRAGON_PERK_LOCAL,s);
+        dragonS3Runtime.perkRaw=s; dragonS3Runtime.perkVal=JSON.parse(s);
+        return true;
+      }catch(e){ return false; }
+    }
+    
+    function dragonPerkState_(){
+      let el="", grad=0, ok=false;
+      try{
+        const cur=dragonLatestGradPair_();
+        el=cur.el; grad=cur.grad;
+        if(!el || !(grad>0)) return {el:"",grad:0,ok:false};
+        const uid=String(state?.uid||"");
+        if(!uid) return {el,grad,ok:false};
+        const c=dragonPerkCache_();
+        if(!c) return {el,grad,ok:false};
+        if(String(c.el||"")!==el) return {el,grad,ok:false};
+        if(Math.max(0,Math.floor(Number(c.grad)||0))!==grad) return {el,grad,ok:false};
+        if(String(c.uid||"")!==uid) return {el,grad,ok:false};
+        ok=(Math.floor(Number(c.ok)||0)===1);
+      }catch(e){ return {el:"",grad:0,ok:false}; }
+      return {el,grad,ok};
+    }
+    
+    function dragonPerkInfo_(){
+      try{
+        const st=dragonPerkState_();
+        const perk=dragonPerkOf_(st.el);
+        return {el:st.el,perk,active:!!(st.ok && perk)};
+      }catch(e){ return {el:"",perk:null,active:false}; }
+    }
+    
+    function dragonCoinMultInfo_(){
+      let bless=1, perk=1;
+      try{ const info=dragonBlessingInfo_(); if(info.phase==="active") bless=Math.max(1,Math.min(10,Math.round(Number(info.mult)||1))); }catch(e){}
+      try{
+        const p=dragonPerkInfo_();
+        if(p.active && p.perk && p.perk.kind==="coin") perk=Math.max(1,Math.min(10,Math.round(Number(p.perk.mult)||1)));
+      }catch(e){}
+      if(bless>=perk) return {mult:bless,src:bless>1?"blessing":"none"};
+      return {mult:perk,src:"perk"};
+    }
     function dragonCoinMult_(){
-      try{ const info=dragonBlessingInfo_(); return info.phase==="active"?info.mult:1; }catch(e){ return 1; }
+      try{ return dragonCoinMultInfo_().mult; }catch(e){ return 1; }
+    }
+
+function dragonScaleGain_(n){
+      const base=Math.max(0,Math.floor(Number(n)||0));
+      if(!(base>0)) return base;
+      try{
+        const p=dragonPerkInfo_();
+        if(p.active && p.perk && p.perk.kind==="scales") return base*Math.max(1,Math.min(10,Math.round(Number(p.perk.mult)||1)));
+      }catch(e){}
+      return base;
+    }
+    
+    function dragonFeedPay_(coins){
+      const face=Math.max(0,Math.floor(Number(coins)||0));
+      if(!(face>0)) return face;
+      try{
+        const p=dragonPerkInfo_();
+        if(p.active && p.perk && p.perk.kind==="feed"){
+          const rate=Number(p.perk.rate);
+          if(isFinite(rate) && rate>0 && rate<1) return Math.max(1,Math.round(face*rate));
+        }
+      }catch(e){}
+      return face;
+    }
+    
+    function dragonPerkTail_(kind){
+      try{
+        const p=dragonPerkInfo_();
+        if(!(p.active && p.perk && p.perk.kind===String(kind||""))) return "";
+        const emoji=dragonText_(p.perk.emoji,"🏅",6);
+        if(p.perk.mult>1) return ` · ${emoji} 고룡 특전 ×${Math.max(1,Math.min(10,Math.round(Number(p.perk.mult)||1)))}`;
+        const rate=Number(p.perk.rate);
+        if(isFinite(rate) && rate>0 && rate<1) return ` · ${emoji} 고룡 특전 -${Math.round((1-rate)*100)}%`;
+        return ` · ${emoji} 고룡 특전`;
+      }catch(e){ return ""; }
     }
     
     function dragonGlowToast_(msg,ms,bright){
@@ -29981,23 +30127,76 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
     function dragonP3_(v){ return v.toFixed(3)+"%"; }
     function dragonLidOf_(box){
       const kids=box.children;
-      for(let i=0;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains("dgLid")) return kids[i]; }
+      
+      for(let i=0;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains("dgLid") && !kids[i].classList.contains("dgLidFar")) return kids[i]; }
       return null;
     }
     
     function dragonHex_(v){ return (typeof v==="string" && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : ""; }
+    
+    const DRAGON_EYE2_LASH_H="7%", DRAGON_EYE2_LASH_B="5%";
+    function dragonFarLidOf_(box){
+      const kids=box.children;
+      for(let i=0;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains("dgLidFar")) return kids[i]; }
+      return null;
+    }
+    function dragonFarLid_(box,e,mainLid){
+      let far=dragonFarLidOf_(box);
+      const e2=(e && e.eye2 && typeof e.eye2==="object")?e.eye2:null;
+      const ok=!!e2 && dragonIsNum_(e2.cx)&&dragonIsNum_(e2.cy)&&dragonIsNum_(e2.a)&&dragonIsNum_(e2.b)&&dragonIsNum_(e2.angle)&&e2.a>0&&e2.b>0;
+      const skinTop=ok?dragonHex_(e2.skinTop):"", skinBot=ok?dragonHex_(e2.skinBot):"", lashCol=ok?dragonHex_(e2.lash):"";
+      
+      if(!(ok && skinTop && skinBot && lashCol)){ if(far) box.removeChild(far); return; }
+      const twice=(mainLid && mainLid.classList && mainLid.classList.contains("dgLid2"))?" dgLid2":"";
+      const cls="dgLid dgLidPaint dgLidFar"+twice;
+      if(far && far.className!==cls){ box.removeChild(far); far=null; }
+      if(!far){
+        far=document.createElement("i");
+        far.className=cls;
+        far.setAttribute("data-lid","3");
+        far.setAttribute("data-lid-slot","2");
+        far.setAttribute("aria-hidden","true");
+        const skin=document.createElement("u");
+        skin.className="dgLidSkin";
+        const lash=document.createElement("s");
+        lash.className="dgLash";
+        skin.appendChild(lash);
+        far.appendChild(skin);          
+        box.appendChild(far);
+      }
+      
+      if(mainLid){
+        const dur=mainLid.style.getPropertyValue("--dg-blink-dur");
+        const dly=mainLid.style.getPropertyValue("--dg-blink-delay");
+        if(dur) far.style.setProperty("--dg-blink-dur",dur);
+        if(dly) far.style.setProperty("--dg-blink-delay",dly);
+      }
+      far.style.left=dragonP3_(e2.cx-e2.a/2);
+      far.style.top=dragonP3_(e2.cy-e2.b/2);
+      far.style.width=dragonP3_(e2.a);
+      far.style.height=dragonP3_(e2.b);
+      far.style.transform="rotate("+e2.angle.toFixed(3)+"deg)";
+      far.style.transformOrigin="50% 50%";
+      far.style.setProperty("--dg-skin-top",skinTop);
+      far.style.setProperty("--dg-skin-bot",skinBot);
+      far.style.setProperty("--dg-lash",lashCol);
+      
+      far.style.setProperty("--dg-lash-h",DRAGON_EYE2_LASH_H);
+      far.style.setProperty("--dg-lash-b",DRAGON_EYE2_LASH_B);
+    }
     function dragonPaintLid_(box){
       if(!DRAGON_EYES || !box) return;
       const el=box.getAttribute("data-el");
       const st=box.getAttribute("data-stage");
       const e=(el && DRAGON_EYES[el])?DRAGON_EYES[el][st]:null;
       let lid=dragonLidOf_(box), slide=null, b=null;
-      if(!e){ if(lid) box.removeChild(lid); return; }   
+      if(!e){ if(lid) box.removeChild(lid); dragonFarLid_(box,null,null); return; }   
       const v2=dragonIsNum_(e.cx)&&dragonIsNum_(e.cy)&&dragonIsNum_(e.a)&&dragonIsNum_(e.b)&&dragonIsNum_(e.angle)&&e.a>0&&e.b>0;
       const skinTop=dragonHex_(e.skinTop), skinBot=dragonHex_(e.skinBot), lashCol=dragonHex_(e.lash);
       const paint=v2 && e.lid==="paint" && !!skinTop && !!skinBot && !!lashCol;   
       const kind=paint?"3":(v2?"2":"1");
-      if(lid && lid.getAttribute("data-lid")!==kind){ box.removeChild(lid); lid=null; }
+      
+      if(lid && lid.getAttribute("data-lid")!==kind){ box.removeChild(lid); lid=null; const fx=dragonFarLidOf_(box); if(fx) box.removeChild(fx); }
       if(lid){
         slide=(kind==="1")?null:lid.firstElementChild;
         b=(kind==="3")?null:((kind==="2")?(slide?slide.firstElementChild:null):lid.firstElementChild);
@@ -30031,7 +30230,7 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
         lid.style.setProperty("--dg-blink-delay",(-Math.random()*6).toFixed(2)+"s");
         box.appendChild(lid);
       }
-      if(paint ? !slide : !b) return;
+      if(paint ? !slide : !b){ dragonFarLid_(box,null,null); return; }
       const travel=dragonIsNum_(e.travel)?e.travel:1;
       const sign=(e.dir==="up")?-1:1;                   
       if(v2){
@@ -30047,6 +30246,7 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
           lid.style.setProperty("--dg-skin-top",skinTop);
           lid.style.setProperty("--dg-skin-bot",skinBot);
           lid.style.setProperty("--dg-lash",lashCol);
+          dragonFarLid_(box,e,lid);   
           return;
         }
         lid.style.setProperty("--dg-travel",(sign*travel).toFixed(3));
@@ -30068,6 +30268,7 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
         b.style.top=dragonP3_(-e.y/e.h*100);
         b.style.setProperty("--dg-lid-y",dragonP3_(sign*travel*e.h));
       }
+      dragonFarLid_(box,e,lid);   
     }
 
 function dragonMyCamp_(){
@@ -30425,10 +30626,10 @@ function renderDragonTabs_(){
     }
     
     function dragonFeedTipText_(coins,qty,isFav){
-      const per=Math.max(0,Math.floor(Number(coins)||0));
+      const face=Math.max(0,Math.floor(Number(coins)||0));
       const n=Math.max(1,Math.floor(Number(qty)||1));
-      const exp=isFav?Math.round(per*n*DRAGON_FAV_MULT):per*n;
-      return `${dragonFeedCostText_(per,n)} · 경험치 +${dragonNumFmt_(exp)}${isFav?` (오늘의 취향 ×${DRAGON_FAV_MULT})`:""}`;
+      const exp=isFav?Math.round(face*n*DRAGON_FAV_MULT):face*n;
+      return `${dragonFeedCostText_(dragonFeedPay_(face),n)} · 경험치 +${dragonNumFmt_(exp)}${isFav?` (오늘의 취향 ×${DRAGON_FAV_MULT})`:""}${dragonPerkTail_("feed")}`;
     }
     
     function dragonFeedQtyMax_(unit,wallet){
@@ -30447,10 +30648,11 @@ function renderDragonTabs_(){
       const key=String(btns?.getAttribute?.("data-menu")||dragonS3Runtime.feedQtyKey||"");
       const cfg=dragonConfig_();
       const unit=Math.max(1,Math.floor(Number(cfg.menu[key]?.[0]?.coins)||0));
-      const max=dragonFeedQtyMax_(unit,dragonReadCoins_());
+      const unitPay=dragonFeedPay_(unit);   
+      const max=dragonFeedQtyMax_(unitPay,dragonReadCoins_());
       const n=Math.max(1,Math.min(max,Math.floor(Number(raw)||1)));
       dragonS3Runtime.feedQty=n;
-      dragonSetText_("dragonFeedQtySum",`= ${dragonNumFmt_(unit*n)} 코인`);
+      dragonSetText_("dragonFeedQtySum",`= ${dragonNumFmt_(unitPay*n)} 코인`);
       try{
         const minus=document.getElementById("dragonFeedQtyMinus");
         const plus=document.getElementById("dragonFeedQtyPlus");
@@ -30461,17 +30663,18 @@ function renderDragonTabs_(){
           const b=list[i];
           b.setAttribute("data-qty",String(n));
           const cs=b.querySelector?.(".dgCs");
+          
           if(cs) cs.textContent=dragonFeedCostText_(Number(b.getAttribute("data-coins"))||0,n);
-          b.setAttribute("data-tip",dragonFeedTipText_(Number(b.getAttribute("data-coins"))||0,n,!!b.classList?.contains?.("isFav")));   
+          b.setAttribute("data-tip",dragonFeedTipText_(Number(b.getAttribute("data-face"))||Number(b.getAttribute("data-coins"))||0,n,!!b.classList?.contains?.("isFav")));   
         }
       }catch(e){}
       return n;
     }
     
     function feedDragonFromMenu_(coins,menuIdx,qty){
-      const per=Math.max(0,Math.floor(Number(coins)||0));
+      const face=Math.max(0,Math.floor(Number(coins)||0));
       const n=Math.max(1,Math.floor(Number(qty)||1));
-      return feedDragon_(per*n,menuIdx);
+      return feedDragon_(dragonFeedPay_(face)*n,menuIdx,{face:face*n});
     }
     function renderDragonFeed_(){
       const box=document.getElementById("dragonFeed");
@@ -30500,16 +30703,19 @@ function renderDragonTabs_(){
       
       const qtyOn=!grad && (key==="egg" || key==="baby");
       const unit=Math.max(1,Math.floor(Number(cfg.menu[key]?.[0]?.coins)||0));
-      const qtyMax=qtyOn?dragonFeedQtyMax_(unit,wallet):1;
+      const unitPay=dragonFeedPay_(unit);   
+      const qtyMax=qtyOn?dragonFeedQtyMax_(unitPay,wallet):1;
       if(dragonS3Runtime.feedQtyKey!==key){ dragonS3Runtime.feedQtyKey=key; dragonS3Runtime.feedQty=1; }
       const qty=qtyOn?Math.max(1,Math.min(qtyMax,Math.floor(Number(dragonS3Runtime.feedQty)||1))):1;
       dragonS3Runtime.feedQty=qty;
       const html=grad?"":cfg.menu[key].map((it,i)=>{
         const isFav=!!(fav && i===fav.index);
-        return `<button type="button" class="dragonFeedBtn dgTip${isFav?" isFav":""}" data-idx="${i}" data-coins="${it.coins}" data-qty="${qty}" data-tip="${dragonEsc_(dragonFeedTipText_(it.coins,qty,isFav))}">`
+        
+        const pay=dragonFeedPay_(it.coins);
+        return `<button type="button" class="dragonFeedBtn dgTip${isFav?" isFav":""}" data-idx="${i}" data-coins="${pay}" data-face="${it.coins}" data-qty="${qty}" data-tip="${dragonEsc_(dragonFeedTipText_(it.coins,qty,isFav))}">`
           +(isFav?`<span class="dgFavRibbon" aria-hidden="true">오늘의 취향 ×${DRAGON_FAV_MULT}</span>`:"")
           +`<span class="dgEm" aria-hidden="true">${dragonEsc_(it.icon)}</span>`
-          +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonFeedCostText_(it.coins,qty)}</span></span></button>`;
+          +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonFeedCostText_(pay,qty)}</span></span></button>`;
       }).join("");
       if(btns.innerHTML!==html) btns.innerHTML=html;
       btns.setAttribute("data-menu",key);
@@ -30527,7 +30733,7 @@ function renderDragonTabs_(){
           const qtyHtml=`<button type="button" class="dgQtyBtn" id="dragonFeedQtyMinus" data-step="-1" aria-label="횟수 줄이기"${qty<=1?` disabled=""`:""}>−</button>`
             +`<input id="dragonFeedQtyInput" type="number" min="1" max="${qtyMax}" step="1" inputmode="numeric" value="${qty}" aria-label="한 번에 먹일 횟수">`
             +`<button type="button" class="dgQtyBtn" id="dragonFeedQtyPlus" data-step="1" aria-label="횟수 늘리기"${qty>=qtyMax?` disabled=""`:""}>+</button>`
-            +`<span class="dgQtySum" id="dragonFeedQtySum">= ${dragonNumFmt_(unit*qty)} 코인</span>`
+            +`<span class="dgQtySum" id="dragonFeedQtySum">= ${dragonNumFmt_(unitPay*qty)} 코인</span>`
             +`<span class="dgQtyNote">한 번에 여러 번 먹여요 · 지갑 기준 최대 ${dragonNumFmt_(qtyMax)}번</span>`;
           if(!editing && qtyBox.innerHTML!==qtyHtml) qtyBox.innerHTML=qtyHtml;
         }
@@ -30788,6 +30994,17 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       try{ document.getElementById("dragonScene")?.scrollIntoView?.({behavior:dragonCalmMotion_()?"auto":"smooth",block:"start"}); }catch(e){}
       return true;
     }
+    
+    function renderDragonPerk_(){
+      const line=document.getElementById("dragonPerkLine");
+      if(!line) return;
+      const info=dragonPerkInfo_();
+      if(!info.active || !info.perk){ if(!line.hidden) line.hidden=true; return; }
+      const elName=dragonText_(dragonHallRow_(info.el)?.elName||dragonConfig_().elements[info.el]?.name,info.el,20);
+      const html=`🏅 ${dragonEsc_(info.perk.emoji)} ${dragonEsc_(elName)} 고룡의 특전 · ${dragonEsc_(info.perk.label)} · 다음 고룡이 태어날 때까지`;
+      if(line.innerHTML!==html) line.innerHTML=html;
+      if(line.hidden) line.hidden=false;
+    }
     function renderDragonHall_(){
       const wrap=document.getElementById("dragonHallRows");
       if(!wrap) return;
@@ -30972,6 +31189,7 @@ function dragonRankRowsFrom_(fedEl,members){
         renderDragonRace_();  
         renderDragonRank_();
         renderDragonRoster_();
+        renderDragonPerk_();  
         renderDragonHall_();  
         renderDragonAdminNote_();
       }catch(e){ console.warn("[dragon s3] render failed",e); }
@@ -31036,10 +31254,12 @@ if(raw===null) return null;
       }finally{ dragonS3Runtime.campLock=false; }
     }
 
-async function feedDragon_(coins,menuIdx){
+async function feedDragon_(coins,menuIdx,opts){
       if(dragonS3Runtime.feedLock) return;
       const want=Math.max(0,Math.floor(Number(coins)||0));
       if(!want) return;
+      const faceIn=Math.max(0,Math.floor(Number(opts&&opts.face)||0))||want;
+      const faceRatio=(faceIn>want)?(faceIn/want):1;   
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 먹이를 줄 수 있어요"); return; }
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
       const el=dragonMyCamp_();
@@ -31066,9 +31286,11 @@ async function feedDragon_(coins,menuIdx){
             const base=(dragonText_(cur.day,"",12)===day)?Math.max(0,Math.floor(Number(cur.coins)||0)):0;
             const room=cfg.dailyCap-base;
             if(room<=0){ capBlocked=true; return; }
-            amount=Math.min(amount,room);
+            
+            const roomPay=Math.max(1,Math.round(room/faceRatio));
+            amount=Math.min(amount,roomPay);
             fedToday=base;
-            return {day,coins:base+amount};
+            return {day,coins:base+Math.max(amount,Math.round(amount*faceRatio))};
           });
           if(capBlocked){ showToast("오늘은 배가 불러요 💤 자정에 다시 먹일 수 있어요",2800); return; }
           if(!capRes?.committed){ showToast("먹이 주기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
@@ -31076,12 +31298,14 @@ async function feedDragon_(coins,menuIdx){
         const have=dragonReadCoins_();
         if(have<=0){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
         amount=Math.min(amount,have);
+        
+        const face=Math.max(amount,Math.round(amount*faceRatio));
         const before=await ensureDragonRow_(el);
         if(Number(before.graduatedAtMs)>0){ showToast("이미 고룡으로 졸업한 드래곤이에요 🐉"); return; }
         
         const favNow=(dragonMenuKey_(dragonGrowthStage_(before.level).index)==="grown")?dragonFavItem_():null;
         const isFav=!!(favNow && Number(menuIdx)===favNow.index);
-        const expGain=isFav?Math.round(amount*DRAGON_FAV_MULT):amount;
+        const expGain=isFav?Math.round(face*DRAGON_FAV_MULT):face;
         if(!spendCoinsKeepCarry_(amount)){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
         spent=amount;
         let after=null;
@@ -31093,7 +31317,7 @@ async function feedDragon_(coins,menuIdx){
             const d=dragonNormalizeRow_(raw);
             if(d.graduatedAtMs>0) return;                  
             d.exp+=expGain;                                
-            d.totalFed+=amount;
+            d.totalFed+=face;                              
             let need=dragonNeedFor_(cfg,d.level+1);
             while(d.level<DRAGON_MAX_LEVEL && d.exp>=need){
               d.exp-=need;
@@ -31121,7 +31345,7 @@ async function feedDragon_(coins,menuIdx){
         dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons||{},{[el]:after});
         
         const updates={};
-        updates[`dragonV1/fed/${el}/${uid}/coins`]=rIncrement(amount);
+        updates[`dragonV1/fed/${el}/${uid}/coins`]=rIncrement(face);   
         updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
         
         try{ await rUpdate(rDragonPlaygroundRef_(),updates); }catch(e){ console.warn("[dragon s3] fed ledger update failed",e); }
@@ -31129,8 +31353,8 @@ async function feedDragon_(coins,menuIdx){
         try{
           const fed=dragonS3Runtime.fed=dragonS3Runtime.fed||{};
           fed[el]=fed[el]||{};
-          fed[el][uid]=Object.assign({},fed[el][uid]||{},{coins:Math.max(0,Math.floor(Number(fed[el][uid]?.coins)||0))+amount,updatedAtMs:Date.now()});
-          if(cfg.dailyCap>0 && dragonS3Runtime.members?.[uid]) dragonS3Runtime.members[uid].fed={day,coins:fedToday+amount};
+          fed[el][uid]=Object.assign({},fed[el][uid]||{},{coins:Math.max(0,Math.floor(Number(fed[el][uid]?.coins)||0))+face,updatedAtMs:Date.now()});
+          if(cfg.dailyCap>0 && dragonS3Runtime.members?.[uid]) dragonS3Runtime.members[uid].fed={day,coins:fedToday+face};
         }catch(e){}
         await writeDragonSummary_();
         
@@ -31141,13 +31365,16 @@ async function feedDragon_(coins,menuIdx){
         const ups=after.level-before.level;
         const need=dragonNeedFor_(cfg,after.level+1);
         const favTail=isFav?` · 오늘의 취향 ×${DRAGON_FAV_MULT} (경험치 ${dragonNumFmt_(expGain)})`:"";   
+        
+        const disc=(face>amount);
+        const payTail=disc?`${isFav?"":` (경험치 ${dragonNumFmt_(expGain)})`}${dragonPerkTail_("feed")}`:"";
         if(after.graduatedAtMs>0 && !(before.graduatedAtMs>0)){
           showToast(`${cfg.elements[el].emoji} ${cfg.elements[el].name}이 Lv.100 고룡이 되었어요! 🐉`,4200);
         }else if(ups>0){
-          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail} · Lv.${after.level} 달성!${ups>1?` (${ups}레벨 연속)`:""} 다음 목표 ${dragonNumFmt_(need)}`,3600);
+          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail}${payTail} · Lv.${after.level} 달성!${ups>1?` (${ups}레벨 연속)`:""} 다음 목표 ${dragonNumFmt_(need)}`,3600);
         }else{
           
-          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail} · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))}${isFav?" 경험치":"코인"}`,3000);
+          showToast(`${dragonNumFmt_(amount)}코인을 먹였어요${favTail}${payTail} · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))}${(isFav||disc)?" 경험치":"코인"}`,3000);
         }
         renderDragonS3_();
         dragonBounce_();
@@ -31301,11 +31528,81 @@ if(raw===null) return null;
 
 function dragonHallFollowupDone_(hall){
       const f=(hall && typeof hall==="object" && hall.followup && typeof hall.followup==="object")?hall.followup:null;
-      return !!(f && f.blessed && f.activated && f.sys);
+      
+      return !!(f && f.blessed && f.activated && f.sys && f.roster);
     }
     function dragonHallMerge_(el,row){
       if(!(row && typeof row==="object")) return;
       dragonS3Runtime.hall=Object.assign({},dragonS3Runtime.hall||{},{[el]:row});
+    }
+    
+    function dragonFreezeRosterFrom_(members,el){
+      const camp={};
+      let campN=0, skipped=0, cut=0;
+      const src=(members && typeof members==="object")?members:null;
+      if(src && dragonKeyOk_(el)){
+        Object.keys(src).forEach((uid)=>{
+          const row=src[uid];
+          if(!(row && typeof row==="object")) return;
+          if(dragonText_(row.camp,"",20)!==el) return;
+          if(!/^[^.#$\/\[\]]+$/.test(String(uid))){ skipped+=1; return; }
+          if(campN>=DRAGON_ROSTER_FREEZE_MAX){ cut+=1; return; }
+          camp[uid]=1; campN+=1;
+        });
+      }
+      return {camp,campN,skipped,cut};
+    }
+    
+    function dragonPerkToastOnce_(el){
+      try{
+        const perk=dragonPerkOf_(el);
+        if(!perk) return false;
+        if(!dragonMarkOnce_(DRAGON_PERK_SEEN,el,Date.now())) return false;
+        const elName=dragonText_(dragonHallRow_(el)?.elName||dragonConfig_().elements[el]?.name,el,20);
+        dragonGlowToast_(`🏅 ${perk.emoji} ${elName} 고룡의 특전 · ${perk.label} · 다음 고룡이 태어날 때까지 · 내 기운을 바꿔도 유지돼요`,6000,true);
+        return true;
+      }catch(e){ return false; }
+    }
+    
+    async function resolveDragonPerk_(){
+      if(!state.joined || !state.roomId) return null;
+      if(!dragonEnabled_()) return null;
+      const uid=String(state.uid||"");
+      if(!uid) return null;
+      const cur=dragonLatestGradPair_();
+      if(!cur.el || !(cur.grad>0)) return null;
+      const key=`${cur.el}:${cur.grad}`;
+      if(dragonS3Runtime.perkLock) return null;
+      if(dragonS3Runtime.perkDone[key]) return null;
+      const cache=dragonPerkCache_();
+      const same=!!(cache && String(cache.el||"")===cur.el
+        && Math.max(0,Math.floor(Number(cache.grad)||0))===cur.grad && String(cache.uid||"")===uid);
+      const tries=Math.max(0,Math.floor(Number(dragonS3Runtime.perkTries[key])||0));
+      if(same){
+        if(Math.floor(Number(cache.ok)||0)===1){ dragonS3Runtime.perkDone[key]=true; return {el:cur.el,ok:1}; }
+        if(Math.max(0,Math.floor(Number(cache.campN)||0))>0){ dragonS3Runtime.perkDone[key]=true; return {el:cur.el,ok:0}; }
+        const at=Math.max(0,Math.floor(Number(cache.checkedAtMs)||0));
+        if(at>0 && Date.now()-at<DRAGON_PERK_RECHECK_MS) return null;
+      }
+      if(tries>=DRAGON_PERK_RECHECK_MAX){ dragonS3Runtime.perkDone[key]=true; return null; }
+      dragonS3Runtime.perkLock=true;
+      try{
+        let row=null;
+        try{ const snap=await rGet(rDragonRef_(`hall/${cur.el}`)); const v=snap.val(); row=(v && typeof v==="object")?v:null; }
+        catch(e){ console.warn("[dragon s3] perk read failed",e); return null; }
+        dragonS3Runtime.perkTries[key]=tries+1;
+        if(row) dragonHallMerge_(cur.el,row);
+        const camp=(row && row.camp && typeof row.camp==="object")?row.camp:null;
+        const campN=Math.max(0,Math.floor(Number(row?.campN)||0));
+        const ok=!!(campN>0 && camp && Object.prototype.hasOwnProperty.call(camp,uid) && camp[uid]);
+        dragonPerkCacheWrite_({el:cur.el,grad:cur.grad,uid,ok:ok?1:0,campN,checkedAtMs:Date.now()});
+        if(ok || campN>0 || dragonS3Runtime.perkTries[key]>=DRAGON_PERK_RECHECK_MAX) dragonS3Runtime.perkDone[key]=true;
+        console.log("[dragon s3] perk resolve",cur.el,{grad:cur.grad,campN,ok,tries:dragonS3Runtime.perkTries[key]});
+        if(ok) dragonPerkToastOnce_(cur.el);
+        try{ if(dragonModalOpen_()) renderDragonPerk_(); }catch(e){}
+        try{ window.__MK_PET_V24__?.renderAll?.(); }catch(e){}
+        return {el:cur.el,ok:ok?1:0,campN};
+      }finally{ dragonS3Runtime.perkLock=false; }
     }
     
     function dragonBlessingUpdater_(raw,el,grad,uid,now){
@@ -31402,10 +31699,13 @@ let hall=dragonHallRow_(el);
           
           try{ const snap=await rGet(rDragonRef_(`hall/${el}`)); const v=snap.val(); hall=(v && typeof v==="object")?v:null; }catch(e){}
         }
+        let membersSnap=null;   
         if(!hall){
           let fresh=null;
           try{
             const [fSnap,mSnap]=await Promise.all([rGet(rDragonRef_(`fed/${el}`)),rGet(rDragonRef_("members"))]);
+            const mv=mSnap.val();
+            membersSnap=(mv && typeof mv==="object")?mv:null;
             fresh={
               graduatedAtMs:grad, elName, emoji,
               top3:dragonTop3From_(dragonRankRowsFrom_(fSnap.val()||{},mSnap.val()||{})),
@@ -31447,15 +31747,37 @@ if(!fu.blessed){
         }
         
         if(madeHall && !fu.sys){
-          try{ emitSys(`🐉 ${emoji} ${elName}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 · 작업 코인 ×3 🌟`); }catch(e){}
+          const perk=dragonPerkOf_(el);
+          const perkTail=perk?` · 🏅 ${perk.emoji} ${elName}을 고른 작가는 다음 고룡이 태어날 때까지 ${perk.label}`:"";
+          try{ emitSys(`🐉 ${emoji} ${elName}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 · 작업 코인 ×3 🌟${perkTail}`); }catch(e){}
           const at=Date.now();
           fu.sys=at;
           try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{sys:at}); }catch(e){}
         }
+        
+        let rosterSkip=false;   
+        if(!fu.roster){
+          let mem=membersSnap, readOk=!!membersSnap;
+          if(!mem){
+            try{ const snap=await rGet(rDragonRef_("members")); const v=snap.val(); mem=(v && typeof v==="object")?v:null; readOk=true; }
+            catch(e){ console.warn("[dragon s3] roster members read failed",e); readOk=false; mem=null; }
+          }
+          if(mem && Object.keys(mem).length>0){
+            const frozen=dragonFreezeRosterFrom_(mem,el);
+            if(frozen.skipped) console.warn("[dragon s3] roster freeze: bad uid keys skipped",el,frozen.skipped);
+            if(frozen.cut) console.warn("[dragon s3] roster freeze: truncated at",DRAGON_ROSTER_FREEZE_MAX,el,frozen.cut);
+            try{
+              await rUpdate(rDragonRef_(`hall/${el}`),frozen.campN>0?{camp:frozen.camp,campN:frozen.campN}:{campN:0});
+              await rUpdate(rDragonRef_(`hall/${el}/followup`),{roster:1});
+              fu.roster=1;
+              hall=Object.assign({},hall,{camp:frozen.camp,campN:frozen.campN});
+            }catch(e){ console.warn("[dragon s3] roster freeze failed",e); }   
+          }else if(readOk) rosterSkip=true;
+        }
         dragonHallMerge_(el,Object.assign({},hall,{followup:fu}));
         
-        if(fu.blessed && fu.activated && (fu.sys || !madeHall)) dragonS3Runtime.hallDone[el]=true;
-        console.log("[dragon s3] graduation followup",el,String(origin||""),{blessed:!!fu.blessed,activated:!!fu.activated,sys:!!fu.sys,made:madeHall});
+        if(fu.blessed && fu.activated && (fu.roster || rosterSkip) && (fu.sys || !madeHall)) dragonS3Runtime.hallDone[el]=true;
+        console.log("[dragon s3] graduation followup",el,String(origin||""),{blessed:!!fu.blessed,activated:!!fu.activated,sys:!!fu.sys,roster:!!fu.roster,made:madeHall});
         try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){}
         return true;
       }catch(e){
@@ -31603,6 +31925,43 @@ function dragonRaceHourKey_(ms){ return new Date(ms+9*3600000).toISOString().sli
       if(rows[1]) out.push({uid:rows[1].uid,name:rows[1].name,add:1});
       if(rows[2]) out.push({uid:rows[2].uid,name:rows[2].name,add:1});
       return out;
+    }
+    
+    function dragonScaleCamp_(){
+      try{
+        const p=dragonPerkInfo_();
+        if(!(p.perk && p.perk.kind==="scales") || !dragonKeyOk_(p.el)) return null;
+        const camp=dragonHallRow_(p.el)?.camp;
+        if(!(camp && typeof camp==="object")) return null;
+        return {el:p.el,camp,mult:Math.max(1,Math.min(10,Math.round(Number(p.perk.mult)||1)))};
+      }catch(e){ return null; }
+    }
+    
+    async function dragonScaleCampFetch_(){
+      const have=dragonScaleCamp_();
+      if(have) return have;
+      let el="";
+      try{
+        const p=dragonPerkInfo_();
+        if(!(p.perk && p.perk.kind==="scales")) return null;
+        el=p.el;
+      }catch(e){ return null; }
+      if(!dragonKeyOk_(el)) return null;
+      try{
+        const snap=await rGet(rDragonRef_(`hall/${el}`));
+        const row=snap.val();
+        if(row && typeof row==="object") dragonHallMerge_(el,row);
+      }catch(e){ console.warn("[dragon s3] perk camp read failed",e); }
+      return dragonScaleCamp_();
+    }
+    
+    function dragonScaleBonusApply_(bonus,info){
+      if(!Array.isArray(bonus) || !(info && info.camp && info.mult>1)) return bonus;
+      bonus.forEach((b)=>{
+        if(!(b && b.add>0)) return;
+        if(Object.prototype.hasOwnProperty.call(info.camp,b.uid) && info.camp[b.uid]) b.add=b.add*info.mult;
+      });
+      return bonus;
     }
 
 async function ensureDragonDailySeed_(){
@@ -31916,6 +32275,8 @@ async function maybeCloseDragonRace_(){
       if(Number(act.bonusDone)>0) return;
       const rows=dragonRaceRankRows_(act);
       const bonus=dragonRaceBonusFor_(act.kind,rows);
+      
+      if(bonus.some((b)=>b.add>0)) dragonScaleBonusApply_(bonus,await dragonScaleCampFetch_());
       const updates={};
       const stamp=Date.now();
       bonus.forEach((b)=>{
@@ -31982,7 +32343,9 @@ async function submitDragonRaceResult_(ms,flips){
         renderDragonS3_();
         return false;
       }
-      if(draw.n>0) await addDragonScales_(draw.n);
+      
+      const gain=dragonScaleGain_(draw.n);
+      if(gain>0) await addDragonScales_(gain);
       renderDragonS3_();
       return true;
     }
@@ -32007,13 +32370,15 @@ function dragonMountReels_(){
       try{ (dragonS3Runtime.leverTimers||[]).forEach((t)=>clearTimeout(t)); }catch(e){}
       dragonS3Runtime.leverTimers=[];
     }
-    function dragonSlotSettle_(n,tail){
+    
+    function dragonSlotSettle_(n,tail,rawN){
       const out=document.getElementById("dragonSlotOut");
       const wrap=document.getElementById("dragonReels");
-      const N=Math.max(0,Math.min(2,Math.floor(Number(n)||0)));
+      const G=Math.max(0,Math.floor(Number(n)||0));
+      const N=Math.max(0,Math.min(2,Math.floor(Number((rawN===undefined||rawN===null)?n:rawN)||0)));
       if(out){
         out.className="dragonSlotOut"+((N===2)?" dgWin":(N?"":" dgMiss"));
-        out.textContent=((N===2)?"🎰 777! 용비늘 2장":(N?"용비늘 1장":"꽝… 내일 다시!"))+(tail||"");
+        out.textContent=((N===2)?`🎰 777! 용비늘 ${G}장`:(G?`용비늘 ${G}장`:"꽝… 내일 다시!"))+(tail||"");
       }
       if(wrap && N!==1){
         wrap.className="dragonReels";
@@ -32022,13 +32387,13 @@ function dragonMountReels_(){
       }
     }
     
-    function dragonApplySettle_(key,faces,n,tail){
+    function dragonApplySettle_(key,faces,n,tail,rawN){
       if(!key || dragonS3Runtime.settledKey===key) return;
       dragonS3Runtime.settledKey=key;
       dragonClearLeverTimers_();
       dragonMountReels_();
       for(let i=0;i<3;i++) dragonReelStop_(i,faces[i]);
-      dragonSlotSettle_(n,tail);
+      dragonSlotSettle_(n,tail,rawN);
     }
     function dragonSpinReels_(faces,onDone){
       dragonClearLeverTimers_();
@@ -32059,7 +32424,9 @@ function dragonMountReels_(){
         dragonSpinReels_(p.faces,()=>{
           dragonS3Runtime.settledKey=p.key;
           dragonS3Runtime.boardHold=dragonS3Runtime.boardKey;   
-          dragonSlotSettle_(p.roll,p.roll>0?" · 가방에 담았어요":"");
+          
+          const gain=dragonScaleGain_(p.roll);
+          dragonSlotSettle_(gain,gain>0?` · 가방에 담았어요${dragonPerkTail_("scales")}`:"",p.roll);
           dragonS3Runtime.leverBusy=false;
           dragonS3Runtime.pending=null;
           renderDragonS3_();
@@ -32110,11 +32477,13 @@ function dragonMountReels_(){
         showToast("레버를 당기지 못했어요 · 잠시 후 다시 시도해 주세요",3000);
         return;
       }
-      if(draw.n>0) await addDragonScales_(draw.n);
+      
+      const gain=dragonScaleGain_(draw.n);
+      if(gain>0) await addDragonScales_(gain);
       dragonSpinReels_(draw.faces,()=>{
         dragonS3Runtime.settledKey=`daily:${day}`;
         dragonS3Runtime.boardHold=dragonS3Runtime.boardKey;   
-        dragonSlotSettle_(draw.n,draw.n>0?" · 가방에 담았어요":"");
+        dragonSlotSettle_(gain,gain>0?` · 가방에 담았어요${dragonPerkTail_("scales")}`:"",draw.n);
         dragonS3Runtime.leverBusy=false;
         dragonS3Runtime.pending=null;
         renderDragonS3_();
@@ -32197,18 +32566,20 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
           const rs=Math.max(0,Math.floor(Number(rec.seed)||0));
           const d=dragonSlotDraw_(dragonHash32_(`${uid}|${day}|daily|${rs}`));
           const roll=Math.max(0,Math.min(2,Math.floor(Number(rec.roll)||0)));
-          cardHtml=`오늘 완주 · 뒤집기 ${dragonNumFmt_(rec.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(roll)}장`
+          const gain=dragonScaleGain_(roll);   
+          cardHtml=`오늘 완주 · 뒤집기 ${dragonNumFmt_(rec.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(gain)}장`
             +`<small>기록 ${dragonMsText_(rec.ms)} · 자정(KST)에 새 판이 열려요</small>`;
           showSlot=true;
           wantKey=dragonRaceHoldKey_();   
-          settle={key:`daily:${day}`,faces:d.faces,n:roll,tail:""};
+          settle={key:`daily:${day}`,faces:d.faces,n:gain,tail:gain>0?dragonPerkTail_("scales"):"",raw:roll};
           loreText="오늘의 레이스는 하루 한 번이에요. 결과는 서버 시드로 미리 정해져 있어 다시 해도 바뀌지 않아요.";
         }else if(!dragonS3Runtime.dailySeed){
           loreText="오늘의 판을 준비하는 중이에요…";
         }else{
           wantSeed=dragonHash32_(`${uid}|${day}|${dragonS3Runtime.dailySeed}`);
           wantKey=`daily:${day}:${wantSeed}`;
-          loreText=`카드 ${DRAGON_RACE_TOTAL}장을 다 뒤집으면 레버를 한 번 당겨요(용비늘 0~2장). 하루 한 번, 자정(KST)에 새 판이 열려요.`;
+          
+          loreText=`카드 ${DRAGON_RACE_TOTAL}장을 다 뒤집으면 레버를 한 번 당겨요(용비늘 0~${dragonScaleGain_(2)}장${dragonPerkTail_("scales")}). 하루 한 번, 자정(KST)에 새 판이 열려요.`;
         }
       }else{
         const act=dragonRaceActive_();
@@ -32228,12 +32599,13 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
             cardHtml=`완주 ${count}명 · 내 기록 ${dragonMsText_(p.ms)}<small>순위 보너스는 레이스가 끝나면 들어와요</small>`;
           }else if(mineRes){
             const roll=Math.max(0,Math.min(2,Math.floor(Number(mineRes.roll)||0)));
+            const gain=dragonScaleGain_(roll);   
             const d=dragonSlotDraw_(dragonHash32_(`${uid}|${String(open.id)}|${Math.max(0,Math.floor(Number(open.seed)||0))}`));
-            cardHtml=`완주 완료 · 기록 ${dragonMsText_(mineRes.ms)} · 뒤집기 ${dragonNumFmt_(mineRes.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(roll)}장`
+            cardHtml=`완주 완료 · 기록 ${dragonMsText_(mineRes.ms)} · 뒤집기 ${dragonNumFmt_(mineRes.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(gain)}장`
               +`<small>지금까지 완주 ${count}명 · 순위 보너스는 레이스가 끝나면 들어와요</small>`;
             showSlot=true;
             wantKey=dragonRaceHoldKey_();   
-            if(open.seed!==undefined) settle={key:`race:${String(open.id)}`,faces:d.faces,n:roll,tail:""};
+            if(open.seed!==undefined) settle={key:`race:${String(open.id)}`,faces:d.faces,n:gain,tail:gain>0?dragonPerkTail_("scales"):"",raw:roll};
             loreText=`${flashLore}남은 시간 동안 다른 작가들의 완주를 기다려요.`;
           }else if(open.seed===undefined){
             loreText="레이스 판을 불러오는 중이에요…";
@@ -32241,11 +32613,13 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
             wantSeed=Math.max(0,Math.floor(Number(open.seed)||0));
             wantKey=`race:${String(open.id)}`;
             cardHtml=`지금까지 완주 ${count}명`;
-            loreText=`${flashLore}10분 안에 카드를 다 뒤집으면 레버 1회 + 순위 보너스(1위 +2 · 2~3위 +1). 판은 모두 같아요.`;
+            
+            loreText=`${flashLore}10분 안에 카드를 다 뒤집으면 레버 1회 + 순위 보너스(1위 +${dragonScaleGain_(2)} · 2~3위 +${dragonScaleGain_(1)}${dragonPerkTail_("scales")}). 판은 모두 같아요.`;
           }
         }else if(act && Number(act.endMs)>0 && now-Number(act.endMs)<DRAGON_RACE_RESULT_KEEP_MS){
           const rows=dragonRaceRankRows_(act);
-          const bonus=dragonRaceBonusFor_(act.kind,rows);
+          
+          const bonus=dragonScaleBonusApply_(dragonRaceBonusFor_(act.kind,rows),dragonScaleCamp_());
           const addOf=(u)=>{ const b=bonus.find((x)=>x.uid===u); return b?b.add:0; };
           rankHtml=rows.length
             ? `<ol>${rows.slice(0,5).map((r,i)=>`<li class="${r.uid===uid?"isMe":""}"><b>${i+1}위</b><span>${dragonEsc_(r.name)}</span><em>${dragonMsText_(r.ms)}${addOf(r.uid)?` · +${addOf(r.uid)}`:""}</em></li>`).join("")}</ol>`
@@ -32287,7 +32661,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
         const out2=document.getElementById("dragonSlotOut");
         if(out2 && !out2.textContent) out2.textContent="완주! 레버를 당겨 용비늘을 뽑으세요";
       }
-      if(settle) dragonApplySettle_(settle.key,settle.faces,settle.n,settle.tail);
+      if(settle) dragonApplySettle_(settle.key,settle.faces,settle.n,settle.tail,settle.raw);
     }
     
     function dragonStopRaceTicker_(){
@@ -32416,6 +32790,7 @@ function stopDragonRealtime_(){
       loadDragonConfigOnce_({force:true})
         .then(()=>loadDragonRosterOnce_())
         .then(()=>{ try{ dragonReselectNag_(); }catch(e){} })   
+        .then(()=>resolveDragonPerk_().catch(()=>{}))           
         .then(()=>loadDragonBagOnce_({force:true}))
         .then(()=>loadDragonDailyOnce_({force:true}))
         .then(()=>ensureDragonDailySeed_())
@@ -32502,6 +32877,8 @@ return Object.assign({},cur,{
         
         try{ dragonBlessingTick_(); }catch(e){}
         try{ dragonGradWatchTick_(); }catch(e){}
+        
+        try{ resolveDragonPerk_().catch(()=>{}); }catch(e){}
         
         try{ dragonNameDecideTick_(); }catch(e){}
         try{ dragonReselectNag_(); }catch(e){}
@@ -32757,7 +33134,8 @@ try{
         const btn=ev.target?.closest?.(".dragonFeedBtn");
         if(!btn || btn.disabled) return;
 
-feedDragonFromMenu_(Number(btn.getAttribute("data-coins"))||0,Number(btn.getAttribute("data-idx")),Number(btn.getAttribute("data-qty"))||1).catch(()=>{});
+const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-coins"))||0;
+        feedDragonFromMenu_(face,Number(btn.getAttribute("data-idx")),Number(btn.getAttribute("data-qty"))||1).catch(()=>{});
       });
       
       document.getElementById("dragonFeedQty")?.addEventListener("click",(ev)=>{
@@ -32862,6 +33240,8 @@ feedDragonFromMenu_(Number(btn.getAttribute("data-coins"))||0,Number(btn.getAttr
         
         coinMult:dragonCoinMult_,
         blessing:dragonBlessingInfo_,
+        
+        perk:dragonPerkInfo_,
         
         tick:()=>{ dragonSeasonTick_().catch(()=>{}); },
         getState:()=>({config:dragonS3Runtime.config,summary:dragonS3Runtime.summary})
@@ -37822,9 +38202,34 @@ var V169_PART_PRICE_DEFAULT = 2;
     try{ console.log(msg); }catch(e){}
   }
   
+  var partsPerkMemo = { at: 0, rate: 1, tail: '' };
+  function partsPerkRefresh(){
+    var now = Date.now();
+    if(partsPerkMemo.at > 0 && now - partsPerkMemo.at < 1000) return partsPerkMemo;
+    var rate = 1, tail = '';
+    try{
+      var dg = window.__MK_DRAGON_S3__;
+      var pk = (dg && typeof dg.perk === 'function') ? dg.perk() : null;
+      if(pk && pk.active && pk.perk && pk.perk.kind === 'parts'){
+        var r = Number(pk.perk.rate);
+        if(isFinite(r) && r > 0 && r < 1){
+          rate = r;
+          tail = ' · ' + String(pk.perk.emoji || '🏅') + ' 고룡 특전 -' + Math.round((1 - r) * 100) + '%';
+        }
+      }
+    }catch(e){ rate = 1; tail = ''; }
+    partsPerkMemo.at = now; partsPerkMemo.rate = rate; partsPerkMemo.tail = tail;
+    return partsPerkMemo;
+  }
+  function partsPerkRate(){ return partsPerkRefresh().rate; }
+  function partsPerkTail(){ return partsPerkRefresh().tail; }
+  
   function partPrice(catKey, name){
     var p = Number((chara.prices || {})[catKey + '/' + name]);
-    return (isFinite(p) && p > 0) ? Math.floor(p) : V169_PART_PRICE_DEFAULT;
+    var base = (isFinite(p) && p > 0) ? Math.floor(p) : V169_PART_PRICE_DEFAULT;
+    
+    var rate = partsPerkRate();
+    return (rate < 1) ? Math.max(1, Math.round(base * rate)) : base;
   }
   
   function specialInfo(catKey, name){ return (chara.special || {})[catKey + '/' + name] || null; }
@@ -38504,7 +38909,7 @@ var cartUnchecked = {};
       
       if(list) list.innerHTML = spHtml || '<div class="mkCartEmpty"><span class="ic">👗</span><span>파츠를 누르면 여기에 담겨요<br>결제 전엔 나만 보여요</span></div>';
       var tot0 = $id('mkCartTotal');
-      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>' + COIN + '0</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail;
+      if(tot0) tot0.innerHTML = '선택 0개 · 합계 <b>' + COIN + '0</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail + partsPerkTail(); 
       var pay0 = $id('mkCartPay');
       
       if(pay0){ pay0.disabled = true; pay0.innerHTML = COIN + ' 결제'; }
@@ -38523,7 +38928,8 @@ var cartUnchecked = {};
         + '</label>';
     }).join('') + spHtml; 
     var tot = $id('mkCartTotal');
-    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>' + COIN + fmtCoins(total) + '</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail;
+    
+    if(tot) tot.innerHTML = '선택 ' + checkedN + '개 · 합계 <b>' + COIN + fmtCoins(total) + '</b> · 보유 ' + COIN + fmtCoins(readCoins()) + spTail + partsPerkTail();
     var pay = $id('mkCartPay');
     
     if(pay){ pay.disabled = !checkedN; pay.innerHTML = COIN + ' ' + fmtCoins(total) + ' 결제'; }
@@ -38995,6 +39401,14 @@ var accParts = selArr(c.key).map(function(nm){ return c.parts.find(function(p){ 
       }
       el.appendChild(img);
     });
+    
+    try{
+      var mfxApi = window.__MK_CHARA_TILE_V169__;
+      if(mfxApi && typeof mfxApi.minimiElOf === 'function' && typeof mfxApi.minimiFxEl === 'function'){
+        var mfx = mfxApi.minimiFxEl(mfxApi.minimiElOf(layers.map(function(L){ return L.part.name; }))); 
+        if(mfx) el.appendChild(mfx);
+      }
+    }catch(e){}
     try{ setupStageBlink(el); }catch(e){} 
   }
   
@@ -39661,9 +40075,29 @@ var html = '⏱ 누적 작업 시간 ' + fmtDur(s.totalSec) + ' · ' + COIN + ' 
     
     var coinMult = 1;
     try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
-    
-    try{ var dg = window.__MK_DRAGON_S3__; if(dg && typeof dg.coinMult === 'function') coinMult = Math.max(coinMult, Math.min(10, Math.round(Number(dg.coinMult())||1))); }catch(e){}
-    if(coinMult > 1) html += ' · 🌟×' + coinMult + ' 축복 중';
+
+var dgWon = false;
+    try{
+      var dg = window.__MK_DRAGON_S3__;
+      if(dg && typeof dg.coinMult === 'function'){
+        var dm = Math.min(10, Math.round(Number(dg.coinMult())||1));
+        if(dm > coinMult){ coinMult = dm; dgWon = true; }
+      }
+    }catch(e){}
+    var multLabel = ' · 🌟×' + coinMult + ' 축복 중';
+    if(dgWon){
+      try{
+        var dg2 = window.__MK_DRAGON_S3__;
+        var pk = (dg2 && typeof dg2.perk === 'function') ? dg2.perk() : null;
+        var bi = (dg2 && typeof dg2.blessing === 'function') ? dg2.blessing() : null;
+        
+        var blessWins = !!(bi && bi.phase === 'active' && Math.round(Number(bi.mult)||1) >= coinMult);
+        if(!blessWins && pk && pk.active && pk.perk && pk.perk.kind === 'coin'){
+          multLabel = ' · ' + String(pk.perk.emoji || '🏅') + '×' + coinMult + ' 고룡 특전';
+        }
+      }catch(e){}
+    }
+    if(coinMult > 1) html += multLabel;
     if(el.__mkWalletHtml !== html){ el.__mkWalletHtml = html; el.innerHTML = html; }
     if(!el.__mkWalletTitle){ el.__mkWalletTitle = 1; el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; } 
   }
@@ -39981,6 +40415,83 @@ function onModalShown(){
   .mkCharaMoveImg.mkCharaWalking{ animation:mkCharaBobV169 .38s ease-in-out infinite alternate; }
   @keyframes mkCharaBobV169{ from{ transform:translateY(0); } to{ transform:translateY(-4%); } }
   body.mkLowSpecMode .mkCharaMoveWrap{ display:none !important; } 
+
+  
+  
+  .mkMinimiFx{ position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; border-radius:inherit; }
+  
+  .mkMinimiFx i{
+    position:absolute; display:block; opacity:0;
+    left:44%; bottom:5%; width:13%; height:13%; border-radius:50%;
+    background:radial-gradient(circle, var(--el-core) 16%, var(--el-light) 46%, var(--el-deep) 76%, transparent 80%);
+    animation:mkMinimiFxRise 3.4s ease-out infinite;
+  }
+  
+  .mkMinimiFx i:nth-child(1){ left:20%; --fxS:1;   animation-delay:-.35s; }
+  .mkMinimiFx i:nth-child(2){ left:47%; --fxS:.72; animation-delay:-1.6s; }
+  .mkMinimiFx i:nth-child(3){ left:73%; --fxS:.86; animation-delay:-2.5s; }
+  @keyframes mkMinimiFxRise{
+    0%{ transform:translateY(0) scale(calc(var(--fxS,1) * .62)); opacity:0; }
+    20%{ opacity:.72; }
+    100%{ transform:translateY(-215%) scale(calc(var(--fxS,1) * .34)); opacity:0; }
+  }
+  
+  .mkMinimiFx[data-el="fire"] i{
+    width:11%; height:15%;
+    border-radius:50% 50% 46% 46% / 62% 62% 38% 38%;
+    background:linear-gradient(180deg, var(--el-core) 10%, var(--el-light) 44%, var(--el-deep));
+  }
+  
+  .mkMinimiFx[data-el="water"] i{
+    width:12%; height:12%; border-radius:50%;
+    
+    box-sizing:border-box; border:1px solid var(--el-light);
+    background:radial-gradient(circle at 34% 28%, var(--el-core) 6%, var(--el-glow) 48%, var(--el-deep));
+    animation-name:mkMinimiFxBubble; animation-duration:3.8s; animation-timing-function:ease-in-out;
+  }
+  @keyframes mkMinimiFxBubble{
+    0%{ transform:translateY(0) scale(calc(var(--fxS,1) * .45)); opacity:0; }
+    18%{ opacity:.72; }
+    100%{ transform:translateY(-190%) scale(var(--fxS,1)); opacity:0; }
+  }
+  
+  .mkMinimiFx[data-el="thunder"] i{
+    bottom:auto; width:9%; height:17%; border-radius:0;
+    background:var(--el-light);
+    clip-path:polygon(58% 0,18% 54%,44% 54%,30% 100%,84% 40%,54% 40%,74% 0);
+    animation-name:mkMinimiFxSpark; animation-duration:3s; animation-timing-function:steps(1,end);
+  }
+  .mkMinimiFx[data-el="thunder"] i:nth-child(1){ left:6%;  top:30%; }
+  .mkMinimiFx[data-el="thunder"] i:nth-child(2){ left:83%; top:23%; }
+  .mkMinimiFx[data-el="thunder"] i:nth-child(3){ left:11%; top:63%; }
+  @keyframes mkMinimiFxSpark{
+    0%,100%{ transform:scale(var(--fxS,1)); opacity:0; }
+    10%{ opacity:.62; }   
+    22%{ opacity:.12; }
+    34%{ opacity:.55; }
+    50%{ opacity:0; }
+  }
+  
+  .mkMinimiFx[data-el="mountain"] i{
+    left:-14%; bottom:auto; width:13%; height:8%;
+    border-radius:64% 18% 64% 18%;
+    background:var(--el-light);
+    animation-name:mkMinimiFxDrift; animation-duration:4s; animation-timing-function:linear;
+  }
+  
+  .mkMinimiFx[data-el="mountain"] i:nth-child(1){ top:52%; }
+  .mkMinimiFx[data-el="mountain"] i:nth-child(2){ top:66%; }
+  .mkMinimiFx[data-el="mountain"] i:nth-child(3){ top:79%; }
+  @keyframes mkMinimiFxDrift{
+    0%{ transform:translate(0,0) rotate(0deg) scale(var(--fxS,1)); opacity:0; }
+    16%{ opacity:.66; }
+    82%{ opacity:.66; }
+    100%{ transform:translate(720%,60%) rotate(140deg) scale(var(--fxS,1)); opacity:0; }
+  }
+  
+  @media (prefers-reduced-motion:reduce){ .mkMinimiFx{ display:none !important; } }
+  body.mkLowSpecMode .mkMinimiFx{ display:none !important; }
+  body.mkLightMode .mkMinimiFx{ display:none !important; }
 </style>
 <script id="v169CharaTileScript">
 (function(){
@@ -40826,6 +41337,8 @@ m.rot = rot || 0;
       var flip = document.createElement('div'); flip.className = 'mkCharaMoveFlip';
       var img = document.createElement('img'); img.className = 'mkCharaMoveImg'; img.alt = '캐릭터'; img.decoding = 'async';
       flip.appendChild(img); wrap.appendChild(flip); tileEl.appendChild(wrap);
+      
+      try{ var mfx = minimiFxEl(minimiElOf(c.parts)); if(mfx) wrap.appendChild(mfx); }catch(e){}
       var m = { root: tileEl, host: tileEl, wrap: wrap, flip: flip, img: img, t: [], x: 0, y: 0, dir: 1, rot: 0 }; 
       moverReg.add(m);
       stats.moverAttachCount++;
@@ -41251,6 +41764,32 @@ function bakeHealLater_(res, c, isAlive, apply){
     again();
   }
 
+var MINIMI_FX_RE = /^05_acc_special_dragon_(.+)\.png$/i;
+  
+  function minimiElOf(parts){
+    try{
+      var acc = (parts && typeof parts === 'object' && !Array.isArray(parts)) ? parts.acc : parts; 
+      var arr = Array.isArray(acc) ? acc : (typeof acc === 'string' ? [acc] : []);
+      for(var i = 0; i < arr.length; i++){
+        var m = MINIMI_FX_RE.exec(String(arr[i] == null ? '' : arr[i]));
+        if(!m) continue;
+        var el = String(m[1]).toLowerCase();
+        return /^[a-z0-9_]{1,20}$/.test(el) ? el : ''; 
+      }
+    }catch(e){}
+    return '';
+  }
+  
+  function minimiFxEl(el){
+    if(!el) return null;
+    var fx = document.createElement('div');
+    fx.className = 'mkMinimiFx dragonElTint';
+    fx.setAttribute('data-el', el);
+    fx.setAttribute('aria-hidden', 'true');
+    for(var i = 0; i < 3; i++) fx.appendChild(document.createElement('i'));
+    return fx;
+  }
+
 function fillSlot(box, p){
     try{
       var c = charaOf(p);
@@ -41269,6 +41808,8 @@ function fillSlot(box, p){
       img.alt = '캐릭터';
       img.decoding = 'async';
       box.appendChild(img);
+      
+      try{ var mfx = minimiFxEl(minimiElOf(c.parts)); if(mfx) box.appendChild(mfx); }catch(e){}
       
       if(c.name){
         var tag = document.createElement('span');
@@ -41531,6 +42072,9 @@ window.__MK_CHARA_TILE_V169__ = {
     moverWatchdog: moverWatchdog,     
     movePeekOutNow: movePeekOutNow,   
     computeEyeFracs: computeEyeFracs, 
+    
+    minimiElOf: minimiElOf,       
+    minimiFxEl: minimiFxEl,       
     
     sanitizeFlip: sanitizeFlip, 
     sigOf: sigOf,               
