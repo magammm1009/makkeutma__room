@@ -100,6 +100,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -27094,7 +27095,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17137; 
+const MK_APP_BUILD = 17138; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30649,7 +30650,8 @@ function renderDragonTabs_(){
       const cfg=dragonConfig_();
       const unit=Math.max(1,Math.floor(Number(cfg.menu[key]?.[0]?.coins)||0));
       const unitPay=dragonFeedPay_(unit);   
-      const max=dragonFeedQtyMax_(unitPay,dragonReadCoins_());
+      const wallet=dragonReadCoins_();
+      const max=dragonFeedQtyMax_(unitPay,wallet);
       const n=Math.max(1,Math.min(max,Math.floor(Number(raw)||1)));
       dragonS3Runtime.feedQty=n;
       dragonSetText_("dragonFeedQtySum",`= ${dragonNumFmt_(unitPay*n)} 코인`);
@@ -30666,6 +30668,7 @@ function renderDragonTabs_(){
           
           if(cs) cs.textContent=dragonFeedCostText_(Number(b.getAttribute("data-coins"))||0,n);
           b.setAttribute("data-tip",dragonFeedTipText_(Number(b.getAttribute("data-face"))||Number(b.getAttribute("data-coins"))||0,n,!!b.classList?.contains?.("isFav")));   
+          b.disabled=(wallet<(Number(b.getAttribute("data-coins"))||0)*n);   
         }
       }catch(e){}
       return n;
@@ -30712,7 +30715,8 @@ function renderDragonTabs_(){
         const isFav=!!(fav && i===fav.index);
         
         const pay=dragonFeedPay_(it.coins);
-        return `<button type="button" class="dragonFeedBtn dgTip${isFav?" isFav":""}" data-idx="${i}" data-coins="${pay}" data-face="${it.coins}" data-qty="${qty}" data-tip="${dragonEsc_(dragonFeedTipText_(it.coins,qty,isFav))}">`
+        const short=(wallet<pay*qty);   
+        return `<button type="button" class="dragonFeedBtn dgTip${isFav?" isFav":""}" data-idx="${i}" data-coins="${pay}" data-face="${it.coins}" data-qty="${qty}" data-tip="${dragonEsc_(dragonFeedTipText_(it.coins,qty,isFav))}"${short?` disabled=""`:""}>`
           +(isFav?`<span class="dgFavRibbon" aria-hidden="true">오늘의 취향 ×${DRAGON_FAV_MULT}</span>`:"")
           +`<span class="dgEm" aria-hidden="true">${dragonEsc_(it.icon)}</span>`
           +`<span><span class="dgNm">${dragonEsc_(it.name)}</span><span class="dgCs">${dragonFeedCostText_(pay,qty)}</span></span></button>`;
@@ -31275,6 +31279,12 @@ async function feedDragon_(coins,menuIdx,opts){
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
         const day=seoulDateKey();
+        
+        const haveNow=dragonReadCoins_();
+        if(haveNow<want){
+          showToast(`코인이 모자라요 · ${dragonNumFmt_(want)}코인이 있어야 먹일 수 있어요 (지금 ${dragonNumFmt_(haveNow)})`,2800);
+          return;
+        }
         let amount=want;
         let fedToday=0;
         let capBlocked=false;
@@ -31296,8 +31306,11 @@ async function feedDragon_(coins,menuIdx,opts){
           if(!capRes?.committed){ showToast("먹이 주기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
         }
         const have=dragonReadCoins_();
-        if(have<=0){ showToast("코인이 모자라요 · 작업으로 더 모아 주세요",2800); return; }
-        amount=Math.min(amount,have);
+        
+        if(have<amount){
+          showToast(`코인이 모자라요 · ${dragonNumFmt_(amount)}코인이 있어야 먹일 수 있어요 (지금 ${dragonNumFmt_(have)})`,2800);
+          return;
+        }
         
         const face=Math.max(amount,Math.round(amount*faceRatio));
         const before=await ensureDragonRow_(el);
