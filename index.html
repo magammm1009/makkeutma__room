@@ -102,6 +102,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6417,6 +6418,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   @keyframes dragonReelSpin{from{transform:translateY(0);} to{transform:translateY(-468px);}}
   .dragonReels.dgWin{box-shadow:0 0 0 2px #ffd66e, 0 0 26px rgba(255,214,110,.4);}
   .dragonReels.dgMiss{animation:dragonReelMiss .42s ease;}
+  
+  .dragonReels.dgIdle .dragonReel{opacity:.42; filter:grayscale(1);}
   @keyframes dragonReelMiss{0%,100%{transform:translateX(0);} 35%{transform:translateX(-6px);}}
   .dragonLever{
     appearance:none; -webkit-appearance:none; cursor:pointer; background:none; border:0; padding:6px 10px 0;
@@ -27096,7 +27099,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17139; 
+const MK_APP_BUILD = 17140; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -32379,6 +32382,7 @@ function dragonMountReels_(){
       const reels=wrap.querySelectorAll(".dragonReel");
       for(let i=0;i<reels.length;i++) reels[i].innerHTML=`<span class="dgRStrip">${strip}</span>`;
       wrap.dataset.ready="1";
+      dragonReelIdle_();   
     }
     function dragonReelStop_(i,face){
       const wrap=document.getElementById("dragonReels");
@@ -32388,6 +32392,14 @@ function dragonMountReels_(){
       reel.classList.remove("dgSpin");
       st.style.transform=`translateY(${-DRAGON_REEL_H*Math.max(0,Math.min(8,Math.floor(Number(face)||0)))}px)`;
     }
+    
+    const DRAGON_REEL_IDLE_FACES=Object.freeze([0,4,8]);
+    function dragonReelIdle_(){
+      const wrap=document.getElementById("dragonReels");
+      if(!wrap) return;
+      for(let i=0;i<3;i++) dragonReelStop_(i,DRAGON_REEL_IDLE_FACES[i]);
+      wrap.className="dragonReels dgIdle";
+    }
     function dragonClearLeverTimers_(){
       try{ (dragonS3Runtime.leverTimers||[]).forEach((t)=>clearTimeout(t)); }catch(e){}
       dragonS3Runtime.leverTimers=[];
@@ -32396,6 +32408,7 @@ function dragonMountReels_(){
     function dragonSlotSettle_(n,tail,rawN){
       const out=document.getElementById("dragonSlotOut");
       const wrap=document.getElementById("dragonReels");
+      if(wrap) wrap.classList.remove("dgIdle");   
       const G=Math.max(0,Math.floor(Number(n)||0));
       const N=Math.max(0,Math.min(2,Math.floor(Number((rawN===undefined||rawN===null)?n:rawN)||0)));
       if(out){
@@ -32532,8 +32545,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
       dragonClearLeverTimers_();
       dragonS3Runtime.settledKey="";
       dragonS3Runtime.boardHold="";   
-      const wrap=document.getElementById("dragonReels");
-      if(wrap) wrap.className="dragonReels";
+      dragonReelIdle_();   
       const out=document.getElementById("dragonSlotOut");
       if(out){ out.className="dragonSlotOut"; out.textContent=""; }
     }
