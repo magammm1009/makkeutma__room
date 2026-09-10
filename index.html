@@ -101,6 +101,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -27095,7 +27096,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17138; 
+const MK_APP_BUILD = 17139; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30184,6 +30185,14 @@ function dragonIsNum_(v){ return typeof v==="number" && isFinite(v); }
       
       far.style.setProperty("--dg-lash-h",DRAGON_EYE2_LASH_H);
       far.style.setProperty("--dg-lash-b",DRAGON_EYE2_LASH_B);
+      
+      try{
+        const mkid=mainLid&&mainLid.firstElementChild;
+        const fkid=far.firstElementChild;
+        const ma=(mkid&&mkid.getAnimations)?mkid.getAnimations()[0]:null;
+        const fa=(fkid&&fkid.getAnimations)?fkid.getAnimations()[0]:null;
+        if(ma&&fa&&ma.startTime!=null&&fa.startTime!==ma.startTime) fa.startTime=ma.startTime;
+      }catch(e){}
     }
     function dragonPaintLid_(box){
       if(!DRAGON_EYES || !box) return;
