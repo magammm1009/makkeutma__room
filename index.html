@@ -105,6 +105,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7688,14 +7689,15 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 
 
 <div class="dragonBag" id="dragonBag">
-<div class="dragonBagHead"><b>🐉 용비늘 · 레벨권</b><span class="dgOnTouch">비늘 5장 = 레벨권 1장 · 레벨권 1장 = 스킬 +1</span></div>
+<div class="dragonBagHead"><b>🐉 용비늘 · 레벨권</b><span class="dgOnTouch">비늘 5장 = 레벨권 1장 · 레벨권 1장 = 스킬 +1 · 10장 = 경험치 10,000</span></div>
 <div class="dragonBagStats">
 <div class="dragonBagStat dgTip" data-tip="🎴 용비늘 레이스에서 벌어요 · 5장을 모으면 레벨권 1장으로 바꿀 수 있어요"><svg class="dgBagIc" aria-hidden="true"><use href="#dc-ic-scale"></use></svg><span><small>내 용비늘</small><b id="dragonBagScales">0</b><em>장</em></span></div>
-<div class="dragonBagStat dgTip" data-tip="레벨권 1장을 쓰면 내 드래곤의 스킬이 1 올라요 · 스킬은 오라·파티클 세기만 바꾸는 치장이에요"><span class="dgBagEm" aria-hidden="true">🎟️</span><span><small>내 레벨권</small><b id="dragonBagTickets">0</b><em>장</em></span></div>
+<div class="dragonBagStat dgTip" data-tip="레벨권 1장을 쓰면 내 드래곤의 스킬이 1 올라요 · 스킬은 오라·파티클 세기만 바꾸는 치장이에요 · 10장을 모으면 [10장으로 성장]으로 경험치 10,000을 먹일 수 있어요"><span class="dgBagEm" aria-hidden="true">🎟️</span><span><small>내 레벨권</small><b id="dragonBagTickets">0</b><em>장</em></span></div>
 </div>
 <div class="dragonBagBtns">
 <button class="dragonBagBtn dgTip" id="dragonBuyTicket" type="button" disabled data-tip="용비늘 5장 → 레벨권 1장">레벨권 구매</button>
 <button class="dragonBagBtn dgTip" id="dragonFeedTicket" type="button" disabled data-tip="레벨권 1장 → 내 드래곤 스킬 +1">레벨권 사용</button>
+<button class="dragonBagBtn dgTip" id="dragonGrowTicket" type="button" disabled data-tip="레벨권 10장 → 내 드래곤 경험치 10,000 (코인 먹이와 같은 레벨업 · 랭킹은 레벨권 +10)">10장으로 성장</button>
 </div>
 <div class="dragonBagNote" id="dragonBagNote"></div>
 </div>
@@ -27102,7 +27104,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17143; 
+const MK_APP_BUILD = 17144; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29296,6 +29298,9 @@ setInterval(()=>syncWorldTreeContribution_("timer").catch(()=>{}), WORLD_TREE_SA
     const DRAGON_RESELECT_NAG_KEY = "mk_dragon_reselect_nag_v1";  
     
     const DRAGON_TICKET_COST = 5;
+
+const DRAGON_TICKET_GROW_COST = 10;      
+    const DRAGON_TICKET_GROW_EXP = 10000;    
     const DRAGON_FAV_MULT = 1.5;      
     
     const DRAGON_PERKS = Object.freeze({
@@ -29809,6 +29814,13 @@ function dragonGrowthStage_(level,maxLevel){
     function dragonNeedFor_(cfg,level){
       return Math.max(1,Math.round((Number(cfg.expBase)||0)+(Number(cfg.expSlope)||0)*Math.max(0,Number(level)||0)));
     }
+    
+    function dragonExpToGraduate_(cfg,row){
+      const r=dragonNormalizeRow_(row);
+      let need=0;
+      for(let L=r.level+1;L<=DRAGON_MAX_LEVEL;L++) need+=dragonNeedFor_(cfg,L);
+      return Math.max(0,need-r.exp);
+    }
     function dragonMenuKey_(stageIndex){ const s=Math.max(0,Number(stageIndex)||0); return s<=1?"egg":(s<=3?"baby":"grown"); }
     
     function dragonFavIndex_(day){
@@ -29830,6 +29842,7 @@ function dragonFavItem_(day){
         skill:Math.max(0,Math.floor(Number(r.skill)||0)),
         totalFed:Math.max(0,Math.floor(Number(r.totalFed)||0)),
         totalTickets:Math.max(0,Math.floor(Number(r.totalTickets)||0)),
+        totalTicketExp:Math.max(0,Math.floor(Number(r.totalTicketExp)||0)),
         graduatedAtMs:Math.max(0,Math.floor(Number(r.graduatedAtMs)||0)),
         name:dragonText_(r.name,"",40),
         updatedAtMs:Math.max(0,Math.floor(Number(r.updatedAtMs)||0))
@@ -31081,8 +31094,10 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       dragonSetText_("dragonBagTickets",dragonNumFmt_(bag.tickets));
       const buy=document.getElementById("dragonBuyTicket");
       const feed=document.getElementById("dragonFeedTicket");
+      const grow=document.getElementById("dragonGrowTicket");
       if(buy) buy.disabled=!(on && bag.scales>=DRAGON_TICKET_COST);
       if(feed) feed.disabled=!(on && !!mine && bag.tickets>0 && !grad && !capped);
+      if(grow) grow.disabled=!(on && !!mine && bag.tickets>=DRAGON_TICKET_GROW_COST && !grad);   
       let note;
       if(!mine) note="기운을 먼저 골라야 레벨권을 쓸 수 있어요.";
       else if(grad) note="졸업한 고룡에게는 레벨권을 쓸 수 없어요 🐉";
@@ -31413,15 +31428,16 @@ async function feedDragon_(coins,menuIdx,opts){
       }finally{ dragonS3Runtime.feedLock=false; }
     }
 
-async function refundDragonTicket_(){
+async function refundDragonTicket_(n){
       const uid=String(state.uid||"");
       if(!uid) return false;
+      const add=Math.max(1,Math.floor(Number(n)||1));   
       try{
         const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
           if(raw===null) return null;                    
           if(!raw || typeof raw!=="object") return;
           const cur=Object.assign({},raw);
-          cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+1;
+          cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+add;
           cur.updatedAtMs=Date.now();
           return cur;
         });
@@ -31551,6 +31567,117 @@ if(raw===null) return null;
         console.warn("[dragon s3] ticket feed failed",e);
         if(taken){ await refundDragonTicket_(); taken=false; }
         showToast("레벨권 먹이기에 실패했어요 · 레벨권은 돌려놨어요",3200);
+      }finally{ dragonS3Runtime.bagLock=false; }
+    }
+    
+    async function feedDragonTicketGrow_(){
+      if(dragonS3Runtime.bagLock) return;
+      if(!state.joined || !state.uid){ showToast("작업방 입장 후 이용할 수 있어요"); return; }
+      if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
+      const el=dragonMyCamp_();
+      if(!dragonKeyOk_(el)){ showToast("먼저 기운을 골라 주세요 🥚"); return; }
+      const uid=String(state.uid);
+      const COST=DRAGON_TICKET_GROW_COST, GAIN=DRAGON_TICKET_GROW_EXP;
+      dragonS3Runtime.bagLock=true;
+      let taken=0;
+      try{
+        await loadDragonConfigOnce_({force:true});
+        if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }   
+        const cfg=dragonConfig_();
+        if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
+        const before=await ensureDragonRow_(el);
+        if(Number(before.graduatedAtMs)>0){ showToast("이미 고룡으로 졸업한 드래곤이에요 🐉"); return; }
+        const bagNow=dragonBag_();
+        if(bagNow.tickets<COST){ showToast(`레벨권이 모자라요 · ${COST}장이 필요해요 (지금 ${dragonNumFmt_(bagNow.tickets)}장) 🎟️`,3000); return; }
+        const remain=dragonExpToGraduate_(cfg,before);
+        if(remain<GAIN && !confirm(`졸업까지 ${dragonNumFmt_(remain)} 경험치만 남았어요. 레벨권 ${COST}장(경험치 ${dragonNumFmt_(GAIN)})을 그대로 쓸까요? 남는 경험치는 사라져요.`)) return;
+        await ensureDragonBag_();
+        let lack=false;
+        const bagRes=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+          if(raw===null) return null;                    
+          if(!raw || typeof raw!=="object") return;
+          const cur=Object.assign({},raw);
+          const tickets=Math.max(0,Math.floor(Number(cur.tickets)||0));
+          if(tickets<COST){ lack=true; return; }
+          cur.tickets=tickets-COST;
+          cur.updatedAtMs=Date.now();
+          return cur;
+        });
+        if(lack){ showToast(`레벨권이 모자라요 · ${COST}장이 필요해요 🎟️`,3000); return; }
+        const bagVal=bagRes?.committed?bagRes.snapshot.val():null;
+        if(!(bagVal && typeof bagVal==="object")){ showToast("레벨권 성장에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
+        taken=COST;
+        dragonS3Runtime.bag=dragonNormalizeBag_(bagVal);
+        dragonS3Runtime.bagFetchedAtMs=Date.now();
+        let after=null;
+        try{
+          const res=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+            if(raw===null) return null;                  
+            if(!raw || typeof raw!=="object") return;     
+            const d=dragonNormalizeRow_(raw);
+            if(d.graduatedAtMs>0) return;                 
+            d.exp+=GAIN;
+            d.totalTickets+=COST;
+            d.totalTicketExp+=GAIN;
+            let need=dragonNeedFor_(cfg,d.level+1);
+            while(d.level<DRAGON_MAX_LEVEL && d.exp>=need){
+              d.exp-=need;
+              d.level+=1;
+              need=dragonNeedFor_(cfg,d.level+1);        
+            }
+            if(d.level>=DRAGON_MAX_LEVEL){
+              d.level=DRAGON_MAX_LEVEL;
+              if(!(d.graduatedAtMs>0)) d.graduatedAtMs=Date.now();
+            }
+            d.updatedAtMs=Date.now();
+            return d;
+          });
+          const val=res?.committed?res.snapshot.val():null;
+          if(val && typeof val==="object") after=dragonNormalizeRow_(val);
+        }catch(e){ console.warn("[dragon s3] ticket grow transaction failed",e); }
+        if(!after){
+          await refundDragonTicket_(taken);
+          taken=0;
+          showToast("레벨권 성장에 실패했어요 · 레벨권은 돌려놨어요",3200);
+          return;
+        }
+        taken=0;
+        dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons||{},{[el]:after});
+        
+        try{
+          const updates={};
+          updates[`dragonV1/fed/${el}/${uid}/tickets`]=rIncrement(COST);
+          updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
+          await rUpdate(rDragonPlaygroundRef_(),updates);
+        }catch(e){ console.warn("[dragon s3] ticket grow ledger update failed",e); }
+        try{
+          const fed=dragonS3Runtime.fed=dragonS3Runtime.fed||{};
+          fed[el]=fed[el]||{};
+          fed[el][uid]=Object.assign({},fed[el][uid]||{},{
+            tickets:Math.max(0,Math.floor(Number(fed[el][uid]?.tickets)||0))+COST,
+            updatedAtMs:Date.now()
+          });
+        }catch(e){}
+        await writeDragonSummary_();
+        if(after.graduatedAtMs>0 && !(before.graduatedAtMs>0)){
+          dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,after.graduatedAtMs);
+          dragonGraduationFollowup_(el,"feeder").catch(()=>{});
+        }
+        const ups=after.level-before.level;
+        const need=dragonNeedFor_(cfg,after.level+1);
+        if(after.graduatedAtMs>0 && !(before.graduatedAtMs>0)){
+          showToast(`${cfg.elements[el].emoji} ${cfg.elements[el].name}이 Lv.100 고룡이 되었어요! 🐉`,4200);
+        }else if(ups>0){
+          showToast(`레벨권 ${COST}장으로 경험치 ${dragonNumFmt_(GAIN)} 🎟️ · Lv.${after.level} 달성!${ups>1?` (${ups}레벨 연속)`:""} 다음 목표 ${dragonNumFmt_(need)}`,3600);
+        }else{
+          showToast(`레벨권 ${COST}장으로 경험치 ${dragonNumFmt_(GAIN)} 🎟️ · 다음 레벨까지 ${dragonNumFmt_(Math.max(0,need-after.exp))} 경험치`,3000);
+        }
+        renderDragonS3_();
+        dragonBounce_();
+      }catch(e){
+        console.warn("[dragon s3] ticket grow failed",e);
+        if(taken>0){ await refundDragonTicket_(taken); taken=0; }
+        showToast("레벨권 성장에 실패했어요 · 레벨권은 돌려놨어요",3200);
       }finally{ dragonS3Runtime.bagLock=false; }
     }
 
@@ -33246,6 +33373,7 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
       
       document.getElementById("dragonBuyTicket")?.addEventListener("click",()=>{ buyDragonTicket_().catch(()=>{}); });
       document.getElementById("dragonFeedTicket")?.addEventListener("click",()=>{ feedDragonTicket_().catch(()=>{}); });
+      document.getElementById("dragonGrowTicket")?.addEventListener("click",()=>{ feedDragonTicketGrow_().catch(()=>{}); });   
       
       document.getElementById("dragonRaceTabs")?.addEventListener("click",(ev)=>{
         const btn=ev.target?.closest?.(".dragonRaceTab");
