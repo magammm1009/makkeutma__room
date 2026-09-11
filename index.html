@@ -104,6 +104,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7940,6 +7941,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <label for="dragonAdminDailyMax" style="min-width:110px;">레이스 하루 상한</label>
 <input id="dragonAdminDailyMax" min="0" max="48" step="1" type="number" value="8" style="flex:1 1 120px;"/>
 </div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 게릴라 레이스 시각(V261): <b>하루 목표 횟수</b>(매시 확률×24를 최소~상한으로 자른 값)만큼 24시간을 같은 칸으로 나눠 <b>칸마다 1회</b>, 칸 안의 시각은 랜덤으로 열려요 — 새벽에 몰리지 않고 하루에 고르게 퍼집니다. 지금 설정의 결과는 상태 줄의 "레이스 하루 n회"에 보여요.</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">🎴 <b>게릴라 용비늘 레이스 예약</b> — 정한 시각에 10분짜리 레이스가 방 전체에 열려요(카드 18장 완주 → 레버). 예고가 퍼지도록 <b>최소 3분 뒤</b>로 잡아 주세요. [지금 열기]는 즉시 시작합니다. 예약은 30분 안에 아무도 접속해 있지 않으면 저절로 사라져요.</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="dragonGuerrillaTime" style="min-width:110px;">레이스 시작 시각</label>
@@ -27100,7 +27102,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17142; 
+const MK_APP_BUILD = 17143; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -31188,7 +31190,7 @@ function dragonRankRowsFrom_(fedEl,members){
       const started=dragonStartedMs_();
       const when=started?new Date(started).toLocaleString("ko-KR"):"미시작";
       const text=`관리자 · 시즌 ${cfg.enabled?"진행":"일시정지"} · 시작 ${when} · 레벨당 ${dragonNumFmt_(cfg.expBase)}${cfg.expSlope?` + ${dragonNumFmt_(cfg.expSlope)}×Lv`:""}`
-        +` · 하루 한도 ${cfg.dailyCap>0?dragonNumFmt_(cfg.dailyCap):"없음"} · 레이스 ${Math.round(cfg.race.hourlyChance*100)}% ${cfg.race.dailyMin}~${cfg.race.dailyMax}회`
+        +` · 하루 한도 ${cfg.dailyCap>0?dragonNumFmt_(cfg.dailyCap):"없음"} · 레이스 ${dragonRaceSpreadText_(cfg.race)}`
         +` · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`
         +` · 전당 ${dragonHallList_().length}마리`;   
       if(note.textContent!==text) note.textContent=text;
@@ -31902,6 +31904,28 @@ if(dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,grad) && now-grad<DRAGON_BLESS_MS){
 
 function dragonRaceHourKey_(ms){ return new Date(ms+9*3600000).toISOString().slice(0,13); }
     function dragonRaceCfg_(){ return dragonConfig_().race; }
+    
+    function dragonRaceDailyTarget_(race){
+      const r=(race && typeof race==="object")?race:dragonRaceCfg_();
+      const max=Math.max(0,Math.floor(Number(r.dailyMax)||0));
+      const min=Math.min(max,Math.max(0,Math.floor(Number(r.dailyMin)||0)));
+      const want=Math.round(Math.max(0,Math.min(1,Number(r.hourlyChance)||0))*24);
+      return Math.max(min,Math.min(max,want));
+    }
+    
+    function dragonRaceSlotOf_(hourNum,target){
+      const T=Math.max(1,Math.floor(Number(target)||0));
+      const h=Math.max(0,Math.min(23,Math.floor(Number(hourNum)||0)));
+      const slot=Math.floor(h*T/24);
+      const end=Math.min(24,Math.floor(((slot+1)*24+T-1)/T));   
+      return {slot,left:Math.max(1,end-h)};
+    }
+    
+    function dragonRaceSpreadText_(race){
+      const T=dragonRaceDailyTarget_(race);
+      if(T<=0) return "없음";
+      return `하루 ${T}회(약 ${Math.round(240/T)/10}시간마다 1회)`;
+    }
     function dragonRaceSummary_(){
       const r=dragonS3Runtime.summary?.race;
       return (r && typeof r==="object")?r:{};
@@ -32085,7 +32109,16 @@ async function maybeRollDragonRace_(){
           if(dRace<cfg.dailyMax){
             const need=cfg.dailyMin-dRace;
             if(need>0 && (24-hourNum)<=need) will=true;             
-            else will=Math.random()<cfg.hourlyChance;
+            else{
+              
+              const T=dragonRaceDailyTarget_(cfg);
+              if(T>0){
+                const s=dragonRaceSlotOf_(hourNum,T);
+                const lastKey=String(cur.lastGuerHour||"");           
+                const lastSlot=(lastKey.slice(0,10)===dayKey)?dragonRaceSlotOf_(Number(lastKey.slice(11,13))||0,T).slot:-1;
+                if(lastSlot!==s.slot) will=Math.random()<(1/s.left);
+              }
+            }
           }
           cur.roll={hour:hourKey,will:will?1:0,atMs:will?(nextHourStartMs+Math.floor(Math.random()*DRAGON_RACE_WINDOW_MS)):0};
           
@@ -32188,6 +32221,7 @@ async function maybeSpawnDragonRace_(){
             if((Number(cur.dRace)||0)>=cfgMaxDaily){ cr.done=1; cur.roll=cr; return cur; } 
             cr.done=1; cur.roll=cr;
             cur.dRace=(Number(cur.dRace)||0)+1;
+            cur.lastGuerHour=String(cr.hour||"");   
             k="guerrilla";
           }else return (raw===null)?cur:undefined;       
           cur.spawning={id:spawnId,by:uid,atMs:Date.now(),kind:k};
@@ -33013,7 +33047,7 @@ function dragonAdminRowHtml_(key,el,isNew){
       if(status){
         const started=dragonStartedMs_();
         const text=started
-          ? `시즌 ${cfg.enabled?"진행 중":"일시정지"} · 시작 ${new Date(started).toLocaleString("ko-KR")} · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"}`
+          ? `시즌 ${cfg.enabled?"진행 중":"일시정지"} · 시작 ${new Date(started).toLocaleString("ko-KR")} · 활성 ${dragonActiveKeys_().length}마리 · 다음 알 ${cfg.nextElement||"없음"} · 레이스 ${dragonRaceSpreadText_(cfg.race)}`
           : "드래곤 시즌은 아직 시작되지 않았어요. 세계수가 은퇴하면 자동으로 시작되고, [🐉 지금 시작]으로 먼저 열 수도 있어요.";
         if(status.textContent!==text) status.textContent=text;
       }
