@@ -103,6 +103,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -27099,7 +27100,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17141; 
+const MK_APP_BUILD = 17142; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -40597,8 +40598,11 @@ var slotRules = null;
   }
   
   function sameSlotAs(cat, a, b){ return false; }
+  
+  var TILE_PREMANI_MAX = 40; 
+  function slotRulesReady(){ return slotRules !== null; } 
   function normalizeMultiSel(cat, arr){ 
-    var max = slotMaxOf(cat), out = [], slotted = [], n = 0;
+    var max = slotRulesReady() ? slotMaxOf(cat) : TILE_PREMANI_MAX, out = [], slotted = [], n = 0; 
     (arr || []).forEach(function(nm){
       if(out.indexOf(nm) >= 0) return;
       if(isFreeExtra(cat, nm)){ out.push(nm); return; }
