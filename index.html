@@ -106,6 +106,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6682,6 +6683,25 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   @media (prefers-reduced-motion:reduce){#dragonModal .dgTip::after{transition:none;}}
 
   
+  #dragonModal .dragonPoolRow .dgElName{display:block; min-width:0; outline:none;}
+  #dragonModal .dragonPoolRow .dgElName strong{display:block;}
+  #dragonModal .dragonPoolRow .dgElName.dgTip{cursor:help;}
+  #dragonModal .dragonPoolRow .dgElName:focus-visible{border-radius:6px; box-shadow:0 0 0 2px var(--el-glow,rgba(255,180,110,.5));}
+  #dragonModal .dragonTab[data-tip]{position:relative;}
+  #dragonModal .dragonTab[data-tip]::before{
+    content:attr(data-tip); position:absolute; left:50%; top:calc(100% + 7px); translate:-50% 0; z-index:30;
+    width:max-content; max-width:min(250px,80vw); padding:6px 9px; border-radius:9px; white-space:normal; text-align:center;
+    font-size:10px; font-weight:800; line-height:1.5; color:#fff; background:rgba(12,8,20,.96);
+    border:1px solid rgba(255,255,255,.18); box-shadow:0 6px 18px rgba(0,0,0,.45);
+    opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s ease;
+  }
+  #dragonModal .dragonTab[data-tip]:first-child::before{left:0; translate:0 0;}
+  #dragonModal .dragonTab[data-tip]:focus-visible::before{opacity:1; visibility:visible;}
+  @media (hover:hover){ #dragonModal .dragonTab[data-tip]:hover::before{opacity:1; visibility:visible;} }
+  @media (hover:none){ #dragonModal .dragonTab[data-tip]:focus::before{opacity:1; visibility:visible;} }
+  @media (prefers-reduced-motion:reduce){ #dragonModal .dragonTab[data-tip]::before{transition:none;} }
+
+  
   .dragonName{margin-top:15px; padding:14px; border:1px solid rgba(255,214,166,.2); border-radius:15px; background:rgba(255,214,166,.045);}
   .dragonNameHead{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:11px; color:rgba(255,255,255,.6);}
   .dragonNameHead b{color:#fff; font-size:13px;}
@@ -7645,7 +7665,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="dragonEggRow" id="dragonEggRow" aria-label="기운 고르기"></div>
 <div class="worldTreeMyStatus" id="dragonMyStatus">기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요.</div>
 <div class="dragonPool" id="dragonPool">
-<div class="dragonPoolHead"><b>🐣 마리별 게이지</b><span id="dragonPoolNote"><span class="dgOnHover">게이지에 마우스를 올리면</span><span class="dgOnTouch">게이지를 누르면</span> 필요 코인이 보여요</span></div>
+<div class="dragonPoolHead"><b>🐣 마리별 게이지</b><span id="dragonPoolNote"><span class="dgOnHover">게이지에 마우스를 올리면 필요 코인이, 기운 이름에 올리면 고룡 특전이</span><span class="dgOnTouch">게이지를 누르면 필요 코인이, 기운 이름을 누르면 고룡 특전이</span> 보여요</span></div>
 <div id="dragonPoolRows"></div>
 </div>
 <div class="dragonFeed" id="dragonFeed">
@@ -27104,7 +27124,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17144; 
+const MK_APP_BUILD = 17145; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29309,6 +29329,20 @@ const DRAGON_TICKET_GROW_COST = 10;
       thunder:  Object.freeze({kind:"coin",   mult:2,   emoji:"⚡", label:"작업 코인 2배"}),
       mountain: Object.freeze({kind:"parts",  rate:0.9, emoji:"⛰️", label:"파츠 10% 할인"})
     });
+    
+    const DRAGON_PERK_DESC = Object.freeze({
+      fire:"용비늘 레이스의 레버 결과와 순위 보너스가 2배",
+      water:"드래곤 먹이 값 10% 할인(경험치·랭킹은 정가로 계산)",
+      thunder:"작업 코인이 2배로 쌓여요(고룡의 축복 ×3과 겹치면 큰 쪽 하나만)",
+      mountain:"캐릭터 꾸미기 파츠 값 10% 할인(특수 파츠 제외)"
+    });
+    function dragonPerkTipText_(el){
+      const k=String(el||"");
+      const p=DRAGON_PERKS[k], d=DRAGON_PERK_DESC[k];
+      if(!p || !d) return "";
+      const name=dragonConfig_().elements[k]?.name||k;
+      return `${p.emoji} ${name} 고룡의 특전 · ${d} · 이 드래곤이 고룡(Lv.100)이 되는 순간 이 기운을 고르고 있던 작가 전원이 다음 고룡이 태어날 때까지 받아요(그 뒤 기운을 바꿔도 유지)`;
+    }
     const DRAGON_PERK_LOCAL = "mk_dragon_perk_v1";        
     const DRAGON_PERK_SEEN = "mk_dragon_perk_seen_v1";    
     const DRAGON_PERK_RECHECK_MS = 30 * 60 * 1000;        
@@ -30578,7 +30612,8 @@ function renderDragonTabs_(){
         const e=cfg.elements[k];
         const on=(k===view)?" on":"";
         const isMine=(k===mine)?" isMine":"";
-        return `<button type="button" class="dragonTab${on}${isMine} dragonElTint" data-el="${dragonEsc_(k)}" aria-pressed="${k===view?"true":"false"}">${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</button>`;
+        const ptip=dragonPerkTipText_(k);   
+        return `<button type="button" class="dragonTab${on}${isMine} dragonElTint" data-el="${dragonEsc_(k)}"${ptip?` data-tip="${dragonEsc_(ptip)}"`:""} aria-pressed="${k===view?"true":"false"}">${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</button>`;
       }).join("");
       const nextKey=cfg.nextElement;
       const nextName=nextKey&&cfg.elements[nextKey]?cfg.elements[nextKey].name:"다음 알";
@@ -30638,8 +30673,10 @@ function renderDragonTabs_(){
         const pct=Math.max(0,Math.min(100,(row.exp/need)*100));
         
         const tip=`🪙 ${dragonNumFmt_(row.exp)} / ${dragonNumFmt_(need)} 코인 · ${Math.floor(pct)}%`;
+        const ptip=dragonPerkTipText_(k);   
         return `<div class="dragonPoolRow dragonElTint${k===mine?" isMine":""}" data-el="${dragonEsc_(k)}">`
-          +`<strong>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</strong>`
+          +(ptip?`<span class="dgElName dgTip dgTipTap" tabindex="0" data-tip="${dragonEsc_(ptip)}" aria-label="${dragonEsc_(e.name)} 고룡 특전 설명">`:`<span class="dgElName">`)
+          +`<strong>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</strong></span>`
           +`<div class="dgGaugeWrap dgTip dgTipTap" tabindex="0" data-tip="${dragonEsc_(tip)}" aria-label="${dragonEsc_(e.name)} 경험치 ${dragonNumFmt_(row.exp)} / ${dragonNumFmt_(need)} 코인">`
           +`<div class="worldTreeGauge" role="progressbar" aria-label="${dragonEsc_(e.name)} 진행률"><i style="width:${pct.toFixed(2)}%"></i></div></div>`
           +`<output>Lv.${row.level} · ${counts[k]||0}명`
