@@ -109,6 +109,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25921,32 +25922,83 @@ let alive = true, reader = null;
 const CAM_OUT_PX = 240;       
     const CAM_FPS = 10;           
     const CAM_CROP_KEY = "mkCamCropV1";
+    const CAM_ZOOM_MAX = 3;
+    
+    const CAM_STILL_FPS = 2.5;
+    const CAM_STILL_EPS = 1.5;
+    const CAM_STILL_CELL = 12;
+    const CAM_STILL_GRID = 60;
+    
+    const CAM_RES_PRESETS = [
+      { id:"480",   w:640,  h:480,  label:"640×480 · 기본" },
+      { id:"720p",  w:1280, h:720,  label:"1280×720 · 넓게(16:9)" },
+      { id:"960",   w:1280, h:960,  label:"1280×960 · 넓게(4:3)" },
+      { id:"1080p", w:1920, h:1080, label:"1920×1080 · 최대" }
+    ];
+    function camResPreset_(id){ return CAM_RES_PRESETS.find(p => p.id === String(id || "")) || CAM_RES_PRESETS[0]; }
+    function camConstraintsFor_(resId){
+      const p = camResPreset_(resId);
+      return {
+        facingMode: { ideal: "environment" },   
+        width: { ideal: p.w }, height: { ideal: p.h },
+        frameRate: { ideal: CAM_FPS, max: CAM_FPS }
+      };
+    }
     function loadCamCrop_(){
       try{
         const v = JSON.parse(localStorage.getItem(CAM_CROP_KEY) || "{}") || {};
         return {
-          zoom: Math.min(3, Math.max(1, Number(v.zoom) || 1)),
+          zoom: Math.min(CAM_ZOOM_MAX, Math.max(0.2, Number(v.zoom) || 1)),   
           cx: Math.min(1, Math.max(0, Number(v.cx ?? 0.5))),
-          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5)))
+          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5))),
+          res: camResPreset_(v.res).id
         };
-      }catch(e){ return { zoom:1, cx:0.5, cy:0.5 }; }
+      }catch(e){ return { zoom:1, cx:0.5, cy:0.5, res:"480" }; }
     }
     function saveCamCrop_(crop){
-      try{ localStorage.setItem(CAM_CROP_KEY, JSON.stringify({ zoom:crop.zoom, cx:crop.cx, cy:crop.cy })); }catch(e){}
+      try{ localStorage.setItem(CAM_CROP_KEY, JSON.stringify({ zoom:crop.zoom, cx:crop.cx, cy:crop.cy, res:crop.res })); }catch(e){}
+    }
+    
+    function camCropRect_(vw, vh, crop){
+      const shortSide = Math.min(vw, vh), longSide = Math.max(vw, vh);
+      const zmin = (longSide > 0) ? (shortSide / longSide) : 1;
+      const z = Math.min(CAM_ZOOM_MAX, Math.max(zmin, Number(crop && crop.zoom) || 1));
+      const s = Math.max(16, shortSide / z);
+      const sx = (s <= vw) ? Math.min(Math.max(crop.cx * vw - s/2, 0), vw - s) : (vw - s) / 2;
+      const sy = (s <= vh) ? Math.min(Math.max(crop.cy * vh - s/2, 0), vh - s) : (vh - s) / 2;
+      return { sx, sy, s, zmin };
+    }
+    
+    function camDrawInto_(ctx, img, vw, vh, crop){
+      const r = camCropRect_(vw, vh, crop);
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CAM_OUT_PX, CAM_OUT_PX);
+      
+      const ix0 = Math.max(Math.round(r.sx), 0), iy0 = Math.max(Math.round(r.sy), 0);
+      const ix1 = Math.min(Math.round(r.sx + r.s), vw), iy1 = Math.min(Math.round(r.sy + r.s), vh);
+      if(ix1 <= ix0 || iy1 <= iy0) return;
+      const k = CAM_OUT_PX / r.s;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, ix0, iy0, ix1 - ix0, iy1 - iy0, (ix0 - r.sx) * k, (iy0 - r.sy) * k, (ix1 - ix0) * k, (iy1 - iy0) * k);
     }
 
 function confirmCamCrop_(vid, cv, crop, draw, opts){
       const live = !!(opts && opts.live);
+      const track = (opts && opts.track) || null;
       return new Promise((resolve)=>{
         let done = false, uiTimer = 0;
-        const snap = { zoom: crop.zoom, cx: crop.cx, cy: crop.cy };
+        const snap = { zoom: crop.zoom, cx: crop.cx, cy: crop.cy, res: crop.res };
         const vidHome = vid.parentNode;
         const onKey = (ev)=>{ if(ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); finish(false); } };
         function finish(ok){
           if(done) return; done = true;
           try{ clearInterval(uiTimer); }catch(e){}
           try{ document.removeEventListener("keydown", onKey, true); }catch(e){}
-          if(!ok && live){ Object.assign(crop, snap); try{ draw(); }catch(e){} }   
+          if(!ok && live){   
+            const resChanged = crop.res !== snap.res;
+            Object.assign(crop, snap);
+            if(resChanged && track && track.applyConstraints){ try{ track.applyConstraints(camConstraintsFor_(crop.res)).catch(()=>{}); }catch(e){} }
+            try{ draw(); }catch(e){}
+          }
           try{
             vid.style.cssText = "display:block;width:1px;height:1px;";
             if(vidHome) vidHome.appendChild(vid); else vid.remove();
@@ -25978,12 +26030,17 @@ function confirmCamCrop_(vid, cv, crop, draw, opts){
             '</div>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">' +
-            '<span style="font-size:12px;opacity:.7;width:34px;">넓게</span>' +
-            '<input id="mkCamZoom" type="range" min="100" max="300" step="5" style="flex:1;accent-color:#ff4081;">' +
+            '<span style="font-size:12px;opacity:.7;width:34px;">전체</span>' +
+            '<input id="mkCamZoom" type="range" min="25" max="300" step="5" style="flex:1;accent-color:#ff4081;">' +
             '<span style="font-size:12px;opacity:.7;">확대</span>' +
             '<button id="mkCamReset" type="button" title="가운데·기본 크기로" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">↺ 가운데로</button>' +
           '</div>' +
-          '<div style="font-size:11.5px;opacity:.6;margin-top:10px;line-height:1.6;">3배 가까이 확대하면 조금 흐려질 수 있어요. 손이 움직이는 범위가 사각형 안에 들어오게 잡아 주세요.</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">' +
+            '<span style="font-size:12px;opacity:.7;width:34px;">원본</span>' +
+            '<select id="mkCamRes" style="flex:0 1 auto;min-width:170px;background:rgba(255,255,255,.08);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:6px 9px;font-size:12.5px;font-weight:700;"></select>' +
+            '<span id="mkCamResNow" style="font-size:11.5px;opacity:.62;"></span>' +
+          '</div>' +
+          '<div style="font-size:11.5px;opacity:.6;margin-top:10px;line-height:1.6;">막대를 왼쪽 끝(전체)까지 빼면 카메라 화면 전체가 위아래 검은 띠와 함께 들어가고, 3배 가까이 확대하면 조금 흐려질 수 있어요.<br>원본 해상도를 높이면 일부 폰에서 화각이 넓어져요. 어느 쪽이든 남에게 나가는 양은 같고, 내 기기 배터리만 조금 더 씁니다.</div>' +
           '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">' +
             '<button id="mkCamCancel" type="button" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">취소</button>' +
             '<button id="mkCamOk" type="button" style="background:rgba(var(--pinkHotrgb),.95);color:#fff;border:0;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;">' + (live ? "완료" : "이대로 시작") + '</button>' +
@@ -25994,6 +26051,8 @@ function confirmCamCrop_(vid, cv, crop, draw, opts){
         const srcWrap = card.querySelector("#mkCamSrc");
         const outWrap = card.querySelector("#mkCamOut");
         const zoomEl = card.querySelector("#mkCamZoom");
+        const resEl = card.querySelector("#mkCamRes");
+        const resNow = card.querySelector("#mkCamResNow");
         vid.style.cssText = "display:block;max-width:100%;max-height:42vh;width:auto;height:auto;";
         srcWrap.appendChild(vid);
         const box = document.createElement("div");
@@ -26003,26 +26062,53 @@ function confirmCamCrop_(vid, cv, crop, draw, opts){
         outWrap.appendChild(cv);
         const syncZoomEl = ()=>{ zoomEl.value = String(Math.round((crop.zoom || 1) * 100)); };
         syncZoomEl();
+        CAM_RES_PRESETS.forEach((p)=>{ const o = document.createElement("option"); o.value = p.id; o.textContent = p.label; resEl.appendChild(o); });
+        resEl.value = camResPreset_(crop.res).id;
+        const syncRes = ()=>{
+          try{
+            const st = (track && track.getSettings) ? track.getSettings() : null;
+            let txt = (st && st.width && st.height) ? `실제 ${st.width}×${st.height}` : "";
+            if(crop.res === "480" && crop.zoom > 2) txt += " · 이만큼 확대하면 원본을 1280×960으로 올려야 덜 흐려요";
+            if(resNow.textContent !== txt) resNow.textContent = txt;
+          }catch(e){}
+        };
+        const zminNow = ()=>{ const vw = vid.videoWidth, vh = vid.videoHeight; return (vw && vh) ? camCropRect_(vw, vh, crop).zmin : 0.2; };
 
         const syncBox = ()=>{
           const vw = vid.videoWidth, vh = vid.videoHeight;
-          if(!vw || !vh) return;
-          const r = screenCropRect_(vw, vh, crop);
-          box.style.left   = (r.sx / vw * 100) + "%";
+          if(!vw || !vh){ syncRes(); return; }
+          const r = camCropRect_(vw, vh, crop);
+          
+          const minV = String(Math.round(r.zmin * 100));
+          if(zoomEl.min !== minV) zoomEl.min = minV;
+          if(crop.zoom < r.zmin){ crop.zoom = r.zmin; syncZoomEl(); }
+          box.style.left   = (r.sx / vw * 100) + "%";   
           box.style.top    = (r.sy / vh * 100) + "%";
           box.style.width  = (r.s  / vw * 100) + "%";
           box.style.height = (r.s  / vh * 100) + "%";
+          syncRes();
         };
         syncBox();
         uiTimer = setInterval(syncBox, 250);   
 
         zoomEl.addEventListener("input", ()=>{
-          crop.zoom = Math.max(1, Math.min(3, Number(zoomEl.value) / 100));
+          crop.zoom = Math.max(zminNow(), Math.min(CAM_ZOOM_MAX, Number(zoomEl.value) / 100));
           syncBox(); draw();
         });
         card.querySelector("#mkCamReset").addEventListener("click", ()=>{
           crop.zoom = 1; crop.cx = 0.5; crop.cy = 0.5;
           syncZoomEl(); syncBox(); draw();
+        });
+        
+        resEl.addEventListener("change", ()=>{
+          const id = camResPreset_(resEl.value).id;
+          crop.res = id;
+          if(!(track && track.applyConstraints)){ syncRes(); return; }
+          resEl.disabled = true;
+          Promise.resolve()
+            .then(()=> track.applyConstraints(camConstraintsFor_(id)))
+            .catch(()=>{ try{ showToast("이 카메라는 그 해상도를 못 줘요 — 가장 가까운 모드로 남아요"); }catch(e){} })
+            .then(()=>{ resEl.disabled = false; syncRes(); syncBox(); draw(); });
         });
 
 let dragging = false;
@@ -26045,16 +26131,12 @@ let dragging = false;
     }
 
 async function makeCroppedCamSource_(onSourceEnded){
+      const crop = loadCamCrop_();
       const src = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },   
-          
-          width: { ideal: 640, max: 960 },
-          height: { ideal: 480, max: 720 },
-          frameRate: { ideal: CAM_FPS, max: CAM_FPS }
-        },
+        video: camConstraintsFor_(crop.res),   
         audio: false
       });
+      const track = src.getVideoTracks()[0];
       
       const holder = document.createElement("div");
       holder.setAttribute("aria-hidden", "true");
@@ -26068,17 +26150,30 @@ async function makeCroppedCamSource_(onSourceEnded){
         await new Promise((r)=>{ const t = setTimeout(r, 900); vid.addEventListener("loadedmetadata", ()=>{ clearTimeout(t); r(); }, { once:true }); });
       }
       try{
-        const st0 = src.getVideoTracks()[0]?.getSettings?.() || {};
+        const st0 = (track && track.getSettings) ? (track.getSettings() || {}) : {};
         if(Number(st0.height) < CAM_OUT_PX || Number(st0.width) < CAM_OUT_PX) mkDiag("손캠-원본해상도미달", `${st0.width}x${st0.height} @${st0.frameRate}fps`);
       }catch(_e){}
 
-      const crop = loadCamCrop_();
       const cv = document.createElement("canvas");
       cv.width = CAM_OUT_PX; cv.height = CAM_OUT_PX;
       const ctx = cv.getContext("2d");
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CAM_OUT_PX, CAM_OUT_PX);
 
-      let latest = null, lastPumpDrawMs = 0;
+const canPump = (typeof window.MediaStreamTrackProcessor === "function");
+      let gen = null, writer = null, out = null;
+      if(canPump && typeof window.MediaStreamTrackGenerator === "function" && typeof window.VideoFrame === "function"){
+        try{
+          gen = new MediaStreamTrackGenerator({ kind: "video" });
+          writer = gen.writable.getWriter();
+          out = new MediaStream([gen]);
+        }catch(e){ gen = null; writer = null; out = null; }
+      }
+      const genMode = !!out;
+      if(!out) out = cv.captureStream(CAM_FPS);
+      const stats = { mode: genMode ? "generator" : "captureStream", framesIn: 0, framesSent: 0, thinned: 0, dropped: 0, pumpRestarts: 0, errors: 0 };
+      try{ mkDiag("손캠-파이프", stats.mode); }catch(_e){}
+
+      let latest = null, lastPumpDrawMs = 0, alive = true, reader = null, sending = false;
       const frameSrc = ()=>{
         if(latest) return { img: latest, w: latest.displayWidth || latest.codedWidth, h: latest.displayHeight || latest.codedHeight };
         return { img: vid, w: vid.videoWidth, h: vid.videoHeight };
@@ -26087,69 +26182,120 @@ async function makeCroppedCamSource_(onSourceEnded){
         try{
           const f = frameSrc();
           if(!f.w || !f.h) return;
-          const r = screenCropRect_(f.w, f.h, crop);
-          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(f.img, r.sx, r.sy, r.s, r.s, 0, 0, CAM_OUT_PX, CAM_OUT_PX);
+          camDrawInto_(ctx, f.img, f.w, f.h, crop);   
         }catch(_e){}
       };
       draw();
-      
-      const timer = setInterval(()=>{ if(lastPumpDrawMs && (Date.now() - lastPumpDrawMs) < 600) return; draw(); }, Math.round(1000 / CAM_FPS));
 
-      const okay = await confirmCamCrop_(vid, cv, crop, draw, { live:false });
-      if(!okay){
+const tiny = document.createElement("canvas"); tiny.width = CAM_STILL_GRID; tiny.height = CAM_STILL_GRID;
+      const tctx = tiny.getContext("2d", { willReadFrequently: true });
+      let lastKeyTiny = null, lastSentMs = 0;
+      const frameChanged_ = ()=>{
+        try{
+          tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = "high";
+          tctx.drawImage(cv, 0, 0, CAM_STILL_GRID, CAM_STILL_GRID);
+          const d = tctx.getImageData(0, 0, CAM_STILL_GRID, CAM_STILL_GRID).data;
+          if(!lastKeyTiny){ lastKeyTiny = new Uint8ClampedArray(d); return true; }
+          let sum = 0, maxCell = 0;
+          for(let i = 0; i < d.length; i += 4){
+            const c = Math.abs(d[i] - lastKeyTiny[i]) + Math.abs(d[i+1] - lastKeyTiny[i+1]) + Math.abs(d[i+2] - lastKeyTiny[i+2]);
+            sum += c; if(c > maxCell) maxCell = c;
+          }
+          const mean = sum / ((d.length / 4) * 3);
+          if(maxCell > CAM_STILL_CELL || mean > CAM_STILL_EPS){ lastKeyTiny.set(d); return true; }
+          return false;
+        }catch(_e){ return true; }
+      };
+      const sendFrame_ = (tsUs)=>{
+        if(!writer || !sending) return;
+        const now = Date.now();
+        const changed = frameChanged_();
+        if(!changed && (now - lastSentMs) < Math.round(1000 / CAM_STILL_FPS)){ stats.thinned++; return; }
+        if(writer.desiredSize !== null && writer.desiredSize <= 0){ stats.dropped++; return; }   
+        try{
+          const vf = new VideoFrame(cv, { timestamp: tsUs, alpha: "discard" });
+          writer.write(vf).catch(()=>{ stats.errors++; });   
+          lastSentMs = now; stats.framesSent++;
+        }catch(e){ stats.errors++; }
+      };
+
+const startPump_ = ()=>{
+        if(!canPump) return false;
+        try{
+          const rd = new MediaStreamTrackProcessor({ track }).readable.getReader();
+          reader = rd;
+          (async function pump(){
+            try{
+              while(alive && reader === rd){
+                const { value, done } = await rd.read();
+                if(done) break;
+                if(!alive || reader !== rd){ try{ value.close(); }catch(_e){} break; }
+                const prev = latest;
+                latest = value;
+                stats.framesIn++;
+                draw();
+                lastPumpDrawMs = Date.now();
+                const ts = (typeof value.timestamp === "number" && isFinite(value.timestamp)) ? value.timestamp : Math.round(performance.now() * 1000);
+                sendFrame_(ts);
+                if(prev){ try{ prev.close(); }catch(_e){} }
+              }
+            }catch(e){ stats.errors++; console.warn("[handcam] pump ended", e); }
+          })();
+          return true;
+        }catch(e){ reader = null; return false; }
+      };
+      const pumpOk = startPump_();
+
+const timer = setInterval(()=>{
+        const now = Date.now();
+        if(lastPumpDrawMs && (now - lastPumpDrawMs) < 600) return;
+        draw();
+        if(genMode && pumpOk && alive && lastPumpDrawMs && (now - lastPumpDrawMs) > 3000
+           && track.readyState === "live" && !track.muted && stats.pumpRestarts < 5){
+          stats.pumpRestarts++;
+          try{ mkDiag("손캠-펌프재시작", String(stats.pumpRestarts)); }catch(_e){}
+          try{ reader && reader.cancel(); }catch(_e){}
+          startPump_();
+          lastPumpDrawMs = now;   
+        }
+      }, Math.round(1000 / CAM_FPS));
+
+      const cleanup_ = ()=>{
+        alive = false;
         try{ clearInterval(timer); }catch(_e){}
+        try{ reader && reader.cancel(); }catch(_e){}
+        try{ if(latest){ latest.close(); latest = null; } }catch(_e){}
+        try{ writer && writer.close().catch(()=>{}); }catch(_e){}
+        try{ gen && gen.stop(); }catch(_e){}
         try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ out.getTracks().forEach(t=>t.stop()); }catch(_e){}
         try{ vid.srcObject = null; }catch(_e){}
         try{ holder.remove(); }catch(_e){}
+      };
+
+      const okay = await confirmCamCrop_(vid, cv, crop, draw, { live:false, track });
+      if(!okay){
+        cleanup_();
         const err = new Error("cam-cancelled"); err.__cancelled = true; throw err;
       }
       saveCamCrop_(crop);
-
-      let alive = true, reader = null;
-      if(typeof window.MediaStreamTrackProcessor === "function"){
-        try{
-          const track = src.getVideoTracks()[0];
-          reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
-          (async function pump(){
-            while(alive){
-              const { value, done } = await reader.read();
-              if(done) break;
-              if(!alive){ try{ value.close(); }catch(_e){} break; }
-              const prev = latest;
-              latest = value;
-              draw();
-              lastPumpDrawMs = Date.now();
-              if(prev){ try{ prev.close(); }catch(_e){} }
-            }
-          })().catch(()=>{});
-        }catch(e){ reader = null; }
-      }
-      const out = cv.captureStream(CAM_FPS);
-      try{ src.getVideoTracks()[0].addEventListener("ended", ()=>{ try{ onSourceEnded && onSourceEnded(); }catch(_e){} }, { once:true }); }catch(_e){}
+      sending = true;
+      try{ track.addEventListener("ended", ()=>{ try{ onSourceEnded && onSourceEnded(); }catch(_e){} }, { once:true }); }catch(_e){}
 
       let adjusting = false;
       return {
-        stream: out, crop, draw,
+        stream: out, crop, draw, track, mode: stats.mode,
+        stats(){ return Object.assign({}, stats, { lastFrameAgoMs: lastPumpDrawMs ? (Date.now() - lastPumpDrawMs) : null }); },
         async adjust(){
           if(adjusting) return false;
           adjusting = true;
           try{
-            const ok = await confirmCamCrop_(vid, cv, crop, draw, { live:true });
+            const ok = await confirmCamCrop_(vid, cv, crop, draw, { live:true, track });
             if(ok) saveCamCrop_(crop);
             return ok;
           }finally{ adjusting = false; }
         },
-        stop(){
-          alive = false;
-          try{ clearInterval(timer); }catch(_e){}
-          try{ reader && reader.cancel(); }catch(_e){}
-          try{ if(latest){ latest.close(); latest = null; } }catch(_e){}
-          try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
-          try{ out.getTracks().forEach(t=>t.stop()); }catch(_e){}
-          try{ vid.srcObject = null; }catch(_e){}
-          try{ holder.remove(); }catch(_e){}
-        }
+        stop(){ cleanup_(); }
       };
     }
     
@@ -26162,7 +26308,7 @@ async function makeCroppedCamSource_(onSourceEnded){
       }catch(e){ console.warn("[handcam] adjust failed", e); }
     }
     
-    try{ window.__MK_HC_DEBUG__ = { confirmCamCrop_, loadCamCrop_, saveCamCrop_, cropRect: screenCropRect_, adjust: hcAdjustMyCam_ }; }catch(_e){}
+    try{ window.__MK_HC_DEBUG__ = { confirmCamCrop_, loadCamCrop_, saveCamCrop_, cropRect: camCropRect_, drawInto: camDrawInto_, presets: CAM_RES_PRESETS, constraintsFor: camConstraintsFor_, makeSource: makeCroppedCamSource_, adjust: hcAdjustMyCam_, stats: ()=>{ try{ return (hc.camSource && hc.camSource.stats) ? hc.camSource.stats() : null; }catch(_e){ return null; } } }; }catch(_e){}
 
     async function startMyCam(){ return startPublish_("cam"); }
     async function startMyScreen(){ return startPublish_("screen"); }
@@ -27515,7 +27661,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17146; 
+const MK_APP_BUILD = 17147; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
