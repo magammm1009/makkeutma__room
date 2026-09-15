@@ -110,6 +110,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6273,32 +6274,51 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .dragonScene[data-skill-tier="4"] .dgFx{display:block;}
   .dgFx i{position:absolute; display:block; opacity:0;}
   
+  .dgFx i:nth-child(n+7){display:none;}
+  .dgFx[data-el="fire"] i:nth-child(n+7),.dgFx[data-el="water"] i:nth-child(n+7){display:block;}
+  
   .dgFx[data-el="fire"] i{
-    bottom:74px; width:17px; height:25px;
-    border-radius:50% 50% 46% 46% / 62% 62% 38% 38%;
-    background:linear-gradient(180deg,var(--el-core),var(--el-deep));
-    animation:dgFxRise 3.9s ease-out infinite;
+    bottom:12%; width:26px; height:26px;
+    border-radius:0 50% 50% 50%;
+    background:linear-gradient(135deg, var(--el-deep) 0%, var(--el-light) 58%, var(--el-core) 100%);
+    box-shadow:0 0 10px 1px var(--el-glow);
+    animation:dgFxRise 5s linear infinite;
   }
-  .dgFx[data-el="fire"] i:nth-child(1){left:29%; animation-delay:-.2s}
-  .dgFx[data-el="fire"] i:nth-child(2){left:38%; animation-delay:-1.1s}
-  .dgFx[data-el="fire"] i:nth-child(3){left:47%; animation-delay:-2s}
-  .dgFx[data-el="fire"] i:nth-child(4){left:56%; animation-delay:-2.9s}
-  .dgFx[data-el="fire"] i:nth-child(5){left:65%; animation-delay:-1.55s}
-  .dgFx[data-el="fire"] i:nth-child(6){left:72%; animation-delay:-3.4s}
-  @keyframes dgFxRise{0%{transform:translateY(0) scale(.6); opacity:0} 18%{opacity:.95} 100%{transform:translateY(-124px) scale(.28); opacity:0}}
+  .dgFx[data-el="fire"] i::before{
+    content:""; position:absolute; left:34%; top:34%; width:52%; height:52%;
+    border-radius:0 50% 50% 50%; background:var(--el-core); opacity:.85;
+  }
+  .dgFx[data-el="fire"] i:nth-child(1){left:6%; bottom:10%; animation-delay:-.2s}
+  .dgFx[data-el="fire"] i:nth-child(2){left:18%; bottom:40%; width:18px; height:18px; animation-delay:-2.6s}
+  .dgFx[data-el="fire"] i:nth-child(3){left:30%; bottom:18%; animation-delay:-1.1s}
+  .dgFx[data-el="fire"] i:nth-child(4){left:42%; bottom:48%; width:20px; height:20px; animation-delay:-3.7s}
+  .dgFx[data-el="fire"] i:nth-child(5){left:54%; bottom:8%; width:31px; height:31px; animation-delay:-2s}
+  .dgFx[data-el="fire"] i:nth-child(6){left:66%; bottom:30%; animation-delay:-.7s}
+  .dgFx[data-el="fire"] i:nth-child(7){left:78%; bottom:16%; width:29px; height:29px; animation-delay:-3.1s}
+  .dgFx[data-el="fire"] i:nth-child(8){left:91%; bottom:42%; width:22px; height:22px; animation-delay:-1.6s}
+  
+  @keyframes dgFxRise{
+    0%{transform:translateY(0) scale(.7) scaleY(1.3) rotate(45deg); opacity:0}
+    18%{opacity:.95}
+    35%{transform:translateY(-91px) scale(.6) scaleY(1.3) rotate(38deg)}
+    70%{transform:translateY(-182px) scale(.44) scaleY(1.3) rotate(52deg)}
+    100%{transform:translateY(-260px) scale(.3) scaleY(1.3) rotate(45deg); opacity:0}
+  }
   
   .dgFx[data-el="water"] i{
-    bottom:66px; width:19px; height:19px; border-radius:50%;
+    bottom:10%; width:21px; height:21px; border-radius:50%;
     border:2px solid var(--el-light); background:var(--el-glow);
-    animation:dgFxBubble 5.4s ease-in-out infinite;
+    animation:dgFxBubble 7.2s ease-in-out infinite;
   }
-  .dgFx[data-el="water"] i:nth-child(1){left:30%; animation-delay:-.3s}
-  .dgFx[data-el="water"] i:nth-child(2){left:39%; width:14px; height:14px; animation-delay:-1.6s}
-  .dgFx[data-el="water"] i:nth-child(3){left:48%; width:22px; height:22px; animation-delay:-3s}
-  .dgFx[data-el="water"] i:nth-child(4){left:58%; width:13px; height:13px; animation-delay:-4.2s}
-  .dgFx[data-el="water"] i:nth-child(5){left:66%; animation-delay:-2.3s}
-  .dgFx[data-el="water"] i:nth-child(6){left:73%; width:15px; height:15px; animation-delay:-4.9s}
-  @keyframes dgFxBubble{0%{transform:translateY(0) scale(.4); opacity:0} 16%{opacity:.9} 100%{transform:translateY(-152px) scale(1); opacity:0}}
+  .dgFx[data-el="water"] i:nth-child(1){left:5%; bottom:8%; animation-delay:-.3s}
+  .dgFx[data-el="water"] i:nth-child(2){left:17%; bottom:34%; width:15px; height:15px; animation-delay:-1.6s}
+  .dgFx[data-el="water"] i:nth-child(3){left:29%; bottom:14%; width:27px; height:27px; animation-delay:-3s}
+  .dgFx[data-el="water"] i:nth-child(4){left:41%; bottom:46%; width:13px; height:13px; animation-delay:-4.2s}
+  .dgFx[data-el="water"] i:nth-child(5){left:53%; bottom:6%; animation-delay:-2.3s}
+  .dgFx[data-el="water"] i:nth-child(6){left:65%; bottom:28%; width:16px; height:16px; animation-delay:-4.9s}
+  .dgFx[data-el="water"] i:nth-child(7){left:77%; bottom:12%; width:25px; height:25px; animation-delay:-1s}
+  .dgFx[data-el="water"] i:nth-child(8){left:91%; bottom:40%; width:18px; height:18px; animation-delay:-3.6s}
+  @keyframes dgFxBubble{0%{transform:translateY(0) scale(.4); opacity:0} 16%{opacity:.9} 100%{transform:translateY(-300px) scale(1); opacity:0}}
   
   .dgFx[data-el="thunder"] i{
     top:32%; width:25px; height:46px; background:var(--el-light);
@@ -7679,7 +7699,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="dragonShadow" aria-hidden="true"></div>
 <div class="dragonFx" aria-hidden="true"><div class="dragonSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 
-<div class="dgFx" id="dragonElFx" data-el="neutral" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="dgFx" id="dragonElFx" data-el="neutral" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div class="dragonHalo" aria-hidden="true"></div>
 <div class="dragonArt" id="dragonArt" aria-hidden="true"><div class="dragonSprite" id="dragonSprite" data-el="neutral" data-stage="0"></div></div>
 <div class="worldTreeLevelOrb"><b id="dragonLevel">Lv.0</b><span id="dragonLevelMax">MAX 100</span></div>
@@ -27661,7 +27681,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17147; 
+const MK_APP_BUILD = 17148; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -41201,16 +41221,32 @@ function onModalShown(){
   .mkMinimiFx i:nth-child(1){ left:20%; --fxS:1;   animation-delay:-.35s; }
   .mkMinimiFx i:nth-child(2){ left:47%; --fxS:.72; animation-delay:-1.6s; }
   .mkMinimiFx i:nth-child(3){ left:73%; --fxS:.86; animation-delay:-2.5s; }
+  
   @keyframes mkMinimiFxRise{
     0%{ transform:translateY(0) scale(calc(var(--fxS,1) * .62)); opacity:0; }
-    20%{ opacity:.72; }
-    100%{ transform:translateY(-215%) scale(calc(var(--fxS,1) * .34)); opacity:0; }
+    8%{ opacity:.72; }
+    90%{ opacity:.72; }
+    100%{ transform:translateY(-200%) scale(calc(var(--fxS,1) * .34)); opacity:0; }   
   }
   
   .mkMinimiFx[data-el="fire"] i{
-    width:11%; height:15%;
-    border-radius:50% 50% 46% 46% / 62% 62% 38% 38%;
-    background:linear-gradient(180deg, var(--el-core) 10%, var(--el-light) 44%, var(--el-deep));
+    width:10%; height:10%;
+    border-radius:0 50% 50% 50%;
+    background:linear-gradient(135deg, var(--el-deep) 0%, var(--el-light) 58%, var(--el-core) 100%);
+    animation-name:mkMinimiFxFlame; animation-duration:3.4s; animation-timing-function:linear;
+  }
+  .mkMinimiFx[data-el="fire"] i::before{
+    content:""; position:absolute; left:34%; top:34%; width:52%; height:52%;
+    border-radius:0 50% 50% 50%; background:var(--el-core); opacity:.85;
+  }
+  
+  @keyframes mkMinimiFxFlame{
+    0%{ transform:translateY(0) scale(calc(var(--fxS,1) * .7)) scaleY(1.3) rotate(45deg); opacity:0; }
+    6%{ opacity:.72; }
+    35%{ transform:translateY(-80%) scale(calc(var(--fxS,1) * .6)) scaleY(1.3) rotate(38deg); }
+    70%{ transform:translateY(-161%) scale(calc(var(--fxS,1) * .46)) scaleY(1.3) rotate(52deg); }
+    92%{ opacity:.72; }
+    100%{ transform:translateY(-230%) scale(calc(var(--fxS,1) * .34)) scaleY(1.3) rotate(45deg); opacity:0; }
   }
   
   .mkMinimiFx[data-el="water"] i{
@@ -41222,8 +41258,9 @@ function onModalShown(){
   }
   @keyframes mkMinimiFxBubble{
     0%{ transform:translateY(0) scale(calc(var(--fxS,1) * .45)); opacity:0; }
-    18%{ opacity:.72; }
-    100%{ transform:translateY(-190%) scale(var(--fxS,1)); opacity:0; }
+    8%{ opacity:.72; }
+    90%{ opacity:.72; }   
+    100%{ transform:translateY(-175%) scale(var(--fxS,1)); opacity:0; }   
   }
   
   .mkMinimiFx[data-el="thunder"] i{
@@ -41235,12 +41272,19 @@ function onModalShown(){
   .mkMinimiFx[data-el="thunder"] i:nth-child(1){ left:6%;  top:30%; }
   .mkMinimiFx[data-el="thunder"] i:nth-child(2){ left:83%; top:23%; }
   .mkMinimiFx[data-el="thunder"] i:nth-child(3){ left:11%; top:63%; }
+  
   @keyframes mkMinimiFxSpark{
     0%,100%{ transform:scale(var(--fxS,1)); opacity:0; }
-    10%{ opacity:.62; }   
-    22%{ opacity:.12; }
-    34%{ opacity:.55; }
-    50%{ opacity:0; }
+    6%{ opacity:.62; }   
+    16%{ opacity:.12; }
+    26%{ opacity:.55; }
+    38%{ opacity:0; }
+    46%{ opacity:.5; }
+    56%{ opacity:.12; }
+    66%{ opacity:.58; }
+    78%{ opacity:0; }
+    86%{ opacity:.4; }
+    94%{ opacity:0; }
   }
   
   .mkMinimiFx[data-el="mountain"] i{
@@ -41255,8 +41299,8 @@ function onModalShown(){
   .mkMinimiFx[data-el="mountain"] i:nth-child(3){ top:79%; }
   @keyframes mkMinimiFxDrift{
     0%{ transform:translate(0,0) rotate(0deg) scale(var(--fxS,1)); opacity:0; }
-    16%{ opacity:.66; }
-    82%{ opacity:.66; }
+    8%{ opacity:.66; }    
+    92%{ opacity:.66; }
     100%{ transform:translate(720%,60%) rotate(140deg) scale(var(--fxS,1)); opacity:0; }
   }
   
