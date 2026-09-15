@@ -107,6 +107,8 @@
 
 
 
+
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -1748,6 +1750,32 @@
       border:1px solid rgba(240,170,90,.55);
       box-shadow:0 2px 6px rgba(0,0,0,.35);
       }
+    
+    .grid{ container: mkTileGrid / inline-size; }   
+    .grid.gridHasZoom{ grid-auto-flow: row dense; }
+    .tile .tileZoomOff{ display:none; }
+    
+    
+    @media (min-width: 761px){
+      @container mkTileGrid (min-width: 468px){
+        .grid:not(.compact5) > .tile.tileZoom{ grid-column: span 2; grid-row: span 2; --emoSize:156px !important; --photoSize:156px !important; }
+        .grid:not(.compact5) > .tile.tileZoom .content{ --tileGap:16px; justify-content:center; }
+        .grid:not(.compact5) > .tile.tileZoom .bigTimer{ font-size:52px; }
+        .grid:not(.compact5) > .tile.tileZoom .badge,
+        .grid:not(.compact5) > .tile.tileZoom .namePill{ min-height:48px; font-size:16px; padding:0 16px; }
+        .grid:not(.compact5) > .tile.tileZoom .bubble{ font-size:16px; padding:10px 14px; min-height:44px; }
+        .grid:not(.compact5) > .tile.tileZoom .tileZoomOff{
+          display:inline-flex; align-items:center; gap:4px;
+          position:absolute; right:6px; bottom:6px; z-index:24; cursor:pointer;
+          font:inherit; font-size:11px; font-weight:900; line-height:1; white-space:nowrap; letter-spacing:.2px;
+          padding:6px 9px; border-radius:999px;
+          background:rgba(0,0,0,.70); color:#fff;
+          border:1px solid rgba(255,255,255,.28);
+          box-shadow:0 2px 8px rgba(0,0,0,.4);
+          }
+        .grid:not(.compact5) > .tile.tileZoom .tileZoomOff:hover{ background:rgba(0,0,0,.86); border-color:rgba(255,255,255,.5); }
+      }
+    }
     
     #roomPass{ display:none !important; }
     .tile .bg{position:absolute; inset:0; opacity:1;}
@@ -8109,6 +8137,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button id="ctxTimerPrivacyToggle" type="button">🙈 내 타이머 숨기기</button>
 <button id="ctxDirectMessage" type="button">💌 쪽지 보내기</button>
 <div id="ctxDivider" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.10);"></div> <button id="ctxPinToggle" type="button">📌 상단 고정</button>
+<button id="ctxZoomToggle" type="button">🔍 크게 보기 (타일 4칸)</button>
 <button id="ctxTimerReset" type="button">⏱️ 타이머 0초 · 휴식중</button>
 <button class="danger" id="ctxKick" type="button">🚫 강퇴</button>
 <button class="danger" id="ctxForceOff" type="button">🚪 로그아웃 처리</button>
@@ -9533,6 +9562,7 @@ const $ = (id) => document.getElementById(id);
       ctxTitle: $("ctxTitle"),
       ctxDirectMessage: $("ctxDirectMessage"),
       ctxPinToggle: $("ctxPinToggle"),
+      ctxZoomToggle: $("ctxZoomToggle"),   
       ctxTimerReset: $("ctxTimerReset"),
       ctxKick: $("ctxKick"),
       ctxForceOff: $("ctxForceOff"),
@@ -10060,6 +10090,78 @@ const PIN_KEY = "mk_pins_v1";
         }
       }catch(e){}
     }
+
+const TILE_ZOOM_KEY = "mk_tilezoom_v1";
+    function getZoomUid(){
+      try{
+        const uid = String(localStorage.getItem(TILE_ZOOM_KEY) || "");
+        if(!uid) return "";
+        return uid;
+      }catch(_e){ return ""; }
+    }
+    function setZoomUid(uid){
+      try{
+        if(uid) localStorage.setItem(TILE_ZOOM_KEY, String(uid));
+        else localStorage.removeItem(TILE_ZOOM_KEY);
+      }catch(_e){}
+    }
+    function isZoomUid(uid){
+      const z = getZoomUid();
+      return !!(z && uid && String(uid) === z);
+    }
+    
+    function mkTileZoomDecorate_(tileEl, on){
+      try{
+        if(!tileEl) return;
+        tileEl.classList.toggle("tileZoom", !!on);
+        let btn = tileEl.querySelector(":scope > .tileZoomOff");
+        if(on && !btn){
+          btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "tileZoomOff";
+          btn.textContent = "🔍 작게";
+          btn.title = "크게 보기 해제";
+          btn.addEventListener("click", (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            toggleZoomUid(String(tileEl.dataset.uid || ""));
+          });
+          tileEl.appendChild(btn);
+        }else if(!on && btn){
+          btn.remove();
+        }
+      }catch(_e){}
+    }
+    
+    function syncTileZoomClasses_(){
+      try{
+        if(!els.grid) return;
+        const z = getZoomUid();
+        let found = false;
+        els.grid.querySelectorAll(".tile").forEach((t)=>{
+          const on = !!(z && String(t.dataset.uid || "") === z);
+          if(on) found = true;
+          if(on !== t.classList.contains("tileZoom")) mkTileZoomDecorate_(t, on);
+        });
+        els.grid.classList.toggle("gridHasZoom", found);
+      }catch(_e){}
+    }
+    function toggleZoomUid(uid){
+      if(!uid) return;
+      const isMineZ = !!(state.uid && uid === state.uid);   
+      const was = isZoomUid(uid);
+      setZoomUid(was ? "" : uid);
+      try{ showToast(was ? "🔍 크게 보기 해제" : (isMineZ ? "🔍 내 타일을 4칸 크기로 키웠어 — 해제는 우클릭 또는 [🔍 작게]" : "🔍 크게 보기! 타일 4칸 크기로 — 해제는 타일 우클릭 또는 [🔍 작게]")); }catch(_e){}
+      syncTileZoomClasses_();
+      
+      try{
+        if(Array.isArray(state._lastPresenceArrBase)){
+          const ordered = applyPinnedOrder(state._lastPresenceArrBase);
+          state._lastPresenceArr = ordered;
+          schedulePresenceRender(ordered);
+        }
+      }catch(_e){}
+    }
+
     function applyPinnedOrder(arr){
       try{
         if(!Array.isArray(arr) || arr.length <= 1) return arr;
@@ -10073,6 +10175,14 @@ if(myUid && byId.has(myUid)){
           out.push(byId.get(myUid));
           used.add(myUid);
         }
+
+try{
+          const zoomUid = getZoomUid();
+          if(zoomUid && zoomUid !== myUid && byId.has(zoomUid) && !used.has(zoomUid)){
+            out.push(byId.get(zoomUid));
+            used.add(zoomUid);
+          }
+        }catch(_e){}
 
 try{
           const hcLive = window.__MK_HANDCAM_LIVE__;
@@ -10742,6 +10852,7 @@ function scheduleDirectResub_(why){
       const div = document.getElementById("ctxDivider");
       if(div) div.style.display = isStatus ? "" : "none";
       if(els.ctxPinToggle) els.ctxPinToggle.style.display = isStatus ? "none" : "";
+      if(els.ctxZoomToggle) els.ctxZoomToggle.style.display = isStatus ? "none" : "";   
       if(els.ctxTimerReset) els.ctxTimerReset.style.display = isStatus ? "none" : "";
       if(els.ctxKick) els.ctxKick.style.display = isStatus ? "none" : "";
       if(els.ctxForceOff) els.ctxForceOff.style.display = isStatus ? "none" : "";
@@ -10809,6 +10920,19 @@ if(els.ctxPinToggle){
         const pins = getPinnedUids();
         const isPinned = !!(p && p.id && pins.includes(p.id));
         els.ctxPinToggle.textContent = isPinned ? "📍 고정 해제" : `📌 상단 고정 (${pins.length}/2)`;
+      }
+      
+      if(els.ctxZoomToggle){
+        const canZoom = !!(state.joined && state.uid && p.id);
+        const zoomMine = !!(canZoom && p.id === state.uid);
+        els.ctxZoomToggle.disabled = !canZoom;
+        const isZoomed = canZoom && isZoomUid(p.id);
+        els.ctxZoomToggle.textContent = isZoomed ? (zoomMine ? "🔍 내 타일 크게 보기 해제" : "🔍 크게 보기 해제")
+          : (zoomMine ? "🔍 내 타일 크게 보기 (4칸)" : "🔍 크게 보기 (타일 4칸)");
+        els.ctxZoomToggle.title = !canZoom ? "입장 후에 쓸 수 있어요"
+          : isZoomed ? "원래 크기(1칸)로 되돌려요"
+          : zoomMine ? "내 타일을 맨 앞 자리에서 4칸 크기로 키워요 · 한 번에 한 타일만"
+          : "이 타일을 4칸 크기로 키워요 · 한 번에 한 타일만, 해제 전까지 유지";
       }
       if(els.ctxDirectMessage){
         const canMessage = !!(state.joined && state.uid && p.id && p.id !== state.uid);
@@ -18755,6 +18879,8 @@ t.appendChild(bg);
 
 try{ if(window.__MK_CHARA_TILE_V169__ && window.__MK_CHARA_TILE_V169__.attachMover) window.__MK_CHARA_TILE_V169__.attachMover(t, p); }catch(e){}
 
+try{ if(isZoomUid(p.id)) mkTileZoomDecorate_(t, true); }catch(_e){}
+
       state.lastRendered.set(p.id, {
         key, el: t,
         timeEl: (timer && timer.querySelector) ? timer.querySelector('.time') : null,
@@ -20077,6 +20203,7 @@ const desiredNodes = [];
         }
       }
       reconcileGridChildrenV69(desiredNodes);
+      syncTileZoomClasses_();   
     }
 
 function normalizePetFullPublicInfo(src){
@@ -24207,6 +24334,15 @@ if(els.ctxTimerReset){
         if(t.uid) togglePinnedUid(t.uid);
       });
     }
+    
+    if(els.ctxZoomToggle){
+      els.ctxZoomToggle.addEventListener("click", (e)=>{
+        e.preventDefault();
+        const t = state.ctxTarget || {};
+        hideCtxMenu();
+        if(t.uid) toggleZoomUid(t.uid);
+      });
+    }
 
 if(els.directInboxBtn) els.directInboxBtn.addEventListener("click",()=>openDirectInbox_());
     if(els.directInboxClose) els.directInboxClose.addEventListener("click",()=>hideModal(els.directInboxModal));
@@ -25030,6 +25166,7 @@ const HC_ORDER = new Map();
       liveMissingTimer: null,
       pendingMissingTimer: null,
       publishFailTimer: null,
+      camSource: null,   
       
       viewerEnabled: false,
       gridHandcamClean: false 
@@ -25066,6 +25203,12 @@ try{
         .tile .handcamBox .hcTag::before{ content:""; width:6px; height:6px; border-radius:50%;
           background:#fff; animation:hcBlink 1.2s ease-in-out infinite; }
         @keyframes hcBlink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+        /* V264_CAMCROP: 내 손캠 상자의 [🎯 조정] — 왼쪽 아래(왼쪽 위는 LIVE 태그, 오른쪽 아래는 V264 [🔍 작게]). 상자(z20) 안 z2라 영상·캐릭터(z1) 위. */
+        .tile .handcamBox .hcAdjustBtn{ position:absolute; left:6px; bottom:6px; z-index:2; cursor:pointer;
+          font:inherit; font-size:11px; font-weight:900; line-height:1; white-space:nowrap; letter-spacing:.2px;
+          padding:6px 9px; border-radius:999px; background:rgba(0,0,0,.70); color:#fff;
+          border:1px solid rgba(255,255,255,.28); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+        .tile .handcamBox .hcAdjustBtn:hover{ background:rgba(0,0,0,.86); border-color:rgba(255,255,255,.5); }
         .grid.compact5 .handcamBox, .grid.playgroundMode .handcamBox{ display:none !important; }
         /* 손캠 제어는 프로필 타일이 아니라 작업방 헤더의 작업 상태 오른쪽에 둡니다.
            타일의 닉네임/상태/메달 영역과 완전히 분리해 겹침을 막습니다. */
@@ -25775,6 +25918,252 @@ let alive = true, reader = null;
       };
     }
 
+const CAM_OUT_PX = 240;       
+    const CAM_FPS = 10;           
+    const CAM_CROP_KEY = "mkCamCropV1";
+    function loadCamCrop_(){
+      try{
+        const v = JSON.parse(localStorage.getItem(CAM_CROP_KEY) || "{}") || {};
+        return {
+          zoom: Math.min(3, Math.max(1, Number(v.zoom) || 1)),
+          cx: Math.min(1, Math.max(0, Number(v.cx ?? 0.5))),
+          cy: Math.min(1, Math.max(0, Number(v.cy ?? 0.5)))
+        };
+      }catch(e){ return { zoom:1, cx:0.5, cy:0.5 }; }
+    }
+    function saveCamCrop_(crop){
+      try{ localStorage.setItem(CAM_CROP_KEY, JSON.stringify({ zoom:crop.zoom, cx:crop.cx, cy:crop.cy })); }catch(e){}
+    }
+
+function confirmCamCrop_(vid, cv, crop, draw, opts){
+      const live = !!(opts && opts.live);
+      return new Promise((resolve)=>{
+        let done = false, uiTimer = 0;
+        const snap = { zoom: crop.zoom, cx: crop.cx, cy: crop.cy };
+        const vidHome = vid.parentNode;
+        const onKey = (ev)=>{ if(ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); finish(false); } };
+        function finish(ok){
+          if(done) return; done = true;
+          try{ clearInterval(uiTimer); }catch(e){}
+          try{ document.removeEventListener("keydown", onKey, true); }catch(e){}
+          if(!ok && live){ Object.assign(crop, snap); try{ draw(); }catch(e){} }   
+          try{
+            vid.style.cssText = "display:block;width:1px;height:1px;";
+            if(vidHome) vidHome.appendChild(vid); else vid.remove();
+          }catch(e){}
+          try{ cv.remove(); }catch(e){}
+          try{ ov.remove(); }catch(e){}
+          resolve(ok);
+        }
+
+        const ov = document.createElement("div");
+        ov.id = "mkCamConfirm";
+        ov.style.cssText = "position:fixed;inset:0;z-index:100200;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;";
+        const card = document.createElement("div");
+        card.style.cssText = "background:#15151c;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:18px;max-width:660px;width:100%;max-height:calc(100vh - 32px);overflow-y:auto;color:#f4eef2;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;";
+        card.innerHTML =
+          '<div style="font-size:16px;font-weight:800;">' + (live ? "손캠 위치·확대 조정" : "이렇게 공유됩니다") + '</div>' +
+          '<div style="font-size:12.5px;opacity:.72;line-height:1.65;margin:6px 0 14px;">' +
+            '오른쪽이 다른 작가님들에게 보이는 화면이에요. 사각형 밖은 전송되지 않습니다.<br>' +
+            '왼쪽 화면을 눌러(끌어) 보여줄 위치를 정하고, 아래 막대로 확대·축소하세요.' + (live ? ' 바꾸는 즉시 반영돼요.' : '') +
+          '</div>' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">' +
+            '<div style="flex:1 1 290px;min-width:250px;">' +
+              '<div id="mkCamSrc" style="position:relative;display:inline-block;line-height:0;max-width:100%;background:#000;border-radius:10px;overflow:hidden;cursor:move;touch-action:none;"></div>' +
+              '<div style="font-size:11.5px;opacity:.58;margin-top:6px;">내 카메라 전체 · 나만 보입니다</div>' +
+            '</div>' +
+            '<div style="flex:0 0 auto;">' +
+              '<div id="mkCamOut" style="width:200px;height:200px;border-radius:16px;overflow:hidden;background:#000;border:1px solid rgba(var(--pinkHotrgb),.55);"></div>' +
+              '<div style="font-size:11.5px;opacity:.58;margin-top:6px;">남들에게 보이는 화면</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">' +
+            '<span style="font-size:12px;opacity:.7;width:34px;">넓게</span>' +
+            '<input id="mkCamZoom" type="range" min="100" max="300" step="5" style="flex:1;accent-color:#ff4081;">' +
+            '<span style="font-size:12px;opacity:.7;">확대</span>' +
+            '<button id="mkCamReset" type="button" title="가운데·기본 크기로" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;">↺ 가운데로</button>' +
+          '</div>' +
+          '<div style="font-size:11.5px;opacity:.6;margin-top:10px;line-height:1.6;">3배 가까이 확대하면 조금 흐려질 수 있어요. 손이 움직이는 범위가 사각형 안에 들어오게 잡아 주세요.</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">' +
+            '<button id="mkCamCancel" type="button" style="background:rgba(255,255,255,.09);color:#f4eef2;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;">취소</button>' +
+            '<button id="mkCamOk" type="button" style="background:rgba(var(--pinkHotrgb),.95);color:#fff;border:0;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;">' + (live ? "완료" : "이대로 시작") + '</button>' +
+          '</div>';
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+
+        const srcWrap = card.querySelector("#mkCamSrc");
+        const outWrap = card.querySelector("#mkCamOut");
+        const zoomEl = card.querySelector("#mkCamZoom");
+        vid.style.cssText = "display:block;max-width:100%;max-height:42vh;width:auto;height:auto;";
+        srcWrap.appendChild(vid);
+        const box = document.createElement("div");
+        box.style.cssText = "position:absolute;border:2px solid #ff4081;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none;border-radius:3px;";
+        srcWrap.appendChild(box);
+        cv.style.cssText = "display:block;width:100%;height:100%;";
+        outWrap.appendChild(cv);
+        const syncZoomEl = ()=>{ zoomEl.value = String(Math.round((crop.zoom || 1) * 100)); };
+        syncZoomEl();
+
+        const syncBox = ()=>{
+          const vw = vid.videoWidth, vh = vid.videoHeight;
+          if(!vw || !vh) return;
+          const r = screenCropRect_(vw, vh, crop);
+          box.style.left   = (r.sx / vw * 100) + "%";
+          box.style.top    = (r.sy / vh * 100) + "%";
+          box.style.width  = (r.s  / vw * 100) + "%";
+          box.style.height = (r.s  / vh * 100) + "%";
+        };
+        syncBox();
+        uiTimer = setInterval(syncBox, 250);   
+
+        zoomEl.addEventListener("input", ()=>{
+          crop.zoom = Math.max(1, Math.min(3, Number(zoomEl.value) / 100));
+          syncBox(); draw();
+        });
+        card.querySelector("#mkCamReset").addEventListener("click", ()=>{
+          crop.zoom = 1; crop.cx = 0.5; crop.cy = 0.5;
+          syncZoomEl(); syncBox(); draw();
+        });
+
+let dragging = false;
+        const moveTo = (ev)=>{
+          const rect = srcWrap.getBoundingClientRect();
+          if(!rect.width || !rect.height) return;
+          crop.cx = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+          crop.cy = Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+          syncBox(); draw();
+        };
+        srcWrap.addEventListener("pointerdown", (ev)=>{ dragging = true; try{ srcWrap.setPointerCapture(ev.pointerId); }catch(e){} moveTo(ev); });
+        srcWrap.addEventListener("pointermove", (ev)=>{ if(dragging) moveTo(ev); });
+        srcWrap.addEventListener("pointerup", ()=>{ dragging = false; });
+        srcWrap.addEventListener("pointercancel", ()=>{ dragging = false; });
+
+        card.querySelector("#mkCamOk").addEventListener("click", ()=>finish(true));
+        card.querySelector("#mkCamCancel").addEventListener("click", ()=>finish(false));
+        document.addEventListener("keydown", onKey, true);
+      });
+    }
+
+async function makeCroppedCamSource_(onSourceEnded){
+      const src = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },   
+          
+          width: { ideal: 640, max: 960 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: CAM_FPS, max: CAM_FPS }
+        },
+        audio: false
+      });
+      
+      const holder = document.createElement("div");
+      holder.setAttribute("aria-hidden", "true");
+      holder.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none;";
+      document.body.appendChild(holder);
+      const vid = document.createElement("video");
+      vid.playsInline = true; vid.muted = true; vid.srcObject = src;
+      holder.appendChild(vid);
+      try{ await vid.play(); }catch(_e){}
+      if(!vid.videoWidth){
+        await new Promise((r)=>{ const t = setTimeout(r, 900); vid.addEventListener("loadedmetadata", ()=>{ clearTimeout(t); r(); }, { once:true }); });
+      }
+      try{
+        const st0 = src.getVideoTracks()[0]?.getSettings?.() || {};
+        if(Number(st0.height) < CAM_OUT_PX || Number(st0.width) < CAM_OUT_PX) mkDiag("손캠-원본해상도미달", `${st0.width}x${st0.height} @${st0.frameRate}fps`);
+      }catch(_e){}
+
+      const crop = loadCamCrop_();
+      const cv = document.createElement("canvas");
+      cv.width = CAM_OUT_PX; cv.height = CAM_OUT_PX;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CAM_OUT_PX, CAM_OUT_PX);
+
+      let latest = null, lastPumpDrawMs = 0;
+      const frameSrc = ()=>{
+        if(latest) return { img: latest, w: latest.displayWidth || latest.codedWidth, h: latest.displayHeight || latest.codedHeight };
+        return { img: vid, w: vid.videoWidth, h: vid.videoHeight };
+      };
+      const draw = ()=>{
+        try{
+          const f = frameSrc();
+          if(!f.w || !f.h) return;
+          const r = screenCropRect_(f.w, f.h, crop);
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(f.img, r.sx, r.sy, r.s, r.s, 0, 0, CAM_OUT_PX, CAM_OUT_PX);
+        }catch(_e){}
+      };
+      draw();
+      
+      const timer = setInterval(()=>{ if(lastPumpDrawMs && (Date.now() - lastPumpDrawMs) < 600) return; draw(); }, Math.round(1000 / CAM_FPS));
+
+      const okay = await confirmCamCrop_(vid, cv, crop, draw, { live:false });
+      if(!okay){
+        try{ clearInterval(timer); }catch(_e){}
+        try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ vid.srcObject = null; }catch(_e){}
+        try{ holder.remove(); }catch(_e){}
+        const err = new Error("cam-cancelled"); err.__cancelled = true; throw err;
+      }
+      saveCamCrop_(crop);
+
+      let alive = true, reader = null;
+      if(typeof window.MediaStreamTrackProcessor === "function"){
+        try{
+          const track = src.getVideoTracks()[0];
+          reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
+          (async function pump(){
+            while(alive){
+              const { value, done } = await reader.read();
+              if(done) break;
+              if(!alive){ try{ value.close(); }catch(_e){} break; }
+              const prev = latest;
+              latest = value;
+              draw();
+              lastPumpDrawMs = Date.now();
+              if(prev){ try{ prev.close(); }catch(_e){} }
+            }
+          })().catch(()=>{});
+        }catch(e){ reader = null; }
+      }
+      const out = cv.captureStream(CAM_FPS);
+      try{ src.getVideoTracks()[0].addEventListener("ended", ()=>{ try{ onSourceEnded && onSourceEnded(); }catch(_e){} }, { once:true }); }catch(_e){}
+
+      let adjusting = false;
+      return {
+        stream: out, crop, draw,
+        async adjust(){
+          if(adjusting) return false;
+          adjusting = true;
+          try{
+            const ok = await confirmCamCrop_(vid, cv, crop, draw, { live:true });
+            if(ok) saveCamCrop_(crop);
+            return ok;
+          }finally{ adjusting = false; }
+        },
+        stop(){
+          alive = false;
+          try{ clearInterval(timer); }catch(_e){}
+          try{ reader && reader.cancel(); }catch(_e){}
+          try{ if(latest){ latest.close(); latest = null; } }catch(_e){}
+          try{ src.getTracks().forEach(t=>t.stop()); }catch(_e){}
+          try{ out.getTracks().forEach(t=>t.stop()); }catch(_e){}
+          try{ vid.srcObject = null; }catch(_e){}
+          try{ holder.remove(); }catch(_e){}
+        }
+      };
+    }
+    
+    async function hcAdjustMyCam_(){
+      try{
+        const s = hc.camSource;
+        if(!s || !s.adjust){ showToast("손캠이 켜져 있을 때만 조정할 수 있어요"); return; }
+        const ok = await s.adjust();
+        if(ok) showToast("🎯 손캠 위치·확대를 바꿨어요");
+      }catch(e){ console.warn("[handcam] adjust failed", e); }
+    }
+    
+    try{ window.__MK_HC_DEBUG__ = { confirmCamCrop_, loadCamCrop_, saveCamCrop_, cropRect: screenCropRect_, adjust: hcAdjustMyCam_ }; }catch(_e){}
+
     async function startMyCam(){ return startPublish_("cam"); }
     async function startMyScreen(){ return startPublish_("screen"); }
 
@@ -25818,32 +26207,17 @@ async function startPublish_(kind){
           return;
         }
       }else{
-      try{
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-
-facingMode: { ideal: "environment" },
-
-width: { ideal: 240, max: 240 },
-            height: { ideal: 240, max: 240 },
-            aspectRatio: { ideal: 1 },
-            frameRate: { ideal: 10, max: 10 }
-          },
-          audio: false
-        });
         
         try{
-          const st0 = stream.getVideoTracks()[0]?.getSettings?.() || {};
-          if(Number(st0.height) < 240 || Number(st0.width) < 240){
-            mkDiag("손캠-해상도미달", `${st0.width}x${st0.height} @${st0.frameRate}fps`);
-          }
-        }catch(_e){}
-      }catch(e){
-        hc.starting = false;
-        updateMyBtn();
-        showToast("카메라 권한을 허용해 주세요");
-        return;
-      }
+          const srcObj = await makeCroppedCamSource_(()=>{ stopMyCam(true).catch(()=>{}); });
+          hc.camSource = srcObj;
+          stream = srcObj.stream;
+        }catch(e){
+          hc.starting = false;
+          updateMyBtn();
+          showToast(e && e.__cancelled ? "손캠을 취소했어요" : "카메라 권한을 허용해 주세요");
+          return;
+        }
       }
 
       const nickname = normalizeNick(state.nickname || state.currentParticipants?.get?.(uid)?.name || uid);
@@ -25860,6 +26234,7 @@ width: { ideal: 240, max: 240 },
       if(slotId === null || slotId === undefined){
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
         try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
+      try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}   
         hc.starting = false;
         updateMyBtn();
         showToast(`${LBL} 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
@@ -25976,6 +26351,7 @@ await rUpdate(ownRef, {
         hc.pending = null;
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
         try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
+      try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}   
         try{ pc && pc.close(); }catch(_e){}
         await clearReservedSlot(roomId, slotId);
         hc.starting = false;
@@ -25998,6 +26374,7 @@ await rUpdate(ownRef, {
       const wasScreen = !!(my && my.kind === "screen") || !!hc.screenSource;
       
       try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
+      try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}   
       hc.my = null;
       hc.pending = null;
       hc.starting = false;
@@ -26264,6 +26641,13 @@ if(isRemoteLive && !canReceive){
               tag.appendChild(statusEl);
               box.appendChild(vd);
               box.appendChild(tag);
+              
+              if(isMine){
+                const adj = document.createElement("button");
+                adj.type = "button"; adj.className = "hcAdjustBtn"; adj.textContent = "🎯 조정"; adj.title = "손캠 위치·확대 조정";
+                adj.addEventListener("click", (ev)=>{ ev.preventDefault(); ev.stopPropagation(); hcAdjustMyCam_(); });
+                box.appendChild(adj);
+              }
 
               const content = tile.querySelector(".content") || tile;
               const bar = content.querySelector(".statusBar");
@@ -26288,6 +26672,13 @@ if(isRemoteLive && !canReceive){
               let statusEl2 = tag && tag.querySelector(".hcStatus");
               if(tag && !statusEl2){ statusEl2 = document.createElement("span"); statusEl2.className = "hcStatus"; tag.appendChild(statusEl2); }
               if(statusEl2) hcApplyStatusIcon_(statusEl2, tile);
+              
+              const adjBtn = box.querySelector(".hcAdjustBtn");
+              if(adjBtn){
+                const showAdj = isMine && !!hc.camSource && String(liveInfo.kind || "cam") !== "screen";
+                const nextDisp = showAdj ? "" : "none";
+                if(adjBtn.style.display !== nextDisp) adjBtn.style.display = nextDisp;
+              }
             }
 
             const vd = box.querySelector("video");
@@ -27124,7 +27515,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17145; 
+const MK_APP_BUILD = 17146; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
