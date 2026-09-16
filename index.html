@@ -111,6 +111,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -25964,6 +25965,38 @@ const CAM_OUT_PX = 240;
         frameRate: { ideal: CAM_FPS, max: CAM_FPS }
       };
     }
+    
+    function camConstraintsRelaxed_(resId){
+      const c = camConstraintsFor_(resId);
+      c.frameRate = { ideal: CAM_FPS };   
+      return c;
+    }
+    function camIsOverconstrained_(e){ return !!(e && (e.name === "OverconstrainedError" || e.name === "ConstraintNotSatisfiedError")); }
+    async function camGetUserMedia_(resId){
+      try{
+        return await navigator.mediaDevices.getUserMedia({ video: camConstraintsFor_(resId), audio: false });
+      }catch(e){
+        if(!camIsOverconstrained_(e)) throw e;
+        try{ mkDiag("손캠-제약완화", String((e && e.constraint) || "") + " → frameRate ideal만"); }catch(_e){}
+        return await navigator.mediaDevices.getUserMedia({ video: camConstraintsRelaxed_(resId), audio: false });
+      }
+    }
+    function camApplyConstraints_(track, resId){
+      return track.applyConstraints(camConstraintsFor_(resId)).catch((e)=>{
+        if(!camIsOverconstrained_(e)) throw e;
+        return track.applyConstraints(camConstraintsRelaxed_(resId));
+      });
+    }
+    
+    function camStartErrorText_(e){
+      const n = String((e && e.name) || "");
+      try{ mkDiag("손캠-카메라실패", n + " " + String((e && e.message) || "").slice(0, 80)); }catch(_e){}
+      if(n === "NotAllowedError" || n === "SecurityError" || n === "PermissionDeniedError") return "카메라 권한을 허용해 주세요";
+      if(n === "NotFoundError" || n === "DevicesNotFoundError") return "카메라를 찾지 못했어요 — 연결을 확인해 주세요";
+      if(n === "NotReadableError" || n === "TrackStartError" || n === "AbortError") return "다른 앱이 카메라를 쓰고 있어요 — 끄고 다시 시도해 주세요";
+      if(camIsOverconstrained_(e)) return "이 카메라가 요청한 설정을 못 받아요 — 다시 시도하거나 다른 카메라를 골라 주세요";
+      return "카메라를 켜지 못했어요" + (n ? " (" + n + ")" : "");
+    }
     function loadCamCrop_(){
       try{
         const v = JSON.parse(localStorage.getItem(CAM_CROP_KEY) || "{}") || {};
@@ -26016,7 +26049,7 @@ function confirmCamCrop_(vid, cv, crop, draw, opts){
           if(!ok && live){   
             const resChanged = crop.res !== snap.res;
             Object.assign(crop, snap);
-            if(resChanged && track && track.applyConstraints){ try{ track.applyConstraints(camConstraintsFor_(crop.res)).catch(()=>{}); }catch(e){} }
+            if(resChanged && track && track.applyConstraints){ try{ camApplyConstraints_(track, crop.res).catch(()=>{}); }catch(e){} }
             try{ draw(); }catch(e){}
           }
           try{
@@ -26126,7 +26159,7 @@ function confirmCamCrop_(vid, cv, crop, draw, opts){
           if(!(track && track.applyConstraints)){ syncRes(); return; }
           resEl.disabled = true;
           Promise.resolve()
-            .then(()=> track.applyConstraints(camConstraintsFor_(id)))
+            .then(()=> camApplyConstraints_(track, id))
             .catch(()=>{ try{ showToast("이 카메라는 그 해상도를 못 줘요 — 가장 가까운 모드로 남아요"); }catch(e){} })
             .then(()=>{ resEl.disabled = false; syncRes(); syncBox(); draw(); });
         });
@@ -26152,10 +26185,7 @@ let dragging = false;
 
 async function makeCroppedCamSource_(onSourceEnded){
       const crop = loadCamCrop_();
-      const src = await navigator.mediaDevices.getUserMedia({
-        video: camConstraintsFor_(crop.res),   
-        audio: false
-      });
+      const src = await camGetUserMedia_(crop.res);   
       const track = src.getVideoTracks()[0];
       
       const holder = document.createElement("div");
@@ -26328,7 +26358,7 @@ const timer = setInterval(()=>{
       }catch(e){ console.warn("[handcam] adjust failed", e); }
     }
     
-    try{ window.__MK_HC_DEBUG__ = { confirmCamCrop_, loadCamCrop_, saveCamCrop_, cropRect: camCropRect_, drawInto: camDrawInto_, presets: CAM_RES_PRESETS, constraintsFor: camConstraintsFor_, makeSource: makeCroppedCamSource_, adjust: hcAdjustMyCam_, stats: ()=>{ try{ return (hc.camSource && hc.camSource.stats) ? hc.camSource.stats() : null; }catch(_e){ return null; } } }; }catch(_e){}
+    try{ window.__MK_HC_DEBUG__ = { confirmCamCrop_, loadCamCrop_, saveCamCrop_, cropRect: camCropRect_, drawInto: camDrawInto_, presets: CAM_RES_PRESETS, constraintsFor: camConstraintsFor_, makeSource: makeCroppedCamSource_, adjust: hcAdjustMyCam_, stats: ()=>{ try{ return (hc.camSource && hc.camSource.stats) ? hc.camSource.stats() : null; }catch(_e){ return null; } }, gum: camGetUserMedia_, relaxed: camConstraintsRelaxed_, errText: camStartErrorText_ }; }catch(_e){}
 
     async function startMyCam(){ return startPublish_("cam"); }
     async function startMyScreen(){ return startPublish_("screen"); }
@@ -26381,7 +26411,7 @@ async function startPublish_(kind){
         }catch(e){
           hc.starting = false;
           updateMyBtn();
-          showToast(e && e.__cancelled ? "손캠을 취소했어요" : "카메라 권한을 허용해 주세요");
+          showToast(e && e.__cancelled ? "손캠을 취소했어요" : camStartErrorText_(e));   
           return;
         }
       }
@@ -27681,7 +27711,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17148; 
+const MK_APP_BUILD = 17149; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
