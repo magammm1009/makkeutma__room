@@ -112,6 +112,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -18599,6 +18600,21 @@ function mkSlotBaseOf_(theme){
       return { emoji:"emoji", photo:legacyPhoto };
     }
 
+function mkDedupeSlotBase_(base, charaSlot, petSlot, charaHome){
+      const b = { emoji: (base || {}).emoji, photo: (base || {}).photo };
+      try{
+        const leftTaken  = (charaSlot === "emoji" || petSlot === "emoji");
+        const rightTaken = (charaSlot === "photo" || petSlot === "photo");
+        if(leftTaken || rightTaken) return b;
+        if(b.emoji === "off" || b.emoji !== b.photo) return b;
+        if(charaHome === "photo") b.photo = "off";
+        else if(charaHome === "emoji") b.emoji = "off";
+        else if(b.emoji === "photo") b.emoji = "off";
+        else b.photo = "off";
+      }catch(_e){}
+      return b;
+    }
+
     function tileKey(p){
       return JSON.stringify({
 
@@ -18769,7 +18785,8 @@ if(emoBgTransparent){
   avatar.style.borderColor = hexToRgba(emoBg, 0.95);
 }
 
-const slotBase = mkSlotBaseOf_(p.theme || {});
+const slotBase = mkDedupeSlotBase_(mkSlotBaseOf_(p.theme || {}), charaSlot, petDisplaySlot,
+  (window.__MK_CHARA_TILE_V169__ && window.__MK_CHARA_TILE_V169__.homeSlotOf) ? window.__MK_CHARA_TILE_V169__.homeSlotOf(p) : "none"); 
 
 function mkFillPhotoBox_(box){
   const photoUrl = (p.theme?.photoUrl || "").trim();
@@ -18917,6 +18934,7 @@ try{
       window.__MK_PROFILE_DEBUG__ = {
         renderTile, bgStyle,
         slotBaseOf: mkSlotBaseOf_,
+        dedupeSlotBase: mkDedupeSlotBase_, 
         patternAlphaOf: mkPatternAlphaOf_,
         PATTERN_MAX,
         
@@ -27711,7 +27729,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17149; 
+const MK_APP_BUILD = 17150; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -41706,6 +41724,15 @@ function charaOf(p){
       return normShow(c.show);
     }catch(e){ return 'none'; }
   }
+  
+  function homeSlotOf(p){
+    try{
+      var uid = (p && p.id) ? String(p.id) : '';
+      if(uid && uid === selfUid()) return normShow(getMyShow());
+      var cv = p && p.charaV1;
+      return (cv && typeof cv === 'object') ? normShow(cv.show) : 'none';
+    }catch(e){ return 'none'; }
+  }
   function tileKeyOf(p){
     try{
       var c = charaOf(p);
@@ -42887,6 +42914,7 @@ try{
 
 window.__MK_CHARA_TILE_V169__ = {
     slotOf: slotOf,
+    homeSlotOf: homeSlotOf,   
     fillSlot: fillSlot,
     tileKeyOf: tileKeyOf,
     buildCharaV1: buildCharaV1,
@@ -44147,6 +44175,9 @@ function charaShow_(){ var v = valOf_("charaDisplaySlot", "none"); return (v ===
       var base = (api && typeof api.buildCharaV1 === "function") ? api.buildCharaV1() : null;
       if(base && typeof base === "object"){
         p.charaV1 = Object.assign({}, base, { show: charaShow_(), mode: charaMode_() });
+      }else{
+        
+        p.charaV1 = { show: charaShow_(), mode: charaMode_() };
       }
     }catch(e){}
     return p;
