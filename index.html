@@ -114,6 +114,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -8033,6 +8034,11 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
 <select id="dragonAdminNext" style="flex:1 1 160px;"><option value="">없음</option></select>
 </div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminCardSet" style="min-width:110px;">카드 그림</label>
+<select id="dragonAdminCardSet" style="flex:1 1 160px;"></select>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 용비늘 레이스 카드 18장의 그림 세트예요. 바꾸면 다음 판부터 새 그림이 나와요(저장 후 1분 안에 모두에게 퍼져요).</div>
 
 <div class="dragonAdminAtlas dragonElTint" id="dragonAdminAtlas" data-el="fire">
 <div class="dragonAdminAtlasHead"><b>🐉 관리자 전용 성장 미리보기</b><span>눈 깜빡임까지 실제 화면과 같아요</span></div>
@@ -27736,7 +27742,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17151; 
+const MK_APP_BUILD = 17152; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29970,15 +29976,36 @@ const DRAGON_TICKET_GROW_COST = 10;
     const DRAGON_RACE_TOTAL = 18;                        
     const DRAGON_REEL_H = 52;                            
     
-    const DRAGON_RACE_SYMBOLS = Object.freeze([
-      {id:"dc-ic-flame",label:"불꽃"},{id:"dc-ic-drop",label:"물방울"},{id:"dc-ic-bolt",label:"번개"},
-      {id:"dc-ic-leaf",label:"나뭇잎"},{id:"dc-ic-egg",label:"알"},{id:"dc-ic-scale",label:"용비늘"},
-      {id:"dc-ic-quill",label:"깃펜"},{id:"dc-ic-scroll",label:"두루마리"},{id:"dc-ic-ink",label:"잉크병"}
-    ]);
+    const DRAGON_CARD_SETS = Object.freeze({
+      classic:Object.freeze({ name:"클래식", symbols:Object.freeze([
+        {id:"dc-ic-flame",label:"불꽃"},{id:"dc-ic-drop",label:"물방울"},{id:"dc-ic-bolt",label:"번개"},
+        {id:"dc-ic-leaf",label:"나뭇잎"},{id:"dc-ic-egg",label:"알"},{id:"dc-ic-scale",label:"용비늘"},
+        {id:"dc-ic-quill",label:"깃펜"},{id:"dc-ic-scroll",label:"두루마리"},{id:"dc-ic-ink",label:"잉크병"}
+      ]) }),
+      snack:Object.freeze({ name:"밤샘 간식", symbols:Object.freeze([
+        {id:"dc-sn-donut",label:"도넛"},{id:"dc-sn-cupramen",label:"컵라면"},{id:"dc-sn-tteok",label:"떡꼬치"},
+        {id:"dc-sn-icecream",label:"아이스크림"},{id:"dc-sn-onigiri",label:"삼각김밥"},{id:"dc-sn-macaron",label:"마카롱"},
+        {id:"dc-sn-konpeito",label:"별사탕"},{id:"dc-sn-bungeo",label:"붕어빵"},{id:"dc-sn-grape",label:"포도"}
+      ]) })
+    });
+    const DRAGON_CARD_SET_DEFAULT = "snack";
+    
+    function dragonCardSetOk_(k){ return Object.prototype.hasOwnProperty.call(DRAGON_CARD_SETS,String(k||"")); }
+    
+    function dragonCardSetKey_(){
+      try{ const k=dragonConfig_().cardSet; return dragonCardSetOk_(k)?String(k):DRAGON_CARD_SET_DEFAULT; }
+      catch(e){ return DRAGON_CARD_SET_DEFAULT; }
+    }
+    function dragonRaceSymbols_(){
+      const key=dragonCardSetKey_();
+      const set=dragonCardSetOk_(key)?DRAGON_CARD_SETS[key]:DRAGON_CARD_SETS[DRAGON_CARD_SET_DEFAULT];
+      return set.symbols;
+    }
     
     const DRAGON_DEFAULT_CONFIG = Object.freeze({
       enabled:true, startAtMs:0,
       expBase:25000, expSlope:0, dailyCap:0, skillCap:100,
+      cardSet:"snack",
       race:{ hourlyChance:0.6, dailyMin:2, dailyMax:8 },
       menu:{
         egg:[{icon:"🌳",name:"세계수의 기운",coins:500}],
@@ -30156,7 +30183,8 @@ function dragonMulberry32_(a){
     
     function dragonShuffleForSeed_(seed){
       const deck=[];
-      for(let i=0;i<9;i++){ deck.push(DRAGON_RACE_SYMBOLS[i]); deck.push(DRAGON_RACE_SYMBOLS[i]); }
+      const syms=dragonRaceSymbols_();
+      for(let i=0;i<9;i++){ deck.push(syms[i]); deck.push(syms[i]); }
       const rnd=dragonMulberry32_((Math.trunc(Number(seed)||0))>>>0);
       for(let j=deck.length-1;j>0;j--){ const k=Math.floor(rnd()*(j+1)); const t=deck[j]; deck[j]=deck[k]; deck[k]=t; }
       return deck;
@@ -30404,6 +30432,7 @@ function dragonMenuItem_(raw,fallback){
         expSlope:Math.round(dragonClamp_(src.expSlope,0,1000000,d.expSlope)),
         dailyCap:Math.round(dragonClamp_(src.dailyCap,0,100000000,d.dailyCap)),
         skillCap:Math.round(dragonClamp_(src.skillCap,1,1000,d.skillCap)),
+        cardSet:(dragonCardSetOk_(src.cardSet)?String(src.cardSet):d.cardSet),   
         race:{
           hourlyChance:dragonClamp_(raceSrc.hourlyChance,0,1,d.race.hourlyChance),
           dailyMin:Math.round(dragonClamp_(raceSrc.dailyMin,0,48,d.race.dailyMin)),
@@ -33188,11 +33217,14 @@ async function submitDragonRaceResult_(ms,flips){
 
 function dragonMountReels_(){
       const wrap=document.getElementById("dragonReels");
-      if(!wrap || wrap.dataset.ready==="1") return;
-      const strip=DRAGON_RACE_SYMBOLS.map((s)=>`<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#${s.id}"></use></svg>`).join("");
+      
+      const key=dragonCardSetKey_();
+      if(!wrap || (wrap.dataset.ready==="1" && wrap.dataset.cardset===key)) return;
+      const strip=dragonRaceSymbols_().map((s)=>`<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#${s.id}"></use></svg>`).join("");
       const reels=wrap.querySelectorAll(".dragonReel");
       for(let i=0;i<reels.length;i++) reels[i].innerHTML=`<span class="dgRStrip">${strip}</span>`;
       wrap.dataset.ready="1";
+      wrap.dataset.cardset=key;
       dragonReelIdle_();   
     }
     function dragonReelStop_(i,face){
@@ -33794,7 +33826,7 @@ function dragonAdminRowHtml_(key,el,isNew){
       const cfg=dragonConfig_();
       
       const act=document.activeElement;
-      const ids=["dragonAdminExpBase","dragonAdminExpSlope","dragonAdminDailyCap","dragonAdminHourly","dragonAdminDailyMin","dragonAdminDailyMax","dragonAdminNext","dragonGuerrillaTime"];
+      const ids=["dragonAdminExpBase","dragonAdminExpSlope","dragonAdminDailyCap","dragonAdminHourly","dragonAdminDailyMin","dragonAdminDailyMax","dragonAdminNext","dragonAdminCardSet","dragonGuerrillaTime"];
       const editing=!!(act && (wrap.contains(act) || ids.indexOf(act.id)>=0));
       if(!editing){
         const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=String(v); };
@@ -33814,6 +33846,14 @@ function dragonAdminRowHtml_(key,el,isNew){
             .map((k)=>`<option value="${dragonEsc_(k)}">${dragonEsc_(cfg.elements[k].emoji)} ${dragonEsc_(cfg.elements[k].name)} (${dragonEsc_(k)})</option>`).join("");
           if(sel.innerHTML!==opts) sel.innerHTML=opts;
           sel.value=cfg.nextElement||"";
+        }
+        
+        const csel=document.getElementById("dragonAdminCardSet");
+        if(csel){
+          const copts=Object.keys(DRAGON_CARD_SETS)
+            .map((k)=>`<option value="${dragonEsc_(k)}">${dragonEsc_(DRAGON_CARD_SETS[k].name)}</option>`).join("");
+          if(csel.innerHTML!==copts) csel.innerHTML=copts;
+          csel.value=cfg.cardSet||DRAGON_CARD_SET_DEFAULT;
         }
       }
       const pause=document.getElementById("dragonAdminPause");
@@ -33872,12 +33912,15 @@ function dragonAdminRowHtml_(key,el,isNew){
       if(!Object.keys(elements).length){ showToast("속성이 하나도 없어요"); return; }
       const nextElement=String(document.getElementById("dragonAdminNext")?.value||"");
       if(nextElement && !elements[nextElement]){ showToast("다음 알로 고른 속성이 표에 없어요"); return; }
+      
+      const cardSetRaw=String(document.getElementById("dragonAdminCardSet")?.value||"");
+      const cardSet=dragonCardSetOk_(cardSetRaw)?cardSetRaw:DRAGON_CARD_SET_DEFAULT;
       const button=document.getElementById("dragonAdminSave");
       if(button) button.disabled=true;
       try{
         
         await rUpdate(rDragonRef_("config"),{
-          expBase,expSlope,dailyCap,
+          expBase,expSlope,dailyCap,cardSet,
           race:{hourlyChance,dailyMin,dailyMax},
           elements,nextElement,
           updatedAtMs:Date.now(),updatedBy:String(state.uid||"")
@@ -38363,6 +38406,119 @@ body.joined #dashboardCard .dashLinksBox{
 <path d="M24.6,30.4C22.8,33.4 22.4,38 23,42C23.3,44 24.6,45 25.8,44.4C24.6,40.4 24.6,35 26.4,31.4Z" fill="#ffffff" opacity=".38" stroke="none"/>
 <rect x="23" y="36" width="18" height="13" rx="3" fill="#7c4ddb" stroke="none"/>
 <rect x="23.5" y="7" width="17" height="10" rx="3.4" fill="#7c4ddb"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-donut" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="32" cy="32" r="18" fill="none" stroke-width="15.5"/>
+<circle cx="32" cy="32" r="18" fill="none" stroke="#FF8FB1" stroke-width="10.5"/>
+<path d="M9.8,42.4A24.5,24.5 0 1 1 54.2,42.4Q47.6,50.6 48.1,40.1Q41.5,48.3 42.0,37.8A11.5,11.5 0 1 0 22.0,37.8Q22.5,48.3 15.9,40.1Q16.4,50.6 9.8,42.4Z" fill="#FFB3D1"/>
+<path d="M49.8,34.5A18,18 0 0 1 27.3,49.4" fill="none" stroke="#000000" stroke-width="10.5" opacity=".16" stroke-linecap="butt"/>
+<path d="M15.3,25.3A18,18 0 0 1 22.5,16.7" fill="none" stroke="#FFE1EC" stroke-width="6.5"/>
+<ellipse cx="42.3" cy="17.3" rx="4.8" ry="3.2" transform="rotate(35 42.3 17.3)" fill="#ffffff" opacity=".5" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-cupramen" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<g transform="rotate(-6 32 40)">
+<path d="M36.5,28.2L30.2,12.8C35.8,10.9 42.4,10 49,10.5C52.7,13 54.9,16.8 55.4,21.2C49.8,24.5 43.1,26.9 36.5,28.2Z" fill="#D8CDB8"/>
+<path d="M33.2,17.4C38.6,14.9 44.4,13.4 49.4,13.6C50.4,17.2 49.8,20.6 47.8,23.4C42.6,25.2 38.4,26.2 36.4,26.4Z" fill="#EFE7D6" stroke="none"/>
+<path d="M46.4,10.6C47.3,10.5 48.2,10.5 49,10.5C52.7,13 54.9,16.8 55.4,21.2C52.8,22.8 50.2,23.9 47.9,24.6C50.3,20 50,14.9 46.4,10.6Z" fill="#000000" opacity=".17" stroke="none"/>
+<path d="M15.4,28L41.6,28Q41.1,41 38.8,52Q38.4,54 36,54L22.4,54Q20,54 19.6,52Q17.3,41 15.4,28Z" fill="#E4453C"/>
+<path d="M17,34.4Q29,36.8 40.9,34.4L40.1,43.2Q29,45.6 18.3,43.2Z" fill="#A82C26" stroke="none"/>
+<path d="M34.6,28L41.6,28Q41.1,41 38.8,52Q38.4,54 36,54L31.8,54Q34.2,41 34.6,28Z" fill="#000000" opacity=".18" stroke="none"/>
+<ellipse cx="28" cy="25.8" rx="15.4" ry="5.2" fill="#ED6155"/>
+<path d="M36.5,21.4C40.2,22.5 43.4,23.8 43.4,25.8C43.4,27.8 40.2,29.1 36.5,30.2C33.6,27.7 33.6,23.9 36.5,21.4Z" fill="#000000" opacity=".16" stroke="none"/>
+<ellipse cx="22" cy="38.2" rx="3.2" ry="6.6" transform="rotate(-10 22 38.2)" fill="#ffffff" opacity=".5" stroke="none"/>
+</g>
+</g>
+</symbol>
+
+<symbol id="dc-sn-tteok" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M48.6,15.4L13.1,50.9" fill="none" stroke-width="10.5"/>
+<path d="M48.6,15.4L13.1,50.9" fill="none" stroke="#C9905A" stroke-width="8"/>
+<g transform="translate(23.2,40.8) rotate(-45)">
+<rect x="-6" y="-7" width="12" height="14" rx="4" ry="4" fill="#EE6C2B"/>
+<path d="M-4.3,-2.5Q-4.4,-4.4 -1.7,-4.9Q1.3,-5.3 1.9,-3.2Q2.3,-1.5 0,-0.7Q-2,0.2 -3.2,1.4Q-4.3,0.3 -4.3,-2.5Z" fill="#FFD9A8" stroke="none"/>
+<path d="M-6,1.1Q0,-0.5 6,1.1L6,3A4,4 0 0 1 2,7L-2,7A4,4 0 0 1 -6,3Z" fill="#000000" opacity=".17" stroke="none"/>
+</g>
+<g transform="translate(35.9,28.1) rotate(-45)">
+<rect x="-6" y="-7" width="12" height="14" rx="4" ry="4" fill="#EE6C2B"/>
+<path d="M-4.3,-2.5Q-4.4,-4.4 -1.7,-4.9Q1.3,-5.3 1.9,-3.2Q2.3,-1.5 0,-0.7Q-2,0.2 -3.2,1.4Q-4.3,0.3 -4.3,-2.5Z" fill="#FFD9A8" stroke="none"/>
+<path d="M-6,1.1Q0,-0.5 6,1.1L6,3A4,4 0 0 1 2,7L-2,7A4,4 0 0 1 -6,3Z" fill="#000000" opacity=".17" stroke="none"/>
+</g>
+<g transform="translate(48.6,15.4) rotate(-45)">
+<rect x="-6" y="-7" width="12" height="14" rx="4" ry="4" fill="#EE6C2B"/>
+<path d="M-4.3,-2.5Q-4.4,-4.4 -1.7,-4.9Q1.3,-5.3 1.9,-3.2Q2.3,-1.5 0,-0.7Q-2,0.2 -3.2,1.4Q-4.3,0.3 -4.3,-2.5Z" fill="#FFD9A8" stroke="none"/>
+<path d="M-6,1.1Q0,-0.5 6,1.1L6,3A4,4 0 0 1 2,7L-2,7A4,4 0 0 1 -6,3Z" fill="#000000" opacity=".17" stroke="none"/>
+</g>
+</g>
+</symbol>
+
+<symbol id="dc-sn-icecream" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M20,32L30.7,55.7Q32,57.5 33.3,55.7L44,32Z" fill="#C98D5A"/>
+<path d="M44,32L33.3,55.7Q32.6,56.9 32.1,56.2L36.5,32Z" fill="#000000" opacity=".16" stroke="none"/>
+<path d="M26.3,46L40.2,40.4" fill="none" stroke-width="2.2"/>
+<path d="M28.8,51.5L36.6,48.4" fill="none" stroke-width="2.2"/>
+<path d="M16,28A16.1,16.1 0 1 1 48,28C47.6,31.6 45.8,34 43,34.9C39.4,36 24.6,36 21,34.9C18.2,34 16.4,31.6 16,28Z" fill="#7ED957"/>
+<path d="M41.9,13.9A16.1,16.1 0 0 1 48,28C47.6,31.6 45.8,34 43,34.9C40.5,29.5 43,19 41.9,13.9Z" fill="#000000" opacity=".16" stroke="none"/>
+<path d="M19.4,27.6C19.2,21.4 22.6,15.6 27.5,13.8C28.6,17.4 26.4,20.4 25.8,25C26.2,28.6 24.4,30.6 22.4,30.2C20.6,29.8 19.5,28.8 19.4,27.6Z" fill="#CFF5B8" stroke="none"/>
+<ellipse cx="35.5" cy="17.5" rx="3" ry="5" transform="rotate(-35 35.5 17.5)" fill="#ffffff" opacity=".55" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-onigiri" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M34.7,12.9L53.3,49.6Q56,55 50,55L14,55Q8,55 10.7,49.6L29.3,12.9Q32,7.5 34.7,12.9Z" fill="#3E4756"/>
+<path d="M15.8,39.5L29.3,12.9Q32,7.5 34.7,12.9L48.2,39.5Z" fill="#EBD3A0"/>
+<path d="M34.7,12.9L53.3,49.6Q56,55 50,55L34,55C41,42 39.5,26 34.7,12.9Z" fill="#000000" opacity=".14" stroke="none"/>
+<ellipse cx="22" cy="46.5" rx="6" ry="3.2" transform="rotate(-18 22 46.5)" fill="#ffffff" opacity=".45" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-macaron" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M8,28.5C8,20 17,13.5 32,13.5C47,13.5 56,20 56,28.5L56,37.5C56,46 47,52.5 32,52.5C17,52.5 8,46 8,37.5Z" fill="#3FC1BC"/>
+<rect x="8" y="28.5" width="48" height="9" fill="#FFE7AE"/>
+<path d="M56,28.5C56,20 47,13.5 32,13.5C42,17.5 47,22 47.5,28.5ZM47.5,28.5L56,28.5L56,37.5L47.5,37.5ZM56,37.5C56,46 47,52.5 32,52.5C42,48.5 47,44 47.5,37.5Z" fill="#000000" opacity=".16" stroke="none"/>
+<path d="M13,27C12.7,21 18,16.6 25,16C21.5,19.8 21,23.5 22.5,27Z" fill="#A7EFEA" stroke="none"/>
+<ellipse cx="28.5" cy="20.5" rx="3" ry="5.2" transform="rotate(-50 28.5 20.5)" fill="#ffffff" opacity=".55" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-konpeito" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M29.3,9.8L34.7,9.8L39.1,20.2L49.7,19.5L52.2,24.3L46.2,32.5L52.3,41.5L49.5,46.0L38.7,44.1L34.7,53.4L29.3,53.4L24.9,44.3L14.1,45.4L11.4,40.8L18.2,31.8L12.2,22.9L15.1,18.2L25.1,19.6Z" fill="#C13BB5"/>
+<path d="M46.2,32.5L52.3,41.5L49.5,46.0L38.7,44.1L34.7,53.4L29.3,53.4L24.9,44.3C28.5,40.0 34.0,34.6 39.4,31.2C42.4,29.4 45.0,29.6 46.2,32.5Z" fill="#000000" opacity=".16" stroke="none"/>
+<path d="M21.5,37.6C20.2,35.1 19.8,32.3 20.4,29.5C20.9,26.8 22.5,24.3 24.7,22.6L29.2,28.4C28.3,29.0 27.7,30.0 27.5,31.0C27.3,32.1 27.4,33.2 27.9,34.2Z" fill="#F7C7F0" stroke="none"/>
+<ellipse cx="30.6" cy="22.1" rx="2.5" ry="4.3" transform="rotate(-22 30.6 22.1)" fill="#ffffff" opacity=".55" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-bungeo" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M7,33C7.8,25.3 10.5,19.8 13.5,19.3L15.5,19A6,6 0 0,0 27.5,19L33.5,19A6,6 0 0,0 45.5,19C46.6,19.4 47.2,21 47.5,23.2L57,17.5L49.8,31L57,45L47.5,39.8C46.8,44.2 41,47.3 33,47.5C23.5,47.7 13.8,45.2 9.7,40C7.9,37.8 7.1,35.3 7,33Z" fill="#8A4F2E"/>
+<path d="M41.5,24.7A6,6 0 0,0 45.5,19C46.6,19.4 47.2,21 47.5,23.2L47.5,39.8C46.8,44.2 41,47.3 33,47.5C37.5,45 40.5,41 41.5,35.5C42.4,30.8 42.3,27 41.5,24.7ZM49.8,31L57,45L47.5,39.8Z" fill="#000000" opacity=".18" stroke="none"/>
+<path d="M13,34.5C13.3,29.5 17,27 24,27.5C31,28 36,31 36.5,35.3C37,40.5 32,45 24.5,44.8C17.5,44.6 12.7,40.5 13,34.5Z" fill="#C9843F" stroke="none"/>
+<circle cx="22" cy="32" r="3" fill="#2a1f33" stroke="none"/>
+<ellipse cx="13.6" cy="28.2" rx="3.1" ry="5" transform="rotate(-32 13.6 28.2)" fill="#ffffff" opacity=".5" stroke="none"/>
+</g>
+</symbol>
+
+<symbol id="dc-sn-grape" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<rect x="28.9" y="13" width="6.2" height="17" rx="2.8" fill="#8A5A3A"/>
+<path d="M34,19C36.5,10.5 45,6.5 53,9.5C53.5,17.5 44.5,22.5 34,19Z" fill="#3FA85A"/>
+<circle cx="41" cy="34" r="9.5" fill="#9B5DE5"/>
+<circle cx="23" cy="34" r="9.5" fill="#9B5DE5"/>
+<circle cx="32" cy="48" r="9.5" fill="#9B5DE5"/>
+<path d="M41,24.5A9.5,9.5 0 0 1 41,43.5C45,37 45,30 41,24.5ZM41.5,48A9.5,9.5 0 0 1 29,57C31.2,53.5 35.6,46.5 41.5,48Z" fill="#000000" opacity=".16" stroke="none"/>
+<path d="M23.8,48A8.2,8.2 0 0 0 32,56.2C32,52.3 31,44.7 23.8,48Z" fill="#D9BFFF" stroke="none"/>
+<ellipse cx="21" cy="30" rx="3" ry="3.6" transform="rotate(-30 21 30)" fill="#ffffff" opacity=".6" stroke="none"/>
 </g>
 </symbol>
 </svg>
