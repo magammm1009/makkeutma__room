@@ -27742,7 +27742,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17152; 
+const MK_APP_BUILD = 17153; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29986,6 +29986,11 @@ const DRAGON_TICKET_GROW_COST = 10;
         {id:"dc-sn-donut",label:"도넛"},{id:"dc-sn-cupramen",label:"컵라면"},{id:"dc-sn-tteok",label:"떡꼬치"},
         {id:"dc-sn-icecream",label:"아이스크림"},{id:"dc-sn-onigiri",label:"삼각김밥"},{id:"dc-sn-macaron",label:"마카롱"},
         {id:"dc-sn-konpeito",label:"별사탕"},{id:"dc-sn-bungeo",label:"붕어빵"},{id:"dc-sn-grape",label:"포도"}
+      ]) }),
+      confuse:Object.freeze({ name:"헷갈리는 간식", symbols:Object.freeze([
+        {id:"dc-sn-cupramen",label:"컵라면"},{id:"dc-sn-donut",label:"도넛"},{id:"dc-hd-bagel",label:"베이글"},
+        {id:"dc-sn-icecream",label:"아이스크림"},{id:"dc-sn-tteok",label:"떡꼬치"},{id:"dc-sn-onigiri",label:"삼각김밥"},
+        {id:"dc-hd-sandwich",label:"샌드위치"},{id:"dc-sn-macaron",label:"마카롱"},{id:"dc-sn-bungeo",label:"붕어빵"}
       ]) })
     });
     const DRAGON_CARD_SET_DEFAULT = "snack";
@@ -38519,6 +38524,44 @@ body.joined #dashboardCard .dashLinksBox{
 <path d="M41,24.5A9.5,9.5 0 0 1 41,43.5C45,37 45,30 41,24.5ZM41.5,48A9.5,9.5 0 0 1 29,57C31.2,53.5 35.6,46.5 41.5,48Z" fill="#000000" opacity=".16" stroke="none"/>
 <path d="M23.8,48A8.2,8.2 0 0 0 32,56.2C32,52.3 31,44.7 23.8,48Z" fill="#D9BFFF" stroke="none"/>
 <ellipse cx="21" cy="30" rx="3" ry="3.6" transform="rotate(-30 21 30)" fill="#ffffff" opacity=".6" stroke="none"/>
+</g>
+</symbol>
+
+
+
+
+<symbol id="dc-hd-bagel" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="32" cy="32" r="18" fill="none" stroke-width="15.5"/>
+<circle cx="32" cy="32" r="18" fill="none" stroke="#C08A4E" stroke-width="10.5"/>
+<path d="M49.8,34.5A18,18 0 0 1 27.3,49.4" fill="none" stroke="#000000" stroke-width="10.5" opacity=".2" stroke-linecap="butt"/>
+<path d="M14.9,25.9A18,18 0 0 1 24.4,16.1" fill="none" stroke="#DFAE73" stroke-width="7"/>
+<g fill="#F9EBCE" stroke="none">
+<ellipse cx="15.1" cy="25.8" rx="2.6" ry="1.5" transform="rotate(20 15.1 25.8)"/>
+<ellipse cx="24.4" cy="15.7" rx="2.6" ry="1.5" transform="rotate(65 24.4 15.7)"/>
+<ellipse cx="38.2" cy="15.1" rx="2.6" ry="1.5" transform="rotate(-70 38.2 15.1)"/>
+<ellipse cx="48.3" cy="24.4" rx="2.6" ry="1.5" transform="rotate(-25 48.3 24.4)"/>
+<ellipse cx="48.3" cy="39.6" rx="2.6" ry="1.5" transform="rotate(25 48.3 39.6)"/>
+<ellipse cx="38.2" cy="48.9" rx="2.6" ry="1.5" transform="rotate(70 38.2 48.9)"/>
+<ellipse cx="24.4" cy="48.3" rx="2.6" ry="1.5" transform="rotate(-65 24.4 48.3)"/>
+<ellipse cx="15.1" cy="38.2" rx="2.6" ry="1.5" transform="rotate(-20 15.1 38.2)"/>
+</g>
+<ellipse cx="42.3" cy="17.3" rx="4.4" ry="2.9" transform="rotate(35 42.3 17.3)" fill="#ffffff" opacity=".4" stroke="none"/>
+</g>
+</symbol>
+
+
+<symbol id="dc-hd-sandwich" viewBox="0 0 64 64">
+<g stroke="#2a1f33" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M34.7,12.9L53.3,49.6Q56,55 50,55L14,55Q8,55 10.7,49.6L29.3,12.9Q32,7.5 34.7,12.9Z" fill="#E0B274"/>
+<path d="M32,16.2L48.2,50.6L15.8,50.6Z" fill="#FBEFCD" stroke="none"/>
+<path d="M24.3,32.5L39.7,32.5L45.2,44.5L18.8,44.5Z" fill="#EC8E6F" stroke="none"/>
+<path d="M24.3,32.5L39.7,32.5L42.4,38.4Q39.2,40.9 36,38.4Q32.8,35.9 29.6,38.4Q26.4,40.9 23.2,38.4Q22.4,37.8 21.6,38.4Z" fill="#82CD5E" stroke="none"/>
+<path d="M24.3,32.5L39.7,32.5" fill="none" stroke-width="2"/>
+<path d="M21.6,38.4Q22.4,37.8 23.2,38.4Q26.4,40.9 29.6,38.4Q32.8,35.9 36,38.4Q39.2,40.9 42.4,38.4" fill="none" stroke-width="2"/>
+<path d="M18.8,44.5L45.2,44.5" fill="none" stroke-width="2"/>
+<path d="M34.7,12.9L53.3,49.6Q56,55 50,55L35.5,55C42,42 39.8,26 34.7,12.9Z" fill="#000000" opacity=".13" stroke="none"/>
+<ellipse cx="29.5" cy="25" rx="4.4" ry="2.2" transform="rotate(64 29.5 25)" fill="#ffffff" opacity=".6" stroke="none"/>
 </g>
 </symbol>
 </svg>
