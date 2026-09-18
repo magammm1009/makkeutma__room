@@ -115,6 +115,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -27742,7 +27743,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17153; 
+const MK_APP_BUILD = 17154; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30194,6 +30195,8 @@ function dragonMulberry32_(a){
       for(let j=deck.length-1;j>0;j--){ const k=Math.floor(rnd()*(j+1)); const t=deck[j]; deck[j]=deck[k]; deck[k]=t; }
       return deck;
     }
+    
+    function dragonFreshBoardSeed_(){ return (Math.floor(Math.random()*4294967296))>>>0; }
     function dragonCalmMotion_(){
       try{
         if(document.body && document.body.classList.contains("mkLowSpecMode")) return true;
@@ -33496,7 +33499,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
             wantKey=`race:${String(open.id)}`;
             cardHtml=`지금까지 완주 ${count}명`;
             
-            loreText=`${flashLore}10분 안에 카드를 다 뒤집으면 레버 1회 + 순위 보너스(1위 +${dragonScaleGain_(2)} · 2~3위 +${dragonScaleGain_(1)}${dragonPerkTail_("scales")}). 판은 모두 같아요.`;
+            loreText=`${flashLore}10분 안에 카드를 다 뒤집으면 레버 1회 + 순위 보너스(1위 +${dragonScaleGain_(2)} · 2~3위 +${dragonScaleGain_(1)}${dragonPerkTail_("scales")}). 판은 열 때마다 새로 섞여요.`;
           }
         }else if(act && Number(act.endMs)>0 && now-Number(act.endMs)<DRAGON_RACE_RESULT_KEEP_MS){
           const rows=dragonRaceRankRows_(act);
@@ -33522,7 +33525,8 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
         if(boardWrap) boardWrap.innerHTML="";
         if(wantKey && boardWrap){
           const modeNow=mode;
-          dragonS3Runtime.board=dragonCardsMount_(boardWrap,{seed:wantSeed,onFinish:(r)=>{ dragonRaceFinished_(modeNow,r); }});
+          
+          dragonS3Runtime.board=dragonCardsMount_(boardWrap,{seed:dragonFreshBoardSeed_(),onFinish:(r)=>{ dragonRaceFinished_(modeNow,r); }});
           dragonS3Runtime.boardKey=wantKey;
         }
       }
