@@ -116,6 +116,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -8107,6 +8108,14 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost awardCoinBtn" data-amount="5000" type="button">5,000</button>
 <button class="ghost awardCoinBtn" data-amount="10000" type="button">10,000</button>
 </div>
+
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<span class="tiny" style="opacity:.82;">🎟️ 레벨권 쿠폰:</span>
+<button class="ghost awardTicketBtn" data-count="1" type="button">1장</button>
+<button class="ghost awardTicketBtn" data-count="5" type="button">5장</button>
+<button class="ghost awardTicketBtn" data-count="10" type="button">10장</button>
+</div>
+<div class="tiny" style="opacity:.75; line-height:1.55; margin-top:4px;">레벨권 쿠폰은 등록하면 드래곤 가방에 레벨권이 바로 들어가요(시즌이 쉬는 중에도 쌓여요). 한 코드는 한 번만 쓸 수 있고, 같은 코드를 다시 등록해도 레벨권이 또 지급되지는 않아요.</div>
 <textarea id="awardCodeOut" readonly aria-label="방금 발급한 코드 목록" placeholder="발급한 코드가 여기에 한 줄씩 나와요" rows="4" style="width:100%; margin-top:8px; border-radius:12px; padding:9px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.5px; resize:vertical;"></textarea>
 <div class="tiny" id="awardListBox" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">발급 내역은 [🔄 내역 새로고침]을 누르면 보여요.</div>
 
@@ -16484,6 +16493,50 @@ async function issueCoinCoupon_(amount){
     if(btn) btn.disabled = false;
   }
 }
+
+async function issueTicketCoupon_(count){
+  if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+  if(!state.roomId){ showToast("방 정보를 확인하지 못했어요"); return; }
+  const n = Math.floor(Number(count));
+  
+  if([1, 5, 10].indexOf(n) < 0){ showToast("레벨권 쿠폰 장수가 올바르지 않아요"); return; }
+  const note = String(els.awardNote?.value || "").trim().slice(0, 30);
+  const btn = document.querySelector('.awardTicketBtn[data-count="' + n + '"]');
+  if(btn) btn.disabled = true;   
+  try{
+    let code = "";
+    for(let tries = 0; tries < 5; tries++){ 
+      const cand = genAwardCode_(12);
+      const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+      if(!(snap && snap.exists())){ code = cand; break; }
+    }
+    if(!code) throw new Error("코드 생성 실패(중복)");
+    const payload = {
+      item: "ticket:" + n,
+      label: "레벨권 " + n + "장",                    
+      createdAtMs: Date.now(),
+      createdBy: String(state.uid || "")
+    };
+    if(note) payload.note = note;
+    await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+    
+    if(els.awardCodeOut){
+      
+      const nKo = ({ 1:"한", 5:"다섯", 10:"열" })[n] || "";
+      const line = fmtAwardCode_(code) + "  (레벨권 " + nKo + "장)";
+      const prev = String(els.awardCodeOut.value || "");
+      els.awardCodeOut.value = prev ? (prev + "\n" + line) : line;
+      try{ els.awardCodeOut.scrollTop = els.awardCodeOut.scrollHeight; }catch(_e){}
+    }
+    showToast(`🎟️ 레벨권 ${n}장 쿠폰 발급 완료! 아래에서 복사해 주세요`, 3600);
+    refreshAwardCodeList_().catch(()=>{});
+  }catch(e){
+    console.warn("[V273_TICKETCOUPON] 레벨권 쿠폰 발급 실패", e);
+    showToast("레벨권 쿠폰 발급에 실패했어요 · 관리자 인증과 네트워크를 확인해 주세요", 4200);
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
 async function refreshAwardCodeList_(){
   const box = els.awardListBox;
   if(!box) return;
@@ -24165,6 +24218,12 @@ document.addEventListener("keydown",(e)=>{
         b.addEventListener("click", ()=>{ issueCoinCoupon_(Number(b.dataset.amount || 0)).catch(()=>{}); });
       });
     }catch(_e){}
+    
+    try{
+      document.querySelectorAll(".awardTicketBtn").forEach((b)=>{
+        b.addEventListener("click", ()=>{ issueTicketCoupon_(Number(b.dataset.count || 0)).catch(()=>{}); });
+      });
+    }catch(_e){}
     if(els.awardRefresh) els.awardRefresh.addEventListener("click", ()=>{ refreshAwardCodeList_().catch(()=>{}); });
     if(els.awardCopy) els.awardCopy.addEventListener("click", ()=>{ copyAwardCodes_().catch(()=>{}); });
     if(els.adminProfileRefresh) els.adminProfileRefresh.addEventListener("click",()=>{ loadAdminProfileCatalog_().catch(()=>{}); });
@@ -27743,7 +27802,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17154; 
+const MK_APP_BUILD = 17155; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30173,10 +30232,10 @@ function dragonMulberry32_(a){
       };
     }
     
-    function dragonSlotDraw_(seed){
+    function dragonSlotDraw_(seed, forceN){
       const rnd=dragonMulberry32_(((seed>>>0)^0x5EED1E)|0);
       const r=rnd();
-      const n=(r<0.25)?2:((r<0.75)?1:0);
+      const n=(forceN===undefined||forceN===null)?((r<0.25)?2:1):Math.max(0,Math.min(2,Math.floor(Number(forceN)||0)));
       const pool=[0,1,2,3,4,5,6,7,8];
       for(let i=8;i>0;i--){ const j=Math.floor(rnd()*(i+1)); const t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
       if(n===2) return {n,faces:[pool[0],pool[0],pool[0]]};        
@@ -32891,6 +32950,37 @@ async function ensureDragonDailySeed_(){
       }catch(e){ console.warn("[dragon s3] scale add failed",e); }
       return false;
     }
+    
+    async function addDragonTickets_(n){
+      if([1,5,10].indexOf(n)<0) return false;                   
+      if(!state.joined || !state.uid || !state.roomId) return false;
+      const uid=String(state.uid);
+      for(let tries=0;tries<3;tries++){
+        if(tries>0) await new Promise((r)=>setTimeout(r,180));
+        if(dragonS3Runtime.bagLock) continue;                   
+        dragonS3Runtime.bagLock=true;
+        try{
+          await ensureDragonBag_();   
+          const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+            if(raw===null) return null;                    
+            if(!raw || typeof raw!=="object") return;
+            const cur=Object.assign({},raw);
+            cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+n;
+            cur.updatedAtMs=Date.now();
+            return cur;
+          });
+          const val=res?.committed?res.snapshot.val():null;
+          if(val && typeof val==="object"){
+            dragonS3Runtime.bag=dragonNormalizeBag_(val);
+            dragonS3Runtime.bagFetchedAtMs=Date.now();
+            try{ renderDragonBag_(); }catch(_e){}   
+            return true;
+          }
+        }catch(e){ console.warn("[dragon s3] ticket coupon add failed",e); }
+        finally{ dragonS3Runtime.bagLock=false; }
+      }
+      return false;
+    }
 
 async function maybeRollDragonRace_(){
       if(!state.joined || !state.uid || !state.roomId) return;
@@ -33264,6 +33354,7 @@ function dragonMountReels_(){
       const N=Math.max(0,Math.min(2,Math.floor(Number((rawN===undefined||rawN===null)?n:rawN)||0)));
       if(out){
         out.className="dragonSlotOut"+((N===2)?" dgWin":(N?"":" dgMiss"));
+        
         out.textContent=((N===2)?`🎰 777! 용비늘 ${G}장`:(G?`용비늘 ${G}장`:"꽝… 내일 다시!"))+(tail||"");
       }
       if(wrap && N!==1){
@@ -33449,8 +33540,9 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
           loreText="완주! 레버를 당겨 용비늘을 뽑으세요 🐉";
         }else if(doneToday){
           const rs=Math.max(0,Math.floor(Number(rec.seed)||0));
-          const d=dragonSlotDraw_(dragonHash32_(`${uid}|${day}|daily|${rs}`));
           const roll=Math.max(0,Math.min(2,Math.floor(Number(rec.roll)||0)));
+          
+          const d=dragonSlotDraw_(dragonHash32_(`${uid}|${day}|daily|${rs}`),roll);
           const gain=dragonScaleGain_(roll);   
           cardHtml=`오늘 완주 · 뒤집기 ${dragonNumFmt_(rec.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(gain)}장`
             +`<small>기록 ${dragonMsText_(rec.ms)} · 자정(KST)에 새 판이 열려요</small>`;
@@ -33464,7 +33556,7 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
           wantSeed=dragonHash32_(`${uid}|${day}|${dragonS3Runtime.dailySeed}`);
           wantKey=`daily:${day}:${wantSeed}`;
           
-          loreText=`카드 ${DRAGON_RACE_TOTAL}장을 다 뒤집으면 레버를 한 번 당겨요(용비늘 0~${dragonScaleGain_(2)}장${dragonPerkTail_("scales")}). 하루 한 번, 자정(KST)에 새 판이 열려요.`;
+          loreText=`카드 ${DRAGON_RACE_TOTAL}장을 다 뒤집으면 레버를 한 번 당겨요(용비늘 ${dragonScaleGain_(1)}~${dragonScaleGain_(2)}장${dragonPerkTail_("scales")}). 하루 한 번, 자정(KST)에 새 판이 열려요.`;
         }
       }else{
         const act=dragonRaceActive_();
@@ -33485,7 +33577,8 @@ function dragonRaceMode_(){ return (dragonS3Runtime.raceTab==="guerrilla")?"guer
           }else if(mineRes){
             const roll=Math.max(0,Math.min(2,Math.floor(Number(mineRes.roll)||0)));
             const gain=dragonScaleGain_(roll);   
-            const d=dragonSlotDraw_(dragonHash32_(`${uid}|${String(open.id)}|${Math.max(0,Math.floor(Number(open.seed)||0))}`));
+            
+            const d=dragonSlotDraw_(dragonHash32_(`${uid}|${String(open.id)}|${Math.max(0,Math.floor(Number(open.seed)||0))}`),roll);
             cardHtml=`완주 완료 · 기록 ${dragonMsText_(mineRes.ms)} · 뒤집기 ${dragonNumFmt_(mineRes.flips)}회 · 🐉 용비늘 ${dragonNumFmt_(gain)}장`
               +`<small>지금까지 완주 ${count}명 · 순위 보너스는 레이스가 끝나면 들어와요</small>`;
             showSlot=true;
@@ -34140,6 +34233,8 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
         blessing:dragonBlessingInfo_,
         
         perk:dragonPerkInfo_,
+        
+        addTickets:(n)=>addDragonTickets_(n),
         
         tick:()=>{ dragonSeasonTick_().catch(()=>{}); },
         getState:()=>({config:dragonS3Runtime.config,summary:dragonS3Runtime.summary})
@@ -40285,10 +40380,49 @@ try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }ca
     toast('💰 코인 ' + amount.toLocaleString('ko-KR') + ' 충전 완료!', 3400);
   }
   
+  function applyTicketCoupon(res, item){
+    var inp = $id('mkAwardCodeInput');
+    
+    if(res && res.again === true){
+      setAwardMsg('이미 등록한 쿠폰이에요 — 레벨권은 서버 가방에 그대로 있어요. 드래곤 가방을 확인해 주세요 🙏', 'err');
+      toast('🎟️ 이미 등록한 쿠폰이에요 — 레벨권은 서버 가방에 그대로 있어요', 3800);
+      return;
+    }
+    var n = Math.floor(Number(item.slice(7)));
+    if([1, 5, 10].indexOf(n) < 0){ 
+      setAwardMsg('쿠폰 정보가 이상해요 — 관리자에게 알려 주세요 🥺', 'err');
+      toast('🎟️ 쿠폰 정보가 이상해요 — 관리자에게 알려 주세요', 3400);
+      return;
+    }
+    var shown = prettyAwardCode(inp && inp.value); 
+    var api = null;
+    try{ api = window.__MK_DRAGON_S3__ || null; }catch(e){}
+    function ticketFail(){
+      setAwardMsg('레벨권을 가방에 넣지 못했어요 · 관리자에게 이 코드를 알려 주세요: ' + shown, 'err');
+      toast('🎟️ 레벨권을 넣지 못했어요 — 관리자에게 코드를 알려 주세요: ' + shown, 5200);
+    }
+    if(!api || typeof api.addTickets !== 'function'){ ticketFail(); return; }
+    setAwardMsg('🎟️ 레벨권을 가방에 넣는 중이에요… ⏳');
+    Promise.resolve()
+      .then(function(){ return api.addTickets(n); })
+      .then(function(ok){
+        if(!ok){ ticketFail(); return; }
+        if(inp) inp.value = ''; 
+        setAwardMsg('🎟️ 레벨권 ' + n + '장을 받았어요! 드래곤 가방에서 확인해 주세요 🐉', 'ok');
+        toast('🎟️ 레벨권 ' + n + '장을 받았어요! 드래곤 가방에서 확인해 주세요 🐉', 3800);
+      })
+      .catch(function(err){
+        console.warn('[chara v170] 레벨권 쿠폰 지급 실패', err);
+        ticketFail();
+      });
+  }
+  
   function applyAwardItem(res){
     var item = String((res && res.item) || '');
     
     if(item.indexOf('coin:') === 0){ applyCoinCoupon(res, item); return; }
+    
+    if(item.indexOf('ticket:') === 0){ applyTicketCoupon(res, item); return; }
     var i = item.indexOf('/');
     if(i <= 0 || i >= item.length - 1){
       setAwardMsg('코드는 확인했는데 파츠 정보가 이상해요 — 관리자에게 알려 주세요 🥺', 'err');
