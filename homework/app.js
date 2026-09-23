@@ -22,7 +22,7 @@ const firebaseConfig = {
 };
 
 // 운영 이메일을 바꾸려면 여기, firestore.rules, storage.rules의 이메일을 함께 바꿔 주세요.
-const APP_RELEASE = 'v32-submission-recovery-guard';
+const APP_RELEASE = 'v35-stamp-helper';
 const ADMIN_EMAIL = 'sukk5753@gmail.com';
 const MONTHLY_TARGET = 20;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -94,7 +94,11 @@ const state = {
   migrationBusy: false,
   profileMigrationBusy: false,
   kingTopThreeSyncBusy: false,
-  adminSubmissionsLoaded: false
+  adminSubmissionsLoaded: false,
+  // V35_STAMPER: appSettings/stampers 문서 data(없으면 null)와 도우미 구독 상태
+  stampers: null,
+  helperActive: false,
+  helperUnsub: null
 };
 
 function localDateKey(date = new Date()) {
@@ -606,6 +610,13 @@ async function migrateCurrentLegacyProfile(user) {
 function isAdmin(user = state.user) {
   return Boolean(user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 }
+// V35_STAMPER: 관리자가 appSettings/stampers 명단에 올린 작가(도장 도우미)인가.
+// 화면 표시용 판정이고, 실제 읽기·도장 권한은 보안 규칙의 isStamper()가 다시 확인합니다.
+function isStampHelper() {
+  const keys = state.stampers?.keys;
+  const writerKey = state.profile?.writerKey;
+  return Boolean(writerKey && keys && typeof keys === 'object' && Object.prototype.hasOwnProperty.call(keys, writerKey));
+}
 function profilePath(writerKey) { return doc(db, 'profiles', writerKey); }
 function writerSessionPath(uid) { return doc(db, 'writerSessions', uid); }
 function writerTasksPath(writerKey) { return collection(db, 'writers', writerKey, 'tasks'); }
@@ -615,6 +626,7 @@ function writerSubmissionPath(writerKey, submissionId) { return doc(db, 'writers
 function writerSchedulesPath(writerKey) { return collection(db, 'writers', writerKey, 'schedules'); }
 function writerSchedulePath(writerKey, scheduleId) { return doc(db, 'writers', writerKey, 'schedules', scheduleId); }
 function dailyHomeworkPath() { return doc(db, 'appSettings', 'dailyHomework'); }
+function stampersPath() { return doc(db, 'appSettings', 'stampers'); }
 function legacyDailyHomeworkPath() { return doc(db, 'dailyHomework', 'current'); }
 function awardMonthKey() { return shiftMonthKey(monthKey(), -1); }
 function monthlyAwardPath(month = awardMonthKey()) { return doc(db, 'monthlyAwards', month); }
@@ -690,6 +702,7 @@ function renderTopActions() {
     actions.push('<button id="logoutButton" class="danger-btn" type="button">로그아웃</button>');
   } else if (state.user && state.profile) {
     actions.push(`<span class="pill">${esc(normalizeWriterEmoji(state.profile.emoji, '🌷'))} ${esc(state.profile.nickname)} 작가님</span>`);
+    if (isStampHelper()) actions.push('<span class="pill helper-pill">🌸 도장 도우미</span>');
     actions.push('<button id="writerLogout" class="ghost-btn" type="button">로그아웃</button>');
     actions.push('<button id="openAdminFromTop" class="ghost-btn" type="button">관리자 인증</button>');
   } else if (gateAllows()) {
@@ -725,11 +738,15 @@ async function handleAuthChanged(user) {
   state.adminTasks = [];
   state.adminSubmissions = [];
   state.adminSubmissionsLoaded = false;
+  state.stampers = null;
+  state.helperActive = false;
+  state.helperUnsub = null;
   state.monthlyAward = null;
   state.dailyHomework = null;
   state.calendarMonth = null;
   state.adminReportMonth = null;
   state.assignmentTargetKey = '__all__';
+  renderHelperPanel(); // 이전 계정의 도우미 목록이 남아 보이지 않게 즉시 숨깁니다.
 
   if (!user) {
     restoreWriterBrowserProfile({ force: true });
@@ -850,6 +867,63 @@ function setupWriterListeners(writerKey) {
   }));
   setupDailyHomeworkListener();
   setupMonthlyAwardListener();
+  setupStampersWatch();
+}
+
+// V35_STAMPER: 작가 화면 — 내가 도장 도우미로 임명됐는지 지켜봅니다.
+function setupStampersWatch() {
+  state.unsubs.push(onSnapshot(stampersPath(), (snapshot) => {
+    state.stampers = snapshot.exists() ? snapshot.data() : null;
+    syncHelperMode();
+  }, (error) => {
+    console.warn('Stampers listener failed', error);
+  }));
+}
+
+// 도우미면 전체 인증(collectionGroup) 구독을 한 번만 켜고, 해제되면 끕니다.
+// 구독이 권한 오류로 죽으면 자동 재시도하지 않습니다(명단이 다시 바뀔 때만 다시 켭니다).
+function syncHelperMode() {
+  if (isStampHelper()) {
+    if (!state.helperActive) {
+      state.helperActive = true;
+      state.adminSubmissionsLoaded = false;
+      const unsubscribe = onSnapshot(collectionGroup(db, 'submissions'), (snapshot) => {
+        if (state.helperUnsub !== unsubscribe) return;
+        state.adminSubmissions = mapSubmissionSnapshot(snapshot);
+        state.adminSubmissionsLoaded = true;
+        renderHelperPanel();
+      }, (error) => {
+        if (state.helperUnsub !== unsubscribe) return;
+        // 임명 해제 직후 잠깐 권한 오류가 날 수 있어 조용히 넘깁니다.
+        if (String(error?.code || '').includes('permission-denied')) console.warn('Helper submission listener denied', error);
+        else {
+          console.warn('Helper submission listener failed', error);
+          toast(friendlyError(error));
+        }
+        stopHelperMode();
+        renderHelperPanel();
+      });
+      state.helperUnsub = unsubscribe;
+      state.unsubs.push(unsubscribe);
+    }
+  } else if (state.helperActive) {
+    stopHelperMode();
+  }
+  renderHelperPanel();
+  renderTopActions();
+}
+
+function stopHelperMode() {
+  const unsubscribe = state.helperUnsub;
+  state.helperUnsub = null;
+  state.helperActive = false;
+  state.adminSubmissions = [];
+  state.adminSubmissionsLoaded = false;
+  if (unsubscribe) { try { unsubscribe(); } catch (_) {} }
+  if (state.activeStampId) {
+    state.activeStampId = null;
+    closeModal('stampModal');
+  }
 }
 
 function setupDailyHomeworkListener() {
@@ -907,14 +981,7 @@ function setupAdminListeners() {
   }));
 
   state.unsubs.push(onSnapshot(collectionGroup(db, 'submissions'), (snapshot) => {
-    state.adminSubmissions = snapshot.docs.map((item) => {
-      const data = item.data();
-      return { id: item.id, writerKey: data.writerKey || item.ref.parent.parent?.id || '', ...data };
-    }).filter((item) => item.storageVersion === 3)
-      .sort((a, b) => {
-        if (Boolean(a.stamped) !== Boolean(b.stamped)) return Number(Boolean(a.stamped)) - Number(Boolean(b.stamped));
-        return timestampValue(b.createdAt) - timestampValue(a.createdAt);
-      });
+    state.adminSubmissions = mapSubmissionSnapshot(snapshot);
     state.adminSubmissionsLoaded = true;
     renderAdmin();
     scheduleKingTopThreeSync();
@@ -922,6 +989,28 @@ function setupAdminListeners() {
     console.warn('Admin submission listener failed', error);
     toast(friendlyError(error));
   }));
+
+  // V35_STAMPER: 도장 도우미 명단
+  state.unsubs.push(onSnapshot(stampersPath(), (snapshot) => {
+    state.stampers = snapshot.exists() ? snapshot.data() : null;
+    renderAdmin();
+  }, (error) => {
+    console.warn('Admin stampers listener failed', error);
+    toast(friendlyError(error));
+  }));
+}
+
+// collectionGroup('submissions') 스냅샷 → 화면용 배열(관리자·도장 도우미 공용).
+// 미도장이 위, 같은 상태끼리는 최근 인증이 위입니다.
+function mapSubmissionSnapshot(snapshot) {
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    return { id: item.id, writerKey: data.writerKey || item.ref.parent.parent?.id || '', ...data };
+  }).filter((item) => item.storageVersion === 3)
+    .sort((a, b) => {
+      if (Boolean(a.stamped) !== Boolean(b.stamped)) return Number(Boolean(a.stamped)) - Number(Boolean(b.stamped));
+      return timestampValue(b.createdAt) - timestampValue(a.createdAt);
+    });
 }
 
 async function commitOperations(operations) {
@@ -1794,7 +1883,7 @@ function renderHistory() {
       <div class="history-copy">
         <div class="history-title-row"><strong>${esc(item.taskTitle || '자유 숙제')}</strong><span class="history-date">${esc(formatDate(item.createdAt || item.stampAt))}</span></div>
         <span class="history-text">${esc(item.text || '')}</span>
-        ${feedback ? `<div class="writer-feedback"><span class="writer-feedback-label">💌 리로의 답장</span><p>${esc(feedback)}</p></div>` : ''}
+        ${feedback ? `<div class="writer-feedback"><span class="writer-feedback-label">💌 ${esc(item.stampedByNick || '리로')}의 답장</span><p>${esc(feedback)}</p></div>` : ''}
       </div>
     </div>`;
   }).join('') : '<div class="empty">아직 완료 기록이 없어요. 첫 번째 오늘의 숙제를 남겨 볼까요? 🌱</div>';
@@ -1829,6 +1918,123 @@ function adminSubmissionDisplayRows() {
   });
 }
 
+// 인증 카드 한 장(관리자 관리함 · 도장 도우미 패널 공용). 버튼 data-* 는 아래 document 클릭 위임이 처리합니다.
+function submissionCardHtml(item) {
+  const source = item.taskSource || 'self';
+  const sourceLabel = source === 'daily' ? '매일 자동' : (source === 'self' ? '직접 정함' : '관리자 배정');
+  const duplicate = item.duplicateStampedBy;
+  const actions = duplicate
+    ? `<span class="badge duplicate-badge">동일 숙제 도장 완료</span><span class="duplicate-note">${esc(formatDate(duplicate.stampAt || duplicate.createdAt))} 인증이 이미 도장 처리됐어요.</span>`
+    : (item.stamped
+      ? `<span class="badge">${esc(item.stampType || '🌸')} 도장 완료${item.stampedByNick ? ` · ${esc(item.stampedByNick)}` : ''}</span>${item.feedback ? `<button type="button" class="mini-btn" data-view-feedback="${item.id}">답장 보기</button>` : ''}`
+      : `<button type="button" class="stamp-btn" data-stamp="${item.id}">칭찬 도장 찍기</button><button type="button" class="mini-btn" data-quick-stamp="${item.id}">“좋았어요!”</button>`);
+
+  return `<div class="submission ${item.stamped ? 'is-done' : ''} ${duplicate ? 'is-duplicate' : ''}">
+      <div class="submission-meta">
+        <div class="writer"><span class="avatar">${esc(item.writerEmoji || '🌱')}</span>${esc(item.writerNickname || '작가')} 작가님</div>
+        <span class="time">${esc(formatDate(item.createdAt))}</span>
+      </div>
+      <div class="submission-task"><span class="source-badge ${source}">${sourceLabel}</span>✎ ${esc(item.taskTitle || '자유 숙제')}</div>
+      <p class="submission-text">${esc(item.text || '')}</p>
+      ${item.blocker ? `<div class="submission-proof">💭 막힌 곳: ${esc(item.blocker)}</div>` : ''}
+      ${item.imagePath ? `<div class="submission-actions"><button type="button" class="proof-btn" data-open-proof="${esc(item.imagePath)}" data-proof-caption="${esc(item.writerNickname || '작가')} 작가님의 인증 사진">사진 보기</button></div>` : ''}
+      <div class="submission-actions">${actions}</div>
+    </div>`;
+}
+
+// V35_STAMPER: 도장 도우미 작가 화면의 '도장 찍어 주기' 칸.
+// 내 인증 · 이미 같은 숙제에 도장이 찍힌 중복 · 도장 완료 건은 목록에서 뺍니다(규칙도 서버에서 다시 막습니다).
+function renderHelperPanel() {
+  const card = $('#helperStampCard');
+  if (!card) return;
+  if (!state.helperActive || !isStampHelper()) {
+    card.hidden = true;
+    return;
+  }
+
+  const myKey = state.profile.writerKey;
+  const rows = adminSubmissionDisplayRows()
+    .filter((item) => item.stamped === false && !item.duplicateStampedBy && item.writerKey && item.writerKey !== myKey);
+  $('#helperPendingBadge').textContent = `확인할 인증 ${rows.length}건`;
+  $('#helperSubmissionList').innerHTML = rows.length
+    ? rows.map(submissionCardHtml).join('')
+    : `<div class="empty">${state.adminSubmissionsLoaded ? '지금은 확인할 인증이 없어요 ☕' : '인증을 불러오는 중이에요…'}</div>`;
+  card.hidden = false;
+}
+
+// V35_STAMPER: 관리자 화면 오른쪽 '도장 도우미' 카드(임명 · 해제).
+function stamperKeysMap() {
+  const keys = state.stampers?.keys;
+  return keys && typeof keys === 'object' ? keys : {};
+}
+
+function renderStamperAdminCard() {
+  if (!isAdmin()) return;
+  const select = $('#stamperSelect');
+  const list = $('#stamperList');
+  if (!select || !list) return;
+
+  const keys = stamperKeysMap();
+  const writers = distinctWriterProfiles();
+  const profilesByKey = new Map(writers.map((writer) => [writer.writerKey, writer]));
+  const candidates = writers.filter((writer) => !Object.prototype.hasOwnProperty.call(keys, writer.writerKey));
+  const previous = select.value;
+  select.disabled = !candidates.length;
+  select.innerHTML = candidates.length
+    ? `<option value="">작가님 선택</option>${candidates.map((writer) => `<option value="${esc(writer.writerKey)}">${esc(writer.emoji || '🌷')} ${esc(writer.nickname)} 작가님</option>`).join('')}`
+    : '<option value="">임명할 작가님이 없어요</option>';
+  if (previous && candidates.some((writer) => writer.writerKey === previous)) select.value = previous;
+
+  const appointed = Object.entries(keys)
+    .map(([writerKey, info]) => ({
+      writerKey,
+      nickname: profilesByKey.get(writerKey)?.nickname || info?.nickname || writerKey,
+      emoji: profilesByKey.get(writerKey)?.emoji || '🌷'
+    }))
+    .sort((a, b) => String(a.nickname).localeCompare(String(b.nickname), 'ko'));
+  list.innerHTML = appointed.length
+    ? `<div class="stamper-chips">${appointed.map((writer) => `<span class="stamper-chip">${esc(writer.emoji)} ${esc(writer.nickname)}<button type="button" data-remove-stamper="${esc(writer.writerKey)}" aria-label="${esc(writer.nickname)} 작가님 도장 도우미 해제" title="도장 도우미 해제">×</button></span>`).join('')}</div>`
+    : '<div class="empty">아직 임명된 도장 도우미가 없어요.</div>';
+}
+
+async function saveStampers(nextKeys, button, doneMessage) {
+  if (!isAdmin()) return;
+  setButtonBusy(button, true, '저장 중…');
+  try {
+    await waitForWrite(setDoc(stampersPath(), { keys: nextKeys, updatedAt: serverTimestamp() }));
+    toast(doneMessage);
+  } catch (error) {
+    console.error(error);
+    toast(friendlyError(error));
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+async function addStamper() {
+  if (!isAdmin()) return;
+  const writerKey = $('#stamperSelect')?.value;
+  const writer = distinctWriterProfiles().find((item) => item.writerKey === writerKey);
+  if (!writer) { toast('도장 도우미로 임명할 작가님을 골라 주세요.'); return; }
+  const keys = stamperKeysMap();
+  if (Object.prototype.hasOwnProperty.call(keys, writerKey)) { toast('이미 도장 도우미예요 🌸'); return; }
+  await saveStampers(
+    { ...keys, [writerKey]: { nickname: String(writer.nickname || writerKey), addedAtMs: Date.now() } },
+    $('#stamperAdd'),
+    `${writer.nickname} 작가님을 도장 도우미로 임명했어요 🌸`
+  );
+}
+
+async function removeStamper(writerKey, button) {
+  if (!isAdmin()) return;
+  const keys = stamperKeysMap();
+  if (!Object.prototype.hasOwnProperty.call(keys, writerKey)) return;
+  const nickname = keys[writerKey]?.nickname || writerKey;
+  const nextKeys = { ...keys };
+  delete nextKeys[writerKey];
+  await saveStampers(nextKeys, button, `${nickname} 작가님의 도장 도우미를 해제했어요.`);
+}
+
 function renderAdmin() {
   if (!isAdmin()) return;
   $('#adminState').textContent = `인증됨 · ${ADMIN_EMAIL}`;
@@ -1852,29 +2058,11 @@ function renderAdmin() {
   renderAdminMonthlyKing();
   renderDailyHomeworkStatus();
   renderAdminMonthlyReport();
+  renderStamperAdminCard();
 
-  $('#submissionList').innerHTML = displaySubmissions.length ? displaySubmissions.map((item) => {
-    const source = item.taskSource || 'self';
-    const sourceLabel = source === 'daily' ? '매일 자동' : (source === 'self' ? '직접 정함' : '관리자 배정');
-    const duplicate = item.duplicateStampedBy;
-    const actions = duplicate
-      ? `<span class="badge duplicate-badge">동일 숙제 도장 완료</span><span class="duplicate-note">${esc(formatDate(duplicate.stampAt || duplicate.createdAt))} 인증이 이미 도장 처리됐어요.</span>`
-      : (item.stamped
-        ? `<span class="badge">${esc(item.stampType || '🌸')} 도장 완료</span>${item.feedback ? `<button type="button" class="mini-btn" data-view-feedback="${item.id}">답장 보기</button>` : ''}`
-        : `<button type="button" class="stamp-btn" data-stamp="${item.id}">칭찬 도장 찍기</button><button type="button" class="mini-btn" data-quick-stamp="${item.id}">“좋았어요!”</button>`);
-
-    return `<div class="submission ${item.stamped ? 'is-done' : ''} ${duplicate ? 'is-duplicate' : ''}">
-      <div class="submission-meta">
-        <div class="writer"><span class="avatar">${esc(item.writerEmoji || '🌱')}</span>${esc(item.writerNickname || '작가')} 작가님</div>
-        <span class="time">${esc(formatDate(item.createdAt))}</span>
-      </div>
-      <div class="submission-task"><span class="source-badge ${source}">${sourceLabel}</span>✎ ${esc(item.taskTitle || '자유 숙제')}</div>
-      <p class="submission-text">${esc(item.text || '')}</p>
-      ${item.blocker ? `<div class="submission-proof">💭 막힌 곳: ${esc(item.blocker)}</div>` : ''}
-      ${item.imagePath ? `<div class="submission-actions"><button type="button" class="proof-btn" data-open-proof="${esc(item.imagePath)}" data-proof-caption="${esc(item.writerNickname || '작가')} 작가님의 인증 사진">사진 보기</button></div>` : ''}
-      <div class="submission-actions">${actions}</div>
-    </div>`;
-  }).join('') : '<div class="empty">아직 확인할 인증이 없어요. 오늘도 다정한 감독님 휴식 시간! ☕</div>';
+  $('#submissionList').innerHTML = displaySubmissions.length
+    ? displaySubmissions.map(submissionCardHtml).join('')
+    : '<div class="empty">아직 확인할 인증이 없어요. 오늘도 다정한 감독님 휴식 시간! ☕</div>';
 
   const groupedAssignments = [];
   const groupMap = new Map();
@@ -2325,7 +2513,9 @@ async function saveStamp() {
       stampAt: serverTimestamp(),
       // 도장을 늦게 찍어도 달력과 월간 집계는 인증을 남긴 날짜를 기준으로 합니다.
       stampDateKey: completionDateKey,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      // V35_STAMPER: 도우미가 찍을 때만 이름을 남깁니다(관리자는 종전처럼 필드 없음 = 리로).
+      ...((!isAdmin() && isStampHelper() && state.profile?.nickname) ? { stampedByNick: String(state.profile.nickname).slice(0, 20) } : {})
     }));
     closeModal('stampModal');
     state.activeStampId = null;
@@ -2415,6 +2605,7 @@ $('#saveAssignment').addEventListener('click', saveAssignment);
 $('#saveMonthlyKing').addEventListener('click', saveMonthlyKing);
 $('#clearMonthlyKing').addEventListener('click', clearMonthlyKing);
 $('#saveStamp').addEventListener('click', saveStamp);
+$('#stamperAdd')?.addEventListener('click', addStamper); // ?. : 캐시된 옛 index.html과 섞여도 초기화가 멈추지 않게
 $('#proofFile').addEventListener('change', (event) => {
   const file = event.target.files?.[0];
   if (!file) { resetProofSelection(); return; }
@@ -2446,6 +2637,11 @@ document.addEventListener('click', (event) => {
   }
   if (deleteWriter) {
     deleteWriterNickname(deleteWriter.dataset.deleteWriter, deleteWriter);
+    return;
+  }
+  const removeStamperButton = event.target.closest('[data-remove-stamper]');
+  if (removeStamperButton) {
+    removeStamper(removeStamperButton.dataset.removeStamper, removeStamperButton);
     return;
   }
   if (scheduleColor) {

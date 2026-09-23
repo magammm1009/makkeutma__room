@@ -123,6 +123,16 @@
           </div>
         </article>
 
+        <!-- V35_STAMPER: 방장님이 임명한 도장 도우미에게만 보입니다 (app.js renderHelperPanel) -->
+        <article class="card helper-stamp-card" id="helperStampCard" hidden>
+          <div class="submission-top">
+            <h2>도장 찍어 주기 🌸</h2>
+            <span class="badge" id="helperPendingBadge">확인할 인증 0건</span>
+          </div>
+          <p class="helper-stamp-note">방장님이 임명한 도장 도우미예요. 다른 작가님의 인증에 칭찬 도장을 찍어 주세요.</p>
+          <div class="submission-list" id="helperSubmissionList"></div>
+        </article>
+
         <div class="writer-layout">
           <div class="writer-main">
             <article class="card today-card">
@@ -199,6 +209,19 @@
           </article>
 
           <aside class="admin-side">
+            <!-- V35_STAMPER: 도장 도우미 임명 · 해제 (appSettings/stampers) -->
+            <article class="card stamper-card">
+              <div class="stamper-card-head">
+                <h2>도장 도우미 🌸</h2>
+              </div>
+              <p class="stamper-card-note">임명된 작가님은 자기 숙제장 위에 '도장 찍어 주기' 칸이 생겨 다른 작가님 인증에 도장을 찍을 수 있어요</p>
+              <div class="stamper-add-row">
+                <select id="stamperSelect" class="king-select" aria-label="도장 도우미로 임명할 작가님 선택"></select>
+                <button id="stamperAdd" type="button" class="primary-btn">임명</button>
+              </div>
+              <div id="stamperList"></div>
+            </article>
+
             <article class="card king-card admin-king-card">
               <div class="king-card-head">
                 <div class="king-title-block">

@@ -118,6 +118,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7504,7 +7505,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div id="updateView" style="width:100%; min-height:120px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.06); line-height:1.55;"></div>
 <div class="hr" style="margin:14px 0;"></div>
 <div class="row" id="updateUnlockRow" style="display:flex; gap:8px; align-items:center;">
-<input id="updateAdminPass" placeholder="관리자 비번" style="flex:1;" type="password">
+<span class="pwWrap"><input id="updateAdminPass" placeholder="관리자 비번" style="flex:1;" type="password"><button type="button" class="pwEye" data-pw-eye aria-label="비밀번호 보기" title="비밀번호 보기">👁</button></span>
 <button class="primary tight" id="updateUnlock">확인</button>
 </div>
 <div id="updateEditArea" style="display:none;">
@@ -7587,7 +7588,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div id="attendUnlockRow">
 <div class="tiny" style="opacity:.6; margin-bottom:7px;">🔐 관리자 전용 · 작가님들은 누르지 않으셔도 돼요</div>
 <div class="row" style="display:flex; gap:8px; align-items:center;">
-<input id="attendAdminPass" placeholder="관리자 비번" style="flex:1;" type="password"/>
+<span class="pwWrap"><input id="attendAdminPass" placeholder="관리자 비번" style="flex:1;" type="password"/><button type="button" class="pwEye" data-pw-eye aria-label="비밀번호 보기" title="비밀번호 보기">👁</button></span>
 <button class="ghost tight" id="attendUnlock" type="button" style="opacity:.75;">확인</button>
 </div>
 </div>
@@ -7811,32 +7812,78 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="closeSettings">닫기</button>
 </div>
 <div class="modalBody">
-<div class="hint">
-          처음 설정하는 사람은 “관리자 비번”을 등록하고, 이후부터는 비번이 있어야 변경할 수 있어요.<br/>
-          <span class="tiny">※ 관리자 비번 입력은 상단이 아니라 이 설정 창에서만 사용하도록 정리했어요.</span>
-        </div>
-<div class="row">
-<label>🔈 입장 소리</label>
+
+<div class="hint stLead">🙋 내 설정은 누구나 바꿀 수 있고, 🔐 관리자 칸은 비번 확인 뒤에 열려요. 관리자 비번이 아직 없는 방이면 처음 입력한 비번이 그대로 등록돼요.</div>
+<section class="stGroup" id="stG-mine" aria-labelledby="stT-mine">
+<h2 class="stGTitle" id="stT-mine">🙋 내 설정</h2>
+<p class="stGDesc">이 브라우저에서만 적용돼요</p>
+<div class="stBlock">
+<label class="stBTitle" for="sfxToggle">🔈 입장 소리</label>
 <div style="display:flex; align-items:center; gap:10px; width:100%;">
 <input id="sfxToggle" type="checkbox">
 <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
 </div>
 </div>
-<div class="hr"></div>
-<div class="hint">⚡ 화면 성능 모드</div>
+<div class="stBlock">
+<div class="stBTitle">⚡ 화면 성능 모드</div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button aria-pressed="false" class="ghost" id="lightModeSettingsBtn" type="button">🍃 경량</button>
 <button aria-pressed="false" class="ghost" id="lowSpecSettingsBtn" type="button">☁️ 저사양</button>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">경량은 프로필·펫·손캠 기능을 유지하면서 효과와 화면 갱신만 줄여요. 저사양은 프로필 타일을 접속자 목록으로 바꾸고 손캠과 장식 효과를 줄입니다.</div>
-<div class="hr"></div>
-<div class="row">
-<input id="adminPass" placeholder="관리자 비번" type="password"/>
+</div>
+<div class="stBlock">
+
+<div class="stBTitle">🎨 포인트 색상</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">방 곳곳의 핑크 포인트(테두리·버튼·LIVE 표시·입장 램프 등)를 내 취향 색으로 바꿔요. <b>이 기기의 내 화면에만</b> 적용되고, 남들 화면이나 프로필 타일·말풍선 색과는 무관해요.</div>
+
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<button class="swatch accentPresetBtn tight" data-accent="#ff77b8" type="button" title="핑크(기본)" aria-label="핑크(기본)" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ff77b8;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#9d8cff" type="button" title="라벤더" aria-label="라벤더" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#9d8cff;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#4fd6b6" type="button" title="민트" aria-label="민트" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#4fd6b6;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#5db9ff" type="button" title="하늘" aria-label="하늘" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#5db9ff;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#ffa25e" type="button" title="살구" aria-label="살구" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffa25e;"></button>
+<button class="swatch accentPresetBtn tight" data-accent="#ffd166" type="button" title="골드" aria-label="골드" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffd166;"></button>
+<input aria-label="포인트 색 직접 선택" title="원하는 색 직접 선택" class="tight" id="accentColorInput" type="color" value="#ff77b8" style="width:40px; height:32px; padding:2px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); cursor:pointer; flex:0 0 auto;"/>
+<button class="ghost tight" id="accentResetBtn" type="button" style="height:32px; padding:0 12px; font-size:12px; flex:0 0 auto;">↩️ 기본</button>
+</div>
+<div class="tiny" id="accentStatus" style="opacity:.74; line-height:1.5;">지금은 기본 핑크를 쓰고 있어요.</div>
+</div>
+<div class="stBlock">
+
+<div class="stBTitle">🚪 계정</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">이 브라우저의 로그인만 해제돼요. 기록·프로필·펫은 계정에 그대로 남고, 같은 이메일로 다시 인증하면 전부 그대로 돌아와요. 다른 이메일로 인증하면 별도 계정으로 시작돼요(작업용 장비·부계정 분리용).</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="settingsLogoutBtn" type="button">🚪 이 브라우저에서 로그아웃</button>
+</div>
+</div>
+</section>
+<section class="stGroup" id="stG-auth" aria-labelledby="stT-auth">
+<h2 class="stGTitle" id="stT-auth">🔐 관리자</h2>
+<div class="stBlock">
+
+<div class="row" id="adminUnlockRow">
+<span class="pwWrap"><input id="adminPass" placeholder="관리자 비번" type="password"/><button type="button" class="pwEye" data-pw-eye aria-label="비밀번호 보기" title="비밀번호 보기">👁</button></span>
 <button class="primary tight" id="adminUnlock">확인</button>
 </div>
+<div class="row" id="adminKeepRow" style="display:none">
+<span class="stKeepMsg">✅ 관리자 인증됨 · 이 브라우저에서는 다음에도 자동으로 열려요</span>
+<button class="ghost tight" id="adminLock" type="button">🔒 인증 해제</button>
+</div>
+</div>
+</section>
 <div id="adminArea" style="display:none">
-<div class="hr"></div>
-<div class="hint">대시보드 링크(룸 공용)</div>
+<nav class="stTabs" id="stTabs" aria-label="관리자 구역 이동">
+<button type="button" class="stTab" data-target="stG-room" aria-current="true"><span class="stTabIc" aria-hidden="true">🏠</span> 방 운영</button>
+<button type="button" class="stTab" data-target="stG-dragon" aria-current="false"><span class="stTabIc" aria-hidden="true">🐉</span> 드래곤</button>
+<button type="button" class="stTab" data-target="stG-coupon" aria-current="false"><span class="stTabIc" aria-hidden="true">🎟️</span> 쿠폰</button>
+<button type="button" class="stTab" data-target="stG-profile" aria-current="false"><span class="stTabIc" aria-hidden="true">👤</span> 프로필·펫</button>
+<button type="button" class="stTab" data-target="stG-tree" aria-current="false"><span class="stTabIc" aria-hidden="true">🌳</span> 세계수</button>
+</nav>
+<section class="stGroup" id="stG-room" aria-labelledby="stT-room">
+<h2 class="stGTitle" id="stT-room">🏠 방 운영</h2>
+<div class="stBlock">
+<div class="stBTitle">🔗 대시보드 링크(룸 공용)</div>
 <div class="row">
 <input id="pomoUrl" placeholder="⏰ 공용 뽀모 링크"/>
 <input id="sudaUrl" placeholder="💣 폭파 수다 링크"/>
@@ -7856,14 +7903,18 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="row">
 <button class="primary" id="saveDash">저장</button>
 </div>
+</div>
+<div class="stBlock">
+<div class="stBTitle">💣 오늘 수다방</div>
 <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
 <button class="primary" id="sudaOpenRoom" type="button">💣 오늘 수다방 열기</button>
 <button class="ghost" id="sudaCloseRoom" type="button">💣 오늘 수다방 닫기</button>
 <button class="ghost" id="sudaCopyOwnerUid" type="button">🆔 제어 ID 복사(예비)</button>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">🔐 <b>오늘 수다방 열기</b>는 메인 작업방 관리자 인증 후 현재 브라우저의 수다 제어 ID를 자동으로 연결·복구해요. 대시보드의 💣수다 버튼은 <b>입장만</b> 하고, 방을 열지는 않습니다. 닫기는 새 입장만 막아요. 제어 ID 복사는 자동 연결이 막힐 때만 사용하는 예비 기능이에요.</div>
-<div class="hr"></div>
-<div class="hint">⏱️ 타이머 관리</div>
+</div>
+<div class="stBlock">
+<div class="stBTitle">⏱️ 타이머 관리</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <select id="adminTimerTarget" style="flex:1 1 220px; min-width:200px; background:#181820; color:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px;">
 <option value="">초기화할 작가 선택</option>
@@ -7875,8 +7926,170 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="adminResetAllTimers" type="button">⏱️ 전체 타이머 0초 · 휴식중</button>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.45;">현재 작업방의 모든 누적 타이머를 0초로 초기화하고, 접속 중인 작가님은 휴식중으로 전환해요. 오프라인 작가님은 오프라인 상태를 유지한 채 시간만 초기화됩니다.</div>
-<div class="hr"></div>
-<div class="hint">🐾 펫 백업/복구 관리</div>
+</div>
+<div class="stBlock">
+
+<div class="stBTitle">🔄 전원 새로고침 요청</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">배포 후 구버전 탭을 정리할 때 사용해요. 백그라운드 탭과 미입장 화면은 즉시 새로고침되고, 화면을 보고 있는 접속자에게는 안내 토스트만 뜬 뒤 탭을 벗어나는 순간 적용돼요(작업 중인 화면을 강제로 끊지 않아요).</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="worldTreeReloadAll" type="button">전원 새로고침 요청 보내기</button>
+</div>
+</div>
+<div class="stBlock">
+
+<div class="stBTitle">🗑️ 유령 세션 정리</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">작업중이 아닌 상태로 24시간이 넘은 접속을 찾아 연결을 끊습니다. 끊긴 분은 다시 입장할 수 있고 재입장 차단은 걸리지 않아요. 작업중인 분은 대상에서 제외됩니다.</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="ghost" id="ghostSweepScan" type="button">대상 찾기</button>
+<button class="danger" id="ghostSweepRun" type="button">정리 실행</button>
+</div>
+<div id="ghostSweepStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">[대상 찾기]를 누르면 24시간 넘게 방치된 접속을 보여줘요.</div>
+</div>
+</section>
+<section class="stGroup" id="stG-dragon" aria-labelledby="stT-dragon">
+
+<h2 class="stGTitle" id="stT-dragon">🐉 드래곤</h2>
+<div class="stBlock">
+<div class="stBTitle">🐉 드래곤 키우기 시즌 3 관리</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">세계수의 축복이 끝나면(은퇴) 드래곤 시즌이 <b>자동으로 시작</b>돼요. 먼저 열고 싶으면 [🐉 지금 시작]을 누르세요. 레벨당 필요 코인은 시즌 중에도 바꿀 수 있고, <b>이미 먹인 코인(게이지)은 그대로 보존</b>돼요 — 다음 먹이 때 새 필요량으로 다시 재서 이미 넘었으면 그 자리에서 레벨이 올라요. 하루 한도는 <b>0 = 없음</b>이 초기값이에요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminExpBase" style="min-width:110px;">레벨당 기본값</label>
+<input id="dragonAdminExpBase" min="1" max="100000000" step="100" type="number" value="25000" style="flex:1 1 120px;"/>
+<label for="dragonAdminExpSlope" style="min-width:110px;">레벨당 기울기</label>
+<input id="dragonAdminExpSlope" min="0" max="1000000" step="10" type="number" value="0" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminDailyCap" style="min-width:110px;">하루 한도(0=없음)</label>
+<input id="dragonAdminDailyCap" min="0" max="100000000" step="100" type="number" value="0" style="flex:1 1 120px;"/>
+<label for="dragonAdminHourly" style="min-width:110px;">레이스 매시 확률</label>
+<input id="dragonAdminHourly" min="0" max="1" step="0.05" type="number" value="0.6" style="flex:1 1 120px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminDailyMin" style="min-width:110px;">레이스 하루 최소</label>
+<input id="dragonAdminDailyMin" min="0" max="48" step="1" type="number" value="2" style="flex:1 1 120px;"/>
+<label for="dragonAdminDailyMax" style="min-width:110px;">레이스 하루 상한</label>
+<input id="dragonAdminDailyMax" min="0" max="48" step="1" type="number" value="8" style="flex:1 1 120px;"/>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 게릴라 레이스 시각(V261): <b>하루 목표 횟수</b>(매시 확률×24를 최소~상한으로 자른 값)만큼 24시간을 같은 칸으로 나눠 <b>칸마다 1회</b>, 칸 안의 시각은 랜덤으로 열려요 — 새벽에 몰리지 않고 하루에 고르게 퍼집니다. 지금 설정의 결과는 상태 줄의 "레이스 하루 n회"에 보여요.</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">속성 등록 — 키는 영소문자만(<code>[a-z]+</code>) 쓰고, 아틀라스를 <code>assets_배포/dragon/{키}-growth-atlas.webp</code>로 먼저 배포한 뒤 활성화하세요. 마지막 빈 줄에 새 속성을 적으면 등록돼요.</div>
+<div class="dragonAdminEls" id="dragonAdminEls"></div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
+<select id="dragonAdminNext" style="flex:1 1 160px;"><option value="">없음</option></select>
+</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonAdminCardSet" style="min-width:110px;">카드 그림</label>
+<select id="dragonAdminCardSet" style="flex:1 1 160px;"></select>
+</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 용비늘 레이스 카드 18장의 그림 세트예요. 바꾸면 다음 판부터 새 그림이 나와요(저장 후 1분 안에 모두에게 퍼져요).</div>
+
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="dragonAdminSave" type="button">드래곤 설정 저장</button>
+<button class="ghost" id="dragonAdminStart" type="button">🐉 지금 시작</button>
+<button class="ghost" id="dragonAdminPause" type="button">일시정지</button>
+</div>
+<div id="dragonAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">드래곤 시즌은 아직 시작되지 않았어요.</div>
+</div>
+<div class="stBlock">
+<div class="stBTitle">🎴 게릴라 용비늘 레이스 예약</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">🎴 <b>게릴라 용비늘 레이스 예약</b> — 정한 시각에 10분짜리 레이스가 방 전체에 열려요(카드 18장 완주 → 레버). 예고가 퍼지도록 <b>최소 3분 뒤</b>로 잡아 주세요. [지금 열기]는 즉시 시작합니다. 예약은 30분 안에 아무도 접속해 있지 않으면 저절로 사라져요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<label for="dragonGuerrillaTime" style="min-width:110px;">레이스 시작 시각</label>
+<input id="dragonGuerrillaTime" type="datetime-local" style="flex:1 1 190px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="dragonGuerrillaSet" type="button">레이스 예약</button>
+<button class="ghost" id="dragonGuerrillaNow" type="button">지금 열기</button>
+<button class="ghost" id="dragonGuerrillaCancel" type="button">예약 취소</button>
+</div>
+<div id="dragonGuerrillaStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 게릴라 레이스가 없어요.</div>
+</div>
+
+<div class="dragonAdminAtlas dragonElTint" id="dragonAdminAtlas" data-el="fire">
+<div class="dragonAdminAtlasHead"><b>🐉 관리자 전용 성장 미리보기</b><span>눈 깜빡임까지 실제 화면과 같아요</span></div>
+<div class="dragonAdminSideBtns" id="dragonAdminPreviewEls" role="group" aria-label="기운 고르기">
+<button class="ghost on" type="button" data-el="fire">🔥 불</button><button class="ghost" type="button" data-el="water">💧 물</button><button class="ghost" type="button" data-el="thunder">⚡ 전기</button><button class="ghost" type="button" data-el="mountain">⛰️ 산</button><button class="ghost" type="button" data-el="neutral">🥚 무속성</button>
+</div>
+<section class="worldTreeScene dragonScene dragonAdminPreviewScene" id="dragonAdminPreviewScene" data-el="fire" data-stage="0" aria-label="관리자 드래곤 성장 미리보기">
+<div class="dragonAura" aria-hidden="true"></div>
+<div class="dragonShadow" aria-hidden="true"></div>
+<div class="dragonFx" aria-hidden="true"><div class="dragonSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="dragonArt" id="dragonAdminPreviewArt" aria-hidden="true"><div class="dragonSprite" id="dragonAdminPreviewSprite" data-el="fire" data-stage="0"></div></div>
+</section>
+<div class="worldTreeGrowthPreview">
+<div class="worldTreeGrowthPreviewHead"><b>성장 단계 선택</b><span id="dragonAdminPreviewLabel">0단계 · 잠든 알</span></div>
+<input aria-label="관리자가 미리 볼 드래곤 단계" id="dragonAdminPreviewRange" min="0" max="7" step="1" type="range" value="0"/>
+<div class="worldTreeGrowthPreviewFoot"><span>0단계 알</span><span id="dragonAdminPreviewName">불의 드래곤</span><span>7단계 고룡</span></div>
+</div>
+<div class="tiny" style="opacity:.7; line-height:1.5; margin-top:8px;">무속성은 0·1단계(알)만 그려져 있어요. ☁️ 저사양 모드나 OS의 "동작 줄이기"가 켜져 있으면 눈 깜빡임이 보이지 않아요.</div>
+</div>
+</section>
+<section class="stGroup" id="stG-coupon" aria-labelledby="stT-coupon">
+<h2 class="stGTitle" id="stT-coupon">🎟️ 쿠폰</h2>
+<div class="stBlock">
+
+<div class="stBTitle">🎖️ 쿠폰 코드 발급</div>
+<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">개근하신 작가님께 드리는 특수 파츠 코드예요. 이 파츠는 코인으로는 살 수 없고 코드로만 받을 수 있어요. 코드 1개당 한 분만 쓸 수 있으니, 인원수만큼 발급해서 한 줄씩 나눠 주세요. 작가님이 기기나 브라우저를 바꿔서 파츠가 사라졌다면, 새 코드를 하나 더 발급해 드리면 돼요. 💰 코인 쿠폰은 아래 버튼으로 따로 발급하고, 이쪽은 <b>다시 등록해도 재충전되지 않아요</b>(잔액은 서버에 백업돼요).</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<select aria-label="발급할 특수 아이템" id="awardItemSelect" style="flex:1 1 220px; min-width:180px; border-radius:12px; padding:10px 12px;">
+<option value="">관리자 인증 후 목록을 불러와요</option>
+</select>
+<label for="awardCount" style="min-width:60px;">개수</label>
+<input id="awardCount" type="number" min="1" max="20" step="1" value="1" style="flex:0 1 90px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<input id="awardNote" maxlength="30" placeholder="메모 (예: 2026년 8월 개근)" style="flex:1 1 210px;"/>
+</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<button class="primary" id="awardIssue" type="button">🎁 코드 발급</button>
+<button class="ghost" id="awardRefresh" type="button">🔄 내역 새로고침</button>
+<button class="ghost" id="awardCopy" type="button">📋 발급 코드 복사</button>
+</div>
+
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<span class="tiny" style="opacity:.82;">💰 코인 쿠폰:</span>
+<button class="ghost awardCoinBtn" data-amount="3000" type="button">3,000</button>
+<button class="ghost awardCoinBtn" data-amount="5000" type="button">5,000</button>
+<button class="ghost awardCoinBtn" data-amount="10000" type="button">10,000</button>
+</div>
+
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+<span class="tiny" style="opacity:.82;">🎟️ 레벨권 쿠폰:</span>
+<button class="ghost awardTicketBtn" data-count="1" type="button">1장</button>
+<button class="ghost awardTicketBtn" data-count="5" type="button">5장</button>
+<button class="ghost awardTicketBtn" data-count="10" type="button">10장</button>
+</div>
+<div class="tiny" style="opacity:.75; line-height:1.55; margin-top:4px;">레벨권 쿠폰은 등록하면 드래곤 가방에 레벨권이 바로 들어가요(시즌이 쉬는 중에도 쌓여요). 한 코드는 한 번만 쓸 수 있고, 같은 코드를 다시 등록해도 레벨권이 또 지급되지는 않아요.</div>
+<textarea id="awardCodeOut" readonly aria-label="방금 발급한 코드 목록" placeholder="발급한 코드가 여기에 한 줄씩 나와요" rows="4" style="width:100%; margin-top:8px; border-radius:12px; padding:9px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.5px; resize:vertical;"></textarea>
+<div class="tiny" id="awardListBox" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">발급 내역은 [🔄 내역 새로고침]을 누르면 보여요.</div>
+</div>
+</section>
+<section class="stGroup" id="stG-profile" aria-labelledby="stT-profile">
+<h2 class="stGTitle" id="stT-profile">👤 프로필·펫</h2>
+<div class="adminProfileManager stBlock">
+<div class="stBTitle">🗂️ 저장 프로필 정리·연결</div>
+<div class="tiny" style="opacity:.8; line-height:1.55; margin-bottom:9px;">서버에 남은 프로필을 검색해 삭제하거나, 예전 꾸미기 프로필을 현재 접속 중인 작가님에게 복사해 다시 연결할 수 있어요. 목록은 현재 접속과 로그아웃으로 나뉘며, 로그아웃 작가는 최근 접속순으로 보여요. 쪽지와 펫 백업은 삭제하지 않습니다.</div>
+<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+<input id="adminProfileSearch" maxlength="30" placeholder="닉네임 또는 UID 검색" style="flex:1 1 210px;"/>
+<button class="ghost" id="adminProfileRefresh" type="button">🔄 목록 새로고침</button>
+</div>
+<select aria-label="저장된 프로필 목록" class="adminProfileCatalog" id="adminProfileSavedSelect" size="7">
+<option value="">관리자 인증 후 목록을 불러와요</option>
+</select>
+<div class="tiny" id="adminProfileStatus" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">선택한 프로필의 정보가 여기에 표시돼요.</div>
+<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+<select aria-label="프로필을 연결할 현재 접속 작가" id="adminProfileTargetSelect" style="flex:1 1 220px; min-width:200px; border-radius:12px; padding:10px 12px;">
+<option value="">연결할 접속 작가 선택</option>
+</select>
+<button class="primary" id="adminProfileConnect" type="button">🔗 선택 프로필 연결</button>
+</div>
+<div class="tiny" style="opacity:.74; line-height:1.5;">연결은 예전 프로필의 꾸미기·공개 펫 정보를 현재 UID에 복사합니다. 대상 작가님이 한 번 새로고침하면 브라우저에도 안정적으로 적용돼요.</div>
+<div class="row" style="display:flex; justify-content:flex-end; margin-top:10px;">
+<button class="adminProfileDanger" id="adminProfileDelete" type="button">🗑️ 선택 프로필 삭제</button>
+</div>
+</div>
+<div class="stBlock">
+<div class="stBTitle">🐾 펫 백업/복구 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.45; margin-bottom:8px;">닉네임 기준으로 Firebase에 저장된 펫 백업을 확인하거나, 유실된 작가님의 펫 레벨을 수동 보정할 수 있어요.</div>
 <div class="row">
 <input id="petAdminNick" list="petAdminNickList" placeholder="작가 닉네임"/>
@@ -7916,12 +8129,14 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="petAdminRestoreMine" type="button">내 펫 백업에서 복원</button>
 </div>
 <div id="petAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">아직 조회한 펫 백업이 없어요.</div>
+</div>
+</section>
+<section class="stGroup" id="stG-tree" aria-labelledby="stT-tree">
 
-<div class="hr"></div>
-
-<div class="hint" style="display:flex; align-items:center; justify-content:space-between; gap:10px;"><span>🌳 세계수 시즌 2 (은퇴) · 관리 3칸</span><button class="ghost worldTreeRosterToggle" id="worldTreeAdminFoldToggle" type="button" aria-expanded="false" aria-controls="worldTreeAdminFold">펼치기</button></div>
+<h2 class="stGTitle" id="stT-tree" style="display:flex; align-items:center; justify-content:space-between; gap:10px;"><span>🌳 세계수 시즌 2 (은퇴) · 관리 3칸</span><button class="ghost worldTreeRosterToggle" id="worldTreeAdminFoldToggle" type="button" aria-expanded="false" aria-controls="worldTreeAdminFold">펼치기</button></h2>
 <div id="worldTreeAdminFold" style="display:none">
-<div class="hint">🌳 세계수 시즌 2 관리</div>
+<div class="stBlock">
+<div class="stBTitle">🌳 세계수 시즌 2 관리</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">기본값은 최대 777레벨, 레벨당 팀별 100시간이에요. 변경값은 다음 선점부터 적용되며 현재까지 선점한 레벨은 보존됩니다.</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="worldTreeAdminMaxLevel" style="min-width:110px;">최대 레벨</label>
@@ -7966,9 +8181,10 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="primary" id="worldTreeAdminSave" type="button">세계수 설정 저장</button>
 </div>
 <div id="worldTreeAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">세계수 화면을 열면 현재 설정을 확인할 수 있어요.</div>
+</div>
+<div class="stBlock">
 
-<div class="hr"></div>
-<div class="hint">💦 게릴라 물방울 레이스 (보상 +20h)</div>
+<div class="stBTitle">💦 게릴라 물방울 레이스 (보상 +20h)</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">시작 시각과 목표 클릭 수를 정하면 시작 1분 전에 방 전체에 예고 토스트가 떠요. 예약이 접속자 화면에 퍼지는 데 최대 2분이 걸리니 최소 3분 뒤 시각으로 정해 주세요.</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="worldTreeGuerrillaTime" style="min-width:110px;">시작 시각</label>
@@ -7981,9 +8197,10 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="ghost" id="worldTreeGuerrillaCancel" type="button">예약 취소</button>
 </div>
 <div id="worldTreeGuerrillaStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 레이스가 없어요.</div>
+</div>
+<div class="stBlock">
 
-<div class="hr"></div>
-<div class="hint">🌟 세계수의 축복 (만렙 이벤트 · 코인 ×3)</div>
+<div class="stBTitle">🌟 세계수의 축복 (만렙 이벤트 · 코인 ×3)</div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">세계수가 최대 레벨에 도달한 뒤 예약할 수 있어요. 시작 시각부터 지속 시간 동안 <b>작업중 코인 적립이 3배</b>(5초에 3코인)가 되고, 끝나면 세계수는 축복을 남기고 사라져요(대시보드 카드·☰ 메뉴에서 숨겨지고 기여·물방울도 멈춰요). 예약이 접속자 화면에 퍼지는 데 최대 2분이 걸리니 최소 3분 뒤 시각으로 정해 주세요. [예약 취소]를 누르면 언제든(끝난 뒤에도) 세계수가 다시 나타나요.</div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="worldTreeBlessAt" style="min-width:110px;">시작 시각</label>
@@ -7997,175 +8214,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div id="worldTreeBlessStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 축복이 없어요.</div>
 </div>
-
-<div class="hr"></div>
-<div class="hint">🐉 드래곤 키우기 시즌 3 관리</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">세계수의 축복이 끝나면(은퇴) 드래곤 시즌이 <b>자동으로 시작</b>돼요. 먼저 열고 싶으면 [🐉 지금 시작]을 누르세요. 레벨당 필요 코인은 시즌 중에도 바꿀 수 있고, <b>이미 먹인 코인(게이지)은 그대로 보존</b>돼요 — 다음 먹이 때 새 필요량으로 다시 재서 이미 넘었으면 그 자리에서 레벨이 올라요. 하루 한도는 <b>0 = 없음</b>이 초기값이에요.</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonAdminExpBase" style="min-width:110px;">레벨당 기본값</label>
-<input id="dragonAdminExpBase" min="1" max="100000000" step="100" type="number" value="25000" style="flex:1 1 120px;"/>
-<label for="dragonAdminExpSlope" style="min-width:110px;">레벨당 기울기</label>
-<input id="dragonAdminExpSlope" min="0" max="1000000" step="10" type="number" value="0" style="flex:1 1 120px;"/>
 </div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonAdminDailyCap" style="min-width:110px;">하루 한도(0=없음)</label>
-<input id="dragonAdminDailyCap" min="0" max="100000000" step="100" type="number" value="0" style="flex:1 1 120px;"/>
-<label for="dragonAdminHourly" style="min-width:110px;">레이스 매시 확률</label>
-<input id="dragonAdminHourly" min="0" max="1" step="0.05" type="number" value="0.6" style="flex:1 1 120px;"/>
-</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonAdminDailyMin" style="min-width:110px;">레이스 하루 최소</label>
-<input id="dragonAdminDailyMin" min="0" max="48" step="1" type="number" value="2" style="flex:1 1 120px;"/>
-<label for="dragonAdminDailyMax" style="min-width:110px;">레이스 하루 상한</label>
-<input id="dragonAdminDailyMax" min="0" max="48" step="1" type="number" value="8" style="flex:1 1 120px;"/>
-</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 게릴라 레이스 시각(V261): <b>하루 목표 횟수</b>(매시 확률×24를 최소~상한으로 자른 값)만큼 24시간을 같은 칸으로 나눠 <b>칸마다 1회</b>, 칸 안의 시각은 랜덤으로 열려요 — 새벽에 몰리지 않고 하루에 고르게 퍼집니다. 지금 설정의 결과는 상태 줄의 "레이스 하루 n회"에 보여요.</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">🎴 <b>게릴라 용비늘 레이스 예약</b> — 정한 시각에 10분짜리 레이스가 방 전체에 열려요(카드 18장 완주 → 레버). 예고가 퍼지도록 <b>최소 3분 뒤</b>로 잡아 주세요. [지금 열기]는 즉시 시작합니다. 예약은 30분 안에 아무도 접속해 있지 않으면 저절로 사라져요.</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonGuerrillaTime" style="min-width:110px;">레이스 시작 시각</label>
-<input id="dragonGuerrillaTime" type="datetime-local" style="flex:1 1 190px;"/>
-</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="primary" id="dragonGuerrillaSet" type="button">레이스 예약</button>
-<button class="ghost" id="dragonGuerrillaNow" type="button">지금 열기</button>
-<button class="ghost" id="dragonGuerrillaCancel" type="button">예약 취소</button>
-</div>
-<div id="dragonGuerrillaStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">예약된 게릴라 레이스가 없어요.</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">속성 등록 — 키는 영소문자만(<code>[a-z]+</code>) 쓰고, 아틀라스를 <code>assets_배포/dragon/{키}-growth-atlas.webp</code>로 먼저 배포한 뒤 활성화하세요. 마지막 빈 줄에 새 속성을 적으면 등록돼요.</div>
-<div class="dragonAdminEls" id="dragonAdminEls"></div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
-<select id="dragonAdminNext" style="flex:1 1 160px;"><option value="">없음</option></select>
-</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<label for="dragonAdminCardSet" style="min-width:110px;">카드 그림</label>
-<select id="dragonAdminCardSet" style="flex:1 1 160px;"></select>
-</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 용비늘 레이스 카드 18장의 그림 세트예요. 바꾸면 다음 판부터 새 그림이 나와요(저장 후 1분 안에 모두에게 퍼져요).</div>
-
-<div class="dragonAdminAtlas dragonElTint" id="dragonAdminAtlas" data-el="fire">
-<div class="dragonAdminAtlasHead"><b>🐉 관리자 전용 성장 미리보기</b><span>눈 깜빡임까지 실제 화면과 같아요</span></div>
-<div class="dragonAdminSideBtns" id="dragonAdminPreviewEls" role="group" aria-label="기운 고르기">
-<button class="ghost on" type="button" data-el="fire">🔥 불</button><button class="ghost" type="button" data-el="water">💧 물</button><button class="ghost" type="button" data-el="thunder">⚡ 전기</button><button class="ghost" type="button" data-el="mountain">⛰️ 산</button><button class="ghost" type="button" data-el="neutral">🥚 무속성</button>
-</div>
-<section class="worldTreeScene dragonScene dragonAdminPreviewScene" id="dragonAdminPreviewScene" data-el="fire" data-stage="0" aria-label="관리자 드래곤 성장 미리보기">
-<div class="dragonAura" aria-hidden="true"></div>
-<div class="dragonShadow" aria-hidden="true"></div>
-<div class="dragonFx" aria-hidden="true"><div class="dragonSparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-<div class="dragonArt" id="dragonAdminPreviewArt" aria-hidden="true"><div class="dragonSprite" id="dragonAdminPreviewSprite" data-el="fire" data-stage="0"></div></div>
 </section>
-<div class="worldTreeGrowthPreview">
-<div class="worldTreeGrowthPreviewHead"><b>성장 단계 선택</b><span id="dragonAdminPreviewLabel">0단계 · 잠든 알</span></div>
-<input aria-label="관리자가 미리 볼 드래곤 단계" id="dragonAdminPreviewRange" min="0" max="7" step="1" type="range" value="0"/>
-<div class="worldTreeGrowthPreviewFoot"><span>0단계 알</span><span id="dragonAdminPreviewName">불의 드래곤</span><span>7단계 고룡</span></div>
-</div>
-<div class="tiny" style="opacity:.7; line-height:1.5; margin-top:8px;">무속성은 0·1단계(알)만 그려져 있어요. ☁️ 저사양 모드나 OS의 "동작 줄이기"가 켜져 있으면 눈 깜빡임이 보이지 않아요.</div>
-</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="primary" id="dragonAdminSave" type="button">드래곤 설정 저장</button>
-<button class="ghost" id="dragonAdminStart" type="button">🐉 지금 시작</button>
-<button class="ghost" id="dragonAdminPause" type="button">일시정지</button>
-</div>
-<div id="dragonAdminStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">드래곤 시즌은 아직 시작되지 않았어요.</div>
-
-<div class="hr"></div>
-<div class="hint">🔄 전원 새로고침 요청</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">배포 후 구버전 탭을 정리할 때 사용해요. 백그라운드 탭과 미입장 화면은 즉시 새로고침되고, 화면을 보고 있는 접속자에게는 안내 토스트만 뜬 뒤 탭을 벗어나는 순간 적용돼요(작업 중인 화면을 강제로 끊지 않아요).</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="ghost" id="worldTreeReloadAll" type="button">전원 새로고침 요청 보내기</button>
-</div>
-
-<div class="hr"></div>
-<div class="hint">🗑️ 유령 세션 정리</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">작업중이 아닌 상태로 24시간이 넘은 접속을 찾아 연결을 끊습니다. 끊긴 분은 다시 입장할 수 있고 재입장 차단은 걸리지 않아요. 작업중인 분은 대상에서 제외됩니다.</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="ghost" id="ghostSweepScan" type="button">대상 찾기</button>
-<button class="danger" id="ghostSweepRun" type="button">정리 실행</button>
-</div>
-<div id="ghostSweepStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">[대상 찾기]를 누르면 24시간 넘게 방치된 접속을 보여줘요.</div>
-
-<div class="hr"></div>
-<div class="hint">🎖️ 쿠폰 코드 발급</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">개근하신 작가님께 드리는 특수 파츠 코드예요. 이 파츠는 코인으로는 살 수 없고 코드로만 받을 수 있어요. 코드 1개당 한 분만 쓸 수 있으니, 인원수만큼 발급해서 한 줄씩 나눠 주세요. 작가님이 기기나 브라우저를 바꿔서 파츠가 사라졌다면, 새 코드를 하나 더 발급해 드리면 돼요. 💰 코인 쿠폰은 아래 버튼으로 따로 발급하고, 이쪽은 <b>다시 등록해도 재충전되지 않아요</b>(잔액은 서버에 백업돼요).</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<select aria-label="발급할 특수 아이템" id="awardItemSelect" style="flex:1 1 220px; min-width:180px; border-radius:12px; padding:10px 12px;">
-<option value="">관리자 인증 후 목록을 불러와요</option>
-</select>
-<label for="awardCount" style="min-width:60px;">개수</label>
-<input id="awardCount" type="number" min="1" max="20" step="1" value="1" style="flex:0 1 90px;"/>
-</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<input id="awardNote" maxlength="30" placeholder="메모 (예: 2026년 8월 개근)" style="flex:1 1 210px;"/>
-</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="primary" id="awardIssue" type="button">🎁 코드 발급</button>
-<button class="ghost" id="awardRefresh" type="button">🔄 내역 새로고침</button>
-<button class="ghost" id="awardCopy" type="button">📋 발급 코드 복사</button>
-</div>
-
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<span class="tiny" style="opacity:.82;">💰 코인 쿠폰:</span>
-<button class="ghost awardCoinBtn" data-amount="3000" type="button">3,000</button>
-<button class="ghost awardCoinBtn" data-amount="5000" type="button">5,000</button>
-<button class="ghost awardCoinBtn" data-amount="10000" type="button">10,000</button>
-</div>
-
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<span class="tiny" style="opacity:.82;">🎟️ 레벨권 쿠폰:</span>
-<button class="ghost awardTicketBtn" data-count="1" type="button">1장</button>
-<button class="ghost awardTicketBtn" data-count="5" type="button">5장</button>
-<button class="ghost awardTicketBtn" data-count="10" type="button">10장</button>
-</div>
-<div class="tiny" style="opacity:.75; line-height:1.55; margin-top:4px;">레벨권 쿠폰은 등록하면 드래곤 가방에 레벨권이 바로 들어가요(시즌이 쉬는 중에도 쌓여요). 한 코드는 한 번만 쓸 수 있고, 같은 코드를 다시 등록해도 레벨권이 또 지급되지는 않아요.</div>
-<textarea id="awardCodeOut" readonly aria-label="방금 발급한 코드 목록" placeholder="발급한 코드가 여기에 한 줄씩 나와요" rows="4" style="width:100%; margin-top:8px; border-radius:12px; padding:9px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.5px; resize:vertical;"></textarea>
-<div class="tiny" id="awardListBox" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">발급 내역은 [🔄 내역 새로고침]을 누르면 보여요.</div>
-
-<div class="hr"></div>
-<div class="adminProfileManager">
-<div class="hint">🗂️ 저장 프로필 정리·연결</div>
-<div class="tiny" style="opacity:.8; line-height:1.55; margin-bottom:9px;">서버에 남은 프로필을 검색해 삭제하거나, 예전 꾸미기 프로필을 현재 접속 중인 작가님에게 복사해 다시 연결할 수 있어요. 목록은 현재 접속과 로그아웃으로 나뉘며, 로그아웃 작가는 최근 접속순으로 보여요. 쪽지와 펫 백업은 삭제하지 않습니다.</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<input id="adminProfileSearch" maxlength="30" placeholder="닉네임 또는 UID 검색" style="flex:1 1 210px;"/>
-<button class="ghost" id="adminProfileRefresh" type="button">🔄 목록 새로고침</button>
-</div>
-<select aria-label="저장된 프로필 목록" class="adminProfileCatalog" id="adminProfileSavedSelect" size="7">
-<option value="">관리자 인증 후 목록을 불러와요</option>
-</select>
-<div class="tiny" id="adminProfileStatus" style="opacity:.85; line-height:1.6; background:rgba(0,0,0,.16); border-radius:11px; padding:9px 10px; margin-top:8px;">선택한 프로필의 정보가 여기에 표시돼요.</div>
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
-<select aria-label="프로필을 연결할 현재 접속 작가" id="adminProfileTargetSelect" style="flex:1 1 220px; min-width:200px; border-radius:12px; padding:10px 12px;">
-<option value="">연결할 접속 작가 선택</option>
-</select>
-<button class="primary" id="adminProfileConnect" type="button">🔗 선택 프로필 연결</button>
-</div>
-<div class="tiny" style="opacity:.74; line-height:1.5;">연결은 예전 프로필의 꾸미기·공개 펫 정보를 현재 UID에 복사합니다. 대상 작가님이 한 번 새로고침하면 브라우저에도 안정적으로 적용돼요.</div>
-<div class="row" style="display:flex; justify-content:flex-end; margin-top:10px;">
-<button class="adminProfileDanger" id="adminProfileDelete" type="button">🗑️ 선택 프로필 삭제</button>
-</div>
-</div>
-</div>
-
-<div class="hr" style="margin-top:6px;"></div>
-<div class="hint">🎨 포인트 색상</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">방 곳곳의 핑크 포인트(테두리·버튼·LIVE 표시·입장 램프 등)를 내 취향 색으로 바꿔요. <b>이 기기의 내 화면에만</b> 적용되고, 남들 화면이나 프로필 타일·말풍선 색과는 무관해요.</div>
-
-<div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-<button class="swatch accentPresetBtn tight" data-accent="#ff77b8" type="button" title="핑크(기본)" aria-label="핑크(기본)" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ff77b8;"></button>
-<button class="swatch accentPresetBtn tight" data-accent="#9d8cff" type="button" title="라벤더" aria-label="라벤더" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#9d8cff;"></button>
-<button class="swatch accentPresetBtn tight" data-accent="#4fd6b6" type="button" title="민트" aria-label="민트" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#4fd6b6;"></button>
-<button class="swatch accentPresetBtn tight" data-accent="#5db9ff" type="button" title="하늘" aria-label="하늘" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#5db9ff;"></button>
-<button class="swatch accentPresetBtn tight" data-accent="#ffa25e" type="button" title="살구" aria-label="살구" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffa25e;"></button>
-<button class="swatch accentPresetBtn tight" data-accent="#ffd166" type="button" title="골드" aria-label="골드" style="width:32px; height:32px; border-radius:50%; padding:0; flex:0 0 auto; background:#ffd166;"></button>
-<input aria-label="포인트 색 직접 선택" title="원하는 색 직접 선택" class="tight" id="accentColorInput" type="color" value="#ff77b8" style="width:40px; height:32px; padding:2px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); cursor:pointer; flex:0 0 auto;"/>
-<button class="ghost tight" id="accentResetBtn" type="button" style="height:32px; padding:0 12px; font-size:12px; flex:0 0 auto;">↩️ 기본</button>
-</div>
-<div class="tiny" id="accentStatus" style="opacity:.74; line-height:1.5;">지금은 기본 핑크를 쓰고 있어요.</div>
-
-<div class="hr" style="margin-top:6px;"></div>
-<div class="hint">🚪 계정</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">이 브라우저의 로그인만 해제돼요. 기록·프로필·펫은 계정에 그대로 남고, 같은 이메일로 다시 인증하면 전부 그대로 돌아와요. 다른 이메일로 인증하면 별도 계정으로 시작돼요(작업용 장비·부계정 분리용).</div>
-<div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
-<button class="ghost" id="settingsLogoutBtn" type="button">🚪 이 브라우저에서 로그아웃</button>
 </div>
 </div>
 </div>
@@ -15922,6 +15972,7 @@ function subscribeRoom(){
     state.roomSettings.dashboard = dash;
     state.roomSettings.adminHash = r.adminHash || null;
     state.adminHash = state.roomSettings.adminHash;
+    try{ restoreAdminProof_(); }catch(_e){} 
 
 state.roomSettings.ownerUid = (r && r.ownerUid) ? r.ownerUid : (state.roomSettings.ownerUid || null);
     
@@ -16261,6 +16312,111 @@ async function refreshAdminHashFromServer_(){
   }
 }
 
+const ADMIN_PROOF_KEY = "mk_admin_proof_v1";
+function adminProofGet_(){ try{ const v=String(localStorage.getItem(ADMIN_PROOF_KEY)||"").trim().toLowerCase(); return /^[a-f0-9]{64}$/.test(v)?v:""; }catch(_e){ return ""; } }
+function adminProofSet_(h){ try{ const v=String(h||"").trim().toLowerCase(); if(/^[a-f0-9]{64}$/.test(v)) localStorage.setItem(ADMIN_PROOF_KEY, v); }catch(_e){} }
+function adminProofClear_(){ try{ localStorage.removeItem(ADMIN_PROOF_KEY); }catch(_e){} }
+function setAdminAuthUI_(ok){
+  try{
+    const u = document.getElementById("adminUnlockRow");
+    const k = document.getElementById("adminKeepRow");
+    if(u) u.style.display = ok ? "none" : "";
+    if(k) k.style.display = ok ? "" : "none";
+  }catch(_e){}
+}
+let __adminLockGen = 0; 
+function lockAdminHere_(){
+  __adminLockGen++;
+  adminProofClear_();
+  state.adminOk = false;
+  __sudaAdminProofHash = "";
+  try{ els.adminArea.style.display = "none"; }catch(_e){}
+  setAdminAuthUI_(false);
+}
+async function applyAdminUnlocked_(hash, opts){
+  const silent = !!(opts && opts.silent);
+  const gen = __adminLockGen;
+  state.adminOk = true;
+  rememberSudaAdminProof_(hash);
+
+try{
+    if(state.roomId && state.uid && !(state.roomSettings && state.roomSettings.ownerUid === state.uid)){
+
+try{ await readGuard_(rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid }), "관리자 ownerUid 재클레임", 6000); }catch(_e){}
+      if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
+
+(async()=>{
+        try{
+          
+          const { m, db } = await readGuard_(fsDb_(), "Firestore 로드", 8000);
+          await readGuard_(m.setDoc(m.doc(db, "rooms", state.roomId), {
+            ownerUid: state.uid,
+            updatedAt: m.serverTimestamp()
+          }, { merge: true }), "Firestore ownerUid", 8000);
+        }catch(_e){}
+      })();
+    }
+  }catch(_e){}
+  if(gen !== __adminLockGen) return;   
+  try{ els.adminArea.style.display = "block"; }catch(_e){}
+  try{ refreshAdminTimerTargetOptions(); }catch(_e){}
+  try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
+  try{ loadAwardItemOptions_(); }catch(_e){} 
+  adminProofSet_(hash);
+  setAdminAuthUI_(true);
+  try{ document.dispatchEvent(new CustomEvent("mk:adminUnlocked", { detail:{ auto:silent } })); }catch(_e){}
+  if(!silent) showToast((opts && opts.toast) || "확인 완료!");
+}
+
+function restoreAdminProof_(){
+  const saved = adminProofGet_();
+  if(!saved) return false;
+  if(state.adminHash && saved === state.adminHash){
+    state.adminOk = true;
+    rememberSudaAdminProof_(saved);
+    return true;
+  }
+  if(state.adminHash && saved !== state.adminHash){
+    
+    lockAdminHere_();
+  }
+  return false;
+}
+
+async function tryAutoUnlockAdmin_(){
+  const saved = adminProofGet_();
+  if(!saved){
+    state.adminOk = false;
+    try{ els.adminArea.style.display = "none"; }catch(_e){}
+    setAdminAuthUI_(false);
+    return false;
+  }
+  try{
+    let h = state.adminHash;
+    if(!h){
+      
+      const s = await refreshAdminHashFromServer_();
+      if(s === ADMIN_HASH_UNVERIFIED){
+        state.adminOk = false;
+        try{ els.adminArea.style.display = "none"; }catch(_e){}
+        setAdminAuthUI_(false);
+        return false;
+      }
+      h = s;
+    }
+    
+    if(adminProofGet_() !== saved) return false;
+    if(h && saved === h){
+      await applyAdminUnlocked_(h, { silent:true });
+      return true;
+    }
+    lockAdminHere_();
+  }catch(e){
+    console.warn("[V274_ADMINKEEP] 자동 인증 실패", e);
+  }
+  return false;
+}
+
 async function unlockAdmin(){
   const pass = (els.adminPass.value || "").trim();
   if(!pass){ showToast("관리자 비번 입력"); return; }
@@ -16275,82 +16431,23 @@ const serverHash = await refreshAdminHashFromServer_();
     try{
       await rUpdate(rSettingsRef(state.roomId), { adminHash: hash });
       state.adminHash = hash;
-      state.adminOk = true;
-      rememberSudaAdminProof_(hash);
-      els.adminArea.style.display = "block";
-      showToast("비번 등록!");
-      
-      try{
-        if(state.uid && !(state.roomSettings && state.roomSettings.ownerUid)){
-          await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid });
-          state.roomSettings.ownerUid = state.uid;
-
-try{
-            
-            const { m, db } = await fsDb_();
-            await m.setDoc(m.doc(db, "rooms", state.roomId), {
-              ownerUid: state.uid,
-              updatedAt: m.serverTimestamp()
-            }, { merge: true });
-          }catch(_e){}
-}
-      }catch(_e){}
-      try{ refreshAdminTimerTargetOptions(); }catch(_e){}
-      try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
-      try{ loadAwardItemOptions_(); }catch(_e){} 
-      return;
     }catch(e){
       console.warn(e);
       showToast("비번 등록 실패(권한/rules 확인)");
       return;
     }
+    
+    await applyAdminUnlocked_(hash, { toast:"비번 등록!" });
+    return;
   }
 
   if(hash === state.adminHash){
-    state.adminOk = true;
-    rememberSudaAdminProof_(hash);
-
-try{
-      if(state.roomId && state.uid){
-        
-        try{ await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid }); }catch(_e){}
-        if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
-
-try{
-          
-          const { m, db } = await fsDb_();
-          await m.setDoc(m.doc(db, "rooms", state.roomId), {
-            ownerUid: state.uid,
-            updatedAt: m.serverTimestamp()
-          }, { merge: true });
-        }catch(_e){}
-      }
-    }catch(_e){}
-
-try{
-      if(state.uid && !(state.roomSettings && state.roomSettings.ownerUid)){
-        await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid });
-        state.roomSettings.ownerUid = state.uid;
-
-try{
-            
-            const { m, db } = await fsDb_();
-            await m.setDoc(m.doc(db, "rooms", state.roomId), {
-              ownerUid: state.uid,
-              updatedAt: m.serverTimestamp()
-            }, { merge: true });
-          }catch(_e){}
-}
-    }catch(_e){}
-    els.adminArea.style.display = "block";
-    try{ refreshAdminTimerTargetOptions(); }catch(_e){}
-    try{ refreshAdminProfileTargetOptions_(); loadAdminProfileCatalog_(); }catch(_e){}
-    try{ loadAwardItemOptions_(); }catch(_e){} 
-    showToast("확인 완료!");
+    await applyAdminUnlocked_(hash);
   }else{
     state.adminOk = false;
     __sudaAdminProofHash = "";
     els.adminArea.style.display = "none";
+    setAdminAuthUI_(false);
     showToast("비번이 달라…");
   }
 }
@@ -23469,6 +23566,7 @@ const serverHash = await refreshAdminHashFromServer_();
       state.adminHash = hash;
       state.adminOk = true;
       rememberSudaAdminProof_(hash);
+      adminProofSet_(hash); 
       return true;
     }catch(e){
       console.warn(e);
@@ -23479,6 +23577,7 @@ const serverHash = await refreshAdminHashFromServer_();
   if(hash === state.adminHash){
     state.adminOk = true;
     rememberSudaAdminProof_(hash);
+    adminProofSet_(hash); 
     return true;
   }
   state.adminOk = false;
@@ -24110,9 +24209,9 @@ if(els.emoji){
 
     els.menuBtn.addEventListener("click", ()=>{
       els.adminPass.value = "";
-      els.adminArea.style.display = "none";
-      state.adminOk = false;
       showModal(els.settingsModal);
+      
+      tryAutoUnlockAdmin_().catch(()=>{});
     });
     els.closeSettings.addEventListener("click", ()=>hideModal(els.settingsModal));
     
@@ -24126,6 +24225,7 @@ if(els.emoji){
           btn.disabled = true;
           btn.textContent = "로그아웃 중…";
           
+          adminProofClear_(); 
           window.__MK_SIGNOUT_INTENT__ = true;
           
           try{ localStorage.setItem("mk_signout_marker_v1", String(Date.now())); }catch(_e){}
@@ -24146,6 +24246,11 @@ if(els.emoji){
       });
     }
     els.adminUnlock.addEventListener("click", unlockAdmin);
+    
+    document.getElementById("adminLock")?.addEventListener("click", ()=>{
+      lockAdminHere_();
+      showToast("이 브라우저의 관리자 인증을 지웠어요");
+    });
     if(els.adminPass){
       els.adminPass.addEventListener("keydown",(e)=>{
         if(e.key==="Enter"){ e.preventDefault(); unlockAdmin(); }
@@ -27803,7 +27908,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17156; 
+const MK_APP_BUILD = 17157; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -29943,6 +30048,8 @@ let anchor=null;
     
     document.getElementById("menuBtn")?.addEventListener("click",()=>setTimeout(()=>loadWorldTreeS2Once_(true),250));
     document.getElementById("adminUnlock")?.addEventListener("click",()=>setTimeout(()=>{ if(state.adminOk) loadWorldTreeS2Once_(true,{force:true}); },650));
+    
+    document.addEventListener("mk:adminUnlocked",()=>{ if(state.adminOk) loadWorldTreeS2Once_(true,{force:true}); });
     document.getElementById("joinBtn")?.addEventListener("click",()=>setTimeout(()=>{ loadWorldTreeS2Once_(false).then(()=>syncWorldTreeContribution_("join")); },1500));
     document.getElementById("leaveBtn")?.addEventListener("click",()=>{ syncWorldTreeContribution_("leave").catch(()=>{}); stopWorldTreeS2Realtime_(); },true);
     ["btnBreak","btnIdle"].forEach(id=>document.getElementById(id)?.addEventListener("click",()=>setTimeout(()=>syncWorldTreeContribution_("status"),350)));
@@ -34203,6 +34310,10 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
         if(state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
       },700));
       
+      document.addEventListener("mk:adminUnlocked",()=>{
+        if(state.adminOk) loadDragonConfigOnce_({force:true}).then(()=>renderDragonAdminPanel_()).catch(()=>{});
+      });
+      
       try{
         const adminArea=document.getElementById("adminArea");
         if(adminArea && typeof MutationObserver==="function"){
@@ -36559,68 +36670,78 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
   gap:10px 12px !important;
   margin:1px 0;
 }
-#settingsModal #adminArea > .hr{
-  margin:8px 0 !important;
+#settingsModal .stLead{ margin:0; }
+#settingsModal .stGroup{ scroll-margin-top:60px; display:flex; flex-direction:column; gap:10px; }
+#settingsModal .stGTitle{ font-weight:800; font-size:18px; letter-spacing:-.3px; margin:6px 0 0; color:var(--text); }
+#settingsModal .stGDesc{ margin:-4px 0 0; font-size:12.5px; color:var(--muted); }
+#settingsModal .stBlock{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:12px; display:flex; flex-direction:column; gap:9px;
 }
-#settingsModal #adminArea > .hint{
-  margin-top:2px;
+#settingsModal .stBTitle{ font-size:12.5px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+#settingsModal .stBDesc{ margin:0; font-size:11.5px; color:var(--muted); line-height:1.5; }
+
+#settingsModal .stBlock > *{ margin-top:0 !important; margin-bottom:0 !important; }
+#settingsModal .stKeepMsg{ font-size:12.5px; font-weight:700; color:var(--text); }
+
+
+#settingsModal .stTabs{
+  position:sticky; top:-16px; z-index:15; display:flex; gap:4px; padding:4px;
+  background:#141418; border:1px solid var(--line); border-radius:14px;
 }
-#settingsModal #adminArea > .tiny{
-  margin:0 0 4px !important;
+#settingsModal .stTab{
+  flex:1; padding:8px 6px; border:0; border-radius:10px; background:transparent;
+  color:var(--muted); font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap;
 }
-#settingsModal #adminArea > .row{
-  margin:2px 0;
+#settingsModal .stTab:hover{ color:var(--text); background:rgba(255,255,255,.05); }
+#settingsModal .stTab[aria-current="true"]{
+  background:rgba(var(--pink2rgb),.18); color:var(--text); font-weight:800;
+  box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55);
 }
 
-#settingsModal #adminArea > #worldTreeAdminFold > .hr{
-  margin:8px 0 !important;
-}
-#settingsModal #adminArea > #worldTreeAdminFold > .hint{
-  margin-top:2px;
-}
-#settingsModal #adminArea > #worldTreeAdminFold > .tiny{
-  margin:0 0 4px !important;
-}
-#settingsModal #adminArea > #worldTreeAdminFold > .row{
-  margin:2px 0;
-}
-#settingsModal #saveDash,
-#settingsModal #sudaOpenRoom,
-#settingsModal #sudaCloseRoom,
-#settingsModal #sudaCopyOwnerUid,
-#settingsModal #petAdminLoad,
-#settingsModal #petAdminSave,
-#settingsModal #petAdminRestoreMine{
+#settingsModal #adminArea > .stGroup{ margin-top:18px; }
+
+#settingsModal #worldTreeAdminFold{ display:flex; flex-direction:column; gap:10px; }
+
+#settingsModal .stGroup > .dragonAdminAtlas{ margin-top:0; }
+
+
+#settingsModal .stBlock .row > button:not(.tight){
   flex:0 1 auto !important;
   min-width:142px !important;
   min-height:40px;
-  margin:1px 0;
-}
-#settingsModal #petAdminStatus{
-  margin-top:4px !important;
 }
 @media (max-width:600px){
   #settingsModal .modalBody{
     padding:13px 14px 16px;
     gap:13px !important;
   }
-  #settingsModal #adminArea > .row{
+  #settingsModal .row{
     gap:9px 10px !important;
   }
-  #settingsModal #adminArea > #worldTreeAdminFold > .row{
-    gap:9px 10px !important;
-  }
-  #settingsModal #saveDash,
-  #settingsModal #sudaOpenRoom,
-  #settingsModal #sudaCloseRoom,
-  #settingsModal #sudaCopyOwnerUid,
-  #settingsModal #petAdminLoad,
-  #settingsModal #petAdminSave,
-  #settingsModal #petAdminRestoreMine{
+  #settingsModal .stBlock .row > button:not(.tight){
     flex:1 1 150px !important;
     min-width:0 !important;
   }
+  
+  #settingsModal .stTabs{ top:-13px; overflow-x:auto; scrollbar-width:none; }
+  #settingsModal .stTabs::-webkit-scrollbar{ display:none; }
+  #settingsModal .stTab{ flex:1 0 auto; padding:7px 8px; font-size:12px; }
+  #settingsModal .stTabIc{ display:none; }
 }
+
+
+.pwWrap{ position:relative; display:flex; align-items:center; flex:1 1 180px; min-width:0; }
+.row .pwWrap{ flex:1 1 180px; min-width:0; }
+.pwWrap > input{ flex:1 1 auto; width:100%; min-width:0; padding-right:36px; }
+.pwWrap > .pwEye{
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  width:28px; height:28px; min-width:0; padding:0; border:0; border-radius:8px;
+  background:transparent; color:var(--muted); font-size:15px; line-height:1;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.pwWrap > .pwEye:hover,
+.pwWrap > .pwEye:focus-visible{ background:rgba(255,255,255,.08); color:var(--text); }
 </style>
 
 
@@ -45368,6 +45489,114 @@ var hid = $id("pfPatternAlpha");
     PRESETS: PRESETS,
     PATTERNS: PATTERNS
   };
+})();
+</script>
+
+<script id="v274SettingsUiScript">
+
+(function(){
+  "use strict";
+  var TAB_IDS = ["stG-room", "stG-dragon", "stG-coupon", "stG-profile", "stG-tree"];
+  function $id(id){ return document.getElementById(id); }
+  function body_(){ return document.querySelector("#settingsModal .modalBody"); }
+  function reduceMotion_(){
+    try{ return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }catch(e){ return false; }
+  }
+  function adminShown_(){
+    var a = $id("adminArea");
+    return !!(a && a.style.display !== "none" && a.offsetParent !== null);
+  }
+  
+  function stuckBottom_(){
+    var b = body_(), tabs = $id("stTabs");
+    if(!b) return 0;
+    var off = 0;
+    try{
+      off = (parseFloat(getComputedStyle(b).paddingTop) || 0) + (tabs ? (parseFloat(getComputedStyle(tabs).top) || 0) : 0);
+    }catch(e){}
+    var top = b.getBoundingClientRect().top + (b.clientTop || 0) + off;
+    return top + (tabs ? tabs.offsetHeight : 0);
+  }
+  function keepTabVisible_(tabs, t){
+    
+    try{
+      if(tabs.scrollWidth <= tabs.clientWidth) return;
+      var l = t.offsetLeft, r = l + t.offsetWidth;
+      if(l < tabs.scrollLeft) tabs.scrollLeft = Math.max(0, l - 8);
+      else if(r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = r - tabs.clientWidth + 8;
+    }catch(e){}
+  }
+  function setActiveTab_(id){
+    var tabs = $id("stTabs");
+    if(!tabs) return;
+    Array.prototype.forEach.call(tabs.querySelectorAll(".stTab"), function(t){
+      var on = (t.getAttribute("data-target") === id);
+      t.setAttribute("aria-current", on ? "true" : "false");
+      if(on) keepTabVisible_(tabs, t);
+    });
+  }
+  function scrollToGroup_(id){
+    var b = body_(), el = $id(id);
+    if(!b || !el) return;
+    var top = el.getBoundingClientRect().top - stuckBottom_() + b.scrollTop - 10;
+    var max = Math.max(0, b.scrollHeight - b.clientHeight);
+    top = Math.max(0, Math.min(max, top));
+    try{ b.scrollTo({ top: top, behavior: reduceMotion_() ? "auto" : "smooth" }); }
+    catch(e){ b.scrollTop = top; }
+  }
+  var spyQueued = false;
+  function spy_(){
+    spyQueued = false;
+    var b = body_();
+    if(!b || !adminShown_()) return;
+    var ref = stuckBottom_() + 24, cur = TAB_IDS[0];
+    TAB_IDS.forEach(function(id){
+      var el = $id(id);
+      if(el && el.getBoundingClientRect().top <= ref) cur = id;
+    });
+    
+    if(b.scrollTop > 0 && b.scrollTop + b.clientHeight >= b.scrollHeight - 4) cur = TAB_IDS[TAB_IDS.length - 1];
+    setActiveTab_(cur);
+  }
+  function queueSpy_(){
+    if(spyQueued) return;
+    spyQueued = true;
+    (window.requestAnimationFrame || function(f){ return setTimeout(f, 16); })(spy_);
+  }
+
+  function init_(){
+    var tabs = $id("stTabs"), b = body_();
+    if(!tabs || !b || tabs.__v274Bound) return;
+    tabs.__v274Bound = true;
+    tabs.addEventListener("click", function(ev){
+      var t = ev.target && ev.target.closest ? ev.target.closest(".stTab") : null;
+      if(!t) return;
+      var id = t.getAttribute("data-target");
+      scrollToGroup_(id);
+      setActiveTab_(id);
+    });
+    b.addEventListener("scroll", queueSpy_, { passive:true });
+    
+    document.addEventListener("mk:adminUnlocked", queueSpy_);
+  }
+
+document.addEventListener("click", function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest("[data-pw-eye]") : null;
+    if(!btn) return;
+    var wrap = btn.parentNode;
+    var input = (wrap && wrap.querySelector) ? wrap.querySelector("input") : null;
+    if(!input) return;
+    ev.preventDefault();
+    var show = (input.type === "password");
+    try{ input.type = show ? "text" : "password"; }catch(e){ return; }
+    var label = show ? "비밀번호 숨기기" : "비밀번호 보기";
+    btn.textContent = show ? "🙈" : "👁";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+  });
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ try{ init_(); }catch(e){} });
+  else { try{ init_(); }catch(e){} }
 })();
 </script>
 

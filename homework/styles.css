@@ -783,3 +783,30 @@ body{
 .gate-admin-link:hover{
   opacity:.9;
 }
+
+
+/* V35_STAMPER: 도장 도우미 — 관리자 임명 카드 + 도우미 작가 화면 '도장 찍어 주기' 칸 */
+.stamper-card{padding:20px;background:linear-gradient(145deg,#fff5f6 0%,#fffdf9 72%);border-color:#efd8dc}
+.stamper-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.stamper-card-head h2{margin:0;font-size:18px;letter-spacing:-.7px}
+.stamper-card-note{margin:0 0 12px;font-size:12px;line-height:1.55;color:var(--soft-ink)}
+.stamper-add-row{display:flex;gap:8px;align-items:center}
+.stamper-add-row .king-select{flex:1;min-width:0}
+.stamper-add-row .primary-btn{flex:0 0 auto;padding:10px 14px;font-size:12px}
+#stamperList{margin-top:12px}
+#stamperList .empty{padding:14px;font-size:12px}
+.stamper-chips{display:flex;flex-wrap:wrap;gap:6px}
+.stamper-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 11px;color:var(--ink);font-size:12px;font-weight:750;overflow-wrap:anywhere}
+.stamper-chip button{flex:0 0 auto;width:20px;height:20px;display:grid;place-items:center;border:0;border-radius:999px;background:#fff0ed;color:#c16655;font-size:13px;font-weight:850;line-height:1;padding:0;cursor:pointer}
+.stamper-chip button:hover{background:#fbdcd5}
+.stamper-chip button:disabled{opacity:.5;cursor:default}
+.helper-stamp-card{margin:0 0 16px;padding:20px;background:linear-gradient(145deg,#fff5f6 0%,#fffdf9 72%);border-color:#efd8dc}
+.helper-stamp-card .submission-top{margin-bottom:6px}
+.helper-stamp-card h2{margin:0;font-size:17px;letter-spacing:-.65px}
+.helper-stamp-note{margin:0 0 12px;font-size:12px;line-height:1.55;color:var(--soft-ink)}
+.helper-stamp-card .submission-list{max-height:420px}
+.helper-pill{background:#fff0f3;border-color:#efd0d8;color:#b8566c}
+@media (max-width:430px){
+  .stamper-card,.helper-stamp-card{padding:17px}
+  .helper-stamp-card{margin-bottom:13px}
+}
