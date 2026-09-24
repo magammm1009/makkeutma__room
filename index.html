@@ -120,6 +120,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -29176,7 +29177,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17158; 
+const MK_APP_BUILD = 17159; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -47110,14 +47111,14 @@ button.hpRound{
 #boardClose:hover{ background:rgba(255,255,255,.18); }
 button.hpBack{ display:inline-flex; flex:0 0 auto; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; line-height:1.2; white-space:nowrap; }
 
-.hpTools{ flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.16); }
-.hpFilters{ flex:1 1 auto; min-width:0; display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.hpTools{ flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.16); } 
+.hpFilters{ display:contents; } 
 .hpFilters::-webkit-scrollbar{ display:none; }
 .hpFilters .newsFilter{ flex:0 0 auto; white-space:nowrap; }
-.hpSort{ display:inline-flex; align-items:center; gap:2px; padding:2px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
-.hpSort button{ padding:5px 9px; border:0; border-radius:999px; background:transparent; color:var(--muted); font-size:11.5px; font-weight:900; line-height:1.2; white-space:nowrap; }
+.hpSort{ display:inline-flex; align-items:center; gap:6px; padding:0; flex:0 0 auto; margin-left:auto; border:0; background:transparent; }  .hpSortOldCapsule{ display:inline-flex; align-items:center; gap:2px; padding:2px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
+.hpSort button{ padding:6px 12px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.86); font-size:12px; font-weight:1000; line-height:1.2; white-space:nowrap; }
 .hpSort button:hover{ color:var(--text); }
-.hpSort button[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); color:var(--pink2); box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55); }
+.hpSort button[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); color:var(--pink2); border-color:rgba(var(--pink2rgb),.55); box-shadow:none; }
 .hpWinBody{
   position:relative; flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
   padding:10px 12px 14px; scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track);
