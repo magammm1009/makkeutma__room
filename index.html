@@ -122,6 +122,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -17846,6 +17847,8 @@ if(mm && mm.type==='ticker'){
               if(!ts || ts > last){
                 sessionStorage.setItem('lastTickerTs', String(ts||Date.now()));
                 showJoinTicker(mm.text||'');
+                
+                try{ if(String(mm.text||"").startsWith("📰 새 업계 동향")) mkDotPoke_("news"); }catch(_e){}
               }
             }catch(e){}
             return;
@@ -17878,6 +17881,8 @@ try{
 
           state.chatRollingById = state.chatRollingById || {};
           state.chatRollingById[id] = mm;
+          
+          try{ if(mm.board && mm.board.id && mm.uid !== state.uid) mkDotPoke_("board"); }catch(_e){}
           state.chatLastRecvMs = Date.now();   
           __scheduleChatRender();
         }catch(e){}
@@ -23178,6 +23183,20 @@ async function mkBoardLoadRun_(reset){
         
         console.warn("[V275_HONEYPOT] 새 글 확인 실패(무시)", err);
       }
+    }
+    
+    const __mkDotPokeT = { news: 0, board: 0 };
+    function mkDotPoke_(kind){
+      try{
+        if(!state.joined || !state.roomId) return;
+        const k = (kind === "news" || kind === "board") ? kind : "";
+        if(!k) return;
+        if(__mkDotPokeT[k]) clearTimeout(__mkDotPokeT[k]);
+        __mkDotPokeT[k] = setTimeout(()=>{
+          __mkDotPokeT[k] = 0;
+          try{ Promise.resolve(k === "news" ? mkNewsCheckDot_() : mkBoardCheckDot_()).catch(()=>{}); }catch(_e){}
+        }, 1500);
+      }catch(_e){}
     }
 
 function mkBoardIsSheet_(){
@@ -29182,7 +29201,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17160; 
+const MK_APP_BUILD = 17161; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -47368,6 +47387,32 @@ body.mkDashFloat #railFoldToggle{ height:26px; min-width:26px; padding:0 8px; bo
 @media (max-width:760px){
   #dashWin, #dashCloseBtn, #dashToggleBtn{ display:none !important; }
 }
+
+
+body.mkDashFloat #dashToggleBtn, body.mkDashFloat #dashFoldBtn{ position:relative; }
+body.mkDashFloat #dashToggleBtn.hasDot::after,
+body.mkDashFloat #dashFoldBtn.hasDot::after,
+body.mkDashFloat #dashFoldBtn.hasRace::before{
+  content:""; position:absolute; right:-2px; top:-2px; width:8px; height:8px; border-radius:50%;
+  background:var(--pink3); box-shadow:0 0 0 2px rgba(0,0,0,.45); pointer-events:none;
+}
+body.mkDashFloat #dashFoldBtn.hasRace::before{ background:#ffb866; }
+body.mkDashFloat #dashFoldBtn.hasDot.hasRace::before{ right:8px; }
+body.mkDashFloat #dashToggleBtn.hasRace{ border-color:rgba(255,196,120,.7); box-shadow:0 0 10px rgba(255,170,90,.4); }
+#dashToggleBtn .dashTgRace{ display:none; animation:dragonRaceBadgePulse 1.8s ease-in-out infinite; }
+body.mkDashFloat #dashToggleBtn.hasRace .dashTgRace{
+  display:inline-block; margin-left:5px; padding:1px 6px; border-radius:999px;
+  border:1px solid rgba(255,196,120,.55); background:rgba(40,20,8,.82); color:#ffd9a4;
+  font-size:10.5px; font-weight:1000; line-height:1.4; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+body.mkLowSpecMode #dashToggleBtn .dashTgRace{ animation:none; }
+@media (prefers-reduced-motion:reduce){ #dashToggleBtn .dashTgRace{ animation:none; } }
+
+body.mkDashFloat #chatCard > h3.dashTgRaceOn > .tiny{ display:none; }
+body.mkDashFloat #chatCard > h3.dashTgRaceOn > #railFoldToggle{ margin-left:auto; }
+
+body.mkDashFloat #dashWin #dashboardCard.folded > .body{ display:none; }
+body.mkDashFloat #dashWin #dashboardCard.folded > .dashHead{ border-bottom-color:transparent; }
 </style>
 
 
@@ -47439,9 +47484,10 @@ function topLimit(){
     if(w) w.hidden = !(st.floating && st.open);
     if(t){
       t.setAttribute("aria-pressed", st.open ? "true" : "false");
-      t.title = st.open ? "대시보드 창 닫기" : "대시보드 창 열기";
+      
     }
     applyPos();
+    syncAlerts();   
   }
   function mount(){
     var card = byId("dashboardCard"), w = byId("dashWin");
@@ -47473,6 +47519,60 @@ function topLimit(){
   function open(){ st.open = true; saveOpen(true); syncUi(); }
   function close(){ st.open = false; saveOpen(false); syncUi(); }
   function toggle(){ if(st.open) close(); else open(); }
+
+var al = { key: "", where: "none", chip: null };
+  function readAlerts(){
+    var n = byId("goNews"), b = byId("goBoard"), badge = byId("dragonRaceBadge"), race = null;
+    if(badge && badge.style.display !== "none"){
+      var tx = String(badge.textContent || "").trim();
+      if(/\d+:\d{2}/.test(tx)) race = tx;   
+    }
+    return {
+      news: !!(n && n.classList.contains("hasNew")),
+      board: !!(b && b.classList.contains("hasNew")),
+      race: race
+    };
+  }
+  function alertTarget(){
+    if(!st.floating || !document.body.classList.contains("joined")) return "none";
+    if(!st.open) return "toggle";
+    var card = byId("dashboardCard");
+    return (card && card.classList.contains("folded")) ? "fold" : "none";
+  }
+  function setCls(el, cls, on){ if(el && el.classList.contains(cls) !== !!on) el.classList.toggle(cls, !!on); }
+  function syncAlerts(){
+    try{
+      var a = readAlerts(), target = alertTarget();
+      var dot = a.news || a.board, race = a.race;
+      var key = (st.open ? "1" : "0") + "|" + target + "|" + (a.news ? "1" : "0") + (a.board ? "1" : "0") + "|" + (race || "");
+      if(key === al.key) return;
+      al.key = key;
+      var onT = target === "toggle", onF = target === "fold";
+      var t = byId("dashToggleBtn"), f = byId("dashFoldBtn"), h3 = document.querySelector("#chatCard > h3");
+      if(t){
+        setCls(t, "hasDot", onT && dot);
+        setCls(t, "hasRace", onT && !!race);
+        if(onT && race && !al.chip){
+          al.chip = document.createElement("span");
+          al.chip.className = "dashTgRace";
+          al.chip.setAttribute("aria-hidden", "true");   
+          t.appendChild(al.chip);
+        }
+        if(al.chip){ var ct = (onT && race) ? race : ""; if(al.chip.textContent !== ct) al.chip.textContent = ct; }
+        var extra = [];
+        if(onT && dot) extra.push("새 글: " + (a.news && a.board ? "동향·꿀단지" : (a.news ? "동향" : "꿀단지")));
+        if(onT && race) extra.push("🎴 용비늘 레이스 " + ((race.match(/\d+:\d{2}/) || [""])[0]) + " 남음");
+        var title = (st.open ? "대시보드 창 닫기" : "대시보드 창 열기") + (extra.length ? " · " + extra.join(" · ") : "");
+        if(t.title !== title) t.title = title;
+        if(extra.length){ if(t.getAttribute("aria-label") !== title) t.setAttribute("aria-label", title); }
+        else if(t.hasAttribute("aria-label")) t.removeAttribute("aria-label");   
+      }
+      setCls(h3, "dashTgRaceOn", onT && !!race);
+      setCls(f, "hasDot", onF && dot);
+      setCls(f, "hasRace", onF && !!race);
+      al.where = ((onT || onF) && (dot || race)) ? target : "none";
+    }catch(err){ try{ console.warn("[V277_DASHALERT] 알림 표시 실패", err); }catch(_e){} }
+  }
 
 function bindDrag(){
     var card = byId("dashboardCard");
@@ -47528,13 +47628,21 @@ function bindDrag(){
     try{
       if(window.MutationObserver) new MutationObserver(function(){ schedule(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     }catch(_e){}
+    
+    setInterval(syncAlerts, 1000);
+    try{
+      var card = byId("dashboardCard");
+      if(card && window.MutationObserver) new MutationObserver(function(){ syncAlerts(); }).observe(card, { attributes: true, attributeFilter: ["class"] });
+    }catch(_e){}
   }
 
   window.__MK_DASHWIN__ = {
     open: open, close: close, toggle: toggle,
     isOpen: function(){ return !!st.open; },
     resetPos: function(){ st.userPos = null; try{ localStorage.removeItem(LS_POS); }catch(_e){} applyPos(); },
-    mount: mount
+    mount: mount,
+    
+    alerts: function(){ var a = readAlerts(); a.where = al.where; return a; }
   };
   try{ init(); }catch(err){ try{ console.warn("[V276_DASHWIN] 초기화 실패", err); }catch(_e){} }
 })();
