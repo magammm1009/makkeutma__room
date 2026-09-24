@@ -121,6 +121,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -3616,27 +3617,27 @@ body.joined #preJoinCard{ display:none; }
 
 
 @media (min-width:761px) and (max-width:920px) and (max-height:720px){
-  body.joined #dashboardCard{
+  body.joined:not(.mkDashFloat) #dashboardCard{
     flex:0 0 42px !important;
     min-height:42px !important;
     max-height:42px !important;
     overflow:hidden !important;
   }
-  body.joined #dashboardCard .dashHead{
+  body.joined:not(.mkDashFloat) #dashboardCard .dashHead{
     min-height:42px !important;
     padding:8px 12px !important;
     border-bottom:0 !important;
   }
-  body.joined #dashboardCard .dashHead h3::after{
+  body.joined:not(.mkDashFloat) #dashboardCard .dashHead h3::after{
     content:"자동 접힘";
     margin-left:8px;
     font-size:11px;
     font-weight:800;
     color:var(--muted);
   }
-  body.joined #dashboardCard .dashHeadRight,
-  body.joined #dashboardCard .body,
-  body.joined #dashboardCard .dashFoldBody{
+  body.joined:not(.mkDashFloat) #dashboardCard .dashHeadRight,
+  body.joined:not(.mkDashFloat) #dashboardCard .body,
+  body.joined:not(.mkDashFloat) #dashboardCard .dashFoldBody{
     display:none !important;
   }
 }
@@ -7058,6 +7059,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="grid" id="grid"></div>
 </div>
 </main>
+
+<div aria-label="대시보드" id="dashWin" role="region" hidden></div>
 <aside class="sidebar">
 <div class="card" id="dashboardCard">
 <div class="dashHead">
@@ -7070,6 +7073,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <span id="dashFoldIcon">▴</span>
 <span class="dashFoldTxt" id="dashFoldTxt">접기</span>
 </button>
+<button aria-label="대시보드 닫기" id="dashCloseBtn" title="대시보드 닫기" type="button">✕</button>
 </div>
 </div>
 <div class="body">
@@ -7123,7 +7127,7 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 <div class="card chatCard" id="chatCard">
-<h3>💬 채팅 <span class="tiny">(채팅창&amp;대시보드 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
+<h3>💬 채팅 <button aria-pressed="true" id="dashToggleBtn" title="대시보드 창 열기/닫기" type="button">대시보드</button> <span class="tiny">(채팅창 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
 <div class="body chatBody">
 <div class="embedBar" id="embedBar" style="display:none">
 <div class="left">
@@ -7582,18 +7586,18 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="hpWinHead" id="boardWinHead">
 <button type="button" class="ghost hpBack" id="boardBack" hidden>← 피드</button>
 <div class="hpHeadT"><div class="t" id="boardWinTitle">🍯 꿀단지</div><div class="tiny" id="boardSub">최근 20개 · 끌어서 옮겨요</div></div>
-<div class="hpHeadBtns"><button type="button" class="primary hpRound" id="boardWriteBtn" title="글쓰기" aria-label="글쓰기">✍️</button><button type="button" class="ghost hpRound" id="boardClose" title="닫기" aria-label="닫기">✕</button></div>
+
+<div class="hpHeadBtns"><div class="hpSort" id="boardSort" role="group" aria-label="정렬"><button type="button" data-sort="new" aria-pressed="true">최신</button><button type="button" data-sort="hot" aria-pressed="false">인기</button></div><button type="button" class="primary hpWriteBtn" id="boardWriteBtn" title="글쓰기">쓰기</button><button type="button" class="ghost hpRound" id="boardClose" title="닫기" aria-label="닫기">✕</button></div>
 </div>
 <div class="hpTools" id="boardTools">
 <div class="hpFilters" id="boardFilters" role="group" aria-label="카테고리 필터">
-<button type="button" class="pill newsFilter on" data-cat="" aria-pressed="true">🍯 전체</button>
-<button type="button" class="pill newsFilter" data-cat="gear" aria-pressed="false">⌨️ 장비</button>
-<button type="button" class="pill newsFilter" data-cat="snack" aria-pressed="false">🍪 간식</button>
-<button type="button" class="pill newsFilter" data-cat="music" aria-pressed="false">🎧 플리</button>
-<button type="button" class="pill newsFilter" data-cat="pet" aria-pressed="false">🐾 반려동물</button>
-<button type="button" class="pill newsFilter" data-cat="etc" aria-pressed="false">✨ 기타</button>
+<button type="button" class="pill newsFilter on" data-cat="" aria-pressed="true">전체</button>
+<button type="button" class="pill newsFilter" data-cat="gear" aria-pressed="false">장비</button>
+<button type="button" class="pill newsFilter" data-cat="snack" aria-pressed="false">간식</button>
+<button type="button" class="pill newsFilter" data-cat="music" aria-pressed="false">플리</button>
+<button type="button" class="pill newsFilter" data-cat="pet" aria-pressed="false">반려동물</button>
+<button type="button" class="pill newsFilter" data-cat="etc" aria-pressed="false">기타</button>
 </div>
-<div class="hpSort" id="boardSort" role="group" aria-label="정렬"><button type="button" data-sort="new" aria-pressed="true">🕒 최신</button><button type="button" data-sort="hot" aria-pressed="false">❤️ 인기</button></div>
 </div>
 <div class="hpWinBody" id="boardBody">
 <div class="tiny" id="boardState" style="opacity:.82;line-height:1.6"></div>
@@ -23231,6 +23235,7 @@ function mkBoardIsSheet_(){
       if(els.boardWrite) els.boardWrite.hidden = feed;
       if(els.boardBack) els.boardBack.hidden = feed;
       if(els.boardWriteBtn) els.boardWriteBtn.hidden = !feed;
+      if(els.boardSort) els.boardSort.hidden = !feed;   
       if(els.boardWinTitle) els.boardWinTitle.textContent = feed ? "🍯 꿀단지" : "✍️ 꿀단지에 올리기";
       if(feed){ if(els.boardBody) els.boardBody.scrollTop = B.feedScroll || 0; }
       else if(els.boardWriteScroll) els.boardWriteScroll.scrollTop = 0;
@@ -29177,7 +29182,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17159; 
+const MK_APP_BUILD = 17160; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -47107,18 +47112,23 @@ button.hpRound{
   display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
   width:34px; height:34px; padding:0; border-radius:50%; font-size:15px; line-height:1;
 }
+
+button.hpWriteBtn{
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  height:34px; padding:0 15px; border-radius:999px; font-size:13px; font-weight:1000; line-height:1; white-space:nowrap;
+}
 #boardClose{ border:1px solid rgba(255,255,255,.30); background:rgba(255,255,255,.12); font-weight:900; }
 #boardClose:hover{ background:rgba(255,255,255,.18); }
 button.hpBack{ display:inline-flex; flex:0 0 auto; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; line-height:1.2; white-space:nowrap; }
 
-.hpTools{ flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.16); } 
+.hpTools{ flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:6px 5px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.16); } 
 .hpFilters{ display:contents; } 
 .hpFilters::-webkit-scrollbar{ display:none; }
-.hpFilters .newsFilter{ flex:0 0 auto; white-space:nowrap; }
-.hpSort{ display:inline-flex; align-items:center; gap:6px; padding:0; flex:0 0 auto; margin-left:auto; border:0; background:transparent; }  .hpSortOldCapsule{ display:inline-flex; align-items:center; gap:2px; padding:2px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
-.hpSort button{ padding:6px 12px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.86); font-size:12px; font-weight:1000; line-height:1.2; white-space:nowrap; }
+.hpFilters .newsFilter{ flex:0 0 auto; white-space:nowrap; padding:5px 10px; } 
+.hpSort{ display:inline-flex; align-items:center; gap:2px; padding:2px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); } 
+.hpSort button{ padding:7px 10px; border:0; border-radius:999px; background:transparent; color:var(--muted); font-size:12px; font-weight:1000; line-height:1.2; white-space:nowrap; }
 .hpSort button:hover{ color:var(--text); }
-.hpSort button[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); color:var(--pink2); border-color:rgba(var(--pink2rgb),.55); box-shadow:none; }
+.hpSort button[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); color:var(--pink2); box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55); }
 .hpWinBody{
   position:relative; flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
   padding:10px 12px 14px; scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track);
@@ -47258,6 +47268,9 @@ button.hpLbClose{ position:fixed; right:14px; top:14px; display:flex; align-item
   .hpWin{ left:0 !important; top:0 !important; width:100vw; max-width:none; height:100vh; height:100dvh; border-radius:0; border:0; box-shadow:none; background:#161619;  }
   .hpWinHead{ cursor:default; touch-action:auto; }
   button.hpRound{ width:40px; height:40px; font-size:16px; }
+  button.hpWriteBtn{ height:40px; padding:0 16px; font-size:14px; } 
+  .hpSort button{ padding:10px 10px; }   
+  .hpFilters .newsFilter{ padding:5px 8px; }   
   button.hpReact{ min-height:40px; padding:0 15px; font-size:13.5px; gap:6px; }
   input.hpCmtIn, button.hpCmtGo{ min-height:40px; }
   button.hpCmtX{ width:28px; height:28px; }
@@ -47307,6 +47320,225 @@ button.hpLbClose{ position:fixed; right:14px; top:14px; display:flex; align-item
   #coinBoostBar{ display:none !important; }
 }
 </style>
+
+
+<style id="v276DashWin">
+
+#dashWin{ display:none; }
+body.mkDashFloat #dashWin{
+  display:block; position:fixed; z-index:2900; left:0; top:0;
+  width:clamp(300px, 27vw, 340px);
+  background:rgba(26,26,30,.96); border-radius:var(--radius);
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+}
+body.mkDashFloat #dashWin.isDragging{ box-shadow:0 16px 40px rgba(0,0,0,.58); }
+#dashWin[hidden], body:not(.joined) #dashWin{ display:none !important; }   
+
+body.mkDashFloat #dashWin .dashHead{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+body.mkDashFloat #dashWin.isDragging .dashHead{ cursor:grabbing; }
+
+body.mkDashFloat #dashWin .dashHead{ gap:8px; padding-left:12px; padding-right:12px; }
+body.mkDashFloat #dashWin .dashHeadRight{ gap:6px; }
+
+@media (min-width:761px) and (max-width:1200px){
+  body.mkDashFloat #dashWin .dashFoldTxt{ display:none; }
+}
+
+
+#dashCloseBtn, #dashToggleBtn{ display:none; }
+body.mkDashFloat #dashCloseBtn{
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:26px; height:26px; padding:0; margin:0; border-radius:50%;
+  border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.14); color:rgba(255,255,255,.85);
+  font-size:12px; font-weight:900; line-height:1;
+}
+body.mkDashFloat #dashCloseBtn:hover{ background:rgba(0,0,0,.22); }   
+body.mkDashFloat #dashToggleBtn{
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  height:24px; padding:0 9px; margin:0; border-radius:999px;
+  border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--muted);
+  font-size:11.5px; font-weight:900; line-height:1; white-space:nowrap;
+}
+body.mkDashFloat #dashToggleBtn:hover{ background:rgba(255,255,255,.10); color:var(--text); }
+body.mkDashFloat #dashToggleBtn[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); border-color:rgba(var(--pink2rgb),.55); color:var(--pink2); }
+body.mkDashFloat #dashToggleBtn[aria-pressed="true"]:hover{ background:rgba(var(--pink3rgb),.28); }
+
+body.mkDashFloat #chatCard > h3 > .tiny{ margin-left:auto; }
+body.mkDashFloat #railFoldToggle{ height:26px; min-width:26px; padding:0 8px; border-radius:999px; line-height:1; }
+@media (max-width:760px){
+  #dashWin, #dashCloseBtn, #dashToggleBtn{ display:none !important; }
+}
+</style>
+
+
+<script id="v276DashWinScript">
+
+(function(){
+  "use strict";
+  var LS_OPEN = "mk_dash_open_v1", LS_POS = "mk_dash_pos_v1";
+  var mq = null;
+  try{ mq = window.matchMedia ? window.matchMedia("(max-width:760px)") : null; }catch(_e){ mq = null; }
+  var st = { floating:false, open:true, userPos:null, drag:null, raf:0 };
+
+  function byId(id){ return document.getElementById(id); }
+  function isMobile(){
+    try{ return mq ? mq.matches : ((window.innerWidth || 0) <= 760); }catch(_e){ return false; }
+  }
+  function loadOpen(){ try{ return localStorage.getItem(LS_OPEN) !== "0"; }catch(_e){ return true; } }
+  function saveOpen(v){ try{ localStorage.setItem(LS_OPEN, v ? "1" : "0"); }catch(_e){} }
+  function loadPos(){
+    try{
+      var v = JSON.parse(localStorage.getItem(LS_POS) || "null");
+      if(v && isFinite(Number(v.x)) && isFinite(Number(v.y))) return { x: Number(v.x), y: Number(v.y) };
+    }catch(_e){}
+    return null;
+  }
+  function savePos(p){ try{ localStorage.setItem(LS_POS, JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y) })); }catch(_e){} }
+
+function topLimit(){
+    try{
+      var tb = document.querySelector(".topbar");
+      var r = tb ? tb.getBoundingClientRect() : null;
+      if(r && r.height > 0) return Math.max(0, Math.round(r.bottom));
+    }catch(_e){}
+    return 0;
+  }
+  function winW(){ var w = byId("dashWin"); return (w && w.offsetWidth) || 320; }
+  
+  function defaultPos(){
+    var W = winW();
+    var x = (window.innerWidth || 0) - W - 12, y = topLimit() + 12;
+    try{
+      var main = document.querySelector(".wrap > main");
+      var mr = main ? main.getBoundingClientRect() : null;
+      if(mr && mr.width > 0) x = mr.right - W;
+      var gs = byId("gridScroll");
+      var gr = gs ? gs.getBoundingClientRect() : null;
+      if(gr && gr.height > 0) y = gr.top + 6;
+      var eb = byId("railEdgeBtn");
+      var er = (eb && eb.offsetWidth) ? eb.getBoundingClientRect() : null;
+      if(er && er.width > 0) x = Math.min(x, er.left - 8 - W);
+    }catch(_e){}
+    return { x: x, y: y };
+  }
+  function clampPos(p){
+    var W = winW(), vw = window.innerWidth || 0, vh = window.innerHeight || 0, top = topLimit();
+    var x = Math.min(Math.max(Number(p.x) || 0, 48 - W), Math.max(0, vw - 48));
+    var y = Math.min(Math.max(Number(p.y) || 0, top), Math.max(top, vh - 48));
+    return { x: Math.round(x), y: Math.round(y) };
+  }
+  function applyPos(){
+    var w = byId("dashWin");
+    if(!w || !st.floating || st.drag || !w.offsetWidth) return;   
+    var p = clampPos(st.userPos || defaultPos());
+    w.style.left = p.x + "px";
+    w.style.top = p.y + "px";
+  }
+  function syncUi(){
+    var w = byId("dashWin"), t = byId("dashToggleBtn");
+    if(w) w.hidden = !(st.floating && st.open);
+    if(t){
+      t.setAttribute("aria-pressed", st.open ? "true" : "false");
+      t.title = st.open ? "대시보드 창 닫기" : "대시보드 창 열기";
+    }
+    applyPos();
+  }
+  function mount(){
+    var card = byId("dashboardCard"), w = byId("dashWin");
+    if(!card || !w) return;
+    if(!isMobile()){
+      if(card.parentElement !== w) w.appendChild(card);
+      st.floating = true;
+      document.body.classList.add("mkDashFloat");
+    }else{
+      var sb = document.querySelector("aside.sidebar"), chat = byId("chatCard");
+      if(sb && card.parentElement !== sb){
+        if(chat && chat.parentElement === sb) sb.insertBefore(card, chat);
+        else sb.insertBefore(card, sb.firstChild);
+      }
+      st.floating = false;
+      document.body.classList.remove("mkDashFloat");
+    }
+    syncUi();
+  }
+  
+  function schedule(){
+    if(st.raf) return;
+    st.raf = requestAnimationFrame(function(){
+      st.raf = 0;
+      if(isMobile() === st.floating) mount();
+      else applyPos();
+    });
+  }
+  function open(){ st.open = true; saveOpen(true); syncUi(); }
+  function close(){ st.open = false; saveOpen(false); syncUi(); }
+  function toggle(){ if(st.open) close(); else open(); }
+
+function bindDrag(){
+    var card = byId("dashboardCard");
+    var head = card ? card.querySelector(".dashHead") : null;
+    if(!head) return;
+    head.addEventListener("pointerdown", function(ev){
+      var w = byId("dashWin");
+      if(ev.button !== 0 || !st.floating || !w || w.hidden) return;
+      if(ev.target && ev.target.closest && ev.target.closest("button, a, input, textarea, select, label, .dashSuccess")) return;
+      var r = w.getBoundingClientRect();
+      st.drag = { id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, x0: r.left, y0: r.top, last: null };
+      try{ head.setPointerCapture(ev.pointerId); }catch(_e){}
+      w.classList.add("isDragging");
+      ev.preventDefault();
+    });
+    head.addEventListener("pointermove", function(ev){
+      var d = st.drag, w = byId("dashWin");
+      if(!d || ev.pointerId !== d.id || !w) return;
+      d.last = clampPos({ x: d.x0 + (ev.clientX - d.sx), y: d.y0 + (ev.clientY - d.sy) });
+      w.style.left = d.last.x + "px";
+      w.style.top = d.last.y + "px";
+    });
+    function end(ev){
+      var d = st.drag, w = byId("dashWin");
+      if(!d || (ev && ev.pointerId !== d.id)) return;
+      st.drag = null;
+      if(w) w.classList.remove("isDragging");
+      try{ head.releasePointerCapture(d.id); }catch(_e){}
+      if(d.last){ st.userPos = d.last; savePos(d.last); }   
+    }
+    head.addEventListener("pointerup", end);
+    head.addEventListener("pointercancel", end);
+    head.addEventListener("lostpointercapture", end);
+  }
+
+  function init(){
+    st.open = loadOpen();
+    st.userPos = loadPos();
+    bindDrag();
+    var t = byId("dashToggleBtn"), c = byId("dashCloseBtn");
+    if(t) t.addEventListener("click", function(){ toggle(); });
+    if(c) c.addEventListener("click", function(){ close(); });
+    mount();
+    if(mq){
+      if(mq.addEventListener) mq.addEventListener("change", function(){ mount(); });
+      else if(mq.addListener) mq.addListener(function(){ mount(); });
+    }
+    window.addEventListener("resize", schedule, { passive: true });
+    try{
+      var gs = byId("gridScroll");
+      if(gs && window.ResizeObserver) new ResizeObserver(function(){ schedule(); }).observe(gs);
+    }catch(_e){}
+    try{
+      if(window.MutationObserver) new MutationObserver(function(){ schedule(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    }catch(_e){}
+  }
+
+  window.__MK_DASHWIN__ = {
+    open: open, close: close, toggle: toggle,
+    isOpen: function(){ return !!st.open; },
+    resetPos: function(){ st.userPos = null; try{ localStorage.removeItem(LS_POS); }catch(_e){} applyPos(); },
+    mount: mount
+  };
+  try{ init(); }catch(err){ try{ console.warn("[V276_DASHWIN] 초기화 실패", err); }catch(_e){} }
+})();
+</script>
 
 </body>
 </html>
