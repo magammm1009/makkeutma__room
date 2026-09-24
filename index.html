@@ -119,6 +119,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7072,6 +7073,8 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 <div class="body">
 <div class="dashFoldBody" id="dashFoldBody">
+
+<div id="coinBoostBar" data-phase="none"></div>
 <div class="dashRow">
 <div class="dashBox dashLinksBox">
 <div class="dashServiceBlock dashServicePomo">
@@ -7107,11 +7110,13 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <div class="btnRow" id="dashShortcuts">
 
 
-<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">✨캐꾸</span></button>
-<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">🔥공지&출석</span></button>
-<button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">📚숙제장</span></button>
+<button class="ghost" disabled="" id="charaBinderBtn" title="작가들의 캐릭터 도감" type="button"><span class="btnLabel">캐꾸</span></button>
+<button class="ghost" id="goChool" title="출근부"><span class="btnLabel">공지&출석</span></button>
+<button class="ghost" id="goHomework" title="숙제장"><span class="btnLabel">숙제</span></button>
 
-<button class="ghost" id="goNews" title="업계 동향 (기사·투고·공모전)"><span class="btnLabel">📰동향</span><span class="newsDot" id="newsDot" aria-hidden="true"></span></button>
+<button class="ghost" id="goNews" title="업계 동향 (기사·투고·공모전)"><span class="btnLabel">동향</span><span class="newsDot" id="newsDot" aria-hidden="true"></span></button>
+
+<button class="ghost" id="goBoard" title="꿀단지 (장비·간식·플리·반려동물 나눔)" type="button"><span class="btnLabel">꿀단지</span><span class="newsDot" id="boardDot" aria-hidden="true"></span></button>
 </div>
 </div>
 </div>
@@ -7571,6 +7576,81 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 </div>
 </div>
 
+
+<div id="boardWin" class="hpWin" role="dialog" aria-label="꿀단지" aria-hidden="true" hidden>
+<div class="hpWinHead" id="boardWinHead">
+<button type="button" class="ghost hpBack" id="boardBack" hidden>← 피드</button>
+<div class="hpHeadT"><div class="t" id="boardWinTitle">🍯 꿀단지</div><div class="tiny" id="boardSub">최근 20개 · 끌어서 옮겨요</div></div>
+<div class="hpHeadBtns"><button type="button" class="primary hpRound" id="boardWriteBtn" title="글쓰기" aria-label="글쓰기">✍️</button><button type="button" class="ghost hpRound" id="boardClose" title="닫기" aria-label="닫기">✕</button></div>
+</div>
+<div class="hpTools" id="boardTools">
+<div class="hpFilters" id="boardFilters" role="group" aria-label="카테고리 필터">
+<button type="button" class="pill newsFilter on" data-cat="" aria-pressed="true">🍯 전체</button>
+<button type="button" class="pill newsFilter" data-cat="gear" aria-pressed="false">⌨️ 장비</button>
+<button type="button" class="pill newsFilter" data-cat="snack" aria-pressed="false">🍪 간식</button>
+<button type="button" class="pill newsFilter" data-cat="music" aria-pressed="false">🎧 플리</button>
+<button type="button" class="pill newsFilter" data-cat="pet" aria-pressed="false">🐾 반려동물</button>
+<button type="button" class="pill newsFilter" data-cat="etc" aria-pressed="false">✨ 기타</button>
+</div>
+<div class="hpSort" id="boardSort" role="group" aria-label="정렬"><button type="button" data-sort="new" aria-pressed="true">🕒 최신</button><button type="button" data-sort="hot" aria-pressed="false">❤️ 인기</button></div>
+</div>
+<div class="hpWinBody" id="boardBody">
+<div class="tiny" id="boardState" style="opacity:.82;line-height:1.6"></div>
+<div id="boardFeed"></div>
+<div class="hpListFoot" id="boardFoot"></div>
+</div>
+<div class="hpWritePane" id="boardWrite" hidden>
+<div class="hpWriteScroll" id="boardWriteScroll">
+<div class="hpGrabNote" id="boardGrabNote" hidden>💬 채팅에서 담아 왔어요 — 카테고리만 고르면 끝!</div>
+<div class="hpField">
+<div class="hpLabel" id="boardCatLbl">무슨 글이에요?</div>
+<div class="hpCatChips" id="boardCats" role="group" aria-labelledby="boardCatLbl">
+<button type="button" class="hpCatChip" data-cat="gear" aria-pressed="false">⌨️ 장비</button>
+<button type="button" class="hpCatChip" data-cat="snack" aria-pressed="false">🍪 간식</button>
+<button type="button" class="hpCatChip" data-cat="music" aria-pressed="false">🎧 플리</button>
+<button type="button" class="hpCatChip" data-cat="pet" aria-pressed="false">🐾 반려동물</button>
+<button type="button" class="hpCatChip" data-cat="etc" aria-pressed="false">✨ 기타</button>
+</div>
+<div class="hint" id="boardCatHint">카테고리를 골라 주세요</div>
+</div>
+<div class="hpField">
+<label class="hpLabel" for="boardTitleIn">제목</label>
+<input class="hpInput" id="boardTitleIn" type="text" maxlength="80" placeholder="예) 키크론 K3 Pro 저소음 적축" autocomplete="off"/>
+<div class="hpCount" id="boardTitleN">0/80</div>
+</div>
+<div class="hpField">
+<label class="hpLabel" for="boardLinkIn">링크</label>
+<input class="hpInput" id="boardLinkIn" type="url" inputmode="url" maxlength="500" placeholder="https:// (선택)" autocomplete="off"/>
+<div class="hint">유튜브 링크면 미리보기 썸네일이 자동으로 붙어요</div>
+<div class="hpMedia hpYt hpYtPrev" id="boardYtPrev" hidden><img id="boardYtImg" alt="" decoding="async"/><span class="hpPlay" aria-hidden="true">▶</span><span class="hpYtChip">youtube.com</span></div>
+</div>
+<div class="hpField">
+<label class="hpLabel" for="boardMemoIn">한마디</label>
+<textarea class="hpInput" id="boardMemoIn" rows="3" maxlength="300" placeholder="왜 좋았는지 한 줄만 💗"></textarea>
+<div class="hpCount" id="boardMemoN">0/300</div>
+</div>
+<div class="hpField">
+<label class="hpDrop" id="boardPhotoDrop" for="boardPhoto"><b>📷 사진 1장 (선택)</b><span>긴 변 1280px · WebP로 줄여 올려요</span></label>
+<input type="file" accept="image/*" id="boardPhoto" class="hpFile"/>
+<div class="hpDropSel" id="boardPhotoSel" hidden>
+<img class="hpDropThumb" id="boardPhotoThumb" alt=""/>
+<div class="hpDropInfo" id="boardPhotoInfo"></div>
+<button type="button" class="ghost hpDropX" id="boardPhotoX">✕ 빼기</button>
+</div>
+</div>
+<div class="hpTip" id="boardCatTip" hidden></div>
+</div>
+<div class="hpWinFoot">
+<button type="button" class="ghost" id="boardCancel">↩️ 취소</button>
+<button type="button" class="primary" id="boardSubmit">🍯 올리기</button>
+</div>
+</div>
+<div class="hpLightbox" id="boardLb" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
+<div class="hpLbInner"><img class="hpLbImg" id="boardLbImg" alt=""/><div class="hpLbCap"><div class="hpLbTitle" id="boardLbTitle"></div><div class="hpLbBy" id="boardLbBy"></div></div></div>
+<button type="button" class="hpLbClose" id="boardLbClose" aria-label="닫기" title="닫기">✕</button>
+</div>
+</div>
+
 <div aria-hidden="true" class="modalOverlay" id="attendModal">
 <div aria-modal="true" class="modal" role="dialog" aria-labelledby="attendModalTitle">
 <div class="modalHeader">
@@ -7944,6 +8024,29 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <button class="danger" id="ghostSweepRun" type="button">정리 실행</button>
 </div>
 <div id="ghostSweepStatus" class="tiny" style="opacity:.82; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; margin-top:8px;">[대상 찾기]를 누르면 24시간 넘게 방치된 접속을 보여줘요.</div>
+</div>
+
+<div class="stBlock" id="coinBoostBlock">
+  <div class="stBTitle">🚀 코인 부스터 이벤트 (×2~×5)</div>
+  <div class="tiny" style="opacity:.78; line-height:1.5; margin-bottom:8px;">특별한 날에 작업 코인이 몇 배로 쌓이게 해요. 코인만 늘고 작업 시간·펫 성장은 그대로예요. 고룡의 축복(×3)·전기 특전(×2)과는 <b>큰 쪽 하나만</b> 적용돼요. 다른 사람 화면에는 최대 2분(드래곤 시즌이 꺼져 있으면 10분) 뒤에 퍼져요.</div>
+  <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <label for="coinBoostMult" style="min-width:110px;">배수</label>
+    <select id="coinBoostMult" style="flex:1 1 120px;"><option value="2">×2</option><option value="3" selected>×3</option><option value="4">×4</option><option value="5">×5</option></select>
+    <label for="coinBoostHours" style="min-width:110px;">지속 시간(시간)</label>
+    <input id="coinBoostHours" type="number" min="1" max="168" step="1" value="24" style="flex:1 1 120px;"/>
+  </div>
+  <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <label for="coinBoostAt" style="min-width:110px;">시작 시각(비우면 지금)</label>
+    <input id="coinBoostAt" type="datetime-local" style="flex:1 1 180px;"/>
+    <label for="coinBoostLabel" style="min-width:110px;">이벤트 이름(선택)</label>
+    <input id="coinBoostLabel" type="text" maxlength="20" placeholder="예) 추석 이벤트" style="flex:1 1 160px;"/>
+  </div>
+  <div class="row" style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button class="primary tight" id="coinBoostStart" type="button">🚀 시작/예약</button>
+    <button class="ghost tight" id="coinBoostStop" type="button">⏹ 지금 끝내기</button>
+    <button class="ghost tight" id="coinBoostCancel" type="button">🗑️ 예약 취소</button>
+  </div>
+  <div id="coinBoostStatus" class="tiny" style="opacity:.85; line-height:1.55; margin-top:6px;">지금은 꺼져 있어요.</div>
 </div>
 </section>
 <section class="stGroup" id="stG-dragon" aria-labelledby="stT-dragon">
@@ -9133,7 +9236,7 @@ reload as authReload } from "https://www.gstatic.com/firebasejs/10.12.2/firebase
     import {
       getDatabase, ref as rRef, child as rChild, set as rSet, update as rUpdate, get as rGet, remove as rRemove,
       push as rPush, onValue as rOnValue, onChildAdded as rOnChildAdded, onChildChanged as rOnChildChanged, onChildRemoved as rOnChildRemoved, onChildMoved as rOnChildMoved, off as rOff, onDisconnect as rOnDisconnect,
-      query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
+      query as rQuery, orderByChild as rOrderByChild, orderByKey as rOrderByKey, startAt as rStartAt, endAt as rEndAt, endBefore as rEndBefore, limitToLast as rLimitToLast, runTransaction as rRunTransaction,
       serverTimestamp as rServerTimestamp, increment as rIncrement, goOffline as rGoOffline, goOnline as rGoOnline 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -9685,6 +9788,49 @@ const $ = (id) => document.getElementById(id);
       newsFilters: $("newsFilters"),
       newsState: $("newsState"),
       newsList: $("newsList"),
+      
+      goBoard: $("goBoard"),
+      boardDot: $("boardDot"),
+      boardWin: $("boardWin"),
+      boardWinHead: $("boardWinHead"),
+      boardBack: $("boardBack"),
+      boardWinTitle: $("boardWinTitle"),
+      boardSub: $("boardSub"),
+      boardWriteBtn: $("boardWriteBtn"),
+      boardClose: $("boardClose"),
+      boardTools: $("boardTools"),
+      boardFilters: $("boardFilters"),
+      boardSort: $("boardSort"),
+      boardBody: $("boardBody"),
+      boardState: $("boardState"),
+      boardFeed: $("boardFeed"),
+      boardFoot: $("boardFoot"),
+      boardWrite: $("boardWrite"),
+      boardWriteScroll: $("boardWriteScroll"),
+      boardGrabNote: $("boardGrabNote"),
+      boardCats: $("boardCats"),
+      boardCatHint: $("boardCatHint"),
+      boardTitleIn: $("boardTitleIn"),
+      boardTitleN: $("boardTitleN"),
+      boardLinkIn: $("boardLinkIn"),
+      boardYtPrev: $("boardYtPrev"),
+      boardYtImg: $("boardYtImg"),
+      boardMemoIn: $("boardMemoIn"),
+      boardMemoN: $("boardMemoN"),
+      boardPhotoDrop: $("boardPhotoDrop"),
+      boardPhoto: $("boardPhoto"),
+      boardPhotoSel: $("boardPhotoSel"),
+      boardPhotoThumb: $("boardPhotoThumb"),
+      boardPhotoInfo: $("boardPhotoInfo"),
+      boardPhotoX: $("boardPhotoX"),
+      boardCatTip: $("boardCatTip"),
+      boardCancel: $("boardCancel"),
+      boardSubmit: $("boardSubmit"),
+      boardLb: $("boardLb"),
+      boardLbImg: $("boardLbImg"),
+      boardLbTitle: $("boardLbTitle"),
+      boardLbBy: $("boardLbBy"),
+      boardLbClose: $("boardLbClose"),
 
 chatList: $("chatList"),
       chatNewBar: $("chatNewBar"),
@@ -13546,6 +13692,7 @@ if(els.goChool) els.goChool.disabled = !joined;
       if(els.goHomework) els.goHomework.disabled = !joined;
       
       if(els.goNews) els.goNews.disabled = !joined;
+      if(els.goBoard) els.goBoard.disabled = !joined;   
 
 document.body.classList.toggle("joined", joined);
       
@@ -14333,6 +14480,10 @@ function rMissionsRootRef(roomId, dayKey){ return rRef(rtdb, `${rRoomBase(roomId
 function rProfilesRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles`); }
 
 function rNewsRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/news`); }
+
+function rBoardRootRef(roomId){ return rRef(rtdb, `${rRoomBase(roomId)}/board`); }
+function rBoardPostRef(roomId, id){ return rRef(rtdb, `${rRoomBase(roomId)}/board/${id}`); }
+function rBoardCommentsRef(roomId, id){ return rRef(rtdb, `${rRoomBase(roomId)}/boardComments/${id}`); }
 function rProfileRef(roomId, uid){ return rRef(rtdb, `${rRoomBase(roomId)}/profiles/${uid}`); }
 
 function profileNickKey_(nick){
@@ -16954,6 +17105,8 @@ const stkInfo = (m && m.stk && (typeof MK_STICKER_MAP !== "undefined")) ? (MK_ST
           ? `<div class="text stkText"><svg class="stkArt" viewBox="0 0 240 240" role="img" aria-label="${escapeHtml(stkInfo.label)} 스티커"><use href="#mkstk-${escapeHtml(String(m.stk))}"></use></svg></div>`
           : `<div class="text">${linkifyChatText(m.text || "")}</div>`);
       if(stkInfo) div.classList.add("stkOnly");
+      
+      try{ if(!stkInfo && m && m.board && m.board.id){ const tEl = div.querySelector(".text"); if(tEl) tEl.insertAdjacentHTML("beforeend", ` <button type="button" class="chatBoardOpen" data-board-id="${escapeHtml(String(m.board.id))}">👀 보기</button>`); } }catch(e){}
 
 try{
         if(!stkInfo){
@@ -17016,6 +17169,16 @@ const tgl = document.createElement("button");
           tgl.setAttribute("data-msg-id", m.id);
           tgl.textContent = "😊";
           div.appendChild(tgl);
+          
+          if(m.type === "chat" && !stkInfo && /(?:https?:\/\/|www\.)[^\s<]+/i.test(String(m.text || ""))){
+            const gb = document.createElement("button");
+            gb.type = "button";
+            gb.className = "chatBoardGrab";
+            gb.setAttribute("data-msg-id", m.id);
+            gb.title = "꿀단지에 담기";
+            gb.textContent = "🍯 담기";
+            div.appendChild(gb);
+          }
 
 const picker = document.createElement("div");
           picker.className = "reactPicker";
@@ -18648,7 +18811,7 @@ saveChatQueue(loadChatQueue().slice(q.length));
 
 window.addEventListener("online", ()=>{ try{ flushChatQueue(); }catch(e){} });
 
-async function sendChatCore(text, isFlush=false, stkId=null){ 
+async function sendChatCore(text, isFlush=false, stkId=null, extra=null){ 
 
 if(!state.joined || !state.uid || state.__joinProfileReady !== true) return false;
   __chatSending = true;
@@ -18694,6 +18857,7 @@ emoji: (()=>{
 if(stkId && (typeof MK_STICKER_MAP !== "undefined") && MK_STICKER_MAP[String(stkId)]){
       payload.stk = String(stkId);
     }
+    if(extra && typeof extra==="object") Object.assign(payload, extra); 
 
 try{
       const roomId = state.roomId;
@@ -21421,6 +21585,8 @@ await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId
       
       try{ Promise.resolve(mkNewsCheckDot_()).catch(()=>{}); }catch(_e){}
       
+      try{ Promise.resolve(mkBoardCheckDot_()).catch(()=>{}); }catch(_e){}
+      
       try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){}
       
       try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }); }catch(_e){}
@@ -22624,6 +22790,1100 @@ const MK_NEWS_SEEN_LS = "mk_news_seen_ms";
         open: mkOpenNewsModal_,
         rowsFromSnap: mkNewsRowsFromSnap_,
         dday: mkNewsDdayText_
+      };
+    }catch(_e){}
+
+const MK_BOARD_SEEN_LS = "mk_board_seen_ms";
+    const MK_BOARD_POS_LS = "mk_board_pos_v1";
+    const MK_BOARD_PAGE_FIRST = 20;
+    const MK_BOARD_PAGE_MORE = 10;
+    const MK_BOARD_IMG_MAX_BYTES = 1.4 * 1024 * 1024;   
+    const MK_BOARD_CATS = {
+      gear:  { emo:"⌨️", name:"장비",     tip:"모델명이 들어가면 찾기 쉬워요 ⌨️" },
+      snack: { emo:"🍪", name:"간식",     tip:"어디서 샀는지 링크가 있으면 최고 🍪" },
+      music: { emo:"🎧", name:"플리",     tip:"유튜브·스포티파이·멜론 링크 환영 🎧" },
+      pet:   { emo:"🐾", name:"반려동물", tip:"사진을 붙이면 카드가 예뻐요 🐾" },
+      etc:   { emo:"✨", name:"기타",     tip:"뭐든 좋아요 ✨" }
+    };
+    const __mkBoard = {
+      items: [], byId: new Map(), oldest: null, hasMore: true, loading: false,
+      filter: "", sort: "new", view: "feed", comments: new Map(), grab: null,
+      
+      isOpen: false, loadP: null, loadFailed: false, pos: null, feedScroll: 0,
+      openCmts: new Set(), cmtLoading: new Set(), cmtFailed: new Set(), cmtPosting: new Set(), reactBusy: new Set(),
+      cat: "", photo: null, photoSeq: 0, photoBusy: false, posting: false, pendingKey: "", fromGrab: false
+    };
+
+    function mkBoardSeenMs_(){
+      try{ return Number(localStorage.getItem(MK_BOARD_SEEN_LS) || 0) || 0; }catch(_e){ return 0; }
+    }
+    
+    function mkBoardSetSeen_(ms){
+      try{
+        const v = Math.max(0, Math.floor(Number(ms) || 0));
+        if(v > mkBoardSeenMs_()) localStorage.setItem(MK_BOARD_SEEN_LS, String(v));
+      }catch(_e){}
+    }
+    function mkBoardShowDot_(on){
+      try{ if(els.goBoard) els.goBoard.classList.toggle("hasNew", !!on); }catch(_e){}
+    }
+    
+    function mkBoardClip_(s, n){
+      const str = String(s == null ? "" : s);
+      if(str.length <= n) return str;
+      let out = "";
+      for(const ch of str){ if(out.length + ch.length > n) break; out += ch; }
+      return out;
+    }
+    
+    function mkBoardSafeUrl_(u){
+      const s = String(u || "").trim();
+      return (/^https?:\/\//i.test(s) && s.length <= 500) ? s : "";
+    }
+    function mkBoardImgUrl_(u){
+      const s = String(u || "");
+      return /^https:\/\//i.test(s) ? s : "";
+    }
+    function mkBoardColor_(c){
+      const s = String(c || "");
+      return /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(s) ? s : "";
+    }
+    function mkBoardHost_(u){
+      const m = /^https?:\/\/([^\/?#]+)/i.exec(String(u || ""));
+      return m ? m[1].replace(/^[^@]*@/, "").replace(/:\d+$/, "").replace(/^www\./i, "") : "";
+    }
+    function mkBoardYtId_(u){
+      const s = String(u || "");
+      const m = /^https?:\/\/(?:[\w-]+\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([\w-]{6,20})/i.exec(s)
+        || /^https?:\/\/(?:www\.)?youtu\.be\/([\w-]{6,20})/i.exec(s)
+        || /^https?:\/\/(?:[\w-]+\.)?youtube\.com\/shorts\/([\w-]{6,20})/i.exec(s);
+      return m ? m[1] : "";
+    }
+    function mkBoardYtThumb_(id){ return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : ""; }
+    
+    function mkBoardTimeText_(ms){
+      const t = Number(ms) || 0;
+      if(!t) return "";
+      const diff = Math.max(0, mkNowMs_() - t);
+      if(diff < 60000) return "방금";
+      if(diff < 3600000) return Math.floor(diff / 60000) + "분 전";
+      if(diff < 86400000) return Math.floor(diff / 3600000) + "시간 전";
+      if(diff < 2 * 86400000) return "어제";
+      if(diff < 7 * 86400000) return Math.floor(diff / 86400000) + "일 전";
+      try{ const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()}`; }catch(_e){ return ""; }
+    }
+    function mkBoardFmtSize_(bytes){
+      const b = Number(bytes) || 0;
+      if(b >= 1024 * 1024) return (b / (1024 * 1024)).toFixed(1) + "MB";
+      return Math.max(1, Math.round(b / 1024)) + "KB";
+    }
+    function mkBoardCount_(bucket){ return (bucket && typeof bucket === "object") ? Object.keys(bucket).length : 0; }
+
+function mkBoardMyNick_(){
+      return normalizeNick((state.nickname || (els.name && els.name.value) || "").trim() || "익명");
+    }
+    function mkBoardMyEmoji_(){
+        try{
+          const v = (els.emoji && els.emoji.value) ? String(els.emoji.value) : "";
+          if(v){
+            const fn = (window.firstEmojiGrapheme || (typeof firstEmojiGrapheme==="function" ? firstEmojiGrapheme : null));
+            if(fn) return String(fn(v) || "");
+            try{ const a = Array.from(v.trim()); return a[0] || ""; }catch(e){}
+          }
+        }catch(e){}
+        try{ return String((defaultTheme()||{}).emoji || ""); }catch(e){}
+        return "";
+    }
+    function mkBoardMyNameColor_(){
+        try{
+          const c = els.chatNameColor?.value || els.nameColor?.value || (defaultTheme()||{}).chatNameColor || "#ffffff";
+          return clampHexColor(c);
+        }catch(e){ return "#ffffff"; }
+    }
+
+function mkBoardNormReacts_(r){
+      const out = { heart:{}, thumb:{} };
+      if(r && typeof r === "object"){
+        ["heart", "thumb"].forEach((k)=>{
+          const b = r[k];
+          if(b && typeof b === "object") Object.keys(b).forEach((uid)=>{ if(b[uid]) out[k][uid] = 1; });
+        });
+      }
+      return out;
+    }
+    function mkBoardNormPost_(id, v){
+      v = (v && typeof v === "object") ? v : {};
+      const imgW = Math.floor(Number(v.imgW) || 0), imgH = Math.floor(Number(v.imgH) || 0);
+      return {
+        id: String(id),
+        cat: MK_BOARD_CATS[v.cat] ? String(v.cat) : "etc",
+        title: mkBoardClip_(String(v.title || ""), 80),
+        url: mkBoardSafeUrl_(v.url),
+        memo: mkBoardClip_(String(v.memo || ""), 300),
+        img: mkBoardImgUrl_(v.img),
+        imgM: mkBoardImgUrl_(v.imgM),
+        imgW: (imgW > 0 && imgW <= 20000) ? imgW : 0,
+        imgH: (imgH > 0 && imgH <= 20000) ? imgH : 0,
+        byUid: String(v.byUid || ""),
+        byNick: mkBoardClip_(String(v.byNick || ""), 40),
+        emoji: mkBoardClip_(String(v.emoji || ""), 16),
+        nameColor: mkBoardColor_(v.nameColor),
+        createdAtMs: Number(v.createdAtMs) || 0,
+        cN: Math.max(0, Math.floor(Number(v.cN) || 0)),
+        reacts: mkBoardNormReacts_(v.reacts)
+      };
+    }
+    function mkBoardNormCmt_(cid, v){
+      if(!v || typeof v !== "object") return null;
+      return {
+        id: String(cid),
+        byUid: String(v.byUid || ""),
+        byNick: mkBoardClip_(String(v.byNick || ""), 40),
+        emoji: mkBoardClip_(String(v.emoji || ""), 16),
+        nameColor: mkBoardColor_(v.nameColor),
+        text: mkBoardClip_(String(v.text || ""), 200),
+        createdAtMs: Number(v.createdAtMs) || 0
+      };
+    }
+    
+    function mkBoardSortNew_(a, b){
+      return (b.createdAtMs - a.createdAtMs) || (a.id < b.id ? 1 : (a.id > b.id ? -1 : 0));
+    }
+    function mkBoardRowsFromSnap_(snap){
+      const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+      const out = [];
+      Object.keys(val).forEach((id)=>{ if(val[id] && typeof val[id] === "object") out.push(mkBoardNormPost_(id, val[id])); });
+      out.sort(mkBoardSortNew_);
+      return out;
+    }
+    function mkBoardCanDel_(p){ return !!(state.uid && p && (p.byUid === state.uid || state.adminOk)); }
+    function mkBoardCard_(id){
+      try{
+        const cards = els.boardFeed ? els.boardFeed.querySelectorAll(".hpPost") : [];
+        for(const c of cards){ if(c.getAttribute("data-key") === id) return c; }
+      }catch(_e){}
+      return null;
+    }
+
+function mkBoardCmtHtml_(p, c){
+      const canDel = !!(state.uid && (c.byUid === state.uid || state.adminOk));
+      const nc = c.nameColor ? ` style="color:${c.nameColor}"` : "";
+      return `<li class="hpCmt"><span class="hpCmtEmo" aria-hidden="true">${escapeHtml(c.emoji)}</span>`
+        + `<span class="hpCmtMain"><b${nc}>${escapeHtml(c.byNick || "익명")}</b>${escapeHtml(c.text)}`
+        + ` <span class="hpCmtAgo">· ${escapeHtml(mkBoardTimeText_(c.createdAtMs))}</span></span>`
+        + (canDel ? `<button type="button" class="hpCmtX" data-key="${escapeHtml(p.id)}" data-ckey="${escapeHtml(c.id)}" aria-label="댓글 지우기" title="댓글 지우기">✕</button>` : "")
+        + `</li>`;
+    }
+    function mkBoardCmtsInnerHtml_(p){
+      const B = __mkBoard;
+      if(B.cmtLoading.has(p.id)) return `<li class="hpCmtNone">불러오는 중… ⏳</li>`;
+      if(B.cmtFailed.has(p.id)) return `<li class="hpCmtNone">아직 준비 중이에요 — 잠시 뒤 다시 열어 주세요 🙏</li>`;
+      const list = B.comments.get(p.id);
+      if(!list) return `<li class="hpCmtNone">불러오는 중… ⏳</li>`;
+      if(!list.length) return `<li class="hpCmtNone">아직 댓글이 없어요. 첫 댓글을 남겨 보세요 💗</li>`;
+      return list.map((c)=> mkBoardCmtHtml_(p, c)).join("");
+    }
+    function mkBoardPostHtml_(p){
+      const B = __mkBoard;
+      const c = MK_BOARD_CATS[p.cat] || MK_BOARD_CATS.etc;
+      const key = escapeHtml(p.id);
+      const nc = p.nameColor ? ` style="color:${p.nameColor}"` : "";
+      const photo = p.imgM || p.img;
+      const ytId = photo ? "" : mkBoardYtId_(p.url);   
+      const host = mkBoardHost_(p.url);
+      const open = B.openCmts.has(p.id);
+      const heart = p.reacts.heart, thumb = p.reacts.thumb;
+      const myHeart = !!(state.uid && heart[state.uid]), myThumb = !!(state.uid && thumb[state.uid]);
+      const kind = photo ? "isPhoto" : (ytId ? "isYt" : (p.url ? "isLink" : "isText"));
+      const head = `<div class="hpPostHead">`
+        + `<span class="hpWho">${p.emoji ? `<span class="hpWhoEmo" aria-hidden="true">${escapeHtml(p.emoji)}</span>` : ""}<b${nc}>${escapeHtml(p.byNick || "익명")}</b> · ${escapeHtml(mkBoardTimeText_(p.createdAtMs))}</span>`
+        + (mkBoardCanDel_(p)
+          ? `<div class="hpMoreWrap"><button type="button" class="hpMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="글 메뉴" title="글 메뉴">⋯</button>`
+            + `<div class="hpMenu"><button type="button" class="hpDel" data-del="${key}">🗑️ 지우기</button></div></div>`
+          : "")
+        + `</div>`;
+      let media = "";
+      if(photo){
+        const ar = (p.imgW && p.imgH) ? ` style="aspect-ratio:${p.imgW}/${p.imgH}"` : "";
+        media = `<button type="button" class="hpMedia hpPhoto" data-lb="${key}" aria-label="사진 크게 보기" title="사진 크게 보기">`
+          + `<img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"${ar}></button>`;
+      }else if(ytId){
+        media = `<button type="button" class="hpMedia hpYt" data-open="${key}" aria-label="유튜브에서 보기" title="새 탭에서 열려요">`
+          + `<img src="${escapeHtml(mkBoardYtThumb_(ytId))}" alt="" loading="lazy" decoding="async">`
+          + `<span class="hpPlay" aria-hidden="true">▶</span><span class="hpYtChip">youtube.com</span></button>`;
+      }
+      const body = `<div class="hpPostBody">`
+        + `<div class="hpTop"><span class="hpBadge" data-cat="${p.cat}">${c.emo} ${c.name}</span>`
+        + ((host && !ytId) ? `<span class="hpDomain"><i aria-hidden="true"></i>${escapeHtml(host)}</span>` : "")
+        + `</div>`
+        + `<div class="hpTitle">${escapeHtml(p.title || "(제목 없음)")}</div>`
+        + (p.memo ? `<div class="hpMemo">${escapeHtml(p.memo)}</div>` : "")
+        + (p.url ? `<button type="button" class="ghost hpOpen" data-open="${key}" title="새 탭에서 열려요">🔗 열기</button>` : "")
+        + `</div>`;
+      const reacts = `<div class="hpReacts">`
+        + `<button type="button" class="hpReact isHeart" data-react="heart" data-key="${key}" aria-pressed="${myHeart ? "true" : "false"}" title="하트">❤️ <span class="n">${mkBoardCount_(heart)}</span></button>`
+        + `<button type="button" class="hpReact isThumb" data-react="thumb" data-key="${key}" aria-pressed="${myThumb ? "true" : "false"}" title="엄지척">👍 <span class="n">${mkBoardCount_(thumb)}</span></button>`
+        + `<button type="button" class="hpReact isCmt" data-cmt="${key}" aria-expanded="${open ? "true" : "false"}" title="댓글">💬 <span class="n">${p.cN}</span></button>`
+        + `</div>`;
+      const cmts = `<div class="hpCmts"${open ? "" : " hidden"}>`
+        + `<ul class="hpCmtList">${open ? mkBoardCmtsInnerHtml_(p) : ""}</ul>`
+        + `<div class="hpCmtRow"><input class="hpCmtIn" type="text" maxlength="200" placeholder="댓글… (200자)" aria-label="댓글 쓰기" autocomplete="off" data-key="${key}">`
+        + `<button type="button" class="primary hpCmtGo" data-key="${key}">💬 올리기</button></div>`
+        + `</div>`;
+      return `<article class="hpPost ${kind}" data-key="${key}">${head}${media}${body}${reacts}${cmts}</article>`;
+    }
+    function mkBoardEmptyHtml_(){
+      return `<div class="hpEmpty">`
+        + `<svg class="stk" viewBox="0 0 240 240" aria-hidden="true"><use href="#mkstk-hello"></use></svg>`
+        + `<p>아직 글이 없어요. 첫 꿀템을 자랑해 보세요 🍯</p>`
+        + `<button type="button" class="primary hpWriteGo">✍️ 글쓰기</button></div>`;
+    }
+    function mkBoardVisible_(){
+      const B = __mkBoard;
+      const list = B.filter ? B.items.filter((p)=> p.cat === B.filter) : B.items.slice();
+      if(B.sort === "hot"){
+        
+        list.sort((a, b)=> (mkBoardCount_(b.reacts.heart) - mkBoardCount_(a.reacts.heart)) || mkBoardSortNew_(a, b));
+      }
+      return list;
+    }
+    function mkBoardRenderFoot_(){
+      const B = __mkBoard, f = els.boardFoot;
+      if(!f) return;
+      if(B.loading){ f.innerHTML = B.items.length ? `<div class="tiny">불러오는 중… ⏳</div>` : ""; return; }
+      if(!B.items.length || B.loadFailed){ f.innerHTML = ""; return; }
+      f.innerHTML = B.hasMore
+        ? `<button type="button" class="ghost hpMoreList" data-more>📜 더 보기 (10개 더)</button>`
+        : `<button type="button" class="ghost hpMoreList" disabled>🍯 제일 오래된 글까지 다 봤어요</button>`;
+    }
+    function mkBoardRender_(opts){
+      const B = __mkBoard, feed = els.boardFeed, body = els.boardBody;
+      if(!feed) return;
+      const top = body ? body.scrollTop : 0;
+      
+      const drafts = new Map();
+      try{ feed.querySelectorAll(".hpCmtIn").forEach((inp)=>{ if(inp.value) drafts.set(inp.getAttribute("data-key") || "", inp.value); }); }catch(_e){}
+      const list = mkBoardVisible_();
+      if(list.length) feed.innerHTML = list.map(mkBoardPostHtml_).join("");
+      else feed.innerHTML = (B.loadFailed || (B.loading && !B.items.length)) ? "" : mkBoardEmptyHtml_();
+      if(drafts.size){
+        try{ feed.querySelectorAll(".hpCmtIn").forEach((inp)=>{ const v = drafts.get(inp.getAttribute("data-key") || ""); if(v) inp.value = v; }); }catch(_e){}
+      }
+      if(body && opts && opts.keepScroll) body.scrollTop = top;
+      mkBoardRenderFoot_();
+    }
+    function mkBoardSyncTools_(){
+      const B = __mkBoard;
+      try{
+        els.boardFilters.querySelectorAll(".newsFilter").forEach((b)=>{
+          const on = String(b.getAttribute("data-cat") || "") === B.filter;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        els.boardSort.querySelectorAll("button[data-sort]").forEach((b)=>{
+          b.setAttribute("aria-pressed", b.getAttribute("data-sort") === B.sort ? "true" : "false");
+        });
+      }catch(_e){}
+    }
+    function mkBoardFlash_(id){
+      const card = mkBoardCard_(id);
+      if(!card) return;
+      if(els.boardBody) els.boardBody.scrollTop = Math.max(0, card.offsetTop - 10);
+      card.classList.remove("flash");
+      void card.offsetWidth;   
+      card.classList.add("flash");
+      setTimeout(()=>{ try{ card.classList.remove("flash"); }catch(_e){} }, 1900);
+    }
+
+async function mkBoardLoadRun_(reset){
+      const B = __mkBoard;
+      const want = reset ? MK_BOARD_PAGE_FIRST : MK_BOARD_PAGE_MORE;
+      if(reset && !B.items.length && els.boardState) els.boardState.textContent = "불러오는 중… ⏳";
+      mkBoardRenderFoot_();
+      let snap = null;
+      try{
+        const q = reset
+          ? rQuery(rBoardRootRef(state.roomId), rOrderByChild("createdAtMs"), rLimitToLast(want))
+          : rQuery(rBoardRootRef(state.roomId), rOrderByChild("createdAtMs"), rEndBefore(B.oldest.createdAtMs, B.oldest.key), rLimitToLast(want));
+        snap = await readGuard_(rGet(q), reset ? "꿀단지 목록" : "꿀단지 더 보기", 8000);
+      }catch(err){
+        
+        console.warn("[V275_HONEYPOT] 목록을 불러오지 못했습니다", err);
+        if(reset){
+          B.items = []; B.byId = new Map(); B.oldest = null; B.hasMore = false; B.loadFailed = true;
+          B.comments.clear(); B.openCmts.clear(); B.cmtFailed.clear();
+          if(els.boardFeed) els.boardFeed.innerHTML = "";
+        }
+        if(els.boardState) els.boardState.textContent = "아직 준비 중이에요 — 잠시 뒤 다시 열어 주세요 🙏";
+        return;
+      }
+      const rows = mkBoardRowsFromSnap_(snap);
+      if(reset){
+        B.items = rows;
+        B.byId = new Map(rows.map((p)=> [p.id, p]));
+        B.comments.clear(); B.openCmts.clear(); B.cmtFailed.clear();
+        B.hasMore = true;
+        B.loadFailed = false;
+      }else{
+        rows.forEach((p)=>{
+          const had = B.byId.get(p.id);
+          if(had) Object.assign(had, p);   
+          else { B.items.push(p); B.byId.set(p.id, p); }
+        });
+        B.items.sort(mkBoardSortNew_);
+      }
+      const last = rows[rows.length - 1];
+      if(last) B.oldest = { createdAtMs: last.createdAtMs, key: last.id };
+      if(rows.length < want) B.hasMore = false;
+      if(els.boardState) els.boardState.textContent = "";
+      B.loading = false;   
+      mkBoardRender_({ keepScroll: !reset });
+      if(reset){
+        
+        if(rows.length) mkBoardSetSeen_(rows[0].createdAtMs);
+        mkBoardShowDot_(false);
+      }
+    }
+    function mkBoardLoad_(reset){
+      const B = __mkBoard;
+      if(B.loading && B.loadP) return B.loadP;
+      if(!state.joined || !state.roomId){
+        if(els.boardState) els.boardState.textContent = "입장 후에 볼 수 있어요.";
+        return Promise.resolve();
+      }
+      if(!reset && (!B.hasMore || !B.oldest)) return Promise.resolve();
+      B.loading = true;
+      B.loadP = mkBoardLoadRun_(!!reset)
+        .catch((err)=>{ console.warn("[V275_HONEYPOT] 목록 처리 실패", err); })
+        .finally(()=>{ B.loading = false; mkBoardRenderFoot_(); });
+      return B.loadP;
+    }
+    
+    async function mkBoardCheckDot_(){
+      try{
+        if(!state.joined || !state.roomId) return;
+        const snap = await readGuard_(
+          rGet(rQuery(rBoardRootRef(state.roomId), rOrderByChild("createdAtMs"), rLimitToLast(1))),
+          "꿀단지 새 글 확인", 8000);
+        const rows = mkBoardRowsFromSnap_(snap);
+        const newest = rows.length ? Number(rows[0].createdAtMs || 0) : 0;
+        if(__mkBoard.isOpen) return;   
+        mkBoardShowDot_(!!newest && newest > mkBoardSeenMs_());
+      }catch(err){
+        
+        console.warn("[V275_HONEYPOT] 새 글 확인 실패(무시)", err);
+      }
+    }
+
+function mkBoardIsSheet_(){
+      try{ return window.matchMedia ? window.matchMedia("(max-width:760px)").matches : (window.innerWidth <= 760); }catch(_e){ return false; }
+    }
+    function mkBoardLoadPos_(){
+      try{
+        const v = JSON.parse(localStorage.getItem(MK_BOARD_POS_LS) || "null");
+        if(v && isFinite(Number(v.x)) && isFinite(Number(v.y))) return { x: Number(v.x), y: Number(v.y) };
+      }catch(_e){}
+      return null;
+    }
+    function mkBoardSavePos_(pos){
+      try{ localStorage.setItem(MK_BOARD_POS_LS, JSON.stringify({ x: Math.round(pos.x), y: Math.round(pos.y) })); }catch(_e){}
+    }
+    
+    function mkBoardDefaultPos_(){
+      const W = (els.boardWin && els.boardWin.offsetWidth) || 400;
+      let x = Math.max(8, (window.innerWidth - W) / 2), y = 24;
+      try{
+        const main = document.querySelector("main");
+        const r = main ? main.getBoundingClientRect() : null;
+        if(r && r.width > 0) x = Math.max(8, r.left + (r.width - W) / 2);
+        const tb = document.querySelector(".topbar");
+        const tr = tb ? tb.getBoundingClientRect() : null;
+        if(tr && tr.height > 0) y = Math.max(0, tr.bottom) + 24;
+      }catch(_e){}
+      return { x, y };
+    }
+    
+    function mkBoardClampPos_(pos){
+      const W = (els.boardWin && els.boardWin.offsetWidth) || 400;
+      const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
+      const x = Math.min(Math.max(Number(pos.x) || 0, 48 - W), Math.max(0, vw - 48));
+      const y = Math.min(Math.max(Number(pos.y) || 0, 0), Math.max(0, vh - 48));
+      return { x: Math.round(x), y: Math.round(y) };
+    }
+    function mkBoardApplyPos_(){
+      const w = els.boardWin;
+      if(!w || mkBoardIsSheet_()) return;   
+      const B = __mkBoard;
+      if(!B.pos) B.pos = mkBoardLoadPos_() || mkBoardDefaultPos_();
+      B.pos = mkBoardClampPos_(B.pos);
+      w.style.left = B.pos.x + "px";
+      w.style.top = B.pos.y + "px";
+    }
+    function mkBoardSetView_(v){
+      const B = __mkBoard;
+      const next = (v === "write") ? "write" : "feed";
+      if(B.view === "feed" && next !== "feed" && els.boardBody) B.feedScroll = els.boardBody.scrollTop;
+      B.view = next;
+      const feed = next === "feed";
+      if(els.boardTools) els.boardTools.hidden = !feed;
+      if(els.boardBody) els.boardBody.hidden = !feed;
+      if(els.boardWrite) els.boardWrite.hidden = feed;
+      if(els.boardBack) els.boardBack.hidden = feed;
+      if(els.boardWriteBtn) els.boardWriteBtn.hidden = !feed;
+      if(els.boardWinTitle) els.boardWinTitle.textContent = feed ? "🍯 꿀단지" : "✍️ 꿀단지에 올리기";
+      if(feed){ if(els.boardBody) els.boardBody.scrollTop = B.feedScroll || 0; }
+      else if(els.boardWriteScroll) els.boardWriteScroll.scrollTop = 0;
+    }
+    function mkBoardOpen_(opts){
+      const w = els.boardWin, B = __mkBoard;
+      if(!w) return;
+      w.hidden = false;
+      w.setAttribute("aria-hidden", "false");
+      if(els.boardSub) els.boardSub.textContent = mkBoardIsSheet_() ? "최근 20개" : "최근 20개 · 끌어서 옮겨요";
+      mkBoardApplyPos_();
+      document.body.classList.add("boardOpen");
+      B.isOpen = true;
+      mkBoardShowDot_(false);
+      if(!(opts && opts.skipLoad)) mkBoardLoad_(true);
+    }
+    function mkBoardCloseLb_(){
+      if(!els.boardLb || els.boardLb.hidden) return false;
+      els.boardLb.hidden = true;
+      try{ if(els.boardLbImg) els.boardLbImg.removeAttribute("src"); }catch(_e){}
+      return true;
+    }
+    function mkBoardClose_(){
+      const w = els.boardWin, B = __mkBoard;
+      if(!w) return;
+      mkBoardCloseLb_();
+      mkBoardCloseMenus_(null);
+      
+      try{ const a = document.activeElement; if(a && w.contains(a)) a.blur?.(); }catch(_e){}
+      w.hidden = true;
+      w.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("boardOpen");
+      B.isOpen = false;
+    }
+    function mkBoardToggle_(){
+      if(__mkBoard.isOpen){ mkBoardClose_(); return; }
+      if(!state.joined){ showToast("입장하고 확인해줘! 💗"); return; }
+      mkBoardOpen_();
+    }
+    function mkBoardOpenLb_(id){
+      const p = __mkBoard.byId.get(id);
+      const src = p ? (p.img || p.imgM) : "";
+      if(!src || !els.boardLb || !els.boardLbImg) return;
+      els.boardLbImg.setAttribute("src", src);
+      if(els.boardLbTitle) els.boardLbTitle.textContent = p.title || "";
+      if(els.boardLbBy) els.boardLbBy.textContent = `${p.emoji ? p.emoji + " " : ""}${p.byNick || "익명"} · ${mkBoardTimeText_(p.createdAtMs)}`;
+      els.boardLb.hidden = false;
+      try{ els.boardLbClose.focus({ preventScroll: true }); }catch(_e){}
+    }
+    function mkBoardOpenUrl_(id){
+      const p = __mkBoard.byId.get(id);
+      const u = p ? mkBoardSafeUrl_(p.url) : "";
+      if(!u){ showToast("링크 주소가 올바르지 않아요", 2600); return; }
+      
+      try{ window.open(u, "_blank", "noopener"); }catch(_e){}
+    }
+    function mkBoardCloseMenus_(except){
+      try{
+        if(!els.boardWin) return;
+        els.boardWin.querySelectorAll(".hpMoreWrap.open").forEach((w)=>{
+          if(w === except) return;
+          w.classList.remove("open");
+          const b = w.querySelector(".hpMoreBtn");
+          if(b) b.setAttribute("aria-expanded", "false");
+          const card = w.closest(".hpPost");
+          if(card) card.classList.remove("menuOpen");
+        });
+      }catch(_e){}
+    }
+    function mkBoardToggleMenu_(btn){
+      const w = btn.closest(".hpMoreWrap");
+      if(!w) return;
+      const open = !w.classList.contains("open");
+      w.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      const card = w.closest(".hpPost");
+      if(card) card.classList.toggle("menuOpen", open);
+    }
+
+function mkBoardSyncReact_(p, kind){
+      const card = mkBoardCard_(p.id);
+      const b = card ? card.querySelector(`.hpReact[data-react="${kind}"]`) : null;
+      if(!b) return;
+      const bucket = p.reacts[kind] || {};
+      b.setAttribute("aria-pressed", (state.uid && bucket[state.uid]) ? "true" : "false");
+      const n = b.querySelector(".n");
+      if(n) n.textContent = String(mkBoardCount_(bucket));
+    }
+    async function mkBoardToggleReact_(id, kind){
+      const B = __mkBoard;
+      if(kind !== "heart" && kind !== "thumb") return;
+      if(!state.joined || !state.uid || !state.roomId){ showToast("입장하고 확인해줘! 💗"); return; }
+      const p = B.byId.get(id);
+      if(!p) return;
+      const busyKey = id + "|" + kind;
+      if(B.reactBusy.has(busyKey)) return;
+      const uid = state.uid;
+      const bucket = p.reacts[kind] || (p.reacts[kind] = {});
+      const was = !!bucket[uid];
+      if(was) delete bucket[uid]; else bucket[uid] = 1;
+      mkBoardSyncReact_(p, kind);
+      B.reactBusy.add(busyKey);
+      try{
+        const ref = rChild(rBoardPostRef(state.roomId, id), `reacts/${kind}/${uid}`);
+        await readGuard_(was ? rRemove(ref) : rSet(ref, 1), "꿀단지 반응 저장", 8000);
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 반응 저장 실패", err);
+        if(was) bucket[uid] = 1; else delete bucket[uid];
+        mkBoardSyncReact_(p, kind);
+        showToast("반응을 저장하지 못했어요 — 잠시 뒤 다시 눌러 주세요", 2600);
+      }finally{
+        B.reactBusy.delete(busyKey);
+      }
+    }
+
+function mkBoardSyncCmts_(id){
+      const p = __mkBoard.byId.get(id);
+      const card = p ? mkBoardCard_(id) : null;
+      if(!card) return;
+      const ul = card.querySelector(".hpCmtList");
+      if(ul && __mkBoard.openCmts.has(id)) ul.innerHTML = mkBoardCmtsInnerHtml_(p);
+      const n = card.querySelector(".hpReact.isCmt .n");
+      if(n) n.textContent = String(p.cN);
+    }
+    async function mkBoardLoadCmts_(id){
+      const B = __mkBoard;
+      if(B.cmtLoading.has(id)) return;
+      B.cmtFailed.delete(id);
+      B.cmtLoading.add(id);
+      mkBoardSyncCmts_(id);
+      try{
+        if(!state.joined || !state.roomId) throw new Error("not joined");
+        const snap = await readGuard_(
+          rGet(rQuery(rBoardCommentsRef(state.roomId, id), rOrderByChild("createdAtMs"), rLimitToLast(50))),
+          "꿀단지 댓글", 8000);
+        const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+        const list = Object.keys(val).map((cid)=> mkBoardNormCmt_(cid, val[cid])).filter(Boolean);
+        list.sort((a, b)=> (a.createdAtMs - b.createdAtMs) || (a.id < b.id ? -1 : (a.id > b.id ? 1 : 0)));
+        B.comments.set(id, list);
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 댓글을 불러오지 못했습니다", err);
+        B.cmtFailed.add(id);   
+      }finally{
+        B.cmtLoading.delete(id);
+      }
+      mkBoardSyncCmts_(id);
+    }
+    function mkBoardToggleCmts_(id){
+      const B = __mkBoard;
+      if(!B.byId.get(id)) return;
+      const open = !B.openCmts.has(id);
+      if(open) B.openCmts.add(id); else B.openCmts.delete(id);
+      const card = mkBoardCard_(id);
+      if(card){
+        const box = card.querySelector(".hpCmts");
+        if(box) box.hidden = !open;
+        const b = card.querySelector(".hpReact.isCmt");
+        if(b) b.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      if(!open) return;
+      if(!B.comments.has(id)) mkBoardLoadCmts_(id);
+      else mkBoardSyncCmts_(id);
+    }
+    async function mkBoardPostCmt_(id, input){
+      const B = __mkBoard;
+      if(!input) return;
+      if(!state.joined || !state.uid || !state.roomId){ showToast("입장하고 확인해줘! 💗"); return; }
+      const p = B.byId.get(id);
+      if(!p) return;
+      const text = mkBoardClip_(String(input.value || "").trim(), 200);
+      if(!text){ try{ input.focus(); }catch(_e){} return; }
+      if(B.cmtPosting.has(id)) return;
+      B.cmtPosting.add(id);
+      const roomId = state.roomId;
+      const c = { byUid: state.uid, byNick: mkBoardMyNick_(), emoji: mkBoardClip_(mkBoardMyEmoji_(), 16), nameColor: mkBoardMyNameColor_(), text, createdAtMs: mkNowMs_() };
+      try{
+        const ref = rPush(rBoardCommentsRef(roomId, id));
+        await readGuard_(rSet(ref, c), "꿀단지 댓글 저장", 10000);
+        input.value = "";
+        const list = B.comments.get(id);
+        if(list) list.push(mkBoardNormCmt_(ref.key, c));
+        p.cN = (Number(p.cN) || 0) + 1;
+        mkBoardSyncCmts_(id);
+        
+        try{ rRunTransaction(rChild(rBoardPostRef(roomId, id), "cN"), (n)=> (Number(n) || 0) + 1).catch(()=>{}); }catch(_e){}
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 댓글 저장 실패", err);
+        showToast("댓글을 올리지 못했어요 — 다시 시도해 주세요", 2600);
+      }finally{
+        B.cmtPosting.delete(id);
+      }
+    }
+    async function mkBoardDelCmt_(pid, cid){
+      const B = __mkBoard;
+      const p = B.byId.get(pid);
+      const list = B.comments.get(pid) || [];
+      const c = list.find((x)=> x.id === cid);
+      if(!p || !c || !state.roomId) return;
+      if(!(state.uid && (c.byUid === state.uid || state.adminOk))) return;
+      const roomId = state.roomId;
+      try{
+        await readGuard_(rRemove(rChild(rBoardCommentsRef(roomId, pid), cid)), "꿀단지 댓글 지우기", 8000);
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 댓글 지우기 실패", err);
+        showToast("지우지 못했어요(권한)", 2600);
+        return;
+      }
+      const i = list.indexOf(c);
+      if(i >= 0) list.splice(i, 1);
+      p.cN = Math.max(0, (Number(p.cN) || 0) - 1);
+      mkBoardSyncCmts_(pid);
+      try{ rRunTransaction(rChild(rBoardPostRef(roomId, pid), "cN"), (n)=> Math.max(0, (Number(n) || 0) - 1)).catch(()=>{}); }catch(_e){}
+    }
+
+async function mkBoardDelPost_(id){
+      const B = __mkBoard;
+      const p = B.byId.get(id);
+      if(!p || !mkBoardCanDel_(p) || !state.roomId) return;
+      if(!confirm("이 글을 지울까요? 댓글도 같이 지워져요")) return;
+      const roomId = state.roomId;
+      const base = rRoomBase(roomId);
+      try{
+        await readGuard_(rUpdate(rRef(rtdb), { [`${base}/board/${id}`]: null, [`${base}/boardComments/${id}`]: null }), "꿀단지 글 지우기", 10000);
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 글 지우기 실패", err);
+        showToast("지우지 못했어요(권한)", 2600);
+        return;
+      }
+      if(p.byUid === state.uid && (p.img || p.imgM)){
+        const path = `rooms/${roomId}/board/${p.byUid}/${id}`;
+        (async ()=>{
+          try{
+            const { m, storage } = await stInst_();
+            await Promise.allSettled([ m.deleteObject(m.ref(storage, `${path}.webp`)), m.deleteObject(m.ref(storage, `${path}_m.webp`)) ]);
+          }catch(_e){}
+        })();
+      }
+      const i = B.items.indexOf(p);
+      if(i >= 0) B.items.splice(i, 1);
+      B.byId.delete(id);
+      B.comments.delete(id);
+      B.openCmts.delete(id);
+      mkBoardRender_({ keepScroll: true });
+      showToast("🗑️ 지웠어요", 2000);
+    }
+
+function mkBoardSyncCounts_(){
+      if(els.boardTitleIn && els.boardTitleN) els.boardTitleN.textContent = `${els.boardTitleIn.value.length}/80`;
+      if(els.boardMemoIn && els.boardMemoN) els.boardMemoN.textContent = `${els.boardMemoIn.value.length}/300`;
+      
+      const yt = mkBoardYtId_(mkBoardSafeUrl_(els.boardLinkIn ? els.boardLinkIn.value : ""));
+      if(els.boardYtPrev) els.boardYtPrev.hidden = !yt;
+      if(yt && els.boardYtImg){
+        const src = mkBoardYtThumb_(yt);
+        if(els.boardYtImg.getAttribute("src") !== src) els.boardYtImg.setAttribute("src", src);
+      }
+    }
+    function mkBoardPickCat_(cat){
+      if(!MK_BOARD_CATS[cat]) return;
+      __mkBoard.cat = cat;
+      try{ els.boardCats.querySelectorAll(".hpCatChip").forEach((b)=>{ b.setAttribute("aria-pressed", b.getAttribute("data-cat") === cat ? "true" : "false"); }); }catch(_e){}
+      if(els.boardCatHint) els.boardCatHint.hidden = true;
+      if(els.boardCatTip){ els.boardCatTip.textContent = MK_BOARD_CATS[cat].tip; els.boardCatTip.hidden = false; }
+    }
+    function mkBoardClearPhoto_(){
+      const B = __mkBoard;
+      B.photoSeq += 1;   
+      B.photoBusy = false;
+      B.pendingKey = "";   
+      if(B.photo && B.photo.thumbUrl){ try{ URL.revokeObjectURL(B.photo.thumbUrl); }catch(_e){} }
+      B.photo = null;
+      try{ if(els.boardPhoto) els.boardPhoto.value = ""; }catch(_e){}
+      if(els.boardPhotoThumb) els.boardPhotoThumb.removeAttribute("src");
+      if(els.boardPhotoInfo) els.boardPhotoInfo.textContent = "";
+      if(els.boardPhotoSel) els.boardPhotoSel.hidden = true;
+      if(els.boardPhotoDrop) els.boardPhotoDrop.hidden = false;
+    }
+    
+    function mkBoardResetForm_(fill){
+      const B = __mkBoard;
+      B.cat = "";
+      B.pendingKey = "";
+      B.fromGrab = !!fill;
+      try{ els.boardCats.querySelectorAll(".hpCatChip").forEach((b)=> b.setAttribute("aria-pressed", "false")); }catch(_e){}
+      if(els.boardCatHint) els.boardCatHint.hidden = false;
+      if(els.boardCatTip){ els.boardCatTip.textContent = ""; els.boardCatTip.hidden = true; }
+      if(els.boardTitleIn) els.boardTitleIn.value = fill ? String(fill.title || "") : "";
+      if(els.boardLinkIn) els.boardLinkIn.value = fill ? String(fill.url || "") : "";
+      if(els.boardMemoIn) els.boardMemoIn.value = "";
+      if(els.boardGrabNote) els.boardGrabNote.hidden = !fill;
+      mkBoardClearPhoto_();
+      mkBoardSyncCounts_();
+    }
+    
+    async function mkBoardDecode_(file){
+      try{
+        const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+        if(bmp && bmp.width && bmp.height) return { img: bmp, w: bmp.width, h: bmp.height, close(){ try{ bmp.close(); }catch(_e){} } };
+      }catch(_e){}
+      const url = URL.createObjectURL(file);
+      try{
+        const img = new Image();
+        img.decoding = "async";
+        await new Promise((res, rej)=>{ img.onload = res; img.onerror = rej; img.src = url; });
+        if(!img.naturalWidth || !img.naturalHeight) throw new Error("image decode failed");
+        return { img, w: img.naturalWidth, h: img.naturalHeight, close(){ try{ URL.revokeObjectURL(url); }catch(_e){} } };
+      }catch(e){
+        try{ URL.revokeObjectURL(url); }catch(_e){}
+        throw e;
+      }
+    }
+    function mkBoardToBlob_(cv, type, q){
+      return new Promise((res)=>{ try{ cv.toBlob((b)=> res(b || null), type, q); }catch(_e){ res(null); } });
+    }
+    
+    async function mkBoardShrink_(file, maxEdge, q){
+      const src = (file && file.img) ? file : await mkBoardDecode_(file);
+      try{
+        const scale = Math.min(1, maxEdge / Math.max(src.w, src.h));
+        const w = Math.max(1, Math.round(src.w * scale)), h = Math.max(1, Math.round(src.h * scale));
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d");
+        if(!ctx) throw new Error("canvas 2d unavailable");
+        ctx.drawImage(src.img, 0, 0, w, h);
+        let type = "image/webp", qq = q;
+        let blob = await mkBoardToBlob_(cv, type, qq);
+        if(!blob || blob.type !== "image/webp"){
+          type = "image/jpeg"; qq = 0.85;
+          
+          ctx.globalCompositeOperation = "destination-over";
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.globalCompositeOperation = "source-over";
+          blob = await mkBoardToBlob_(cv, type, qq);
+        }
+        for(let i = 0; i < 3 && blob && blob.size > MK_BOARD_IMG_MAX_BYTES; i++){
+          qq = Math.max(0.3, Math.round((qq - 0.1) * 100) / 100);
+          const b2 = await mkBoardToBlob_(cv, type, qq);
+          if(b2) blob = b2;
+        }
+        cv.width = 0; cv.height = 0;   
+        if(!blob) throw new Error("toBlob failed");
+        return { blob, w, h, type: blob.type || type };
+      }finally{
+        if(src !== file) src.close();
+      }
+    }
+    async function mkBoardOnPhoto_(){
+      const B = __mkBoard;
+      const f = (els.boardPhoto && els.boardPhoto.files) ? els.boardPhoto.files[0] : null;
+      if(!f) return;
+      mkBoardClearPhoto_();
+      const seq = B.photoSeq;
+      B.photoBusy = true;
+      if(els.boardPhotoDrop) els.boardPhotoDrop.hidden = true;
+      if(els.boardPhotoSel) els.boardPhotoSel.hidden = false;
+      if(els.boardPhotoInfo) els.boardPhotoInfo.textContent = "사진 줄이는 중… ⏳";
+      try{
+        const src = await mkBoardDecode_(f);
+        let full = null, feed = null;
+        try{
+          full = await mkBoardShrink_(src, 1280, 0.82);   
+          feed = await mkBoardShrink_(src, 720, 0.80);    
+        }finally{ src.close(); }
+        if(seq !== B.photoSeq) return;   
+        const thumbUrl = URL.createObjectURL(feed.blob);
+        B.photo = { full, feed, thumbUrl, name: String(f.name || ""), size: Number(f.size) || 0 };
+        B.photoBusy = false;
+        if(els.boardPhotoThumb) els.boardPhotoThumb.setAttribute("src", thumbUrl);
+        if(els.boardPhotoInfo) els.boardPhotoInfo.textContent = `${B.photo.name ? B.photo.name + " · " : ""}줄인 크기 약 ${mkBoardFmtSize_(full.blob.size)}`;
+      }catch(err){
+        console.warn("[V275_HONEYPOT] 사진을 읽지 못했습니다", err);
+        if(seq !== B.photoSeq) return;
+        mkBoardClearPhoto_();
+        showToast("이 사진 형식은 못 읽어요 — 다른 사진으로 골라 주세요", 3200);
+      }
+    }
+    function mkBoardSetPosting_(on){
+      if(els.boardSubmit){ els.boardSubmit.disabled = !!on; els.boardSubmit.textContent = on ? "올리는 중… ⏳" : "🍯 올리기"; }
+      if(els.boardCancel) els.boardCancel.disabled = !!on;
+    }
+    
+    async function mkBoardSubmit_(){
+      const B = __mkBoard;
+      if(B.posting) return;
+      if(!state.joined || !state.uid || !state.roomId){ showToast("입장하고 확인해줘! 💗"); return; }
+      if(B.photoBusy){ showToast("사진을 줄이는 중이에요 — 잠깐만요 ⏳", 2200); return; }
+      const cat = B.cat;
+      if(!MK_BOARD_CATS[cat]){ showToast("카테고리를 골라 주세요 💗", 2200); return; }
+      const title = mkBoardClip_(String(els.boardTitleIn ? els.boardTitleIn.value : "").trim(), 80);
+      if(!title){ showToast("제목을 적어 주세요 💗", 2200); try{ els.boardTitleIn.focus(); }catch(_e){} return; }
+      const rawUrl = String(els.boardLinkIn ? els.boardLinkIn.value : "").trim();
+      const url = mkBoardSafeUrl_(rawUrl);
+      if(rawUrl && !url){ showToast("링크는 http로 시작해야 해요", 2600); try{ els.boardLinkIn.focus(); }catch(_e){} return; }
+      const memo = mkBoardClip_(String(els.boardMemoIn ? els.boardMemoIn.value : "").trim(), 300);
+      const roomId = state.roomId, uid = state.uid;
+      B.posting = true;
+      mkBoardSetPosting_(true);
+      try{
+        if(!B.pendingKey) B.pendingKey = rPush(rBoardRootRef(roomId)).key;
+        const key = B.pendingKey;
+        const post = {
+          cat, title,
+          byUid: uid, byNick: mkBoardMyNick_(), emoji: mkBoardClip_(mkBoardMyEmoji_(), 16), nameColor: mkBoardMyNameColor_(),
+          createdAtMs: mkNowMs_(),
+          cN: 0   
+        };
+        if(url) post.url = url;
+        if(memo) post.memo = memo;
+        const ph = B.photo;
+        
+        if(ph && !(ph.uploaded && ph.uploaded.key === key)){
+          try{
+            const { m, storage } = await readGuard_(stInst_(), "Storage 불러오기", 15000);
+            const path = `rooms/${roomId}/board/${uid}/${key}`;
+            const refFull = m.ref(storage, `${path}.webp`), refFeed = m.ref(storage, `${path}_m.webp`);
+            const meta = (b)=> ({ contentType: b.type || "image/webp", cacheControl: "public, max-age=31536000, immutable" });
+            await readGuard_(Promise.all([
+              m.uploadBytes(refFull, ph.full.blob, meta(ph.full.blob)),
+              m.uploadBytes(refFeed, ph.feed.blob, meta(ph.feed.blob))
+            ]), "꿀단지 사진 올리기", 60000);
+            const urls = await readGuard_(Promise.all([ m.getDownloadURL(refFull), m.getDownloadURL(refFeed) ]), "꿀단지 사진 주소", 15000);
+            ph.uploaded = { key, img: String(urls[0] || ""), imgM: String(urls[1] || ""), imgW: ph.full.w, imgH: ph.full.h };
+          }catch(err){
+            console.warn("[V275_HONEYPOT] 사진 올리기 실패", err);
+            B.pendingKey = "";   
+            showToast("사진 올리기 실패(스토리지 규칙/설정 확인)", 3200);
+            return;
+          }
+        }
+        if(ph && ph.uploaded && ph.uploaded.key === key){
+          post.img = ph.uploaded.img;
+          post.imgM = ph.uploaded.imgM;
+          post.imgW = ph.uploaded.imgW;
+          post.imgH = ph.uploaded.imgH;
+        }
+        try{
+          await readGuard_(rSet(rBoardPostRef(roomId, key), post), "꿀단지 글 저장", 10000);
+        }catch(err){
+          
+          let saved = false;
+          try{
+            const s = await readGuard_(rGet(rBoardPostRef(roomId, key)), "꿀단지 글 확인", 8000);
+            const v = (s && s.exists && s.exists()) ? s.val() : null;
+            saved = !!(v && typeof v === "object" && v.byUid === uid);
+          }catch(_e){}
+          if(!saved){
+            console.warn("[V275_HONEYPOT] 글 저장 실패", err);
+            showToast("글 저장 실패 — 다시 시도해 주세요", 3200);
+            return;
+          }
+        }
+        const item = mkBoardNormPost_(key, post);
+        if(!B.byId.has(key)){ B.items.unshift(item); B.byId.set(key, item); }
+        B.loadFailed = false;
+        if(els.boardState) els.boardState.textContent = "";
+        mkBoardSetSeen_(post.createdAtMs);   
+        
+        try{
+          const ci = MK_BOARD_CATS[cat];
+          Promise.resolve(sendChatCore(`🍯 꿀단지에 새 글을 올렸어요 · [${ci.emo} ${ci.name}] 「${title}」`, false, null,
+            { board: { id: key, cat, title: title.slice(0, 80) } })).catch(()=>{});
+        }catch(_e){}
+        mkBoardResetForm_(null);
+        B.filter = ""; B.sort = "new";
+        mkBoardSyncTools_();
+        mkBoardSetView_("feed");
+        mkBoardRender_();
+        if(els.boardBody) els.boardBody.scrollTop = 0;
+        mkBoardFlash_(key);
+        showToast("올렸어요! 채팅에도 알려 드렸어요 💗", 2600);
+      }finally{
+        B.posting = false;
+        mkBoardSetPosting_(false);
+      }
+    }
+
+async function mkBoardOpenPost_(id){
+      const B = __mkBoard;
+      id = String(id || "");
+      if(!id) return;
+      if(!state.joined || !state.roomId){ showToast("입장하고 확인해줘! 💗"); return; }
+      if(!B.isOpen) mkBoardOpen_();
+      if(B.view !== "feed") mkBoardSetView_("feed");
+      try{ if(B.loadP) await B.loadP; }catch(_e){}
+      let p = B.byId.get(id);
+      if(!p){
+        
+        let snap = null;
+        try{
+          snap = await readGuard_(rGet(rBoardPostRef(state.roomId, id)), "꿀단지 글 하나", 8000);
+        }catch(err){
+          console.warn("[V275_HONEYPOT] 글을 불러오지 못했습니다", err);
+          showToast("아직 준비 중이에요 — 잠시 뒤 다시 열어 주세요 🙏", 2600);
+          return;
+        }
+        if(!snap || !snap.exists || !snap.exists() || !snap.val() || typeof snap.val() !== "object"){ showToast("🗑️ 지워진 글이에요", 2200); return; }
+        p = B.byId.get(id);   
+        if(!p){
+          p = mkBoardNormPost_(id, snap.val());
+          B.items.unshift(p);
+          B.byId.set(id, p);
+          B.loadFailed = false;
+          if(els.boardState) els.boardState.textContent = "";
+        }
+      }
+      if(B.filter && B.filter !== p.cat){ B.filter = ""; mkBoardSyncTools_(); }
+      mkBoardRender_({ keepScroll: true });
+      mkBoardFlash_(id);
+    }
+    function mkBoardGrabFromMsg_(btn){
+      if(!state.joined){ showToast("입장하고 확인해줘! 💗"); return; }
+      const msgEl = (btn && btn.closest) ? btn.closest(".msg") : null;
+      const tEl = msgEl ? msgEl.querySelector(".text") : null;
+      const raw = String(tEl ? tEl.textContent : "");
+      
+      const m = /((?:https?:\/\/|www\.)[^\s<]+)/i.exec(raw);
+      let url = m ? String(m[1]) : "";
+      while(/[.,!?;:)]$/.test(url)) url = url.slice(0, -1);
+      if(url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+      const title = mkBoardClip_(raw.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi, " ").replace(/\s+/g, " ").trim(), 80);
+      __mkBoard.grab = { title, url };
+      if(!__mkBoard.isOpen) mkBoardOpen_();
+      mkBoardResetForm_(__mkBoard.grab);
+      mkBoardSetView_("write");
+    }
+
+if(els.goBoard) els.goBoard.addEventListener("click", ()=>{ mkBoardToggle_(); });
+    if(els.boardWin){
+      els.boardWin.addEventListener("click", (ev)=>{
+        const t = ev.target;
+        if(!t || !t.closest) return;
+        
+        if(els.boardLb && !els.boardLb.hidden && els.boardLb.contains(t)){
+          if(t === els.boardLb || t.closest("#boardLbClose")) mkBoardCloseLb_();
+          return;
+        }
+        const menuBtn = t.closest(".hpMoreBtn");
+        mkBoardCloseMenus_(menuBtn ? menuBtn.closest(".hpMoreWrap") : null);
+        let b = null;
+        if(t.closest("#boardClose")){ mkBoardClose_(); return; }
+        if(t.closest("#boardBack")){ mkBoardSetView_("feed"); return; }
+        if(t.closest("#boardWriteBtn, .hpWriteGo")){ mkBoardSetView_("write"); return; }
+        if((b = t.closest("#boardFilters .newsFilter"))){
+          
+          __mkBoard.filter = MK_BOARD_CATS[b.getAttribute("data-cat")] ? String(b.getAttribute("data-cat")) : "";
+          mkBoardSyncTools_(); mkBoardRender_();
+          if(els.boardBody) els.boardBody.scrollTop = 0;
+          return;
+        }
+        if((b = t.closest("#boardSort button[data-sort]"))){
+          __mkBoard.sort = (b.getAttribute("data-sort") === "hot") ? "hot" : "new";
+          mkBoardSyncTools_(); mkBoardRender_();
+          if(els.boardBody) els.boardBody.scrollTop = 0;
+          return;
+        }
+        if((b = t.closest(".hpReact[data-react]"))){ mkBoardToggleReact_(String(b.getAttribute("data-key") || ""), String(b.getAttribute("data-react") || "")); return; }
+        if((b = t.closest(".hpReact[data-cmt]"))){ mkBoardToggleCmts_(String(b.getAttribute("data-cmt") || "")); return; }
+        if((b = t.closest(".hpCmtGo"))){
+          const row = b.closest(".hpCmtRow");
+          mkBoardPostCmt_(String(b.getAttribute("data-key") || ""), row ? row.querySelector(".hpCmtIn") : null);
+          return;
+        }
+        if((b = t.closest(".hpCmtX"))){ mkBoardDelCmt_(String(b.getAttribute("data-key") || ""), String(b.getAttribute("data-ckey") || "")); return; }
+        if(menuBtn){ mkBoardToggleMenu_(menuBtn); return; }
+        if((b = t.closest(".hpDel"))){ mkBoardDelPost_(String(b.getAttribute("data-del") || "")); return; }
+        if((b = t.closest("[data-open]"))){ mkBoardOpenUrl_(String(b.getAttribute("data-open") || "")); return; }
+        if((b = t.closest("[data-lb]"))){ mkBoardOpenLb_(String(b.getAttribute("data-lb") || "")); return; }
+        if(t.closest("[data-more]")){ mkBoardLoad_(false); return; }
+        if((b = t.closest("#boardCats .hpCatChip"))){ mkBoardPickCat_(String(b.getAttribute("data-cat") || "")); return; }
+        if(t.closest("#boardPhotoX")){ mkBoardClearPhoto_(); return; }
+        if(t.closest("#boardCancel")){ mkBoardResetForm_(null); mkBoardSetView_("feed"); return; }
+        if(t.closest("#boardSubmit")){ mkBoardSubmit_(); return; }
+      });
+      
+      els.boardWin.addEventListener("input", (ev)=>{
+        const t = ev.target;
+        if(t === els.boardTitleIn || t === els.boardMemoIn || t === els.boardLinkIn) mkBoardSyncCounts_();
+      });
+      
+      els.boardWin.addEventListener("keydown", (ev)=>{
+        const t = ev.target;
+        if(!t || !t.classList || !t.classList.contains("hpCmtIn")) return;
+        if(ev.key !== "Enter" || ev.isComposing || ev.keyCode === 229) return;
+        ev.preventDefault();
+        mkBoardPostCmt_(String(t.getAttribute("data-key") || ""), t);
+      });
+    }
+    if(els.boardPhoto) els.boardPhoto.addEventListener("change", ()=>{ mkBoardOnPhoto_(); });
+    
+    if(els.boardWinHead && els.boardWin){
+      let drag = null;
+      const head = els.boardWinHead, win = els.boardWin;
+      head.addEventListener("pointerdown", (ev)=>{
+        if(ev.button !== 0 || mkBoardIsSheet_()) return;
+        if(ev.target && ev.target.closest && ev.target.closest("button, a, input, textarea, select, label")) return;
+        const r = win.getBoundingClientRect();
+        drag = { id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, x0: r.left, y0: r.top };
+        try{ head.setPointerCapture(ev.pointerId); }catch(_e){}
+        win.classList.add("isDragging");
+        ev.preventDefault();
+      });
+      head.addEventListener("pointermove", (ev)=>{
+        if(!drag || ev.pointerId !== drag.id) return;
+        __mkBoard.pos = mkBoardClampPos_({ x: drag.x0 + (ev.clientX - drag.sx), y: drag.y0 + (ev.clientY - drag.sy) });
+        win.style.left = __mkBoard.pos.x + "px";
+        win.style.top = __mkBoard.pos.y + "px";
+      });
+      const end = (ev)=>{
+        if(!drag || (ev && ev.pointerId !== drag.id)) return;
+        drag = null;
+        win.classList.remove("isDragging");
+        try{ head.releasePointerCapture(ev.pointerId); }catch(_e){}
+        if(__mkBoard.pos) mkBoardSavePos_(__mkBoard.pos);
+      };
+      head.addEventListener("pointerup", end);
+      head.addEventListener("pointercancel", end);
+      head.addEventListener("lostpointercapture", end);
+    }
+    window.addEventListener("resize", ()=>{
+      if(!__mkBoard.isOpen) return;
+      if(els.boardSub) els.boardSub.textContent = mkBoardIsSheet_() ? "최근 20개" : "최근 20개 · 끌어서 옮겨요";
+      mkBoardApplyPos_();
+    });
+    
+    document.addEventListener("keydown", (ev)=>{
+      if(ev.key !== "Escape" || ev.isComposing) return;
+      if(mkBoardCloseLb_()) return;
+      if(__mkBoard.isOpen) mkBoardClose_();
+    });
+    mkBoardSyncCounts_();
+    
+    try{
+      window.__MK_BOARD__ = {
+        open: mkBoardOpen_,
+        close: mkBoardClose_,
+        renderMock(posts){
+          const B = __mkBoard;
+          const arr = Array.isArray(posts) ? posts
+            : ((posts && typeof posts === "object") ? Object.keys(posts).map((k)=> Object.assign({ id: k }, posts[k])) : []);
+          const now = Date.now();
+          B.items = arr.map((v, i)=> mkBoardNormPost_(String((v && v.id) || ("mock" + i)), Object.assign({ createdAtMs: now - i * 3600000 }, v || {})));
+          B.items.sort(mkBoardSortNew_);
+          B.byId = new Map(B.items.map((p)=> [p.id, p]));
+          B.oldest = null; B.hasMore = false; B.loadFailed = false;
+          B.comments.clear(); B.openCmts.clear(); B.cmtFailed.clear();
+          mkBoardOpen_({ skipLoad: true });
+          mkBoardSetView_("feed");
+          if(els.boardState) els.boardState.textContent = "";
+          mkBoardRender_();
+          return B.items.length;
+        },
+        state: __mkBoard
       };
     }catch(_e){}
     
@@ -24373,6 +25633,14 @@ document.addEventListener("keydown",(e)=>{
       }
 
       els.chatList.addEventListener("click", (ev)=>{
+        
+        const hpBtn = ev.target && ev.target.closest ? ev.target.closest(".chatBoardOpen, .chatBoardGrab") : null;
+        if(hpBtn){
+          ev.preventDefault();
+          if(hpBtn.classList.contains("chatBoardOpen")) Promise.resolve(mkBoardOpenPost_(String(hpBtn.getAttribute("data-board-id") || ""))).catch(()=>{});
+          else mkBoardGrabFromMsg_(hpBtn);
+          return;
+        }
         
         const tgl = ev.target && ev.target.closest ? ev.target.closest(".reactToggle") : null;
         if(tgl){
@@ -27908,7 +29176,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17157; 
+const MK_APP_BUILD = 17158; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -30925,6 +32193,29 @@ function dragonBlessingInfo_(){
     function dragonCoinMult_(){
       try{ return dragonCoinMultInfo_().mult; }catch(e){ return 1; }
     }
+    
+    const COIN_BOOST_MAX_MULT = 5;                       
+    const COIN_BOOST_MAX_HOURS = 168;                    
+    const COIN_BOOST_CUE_LEAD_MS = 10 * 60 * 1000;       
+    const COIN_BOOST_CUE_WINDOW_MS = 15 * 60 * 1000;     
+    const COIN_BOOST_SEEN_KEY = "mk_coin_boost_seen_v1"; 
+    const coinBoostRuntime = { seen:{} };                
+    function coinBoostInfo_(){
+      const now=mkGraceNowMs_();
+      let rec=null;
+      try{ rec=dragonS3Runtime.summary?.coinBoost; }catch(e){ rec=null; }
+      const atMs=Number(rec?.atMs)||0, endMs=Number(rec?.endMs)||0;
+      if(!rec || typeof rec!=="object" || !(atMs>0) || !(endMs>0)) return {phase:"none",mult:1,atMs:0,endMs:0,label:"",rec:null,now};
+      const mult=Math.max(1,Math.min(COIN_BOOST_MAX_MULT,Math.round(Number(rec.mult)||1)));
+      const label=(typeof rec.label==="string")?rec.label.trim().slice(0,20):"";
+      const phase=(now<atMs)?"scheduled":((now<endMs)?"active":"ended");
+      return {phase,mult,atMs,endMs,label,rec,now};
+    }
+    function coinBoostCoinMult_(){
+      try{ const i=coinBoostInfo_(); return i.phase==="active"?i.mult:1; }catch(e){ return 1; }
+    }
+    
+    try{ window.__MK_COIN_BOOST__={ coinMult:coinBoostCoinMult_, info:coinBoostInfo_ }; }catch(e){ console.warn("[V275_COINBOOST] 창구 등록 실패",e); }
 
 function dragonScaleGain_(n){
       const base=Math.max(0,Math.floor(Number(n)||0));
@@ -31356,6 +32647,7 @@ async function writeDragonSummary_(){
             if(!dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200); }
           }
         }
+        try{ renderCoinBoostBar_(); }catch(e){}   
         
         try{ dragonGradWatchTick_(); }catch(e){}
         dragonSyncMenuButton_();
@@ -33835,6 +35127,152 @@ function dragonLocalInputValue_(ms){
       }catch(e){ console.warn("[dragon s3] guerrilla cancel failed",e); showToast("취소에 실패했어요 · 연결을 확인해 주세요",3000); }
     }
 
+function coinBoostTimeText_(ms){
+      try{
+        const d=new Date(Number(ms)||0);
+        return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+      }catch(e){ return ""; }
+    }
+    
+    function renderCoinBoostBar_(){
+      const bar=document.getElementById("coinBoostBar");
+      if(!bar) return;
+      const info=coinBoostInfo_();
+      let phase="none", text="";
+      if(info.phase==="active"){ phase="active"; text=`🚀 코인 ×${info.mult} 이벤트 진행 중 · ${coinBoostTimeText_(info.endMs)}까지`; }
+      else if(info.phase==="scheduled"){ phase="scheduled"; text=`🗓 코인 ×${info.mult} 이벤트 예약 · ${coinBoostTimeText_(info.atMs)} 시작`; }
+      if(bar.dataset.phase!==phase) bar.dataset.phase=phase;
+      if(bar.textContent!==text) bar.textContent=text;
+    }
+    
+    function renderCoinBoostStatus_(){
+      const el=document.getElementById("coinBoostStatus");
+      if(!el) return;
+      const info=coinBoostInfo_();
+      let text="지금은 꺼져 있어요.";
+      if(info.phase==="scheduled"){
+        const hours=Math.max(1,Math.round(Number(info.rec?.hours)||((info.endMs-info.atMs)/3600000)));
+        text=`🗓 ×${info.mult} 예약 · ${coinBoostTimeText_(info.atMs)} 시작 · ${hours}시간`;
+      }else if(info.phase==="active"){
+        const leftMin=Math.max(0,Math.floor((info.endMs-info.now)/60000));
+        text=`🚀 ×${info.mult} 진행 중 · ${coinBoostTimeText_(info.endMs)}까지 (남은 ${Math.floor(leftMin/60)}시간 ${leftMin%60}분)`;
+      }else if(info.phase==="ended"){
+        text=`마지막 이벤트: ×${info.mult} · ${coinBoostTimeText_(info.endMs).split(" ")[0]} 종료`;
+      }
+      if(el.textContent!==text) el.textContent=text;
+    }
+    
+    function coinBoostRefreshUi_(){
+      try{ renderCoinBoostBar_(); }catch(e){}
+      try{ renderCoinBoostStatus_(); }catch(e){}
+      try{ const a=window.__MK_PET_V24__; if(a && typeof a.updateWalletUI==="function") a.updateWalletUI(); }catch(e){}
+    }
+    
+    function coinBoostSeenOnce_(id,step){
+      const key=`${id}:${step}`;
+      if(coinBoostRuntime.seen[key]) return false;
+      coinBoostRuntime.seen[key]=1;
+      try{
+        const d=JSON.parse(localStorage.getItem(COIN_BOOST_SEEN_KEY)||"null");
+        const m=(d && typeof d==="object" && d.id===id)?d:{id};
+        if(m[step]) return false;
+        m[step]=1;
+        localStorage.setItem(COIN_BOOST_SEEN_KEY,JSON.stringify(m));
+      }catch(e){}
+      return true;
+    }
+    
+    function coinBoostTick_(){
+      if(document.hidden) return;
+      coinBoostRefreshUi_();
+      if(!state.joined) return;
+      const info=coinBoostInfo_();
+      const id=String(info.rec?.id||"");
+      if(!id) return;
+      if(info.phase==="scheduled" && info.atMs-info.now<=COIN_BOOST_CUE_LEAD_MS && coinBoostSeenOnce_(id,"cue")){
+        dragonGlowToast_(`🚀 ${Math.max(1,Math.ceil((info.atMs-info.now)/60000))}분 뒤 코인 ×${info.mult} 이벤트 시작!`,5000,true);
+      }
+      if(info.phase==="active" && info.now-info.atMs<COIN_BOOST_CUE_WINDOW_MS && coinBoostSeenOnce_(id,"start")){
+        dragonGlowToast_(`🚀 코인 ×${info.mult} 이벤트 시작! 작업 코인이 ${info.mult}배로 쌓여요${info.label?` · ${info.label}`:""}`,6000,true);
+      }
+      if(info.phase==="ended" && info.now-info.endMs<COIN_BOOST_CUE_WINDOW_MS && coinBoostSeenOnce_(id,"end")){
+        dragonGlowToast_("코인 이벤트가 끝났어요 — 수고했어요 💗",6000,false);
+      }
+    }
+    
+    function coinBoostMergeCache_(rec){
+      const s=dragonS3Runtime.summary;
+      if(s && typeof s==="object"){
+        const next=Object.assign({},s);
+        if(rec) next.coinBoost=rec; else delete next.coinBoost;
+        dragonS3Runtime.summary=next;
+        return;
+      }
+      loadDragonSummaryOnce_().then(()=>coinBoostRefreshUi_()).catch(()=>{});
+    }
+    
+    async function coinBoostStart_(){
+      if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+      if(!state.joined || !state.roomId){ showToast("작업방 입장 후 사용할 수 있어요"); return; }
+      const mult=Math.round(Number(document.getElementById("coinBoostMult")?.value)||0);
+      if(!(mult>=2 && mult<=COIN_BOOST_MAX_MULT)){ showToast("배수는 ×2~×5 중에서 골라 주세요"); return; }
+      const hours=Math.round(Number(document.getElementById("coinBoostHours")?.value)||0);
+      if(!(hours>=1 && hours<=COIN_BOOST_MAX_HOURS)){ showToast(`지속 시간은 1~${COIN_BOOST_MAX_HOURS}시간 사이로 정해 주세요`,3200); return; }
+      const now=Math.floor(mkGraceNowMs_());
+      let atMs=now;
+      const atVal=String(document.getElementById("coinBoostAt")?.value||"").trim();
+      if(atVal){
+        const t=new Date(atVal).getTime();
+        if(!Number.isFinite(t)){ showToast("시작 시각을 다시 골라 주세요"); return; }
+        atMs=Math.max(now,t);   
+      }
+      const label=String(document.getElementById("coinBoostLabel")?.value||"").trim().slice(0,20);
+      
+      try{ const cur=coinBoostInfo_(); if(cur && (cur.phase==="active"||cur.phase==="scheduled")){ const q=(cur.phase==="active") ? `지금 ×${cur.mult} 이벤트가 진행 중이에요. 새 설정으로 바꿀까요? (지금 것은 바로 끝나요)` : `예약된 ×${cur.mult} 이벤트가 있어요. 새 설정으로 바꿀까요?`; if(!window.confirm(q)) return; } }catch(e){}
+      const rec={id:`cb-${now}`,mult,atMs,endMs:atMs+hours*3600000,hours,by:String(state.uid||""),createdAtMs:now};
+      if(label) rec.label=label;
+      const btn=document.getElementById("coinBoostStart");
+      if(btn) btn.disabled=true;
+      try{
+        await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),{coinBoost:rec}),"코인 부스터 저장",8000);
+        coinBoostMergeCache_(rec);
+        coinBoostRefreshUi_();
+        showToast(`저장! ×${mult} · ${hours}시간`,3000);
+      }catch(e){ console.warn("[V275_COINBOOST] 저장 실패",e); showToast("저장에 실패했어요 · 연결을 확인해 주세요",3000); }
+      finally{ if(btn) btn.disabled=false; }
+    }
+    async function coinBoostStop_(){
+      if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+      if(!state.joined || !state.roomId){ showToast("작업방 입장 후 사용할 수 있어요"); return; }
+      const info=coinBoostInfo_();
+      if(info.phase!=="active"){ showToast("진행 중인 이벤트가 없어요"); return; }
+      const rec=Object.assign({},info.rec,{endMs:Math.floor(mkGraceNowMs_())});   
+      const btn=document.getElementById("coinBoostStop");
+      if(btn) btn.disabled=true;
+      try{
+        await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),{coinBoost:rec}),"코인 부스터 끝내기",8000);
+        coinBoostMergeCache_(rec);
+        coinBoostRefreshUi_();
+        showToast("코인 이벤트를 지금 끝냈어요",2600);
+      }catch(e){ console.warn("[V275_COINBOOST] 끝내기 실패",e); showToast("저장에 실패했어요 · 연결을 확인해 주세요",3000); }
+      finally{ if(btn) btn.disabled=false; }
+    }
+    async function coinBoostCancel_(){
+      if(!state.adminOk){ showToast("관리자 확인부터!"); return; }
+      if(!state.joined || !state.roomId){ showToast("작업방 입장 후 사용할 수 있어요"); return; }
+      const info=coinBoostInfo_();
+      if(info.phase!=="scheduled"){ showToast(info.phase==="active"?"진행 중인 이벤트는 [⏹ 지금 끝내기]로 끝내 주세요":"예약된 이벤트가 없어요",3000); return; }
+      const btn=document.getElementById("coinBoostCancel");
+      if(btn) btn.disabled=true;
+      try{
+        await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),{coinBoost:null}),"코인 부스터 예약 취소",8000);
+        coinBoostMergeCache_(null);
+        coinBoostRefreshUi_();
+        showToast("코인 이벤트 예약을 취소했어요",2600);
+      }catch(e){ console.warn("[V275_COINBOOST] 예약 취소 실패",e); showToast("취소에 실패했어요 · 연결을 확인해 주세요",3000); }
+      finally{ if(btn) btn.disabled=false; }
+    }
+
 function stopDragonRealtime_(){
       try{ if(dragonS3Runtime.unsub) dragonS3Runtime.unsub(); }catch(e){}
       dragonS3Runtime.unsub=null;
@@ -34325,6 +35763,13 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
           }).observe(adminArea,{attributes:true,attributeFilter:["style"]});
         }
       }catch(e){}
+      
+      document.getElementById("coinBoostStart")?.addEventListener("click",()=>{ coinBoostStart_().catch(()=>{}); });
+      document.getElementById("coinBoostStop")?.addEventListener("click",()=>{ coinBoostStop_().catch(()=>{}); });
+      document.getElementById("coinBoostCancel")?.addEventListener("click",()=>{ coinBoostCancel_().catch(()=>{}); });
+      document.getElementById("menuBtn")?.addEventListener("click",()=>setTimeout(()=>{ try{ renderCoinBoostStatus_(); }catch(e){} },250));
+      document.addEventListener("mk:adminUnlocked",()=>{ try{ renderCoinBoostStatus_(); }catch(e){} });
+      setInterval(()=>{ try{ coinBoostTick_(); }catch(e){} },20000);
       document.addEventListener("visibilitychange",()=>{
         if(document.hidden){ stopDragonRealtime_(); return; }
         if(state.joined && dragonModalOpen_()) subscribeDragonS3_();
@@ -41597,6 +43042,19 @@ var dgWon = false;
         if(dm > coinMult){ coinMult = dm; dgWon = true; }
       }
     }catch(e){}
+    
+    var cbWon = false, cbLabel = '';
+    try{
+      var cb = window.__MK_COIN_BOOST__;
+      if(cb && typeof cb.coinMult === 'function'){
+        var bm = Math.min(10, Math.round(Number(cb.coinMult())||1));
+        if(bm > coinMult){
+          coinMult = bm; cbWon = true;
+          var ci = (typeof cb.info === 'function') ? cb.info() : null;
+          cbLabel = (ci && ci.label) ? String(ci.label) : '';
+        }
+      }
+    }catch(e){}
     var multLabel = ' · 🌟×' + coinMult + ' 축복 중';
     if(dgWon){
       try{
@@ -41610,6 +43068,8 @@ var dgWon = false;
         }
       }catch(e){}
     }
+    
+    if(cbWon) multLabel = cbLabel ? (' · ×' + coinMult + ' 🚀 ' + esc(cbLabel)) : (' · ×' + coinMult + ' 부스터 중 🚀');
     if(coinMult > 1) html += multLabel;
     if(el.__mkWalletHtml !== html){ el.__mkWalletHtml = html; el.innerHTML = html; }
     if(!el.__mkWalletTitle){ el.__mkWalletTitle = 1; el.title = '작업방 타이머 적립으로 쌓이는 누적 작업 시간과 코인 — 코인으로 파츠를 구매할 수 있어요'; } 
@@ -41675,6 +43135,8 @@ var coinMult = 1;
     try{ var wt = window.__MK_WORLD_TREE_S2__; if(wt && typeof wt.coinMult === 'function') coinMult = Math.max(1, Math.min(10, Math.round(Number(wt.coinMult())||1))); }catch(e){}
     
     try{ var dg = window.__MK_DRAGON_S3__; if(dg && typeof dg.coinMult === 'function') coinMult = Math.max(coinMult, Math.min(10, Math.round(Number(dg.coinMult())||1))); }catch(e){}
+    
+    try{ var cb = window.__MK_COIN_BOOST__; if(cb && typeof cb.coinMult === 'function') coinMult = Math.max(coinMult, Math.min(10, Math.round(Number(cb.coinMult())||1))); }catch(e){}
     s.coins += Math.floor(carry / COIN_SEC_PER_COIN) * coinMult;
     s.coinCarrySec = carry % COIN_SEC_PER_COIN;
     writeStats(s);
@@ -45599,6 +47061,251 @@ document.addEventListener("click", function(ev){
   else { try{ init_(); }catch(e){} }
 })();
 </script>
+
+
+<style id="v275Honeypot">
+
+
+
+#dashShortcuts{ grid-template-columns: repeat(5, minmax(max-content, 1fr)) !important; }
+#dashShortcuts .btnLabel{ font-size:12px !important; letter-spacing:-.3px !important; }   
+#dashShortcuts > button{ --sc:255,255,255; background:rgba(var(--sc),.12) !important; border-color:rgba(var(--sc),.40) !important; position:relative; }
+#dashShortcuts > button:hover{ background:rgba(var(--sc),.20) !important; border-color:rgba(var(--sc),.60) !important; }
+
+#dashShortcuts > #charaBinderBtn{ --sc:var(--pinkMidrgb); }
+#dashShortcuts > #goChool{ --sc:130,190,255; }
+#dashShortcuts > #goHomework{ --sc:120,230,190; }
+#dashShortcuts > #goNews{ --sc:198,150,255; }
+#dashShortcuts > #goBoard{ --sc:255,206,96; }
+#goBoard.hasNew .newsDot{ display:block; }
+
+@media (max-width:760px){ body.joined #goBoard .btnLabel::before{content:"🍯"; font-size:14px;} }
+
+
+.hpWin{
+  position:fixed; z-index:10140;
+  width:400px; max-width:calc(100vw - 16px); height:min(86vh, 780px);
+  background:rgba(26,26,30,.96); border:1px solid rgba(255,255,255,.12); border-radius:18px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+  display:flex; flex-direction:column; overflow:hidden;
+  color:var(--text); font-size:14px; line-height:1.5;
+}
+#boardWin[hidden], #boardWin [hidden]{ display:none !important; }
+.hpWin.isDragging{ box-shadow:0 16px 40px rgba(0,0,0,.58); }
+.hpWinHead{
+  flex:0 0 auto; display:flex; align-items:center; gap:8px;
+  padding:10px 10px 10px 14px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.34);
+  cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none;
+}
+.hpWin.isDragging .hpWinHead{ cursor:grabbing; }
+.hpHeadT{ flex:1 1 auto; min-width:0; }
+.hpHeadT .t{ font-weight:1000; letter-spacing:-.2px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hpHeadT .tiny{ margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hpHeadBtns{ display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+button.hpRound{   
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:34px; height:34px; padding:0; border-radius:50%; font-size:15px; line-height:1;
+}
+#boardClose{ border:1px solid rgba(255,255,255,.30); background:rgba(255,255,255,.12); font-weight:900; }
+#boardClose:hover{ background:rgba(255,255,255,.18); }
+button.hpBack{ display:inline-flex; flex:0 0 auto; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; line-height:1.2; white-space:nowrap; }
+
+.hpTools{ flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.16); }
+.hpFilters{ flex:1 1 auto; min-width:0; display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.hpFilters::-webkit-scrollbar{ display:none; }
+.hpFilters .newsFilter{ flex:0 0 auto; white-space:nowrap; }
+.hpSort{ display:inline-flex; align-items:center; gap:2px; padding:2px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
+.hpSort button{ padding:5px 9px; border:0; border-radius:999px; background:transparent; color:var(--muted); font-size:11.5px; font-weight:900; line-height:1.2; white-space:nowrap; }
+.hpSort button:hover{ color:var(--text); }
+.hpSort button[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); color:var(--pink2); box-shadow:inset 0 0 0 1px rgba(var(--pink2rgb),.55); }
+.hpWinBody{
+  position:relative; flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  padding:10px 12px 14px; scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track);
+}
+
+
+#boardWin [data-cat="gear"] { --catBg:rgba(130,190,255,.16); --catLine:rgba(130,190,255,.44); --catInk:#cfe8ff; }
+#boardWin [data-cat="snack"]{ --catBg:rgba(255,190,120,.16); --catLine:rgba(255,190,120,.44); --catInk:#ffe3c4; }
+#boardWin [data-cat="music"]{ --catBg:rgba(198,150,255,.18); --catLine:rgba(214,166,255,.48); --catInk:#e8d6ff; }
+#boardWin [data-cat="pet"]  { --catBg:rgba(120,230,190,.16); --catLine:rgba(120,230,190,.44); --catInk:#c9f7e6; }
+#boardWin [data-cat="etc"]  { --catBg:rgba(255,255,255,.08); --catLine:var(--line); --catInk:var(--muted); }
+.hpBadge{
+  flex:0 0 auto; display:inline-block; font-size:10.5px; font-weight:1000; line-height:1; padding:4px 8px;
+  border-radius:999px; border:1px solid var(--catLine, var(--line)); background:var(--catBg, transparent);
+  color:var(--catInk, var(--muted)); white-space:nowrap;
+}
+
+
+#boardFeed{ display:flex; flex-direction:column; gap:10px; }
+.hpPost{ position:relative; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); transition:background .15s ease, border-color .15s ease; }
+.hpPost:hover{ background:rgba(255,255,255,.09); border-color:rgba(var(--pink2rgb),.40); }
+.hpPost:hover, .hpPost.menuOpen{ z-index:4; }
+.hpPostHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding:9px 8px 8px 12px; }
+.hpWho{ min-width:0; font-size:12px; font-weight:800; line-height:1.4; color:rgba(255,255,255,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hpWho b{ font-weight:1000; color:var(--text); }
+.hpWhoEmo{ margin-right:5px; }
+
+.hpMoreWrap{ position:relative; flex:0 0 auto; z-index:3; }
+button.hpMoreBtn{ display:inline-flex; align-items:center; justify-content:center; width:28px; height:24px; padding:0; border-radius:999px; font-size:14px; font-weight:1000; line-height:1; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--text); }
+button.hpMoreBtn:hover{ background:rgba(255,255,255,.12); }
+.hpMenu{ display:none; position:absolute; right:0; top:calc(100% + 5px); min-width:112px; padding:5px; border-radius:12px; background:rgba(16,16,18,.96); border:1px solid rgba(255,255,255,.14); box-shadow:0 16px 34px rgba(0,0,0,.42); }
+.hpMenu::before{ content:""; position:absolute; left:0; right:0; top:-7px; height:7px; }   
+.hpMoreWrap.open .hpMenu{ display:block; }
+@media (hover:hover){ .hpMoreWrap:hover .hpMenu{ display:block; } }
+button.hpDel{ display:flex; align-items:center; gap:6px; width:100%; padding:8px 10px; border:0; border-radius:9px; background:transparent; font-size:12px; font-weight:900; color:var(--text); text-align:left; white-space:nowrap; }
+button.hpDel:hover{ background:rgba(255,255,255,.08); }
+
+.hpMedia{ position:relative; display:block; width:100%; margin:0; padding:0; border:0; border-radius:0; overflow:hidden; background:rgba(0,0,0,.25); }
+.hpMedia > img{ display:block; width:100%; height:auto; max-height:420px; object-fit:cover; }
+.hpPhoto{ cursor:zoom-in; }
+.hpPhoto:focus-visible{ outline-offset:-3px; }
+.hpYt{ aspect-ratio:16/9; cursor:pointer; }
+.hpYt > img{ height:100%; max-height:none; }
+.hpPlay{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:inline-flex; align-items:center; justify-content:center; width:52px; height:34px; border-radius:999px; background:rgba(255,255,255,.9); color:#1b1020; font-size:13px; line-height:1; box-shadow:0 8px 20px rgba(0,0,0,.35); }
+.hpYtChip{ position:absolute; left:8px; bottom:8px; padding:4px 7px; border-radius:999px; font-size:10px; font-weight:900; line-height:1; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.18); color:rgba(255,255,255,.85); }
+
+.hpPostBody{ padding:10px 12px 2px; min-width:0; }
+.hpTop{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; min-width:0; }
+.hpDomain{ display:inline-flex; align-items:center; gap:4px; min-width:0; max-width:100%; padding:4px 7px; border-radius:999px; font-size:10.5px; font-weight:900; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:rgba(255,255,255,.05); border:1px solid var(--line); color:rgba(255,255,255,.7); }
+.hpDomain i{ flex:0 0 auto; width:5px; height:5px; border-radius:50%; background:currentColor; opacity:.75; }
+.hpTitle{ font-size:14px; font-weight:1000; line-height:1.4; overflow-wrap:anywhere; }
+.hpMemo{ margin-top:4px; font-size:12.5px; line-height:1.55; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+button.hpOpen{ display:inline-flex; margin-top:8px; padding:5px 10px; border-radius:999px; font-size:11.5px; font-weight:900; line-height:1.2; }
+
+.hpReacts{ display:flex; align-items:center; gap:6px; padding:8px 12px 10px; }
+button.hpReact{ display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px; font-size:12px; font-weight:1000; line-height:1.2; background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--muted); }
+.hpReact .n{ font-variant-numeric:tabular-nums; }
+button.hpReact:hover{ background:rgba(255,255,255,.10); color:var(--text); }
+button.hpReact.isHeart[aria-pressed="true"]{ background:rgba(var(--pink3rgb),.18); border-color:rgba(var(--pink2rgb),.55); color:var(--pink2); }
+button.hpReact.isThumb[aria-pressed="true"]{ background:rgba(130,190,255,.16); border-color:rgba(130,190,255,.44); color:#cfe8ff; }
+button.hpReact.isCmt[aria-expanded="true"]{ background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.20); color:var(--text); }
+
+.hpCmts{ display:flex; flex-direction:column; gap:8px; padding:9px 12px 11px; border-top:1px solid var(--line); background:rgba(0,0,0,.14); border-radius:0 0 13px 13px; }
+.hpCmtList{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+.hpCmt{ display:flex; align-items:flex-start; gap:6px; font-size:12px; line-height:1.5; }
+.hpCmtEmo{ flex:0 0 auto; width:18px; text-align:center; }
+.hpCmtMain{ flex:1; min-width:0; color:rgba(255,255,255,.84); overflow-wrap:anywhere; }
+.hpCmtMain b{ font-weight:1000; margin-right:5px; }
+.hpCmtAgo{ color:rgba(255,255,255,.42); font-size:11px; white-space:nowrap; }
+.hpCmtNone{ font-size:11.5px; color:rgba(255,255,255,.42); }
+button.hpCmtX{ flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; padding:0; border-radius:50%; font-size:10px; line-height:1; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--muted); }
+button.hpCmtX:hover{ background:rgba(255,255,255,.12); color:var(--text); }
+.hpCmtRow{ display:flex; gap:6px; margin:0; }
+input.hpCmtIn{ flex:1 1 auto; min-width:0; padding:8px 10px; font-size:12.5px; border-radius:10px; }
+button.hpCmtGo{ flex:0 0 auto; padding:8px 11px; font-size:12px; border-radius:10px; white-space:nowrap; }
+
+.hpEmpty{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:30px 16px; text-align:center; border:1px dashed var(--line); border-radius:14px; background:rgba(255,255,255,.03); }
+.hpEmpty .stk{ display:block; width:120px; height:120px; }
+.hpEmpty p{ margin:0; font-size:13px; font-weight:900; color:rgba(255,255,255,.84); }
+.hpEmpty .primary{ padding:9px 16px; font-size:13px; }
+
+.hpListFoot{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 0 2px; text-align:center; }
+.hpListFoot:empty{ display:none; }
+button.hpMoreList{ display:inline-flex; padding:8px 16px; border-radius:999px; font-size:12.5px; font-weight:900; line-height:1.2; }
+button.hpMoreList:disabled{ cursor:default; opacity:1; color:var(--muted); background:rgba(255,255,255,.03); border-style:dashed; }
+.hpPost.flash{ animation:hpFlash 1.8s ease-out 1; }
+@keyframes hpFlash{
+  0%{ box-shadow:0 0 0 0 rgba(var(--pink3rgb),0); }
+  12%{ box-shadow:0 0 0 3px rgba(var(--pink3rgb),.9); }
+  70%{ box-shadow:0 0 0 3px rgba(var(--pink3rgb),.45); }
+  100%{ box-shadow:0 0 0 3px rgba(var(--pink3rgb),0); }
+}
+
+
+.hpWritePane{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.hpWriteScroll{
+  flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  padding:12px 12px 14px; display:flex; flex-direction:column; gap:12px;
+  scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track);
+}
+.hpGrabNote{ padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:900; line-height:1.45; background:rgba(var(--pink3rgb),.10); border:1px solid rgba(var(--pink2rgb),.35); color:var(--pink1); }
+.hpField{ position:relative; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.hpLabel{ font-size:12.5px; font-weight:1000; color:rgba(255,255,255,.86); }
+.hpCatChips{ display:flex; flex-wrap:wrap; gap:6px; }
+button.hpCatChip{ display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:999px; font-size:12px; font-weight:1000; line-height:1; white-space:nowrap; background:var(--catBg); border:1px solid var(--catLine); color:var(--catInk); transition:transform .12s ease, box-shadow .12s ease; }
+button.hpCatChip:hover{ filter:brightness(1.12); }
+button.hpCatChip[aria-pressed="true"]{ box-shadow:0 0 0 2px rgba(var(--pink2rgb),.55); transform:scale(1.06); }
+.hpInput{ width:100%; min-width:0; }
+textarea.hpInput{ resize:vertical; min-height:74px; line-height:1.45; }
+.hpCount{ align-self:flex-end; font-size:11px; font-weight:800; line-height:1; color:rgba(255,255,255,.42); font-variant-numeric:tabular-nums; }
+.hpYtPrev{ border-radius:12px; }
+label.hpDrop{ width:100%; min-height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:10px; border:1.5px dashed rgba(255,255,255,.26); border-radius:14px; background:rgba(255,255,255,.03); text-align:center; cursor:pointer; }
+label.hpDrop:hover{ border-color:rgba(var(--pink2rgb),.6); background:rgba(var(--pink0rgb),.06); }
+.hpDrop b{ font-size:13.5px; font-weight:1000; }
+.hpDrop span{ font-size:11.5px; color:var(--muted); }
+
+input.hpFile{ position:absolute; left:0; top:0; width:1px; height:1px; margin:-1px; padding:0; border:0; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; opacity:0; }
+.hpDropSel{ display:flex; align-items:center; gap:10px; padding:10px; border-radius:14px; border:1px solid rgba(var(--pink2rgb),.35); background:rgba(var(--pink0rgb),.06); }
+.hpDropThumb{ flex:0 0 auto; width:56px; height:56px; border-radius:10px; object-fit:cover; background:rgba(0,0,0,.25); }
+.hpDropInfo{ flex:1; min-width:0; font-size:12px; font-weight:900; line-height:1.45; color:rgba(255,255,255,.86); overflow-wrap:anywhere; }
+button.hpDropX{ flex:0 0 auto; padding:7px 10px; font-size:12px; font-weight:900; border-radius:10px; white-space:nowrap; }
+.hpTip{ padding:8px 11px; border-radius:12px; font-size:12px; font-weight:900; line-height:1.4; background:rgba(var(--pink3rgb),.08); border:1px solid rgba(var(--pink2rgb),.24); color:var(--pink2); }
+.hpWinFoot{ flex:0 0 auto; display:flex; justify-content:flex-end; gap:8px; padding:10px 12px; border-top:1px solid var(--line); background:rgba(0,0,0,.34); }
+.hpWinFoot button{ padding:9px 16px; font-size:13px; }
+
+
+.hpLightbox{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.85); cursor:zoom-out; }
+.hpLbInner{ position:relative; width:min(720px, 100%); display:flex; flex-direction:column; gap:12px; cursor:default; }
+.hpLbImg{ display:block; max-width:100%; max-height:calc(100vh - 150px); margin:0 auto; border-radius:16px; object-fit:contain; box-shadow:0 18px 55px rgba(0,0,0,.55); }
+.hpLbCap{ display:flex; flex-direction:column; gap:2px; padding:0 4px; }
+.hpLbTitle{ font-size:15px; font-weight:1000; line-height:1.4; overflow-wrap:anywhere; }
+.hpLbBy{ font-size:12px; font-weight:800; color:var(--muted); }
+button.hpLbClose{ position:fixed; right:14px; top:14px; display:flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border-radius:50%; font-size:16px; font-weight:900; line-height:1; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.30); cursor:pointer; }
+
+
+@media (max-width:760px){
+  .hpWin{ left:0 !important; top:0 !important; width:100vw; max-width:none; height:100vh; height:100dvh; border-radius:0; border:0; box-shadow:none; background:#161619;  }
+  .hpWinHead{ cursor:default; touch-action:auto; }
+  button.hpRound{ width:40px; height:40px; font-size:16px; }
+  button.hpReact{ min-height:40px; padding:0 15px; font-size:13.5px; gap:6px; }
+  input.hpCmtIn, button.hpCmtGo{ min-height:40px; }
+  button.hpCmtX{ width:28px; height:28px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .hpPost.flash{ animation:none; }
+  button.hpCatChip, .hpPost{ transition:none; }
+}
+
+
+.msg .chatBoardOpen{
+  display:inline-flex; align-items:center; gap:3px; vertical-align:baseline; margin:0 0 0 2px;
+  padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:1000; line-height:1.45; white-space:nowrap;
+  background:rgba(var(--pink3rgb),.18); border:1px solid rgba(var(--pink2rgb),.55); color:var(--pink2); cursor:pointer;
+}
+.msg .chatBoardOpen:hover{ background:rgba(var(--pink3rgb),.28); }
+
+.msg .chatBoardGrab{
+  position:absolute; bottom:2px; z-index:2;
+  padding:3px 9px; border:0; border-radius:999px; font-size:11px; font-weight:1000; line-height:1.4; white-space:nowrap;
+  background:linear-gradient(135deg, rgba(var(--pink3rgb),.95), rgba(var(--pink2rgb),.92)); color:#1b1020;
+  box-shadow:0 6px 14px rgba(0,0,0,.4);
+  opacity:0; pointer-events:none; transition:opacity .12s ease;
+}
+.msg.other .chatBoardGrab{ left:calc(100% + 6px); }
+.msg.me .chatBoardGrab{ right:calc(100% + 6px); }
+
+.msg .chatBoardGrab::after{ content:""; position:absolute; top:0; bottom:0; width:8px; }
+.msg.other .chatBoardGrab::after{ right:100%; }
+.msg.me .chatBoardGrab::after{ left:100%; }
+.msg:hover .chatBoardGrab, .msg .chatBoardGrab:focus-visible{ opacity:1; pointer-events:auto; }
+@media (hover:none){ .msg .chatBoardGrab{ opacity:1; pointer-events:auto; } }
+</style>
+
+
+<style id="v275CoinBoost">
+
+#coinBoostBar{
+  display:none; padding:6px 10px; border-radius:999px;
+  background:rgba(var(--pink3rgb),.16); border:1px solid rgba(var(--pink2rgb),.5);
+  color:var(--pink1); font-size:12px; font-weight:800; line-height:1.4; text-align:center;
+}
+#coinBoostBar[data-phase="active"], #coinBoostBar[data-phase="scheduled"]{ display:block; }
+#coinBoostBar[data-phase="scheduled"]{ opacity:.72; }   
+
+@media (max-width:760px){
+  #coinBoostBar{ display:none !important; }
+}
+</style>
 
 </body>
 </html>
