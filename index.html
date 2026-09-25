@@ -124,6 +124,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7025,7 +7026,6 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <div class="brandTitle">💗마끝마💗</div>
 
 <span id="nowClockMain">--:--:--</span>
-<div id="coinBoostBar" data-phase="none"><svg class="mkIc mkCbIcOn" aria-hidden="true" focusable="false"><use href="#mki-boost"></use></svg><svg class="mkIc mkCbIcSoon" aria-hidden="true" focusable="false"><use href="#mki-clock"></use></svg><span class="mkCbText"></span></div>
 </div>
 
 <div aria-label="작업 상태" class="topCenter">
@@ -7285,7 +7285,7 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 </div>
 <div class="card chatCard" id="chatCard">
 
-<h3><span class="mkChatTitle"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-cmt"></use></svg>채팅</span> <button class="ghost miniOnline dashOnlineBtn" disabled="" id="onlineBtn" title="접속 인원"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-people"></use></svg><span class="mkLbl"><span id="countOnline">0</span>명</span></button> <div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker"><div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div></div> <span class="tiny">(채팅창 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
+<h3><span class="mkChatTitle"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-cmt"></use></svg>채팅</span> <button class="ghost miniOnline dashOnlineBtn" disabled="" id="onlineBtn" title="접속 인원"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-people"></use></svg><span class="mkLbl"><span id="countOnline">0</span>명</span></button> <div id="coinBoostBar" data-phase="none"><svg class="mkIc mkCbIcOn" aria-hidden="true" focusable="false"><use href="#mki-boost"></use></svg><svg class="mkIc mkCbIcSoon" aria-hidden="true" focusable="false"><use href="#mki-clock"></use></svg><span class="mkCbText"></span><span class="mkCbShort"></span></div> <div aria-atomic="true" aria-live="polite" class="joinTicker hidden" id="joinTicker"><div class="joinTickerTrack" id="joinTickerTrack"><span class="joinTickerText" id="joinTickerText"></span></div></div> <span class="tiny">(채팅창 접기)</span> <button aria-label="오른쪽 사이드 접기/펴기" class="ghost railFoldBtn" id="railFoldToggle" title="오른쪽 사이드 접기/펴기" type="button">⟫</button></h3>
 <div class="body chatBody">
 <div class="embedBar" id="embedBar" style="display:none">
 <div class="left">
@@ -7974,7 +7974,8 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <div class="dragonEggRow" id="dragonEggRow" aria-label="기운 고르기"></div>
 <div class="worldTreeMyStatus" id="dragonMyStatus">기운을 고르면 그 드래곤에게 먹이를 줄 수 있어요.</div>
 <div class="dragonPool" id="dragonPool">
-<div class="dragonPoolHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-chart"></use></svg>마리별 게이지</b><span id="dragonPoolNote"><span class="dgOnHover">게이지에 마우스를 올리면 필요 코인이, 기운 이름에 올리면 고룡 특전이</span><span class="dgOnTouch">게이지를 누르면 필요 코인이, 기운 이름을 누르면 고룡 특전이</span> 보여요</span></div>
+
+<div class="dragonPoolHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-chart"></use></svg>게이지</b><span id="dragonPoolNote"><span class="dgOnHover">게이지에 마우스를 올리면 필요 코인이, 기운 이름에 올리면 고룡 특전이</span><span class="dgOnTouch">게이지를 누르면 필요 코인이, 기운 이름을 누르면 고룡 특전이</span> 보여요</span></div>
 <div id="dragonPoolRows"></div>
 </div>
 <div class="dragonFeed" id="dragonFeed">
@@ -9665,6 +9666,19 @@ if(!mkAuthUsable_() && mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }
             }
             mkEnsureFreshUser_();
           }
+        }
+      }catch(_e){}
+      mkSyncAuthSlot_();   
+    }
+
+function mkSyncAuthSlot_(){
+      try{
+        const btn = els?.approveLink, hint = els?.authStateHint;
+        const admin = !!(btn && btn.style.display !== "none");
+        if(document.body && document.body.classList.contains("mkAuthSlotAdmin") !== admin) document.body.classList.toggle("mkAuthSlotAdmin", admin);
+        if(btn){
+          const t = (admin && hint && hint.classList.contains("authOk")) ? "가입 승인 페이지 (관리자 전용) · 이메일 인증 완료" : "가입 승인 페이지 (관리자 전용)";
+          if(btn.title !== t) btn.title = t;
         }
       }catch(_e){}
     }
@@ -12475,7 +12489,8 @@ const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
     const snap = await rGet(rQuery(root, rOrderByChild("tsMs"), rLimitToLast(5)));
     const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
     state.__chatWatchProbeAtMs = now;
-    const NONRENDER_TYPES = { ticker:1, sfx:1, mission:1, sys:1 }; 
+    
+    const NONRENDER_TYPES = { sfx:1, mission:1, sys:1 }; 
     let id = null, idTs = 0;
     for(const k of Object.keys(val)){
       const m = val[k] || {};
@@ -17279,8 +17294,8 @@ const CHAT_EMOJI_ONLY_MAX = 3;
     function makeMsgNode(m){
       const div = document.createElement("div");
 
-if(m && m.type === "sys"){
-        div.className = "msg system";
+if(m && (m.type === "sys" || m.type === "ticker")){
+        div.className = (m.type === "ticker") ? "msg system mkTickerLine" : "msg system";
                 try{ div.setAttribute("data-msg-id", String(m.id||"")); }catch(e){}
         try{ div.setAttribute("data-ts-ms", String(Number(m.tsMs || m.serverTs || 0) || 0)); }catch(e){}
 div.innerHTML = `<div class="text">${linkifyChatText(m.text || "")}</div>`;
@@ -17775,8 +17790,27 @@ const chatDayKey = __seoulDateKeyFromMs(Date.now());
       if(ta !== tb) return ta - tb;
       return String(a.id||"").localeCompare(String(b.id||""));
     });
-    
-    return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "ticker" || m.type === "sys")));
+
+return docs.filter(m => !(m && (m.type === "mission" || m.type === "sfx" || m.type === "sys")));
+  }
+
+function __chatSliceKeepReal_(sortedList, keep){
+    const arr = Array.isArray(sortedList) ? sortedList : [];
+    const k = Math.max(1, Number(keep) || 1);
+    let start = 0, real = 0;
+    for(let i = arr.length - 1; i >= 0; i--){
+      if(arr[i] && arr[i].type === "ticker") continue;
+      start = i;                         
+      if(++real >= k) break;             
+    }
+    const out = [];
+    let tickers = 0;
+    for(let i = arr.length - 1; i >= start; i--){
+      const m = arr[i];
+      if(m && m.type === "ticker" && ++tickers > k) continue;   
+      out.push(m);
+    }
+    return out.reverse();
   }
 
   function rebuildCacheFromMap(){
@@ -17789,7 +17823,7 @@ const chatDayKey = __seoulDateKeyFromMs(Date.now());
     });
     
     const keep = Math.max(1, Number(state.chatWindowMax||STAY_LIMIT));
-    merged = merged.slice(-keep);
+    merged = __chatSliceKeepReal_(merged, keep);   
     
     const nextMap = {};
     for(const mm of merged){
@@ -17823,7 +17857,8 @@ mkScheduleFrame_(()=>{
         if(oldIds.length){
           const oldSet = new Set(oldIds);
           let addCount = 0;
-          for(const id of newIds){ if(!oldSet.has(id)) addCount++; }
+          
+          for(const m of list2){ if(m && !oldSet.has(m.id) && m.type !== "ticker") addCount++; }
           if(addCount > 0 && !nearBottom){
             state.chatUnseen = (Number(state.chatUnseen)||0) + addCount;
             showChatNewBar();
@@ -17905,7 +17940,7 @@ mkScheduleFrame_(()=>{
       if(ta !== tb) return ta - tb;
       return String(a.id||"").localeCompare(String(b.id||""));
     });
-    return merged.slice(-Math.max(1, Number(n)||20));
+    return __chatSliceKeepReal_(merged, Math.max(1, Number(n)||20));   
   }
 
   async function loadLastOnce(n){
@@ -18047,7 +18082,7 @@ if(mm && mm.type==='ticker'){
                 try{ if(String(mm.text||"").startsWith("📰 새 업계 동향")) mkDotPoke_("news"); }catch(_e){}
               }
             }catch(e){}
-            return;
+            
           }
 
 if(mm && mm.type==='sfx'){
@@ -18095,7 +18130,8 @@ const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
           const mm = { ...data, id };
-          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="ticker" || mm.type==="sys")) return;
+          
+          if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="sys")) return;
 
 if(state.chatRollingById && state.chatRollingById[id]){
             state.chatRollingById[id] = mm;
@@ -18286,6 +18322,8 @@ async function emitSys(text){
 }
 
 function showJoinTicker(msg){
+  
+  return;
   try{
     const box = document.getElementById("joinTicker");
     const track = document.getElementById("joinTickerTrack");
@@ -24610,7 +24648,7 @@ let __adminLinkUid = "";
 
 if(!mkAuthUsable_()){
         if(mkAuthDoneStable_()){ mkScheduleAuthRecheck_(); return; }   
-        btn.style.display = "none"; __adminLinkUid = ""; return;       
+        btn.style.display = "none"; __adminLinkUid = ""; mkSyncAuthSlot_(); return;       
       }
       if(__adminLinkUid === u.uid) return;        
       __adminLinkUid = u.uid;
@@ -24627,6 +24665,7 @@ if(!mkAuthUsable_()){
         return;                                    
       }
       btn.style.display = isAdmin ? "" : "none";
+      mkSyncAuthSlot_();                           
     }
     if(els.approveLink){
       els.approveLink.addEventListener("click", ()=>{
@@ -24936,7 +24975,22 @@ try{
 els.statusBtn.addEventListener("click", (ev)=>{
       ev.stopPropagation();
       els.statusMenu.classList.toggle("hidden");
+      
+      mkStMenuPlace_();
     });
+    
+    function mkStMenuPlace_(){
+      try{
+        const m = els.statusMenu;
+        if(!m || m.classList.contains("hidden")) return;
+        const host = m.offsetParent || m.parentElement;
+        const hostL = host.getBoundingClientRect().left + (host.clientLeft || 0);
+        const w = m.offsetWidth || 220;
+        const x = Math.max(8, Math.min(els.statusBtn.getBoundingClientRect().left, window.innerWidth - 8 - w));
+        m.style.setProperty("--mkStMenuX", Math.round(x - hostL) + "px");
+      }catch(_e){}
+    }
+    window.addEventListener("resize", mkStMenuPlace_);
     
     document.addEventListener("click", ()=>{
       if(!els.statusMenu.classList.contains("hidden")) els.statusMenu.classList.add("hidden");
@@ -28604,7 +28658,15 @@ function hcPickMenuOpen_(mode){
         if(willOpen){
           const b = document.getElementById("handcamBtn");
           if(b && m.parentElement === b.parentElement){
-            m.style.left = (b.offsetLeft + b.offsetWidth / 2) + "px";
+            let cx = b.offsetLeft + b.offsetWidth / 2;
+            
+            try{
+              m.style.display = "flex";
+              const w = m.offsetWidth || 210;
+              const host = m.parentElement, hostL = host.getBoundingClientRect().left + (host.clientLeft || 0);
+              cx = Math.max(8 + w / 2 - hostL, Math.min(cx, window.innerWidth - 8 - w / 2 - hostL));
+            }catch(_e){}
+            m.style.left = cx + "px";
             m.style.top = (b.offsetTop + b.offsetHeight + 6) + "px";
           }
         }
@@ -28632,9 +28694,7 @@ let btn = host.querySelector(":scope > #handcamBtn");
           });
 
 const statusBtn = els && els.statusBtn;
-          const statusMenu = els && els.statusMenu;
-          if(statusMenu && statusMenu.parentElement === host) statusMenu.insertAdjacentElement("afterend", btn);
-          else if(statusBtn && statusBtn.parentElement === host) statusBtn.insertAdjacentElement("afterend", btn);
+          if(statusBtn && statusBtn.parentElement === host) host.insertBefore(btn, statusBtn);
           else host.insertBefore(btn, host.firstChild || null);
         }
 
@@ -28714,13 +28774,15 @@ const nextBtnHtml = hc.starting ? HC_ICON_CAM + "연결 중…"
         }
 
         viewBtn.classList.toggle("on", hc.viewerEnabled);
-        
-        const nextViewHtml = window.mkIc_("eye") + '<span class="mkLbl">손캠 보기</span><i class="mkSw" aria-hidden="true"></i><span class="mkSwT">' + (hc.viewerEnabled ? "켜짐" : "꺼짐") + '</span>';
+
+const nextViewHtml = window.mkIc_("eye") + '<span class="mkLbl">손캠 보기</span><i class="mkSw" aria-hidden="true"></i>';
         if(viewBtn.__mkHtml !== nextViewHtml){ viewBtn.__mkHtml = nextViewHtml; viewBtn.innerHTML = nextViewHtml; }
         viewBtn.disabled = !joined;
-        const nextViewTitle = hc.viewerEnabled ? "손캠 영상 수신을 끄기" : "손캠 영상을 보기";
+        const nextViewTitle = hc.viewerEnabled ? "손캠 보기 켜짐 — 누르면 꺼요" : "손캠 보기 꺼짐 — 누르면 켜요";
         if(viewBtn.title !== nextViewTitle) viewBtn.title = nextViewTitle;
-        if(viewBtn.getAttribute("aria-label") !== nextViewTitle) viewBtn.setAttribute("aria-label", nextViewTitle);
+        const nextViewPressed = hc.viewerEnabled ? "true" : "false";
+        if(viewBtn.getAttribute("aria-pressed") !== nextViewPressed) viewBtn.setAttribute("aria-pressed", nextViewPressed);
+        if(viewBtn.getAttribute("aria-label") !== "손캠 보기") viewBtn.setAttribute("aria-label", "손캠 보기");
       }catch(e){}
     }
 
@@ -29415,7 +29477,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17162; 
+const MK_APP_BUILD = 17163; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
 
@@ -31647,6 +31709,8 @@ const DRAGON_TICKET_GROW_COST = 10;
     const DRAGON_RACE_SPAWN_LEASE_MS = 2 * 60 * 1000;    
     const DRAGON_RACE_STALE_MS = 50 * 60 * 1000;         
     const DRAGON_RACE_RESERVE_EXPIRE_MS = 30 * 60 * 1000;
+    const DRAGON_RACE_KICK_DELAY_MS = 4 * 1000;          
+    const DRAGON_RACE_KICK_GAP_MS = 30 * 1000;           
     const DRAGON_RACE_RESULT_KEEP_MS = 10 * 60 * 1000;   
     const DRAGON_RACE_TOTAL = 18;                        
     const DRAGON_REEL_H = 52;                            
@@ -31729,6 +31793,8 @@ const DRAGON_TICKET_GROW_COST = 10;
       raceTab:"daily",        
       raceCueHour:"",         
       raceStartId:"",         
+      raceKickAtMs:0,         
+      raceKickTimer:0,        
       raceLiveId:"",          
       raceClosingLock:false,  
       raceSpawnLock:false,    
@@ -32971,7 +33037,11 @@ dragonSetHtml_("dragonSkillTag",isNext?"":`${dragonIc_("chara","✨ ")}스킬 Lv
       }catch(e){}
     }
 
-function renderDragonTabs_(){
+function dragonShortElName_(name){
+      const full=String(name??"");
+      return full.replace(/(?:의 드래곤| 드래곤|드래곤)$/,"").trim()||full;
+    }
+    function renderDragonTabs_(){
       const wrap=document.getElementById("dragonTabs");
       if(!wrap) return;
       const cfg=dragonConfig_();
@@ -32983,11 +33053,12 @@ function renderDragonTabs_(){
         const isMine=(k===mine)?" isMine":"";
         const ptip=dragonPerkTipText_(k);   
         
-        return `<button type="button" class="dragonTab${on}${isMine} dragonElTint" data-el="${dragonEsc_(k)}"${ptip?` data-tip="${dragonEsc_(ptip)}"`:""} aria-pressed="${k===view?"true":"false"}">${dragonElIc_(k,e.emoji)}${dragonEsc_(e.name)}</button>`;
+        return `<button type="button" class="dragonTab${on}${isMine} dragonElTint" data-el="${dragonEsc_(k)}"${ptip?` data-tip="${dragonEsc_(ptip)}"`:""} aria-label="${dragonEsc_(e.name)}${k===mine?" · 내 드래곤":""}" aria-pressed="${k===view?"true":"false"}">${dragonElIc_(k,e.emoji)}${dragonEsc_(dragonShortElName_(e.name))}</button>`;
       }).join("");
       const nextKey=cfg.nextElement;
-      const nextName=nextKey&&cfg.elements[nextKey]?cfg.elements[nextKey].name:"다음 알";
-      html+=`<button type="button" class="dragonTab dragonElTint${view==="__next__"?" on":""}" data-el="__next__" data-el2="neutral" title="다음에 깨어날 알">🥚 ${dragonEsc_(nextName)}</button>`;
+      
+      const nextName=nextKey&&cfg.elements[nextKey]?cfg.elements[nextKey].name:"";
+      html+=`<button type="button" class="dragonTab dragonElTint${view==="__next__"?" on":""}" data-el="__next__" data-el2="neutral" title="다음에 깨어날 알${nextName?` · ${dragonEsc_(nextName)}`:""}">${dragonIc_("egg","🥚 ")}다음 알</button>`;
       if(wrap.innerHTML!==html) wrap.innerHTML=html;
     }
     function renderDragonEggs_(){
@@ -33047,11 +33118,11 @@ function renderDragonTabs_(){
         return `<div class="dragonPoolRow dragonElTint${k===mine?" isMine":""}" data-el="${dragonEsc_(k)}">`
           +(ptip?`<span class="dgElName dgTip dgTipTap" tabindex="0" data-tip="${dragonEsc_(ptip)}" aria-label="${dragonEsc_(e.name)} 고룡 특전 설명">`:`<span class="dgElName">`)
           
-          +`<strong>${dragonEsc_(e.emoji)} ${dragonEsc_(e.name)}</strong></span>`
+          +`<strong${ptip?"":` title="${dragonEsc_(e.name)}"`}>${dragonElIc_(k,e.emoji)}${dragonEsc_(dragonShortElName_(e.name))}</strong></span>`
           +`<div class="dgGaugeWrap dgTip dgTipTap" tabindex="0" data-tip="${dragonEsc_(tip)}" aria-label="${dragonEsc_(e.name)} 경험치 ${dragonNumFmt_(row.exp)} / ${dragonNumFmt_(need)} 코인">`
           +`<div class="worldTreeGauge" role="progressbar" aria-label="${dragonEsc_(e.name)} 진행률"><i style="width:${pct.toFixed(2)}%"></i></div></div>`
           +`<output>Lv.${row.level} · ${counts[k]||0}명`
-          +`<small>✨ 스킬 Lv.${dragonNumFmt_(row.skill)} / ${dragonNumFmt_(cfg.skillCap)}</small></output></div>`;   
+          +`<small>${dragonIc_("chara","✨ ")}스킬 Lv.${dragonNumFmt_(row.skill)} / ${dragonNumFmt_(cfg.skillCap)}</small></output></div>`;   
       }).join("");
       if(wrap.innerHTML!==html) wrap.innerHTML=html;
     }
@@ -33453,10 +33524,12 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       const rows=dragonHallList_();
       const view=dragonViewEl_();
       const medals=["🥇","🥈","🥉"];
+      
+      const medalIc=(i)=>(typeof window.mkIc_==="function")?window.mkIc_("medal",`dgMedal dgMedal-${i+1}`):`${medals[i]} `;
       const html=rows.map((r)=>{
         const grad=Math.max(0,Math.floor(Number(r.graduatedAtMs)||0));
         const top3=Array.isArray(r.top3)?r.top3.slice(0,3):[];
-        const podium=top3.map((t,i)=>`<span>${medals[i]} ${dragonEsc_(dragonText_(t?.name,"익명",40))}</span>`).join("");
+        const podium=top3.map((t,i)=>`<span title="${i+1}위">${medalIc(i)}${dragonEsc_(dragonText_(t?.name,"익명",40))}</span>`).join("");
         return `<button type="button" class="dragonHallRow dragonElTint${r.el===view?" on":""}" data-el="${dragonEsc_(r.el)}">`
           +`<span class="dragonChipArt" data-el="${dragonEsc_(r.el)}" data-stage="7" aria-hidden="true"></span>`
           +`<span class="dgHallBody">`
@@ -33516,12 +33589,13 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       dragonSetText_("dragonBagNote",note);
     }
 
-function dragonRankRowsFrom_(fedEl,members){
+function dragonRankRowsFrom_(fedEl,members,keep){
       const fed=(fedEl && typeof fedEl==="object")?fedEl:null;
       const mem=(members && typeof members==="object")?members:{};
       const rows=[];
       if(fed){
         Object.keys(fed).forEach((uid)=>{
+          if(typeof keep==="function" && !keep(uid)) return;   
           const coins=Math.max(0,Math.floor(Number(fed[uid]?.coins)||0));
           const tickets=Math.max(0,Math.floor(Number(fed[uid]?.tickets)||0));
           if(coins<=0 && tickets<=0) return;
@@ -33545,9 +33619,19 @@ function dragonRankRowsFrom_(fedEl,members){
       return rows;
     }
     
+    function dragonRankKeepFor_(el,members,gradMs){
+      const mem=(members && typeof members==="object")?members:null;
+      if(!mem || !dragonKeyOk_(el) || Object.keys(mem).length<1) return null;
+      const g=Math.max(0,Math.floor(Number(gradMs)||0));
+      if(!(g>0)) return (uid)=>dragonText_(mem[uid]?.camp,"",20)===el;
+      return (uid)=>dragonText_(mem[uid]?.camp,"",20)===el || Math.floor(Number(mem[uid]?.updatedAtMs)||0)>=g;
+    }
+    
     function dragonRankRows_(el){
       const fed=(el && dragonS3Runtime.fed && dragonS3Runtime.fed[el])?dragonS3Runtime.fed[el]:null;
-      return dragonRankRowsFrom_(fed,dragonS3Runtime.members||{});
+      
+      const members=dragonS3Runtime.members||{};
+      return dragonRankRowsFrom_(fed,members,dragonRankKeepFor_(el,members,dragonGradAtMs_(el)));
     }
     
     function dragonTop3From_(rows){
@@ -33609,6 +33693,9 @@ function dragonRankRowsFrom_(fedEl,members){
     function renderDragonAdminNote_(){
       const note=document.getElementById("dragonAdminNote");
       if(!note) return;
+      
+      if(note.style.display!=="none") note.style.display="none";
+      return;
       if(!state.adminOk){ if(note.style.display!=="none") note.style.display="none"; return; }
       note.style.display="";
       const cfg=dragonConfig_();
@@ -34271,9 +34358,11 @@ let hall=dragonHallRow_(el);
             const [fSnap,mSnap]=await Promise.all([rGet(rDragonRef_(`fed/${el}`)),rGet(rDragonRef_("members"))]);
             const mv=mSnap.val();
             membersSnap=(mv && typeof mv==="object")?mv:null;
+            
+            const keepCamp=dragonRankKeepFor_(el,membersSnap,grad);
             fresh={
               graduatedAtMs:grad, elName, emoji,
-              top3:dragonTop3From_(dragonRankRowsFrom_(fSnap.val()||{},mSnap.val()||{})),
+              top3:dragonTop3From_(dragonRankRowsFrom_(fSnap.val()||{},mSnap.val()||{},keepCamp)),
               createdAtMs:Date.now(), by:uid, name:""
             };
           }catch(e){ console.warn("[dragon s3] hall top3 read failed",e); }
@@ -34709,8 +34798,8 @@ async function maybeRollDragonRace_(){
       s.race=Object.assign({},(s.race && typeof s.race==="object")?s.race:{},patch||{},{updatedAtMs:Date.now()});
       return s.race;
     }
-    
-    function dragonRaceCueTick_(){
+
+function dragonRaceCueTick_(){
       if(!state.joined) return;
       if(!dragonS3Runtime.summary) return;
       const now=Date.now();
@@ -34736,7 +34825,102 @@ async function maybeRollDragonRace_(){
         : "🐉 게릴라 용비늘 레이스가 열렸어요! 10분 안에 카드를 다 뒤집으면 레버!",5200);
     }
 
-async function maybeSpawnDragonRace_(){
+function dragonRaceUndoClaim_(cur,sp){
+      if(!cur || typeof cur!=="object") return cur;
+      const s=(sp && typeof sp==="object")?sp:{};
+      const k=String(s.kind||"");
+      const hour=String(s.hour||"");
+      const sameHour=!!(hour && cur.roll && typeof cur.roll==="object" && String(cur.roll.hour||"")===hour);
+      if(k==="guerrilla"){
+        if(sameHour){ const r=Object.assign({},cur.roll); delete r.done; cur.roll=r; }
+        if(s.day && cur.day===s.day) cur.dRace=Math.max(0,(Number(cur.dRace)||0)-1);   
+        if(hour && String(cur.lastGuerHour||"")===hour) cur.lastGuerHour=s.prevLast||null;
+      }else if(k==="flash"){
+        if(sameHour){ const r=Object.assign({},cur.roll); delete r.fdone; cur.roll=r; }
+      }else if(k==="reserved"){
+        
+        if(s.rsv && typeof s.rsv==="object" && !(cur.guerrilla && typeof cur.guerrilla==="object")) cur.guerrilla=Object.assign({},s.rsv);
+      }
+      cur.spawning=null;
+      return cur;
+    }
+    
+    function dragonRaceConsumeKey_(cur,key){
+      if(!cur || typeof cur!=="object") return false;
+      const k=String(key||"");
+      const i=k.indexOf(":");
+      if(i<1) return false;
+      const t=k.slice(0,i), v=k.slice(i+1);
+      if(!v) return false;
+      const roll=(cur.roll && typeof cur.roll==="object")?cur.roll:null;
+      if(t==="g"){
+        if(!roll || String(roll.hour||"")!==v || roll.done) return false;
+        cur.roll=Object.assign({},roll,{done:1});
+        if(cur.day===v.slice(0,10)) cur.dRace=(Number(cur.dRace)||0)+1;   
+        if(!(String(cur.lastGuerHour||"")>v)) cur.lastGuerHour=v;          
+        return true;
+      }
+      if(t==="f"){
+        if(!roll || String(roll.hour||"")!==v || roll.fdone) return false;
+        cur.roll=Object.assign({},roll,{fdone:1});
+        return true;
+      }
+      if(t==="r"){
+        const g=(cur.guerrilla && typeof cur.guerrilla==="object")?cur.guerrilla:null;
+        if(!g || String(g.id||"")!==v) return false;
+        cur.guerrilla=null;
+        return true;
+      }
+      return false;
+    }
+
+async function dragonRaceSettleClaim_(spawnId,mode,opts){
+      const sid=String(spawnId||"");
+      if(!sid) return false;
+      const ck=String((opts && opts.consumeKey)||"");
+      let did=false, consumed=false;
+      try{
+        const res=await readGuard_(rRunTransaction(rDragonItemsRef_("sched"),(raw)=>{
+          did=false; consumed=false;
+          if(raw===null) return null;                     
+          if(!raw || typeof raw!=="object") return;
+          const sp=raw.spawning;
+          if(!(sp && typeof sp==="object") || String(sp.id||"")!==sid) return;   
+          const cur=Object.assign({},raw);
+          if(mode==="finalize") cur.spawning=null;
+          else dragonRaceUndoClaim_(cur,sp);
+          if(ck) consumed=dragonRaceConsumeKey_(cur,ck);   
+          did=true;
+          return cur;
+        }),mode==="finalize"?"레이스 선점 확정":"레이스 선점 되돌리기",8000);
+        const ok=!!(res && res.committed && did);
+        
+        if(ok && (mode==="finalize" || consumed)){
+          const sched=(res.snapshot && res.snapshot.val())||{};
+          const g=(sched.guerrilla && typeof sched.guerrilla==="object")?sched.guerrilla:null;
+          const mirror={roll:sched.roll||null,guerrilla:g?{id:String(g.id||""),atMs:Number(g.atMs)||0}:null};
+          try{ await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),{"race/roll":mirror.roll,"race/guerrilla":mirror.guerrilla,"race/updatedAtMs":Date.now()}),"레이스 판정 사본 맞추기",8000); }
+          catch(e){ console.warn("[dragon s3] race roll mirror sync failed",e); }
+          dragonRaceMergeSummary_(mirror);
+        }
+        return ok;
+      }catch(e){ console.warn(`[dragon s3] race claim ${mode} failed`,e); return false; }
+    }
+    function dragonRaceReleaseClaim_(spawnId,consumeKey){ return dragonRaceSettleClaim_(spawnId,"release",{consumeKey}); }
+    function dragonRaceFinalizeClaim_(spawnId,consumeKey){ return dragonRaceSettleClaim_(spawnId,"finalize",{consumeKey}); }
+    
+    function dragonRaceKickRefresh_(force){
+      const now=Date.now();
+      const last=Number(dragonS3Runtime.raceKickAtMs)||0;
+      if(!force && now>=last && now-last<DRAGON_RACE_KICK_GAP_MS) return;     
+      dragonS3Runtime.raceKickAtMs=now;
+      try{ if(dragonS3Runtime.raceKickTimer) clearTimeout(dragonS3Runtime.raceKickTimer); }catch(e){}
+      dragonS3Runtime.raceKickTimer=setTimeout(()=>{
+        dragonS3Runtime.raceKickTimer=0;
+        loadDragonSummaryOnce_().then(()=>{ try{ dragonRaceStartTick_(); }catch(e){} }).catch(()=>{});
+      },DRAGON_RACE_KICK_DELAY_MS);
+    }
+    async function maybeSpawnDragonRace_(){
       if(!state.joined || !state.uid || !state.roomId) return;
       if(!dragonEnabled_()) return;
       if(dragonS3Runtime.raceSpawnLock) return;
@@ -34764,16 +34948,22 @@ async function maybeSpawnDragonRace_(){
       if(!dueG && !dueF && !dueR) return;
       const uid=String(state.uid);
       const spawnId=`dgsp-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-      const cfgMaxDaily=dragonRaceCfg_().dailyMax;
-      let kind="";
+      let kind="", claimAtMs=0, rollKey="";
       dragonS3Runtime.raceSpawnLock=true;
       try{
         
-        const res=await rRunTransaction(rDragonItemsRef_("sched"),(raw)=>{
+        const res=await readGuard_(rRunTransaction(rDragonItemsRef_("sched"),(raw)=>{
           
           const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
-          if(cur.spawning && Date.now()-(Number(cur.spawning.atMs)||0)<DRAGON_RACE_SPAWN_LEASE_MS) return; 
+          
+          if(cur.spawning && String(cur.spawning.id||"")===spawnId) return cur;
           const nowT=Date.now();
+          let undid=false;
+          if(cur.spawning){
+            if(nowT-(Number(cur.spawning.atMs)||0)<DRAGON_RACE_SPAWN_LEASE_MS) return; 
+            
+            dragonRaceUndoClaim_(cur,cur.spawning); undid=true;
+          }
           const dayKey=dragonRaceHourKey_(nowT).slice(0,10);
           if(cur.day!==dayKey){ cur.day=dayKey; cur.dRace=0; }
           const ok=(t)=>(Number(t)>0 && nowT>=Number(t) && nowT-Number(t)<DRAGON_RACE_STALE_MS);
@@ -34782,58 +34972,121 @@ async function maybeSpawnDragonRace_(){
           const reserved=!!(cg && Number(cg.atMs)>0 && nowT>=Number(cg.atMs) && nowT-Number(cg.atMs)<=DRAGON_RACE_RESERVE_EXPIRE_MS);
           const flash=!!(cr && cr.fw && !cr.fdone && ok(cr.fAtMs));
           const guer=!!(cr && cr.will && !cr.done && ok(cr.atMs));
-          let k="";
-          if(reserved){ k="reserved"; cur.guerrilla=null; }              
-          else if(flash){ cr.fdone=1; cur.roll=cr; k="flash"; }          
+          let k="", key="", prevLast="", rsvRec=null;
+          if(reserved){ k="reserved"; key="r:"+String(cg.id||""); rsvRec=Object.assign({},cg); cur.guerrilla=null; }   
+          else if(flash){ cr.fdone=1; cur.roll=cr; k="flash"; key="f:"+String(cr.hour||""); }                       
           else if(guer){
-            if((Number(cur.dRace)||0)>=cfgMaxDaily){ cr.done=1; cur.roll=cr; return cur; } 
+            
+            prevLast=String(cur.lastGuerHour||"");
             cr.done=1; cur.roll=cr;
             cur.dRace=(Number(cur.dRace)||0)+1;
             cur.lastGuerHour=String(cr.hour||"");   
-            k="guerrilla";
-          }else return (raw===null)?cur:undefined;       
-          cur.spawning={id:spawnId,by:uid,atMs:Date.now(),kind:k};
+            k="guerrilla"; key="g:"+String(cr.hour||"");
+          }else return (raw===null || undid)?cur:undefined;   
+          
+          const sp={id:spawnId,by:uid,atMs:nowT,kind:k,rollKey:key,day:dayKey};
+          if(k!=="reserved") sp.hour=String(cr.hour||"");
+          if(k==="guerrilla") sp.prevLast=prevLast;
+          if(rsvRec) sp.rsv=rsvRec;
+          cur.spawning=sp;
           cur.seq=(Number(cur.seq)||0)+1;
           return cur;
-        });
-        if(!res.committed) return;
-        const sched=res.snapshot.val()||{};
-        if(!sched.spawning || sched.spawning.id!==spawnId){
+        }),"레이스 선점",8000);
+        const sched=(res && res.snapshot)?(res.snapshot.val()||{}):{};
+        const mine=(res && res.committed && sched.spawning && typeof sched.spawning==="object" && String(sched.spawning.id||"")===spawnId)?sched.spawning:null;
+        if(!mine){
           
-          if(sched.roll && typeof sched.roll==="object") dragonRaceMergeSummary_({roll:sched.roll});
-          try{ await rUpdate(rDragonSummaryRef_(state.roomId),{"race/roll":sched.roll||null,"race/updatedAtMs":Date.now()}); }catch(e){}
+          if(!sched.spawning){
+            const g=(sched.guerrilla && typeof sched.guerrilla==="object")?sched.guerrilla:null;
+            dragonRaceMergeSummary_({
+              roll:(sched.roll && typeof sched.roll==="object")?sched.roll:null,
+              guerrilla:g?{id:String(g.id||""),atMs:Number(g.atMs)||0}:null
+            });
+          }
+          
+          if(res && res.committed){ try{ await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),{"race/roll":sched.roll||null,"race/updatedAtMs":Date.now()}),"레이스 판정 사본",8000); }catch(e){} }
+          dragonRaceKickRefresh_(!sched.spawning);   
           return;
         }
-        kind=String(sched.spawning.kind||"");
+        kind=String(mine.kind||"");
+        claimAtMs=Number(mine.atMs)||0;
+        rollKey=String(mine.rollKey||"");
       }catch(e){ return; }
       finally{ dragonS3Runtime.raceSpawnLock=false; }
       try{
-        await spawnDragonRace_(kind);
+        await spawnDragonRace_(kind,{spawnId,claimAtMs,rollKey});
       }catch(e){
         console.warn("[dragon s3] race spawn failed",e);
-        try{ await rUpdate(rDragonItemsRef_("sched"),{spawning:null}); }catch(_e){}
+        
+        try{ await dragonRaceReleaseClaim_(spawnId); }catch(_e){}
       }
     }
-    async function spawnDragonRace_(kind){
+    
+    async function spawnDragonRace_(kind,opts){
+      const o=(opts && typeof opts==="object")?opts:{};
+      const spawnId=String(o.spawnId||"");
+      const claimAtMs=Number(o.claimAtMs)||0;
+      const rollKey=String(o.rollKey||"");
       const now=Date.now();
       const id=`race-${now}-${Math.random().toString(36).slice(2,8)}`;
       const seed=(Math.floor(Math.random()*4294967295)+1)>>>0;
       const fresh={id,kind:String(kind||"guerrilla"),seed,startMs:now,endMs:now+DRAGON_RACE_WINDOW_MS,results:{}};
-      let busy=false;
-      const res=await rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
-        busy=false;
-        const cur=(raw && typeof raw==="object")?raw:null;
-
-if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>0){ busy=true; return; }
-        
-        return fresh;
-      });
-      if(busy || !res.committed){
+      if(rollKey) fresh.rollKey=rollKey;
+      if(spawnId) fresh.spawnId=spawnId;
+      
+      const giveBack=async()=>{
+        if(spawnId){ await dragonRaceReleaseClaim_(spawnId); return; }
         try{ await rUpdate(rDragonItemsRef_("sched"),{spawning:null}); }catch(e){}
+      };
+      let busy=null, dup=null, stale=false, prevKey="", res=null;
+      try{
+        res=await readGuard_(rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
+          busy=null; dup=null; stale=false; prevKey="";
+          const cur=(raw && typeof raw==="object")?raw:null;
+
+if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>0){ busy=Object.assign({},cur); return; }
+
+if(cur && cur.id && rollKey && String(cur.rollKey||"")===rollKey){ dup=Object.assign({},cur); return; }
+          
+          if(claimAtMs>0 && Date.now()-claimAtMs>=DRAGON_RACE_SPAWN_LEASE_MS){ stale=true; return; }
+          prevKey=(cur && cur.id)?String(cur.rollKey||""):"";   
+          
+          return fresh;
+        }),"레이스 열기",8000);
+      }catch(e){
+        console.warn("[dragon s3] race open failed",e);
+        await giveBack();
+        return null;
+      }
+      if(busy){
+        
+        if(Number(busy.endMs)>mkGraceNowMs_()){
+          const mirror={id:String(busy.id),kind:String(busy.kind||"guerrilla"),endMs:Number(busy.endMs)||0};
+          try{ await readGuard_(rUpdate(rDragonPlaygroundRef_(),{"dragonSummaryV1/race/active":mirror,"dragonSummaryV1/race/updatedAtMs":Date.now()}),"레이스 사본 복구",8000); }
+          catch(e){ console.warn("[dragon s3] race mirror repair failed",e); }
+          dragonRaceMergeSummary_({active:mirror});
+          dragonS3Runtime.race=busy;
+          try{ dragonRaceStartTick_(); }catch(e){}
+        }else{
+          dragonS3Runtime.race=busy;   
+        }
+        if(!spawnId){ try{ await rUpdate(rDragonItemsRef_("sched"),{spawning:null}); }catch(e){} }
+        else if(rollKey && String(busy.rollKey||"")===rollKey) await dragonRaceFinalizeClaim_(spawnId);   
+        else await dragonRaceReleaseClaim_(spawnId,String(busy.rollKey||""));                                
+        return null;
+      }
+      if(dup){
+        
+        if(spawnId) await dragonRaceFinalizeClaim_(spawnId);
+        return null;
+      }
+      if(stale || !res || !res.committed){
+        await giveBack();
         return null;
       }
       const updates={};
-      updates["dragonItemsV1/sched/spawning"]=null;
+      
+      if(!spawnId) updates["dragonItemsV1/sched/spawning"]=null;
       updates["dragonSummaryV1/race/active"]={id,kind:fresh.kind,endMs:fresh.endMs};
       updates["dragonSummaryV1/race/updatedAtMs"]=now;
       if(fresh.kind==="guerrilla") updates["dragonSummaryV1/race/roll/done"]=1;
@@ -34850,6 +35103,8 @@ if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>0){ busy=tr
       });
       dragonS3Runtime.race=res.snapshot.val()||fresh;
       try{ dragonRaceStartTick_(); }catch(e){}
+      
+      if(spawnId) await dragonRaceFinalizeClaim_(spawnId,prevKey);
       if(dragonModalOpen_()) renderDragonS3_();
       return fresh;
     }
@@ -35398,19 +35653,24 @@ function coinBoostTimeText_(ms){
         return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
       }catch(e){ return ""; }
     }
-    
-    function renderCoinBoostBar_(){
+
+function renderCoinBoostBar_(){
       const bar=document.getElementById("coinBoostBar");
       if(!bar) return;
       const info=coinBoostInfo_();
-      let phase="none", text="";
-      
-      if(info.phase==="active"){ phase="active"; text=`코인 ×${info.mult} 이벤트 진행 중 · ${coinBoostTimeText_(info.endMs)}까지`; }
-      else if(info.phase==="scheduled"){ phase="scheduled"; text=`코인 ×${info.mult} 이벤트 예약 · ${coinBoostTimeText_(info.atMs)} 시작`; }
+      let phase="none", text="", tip="", short="";
+
+if(info.phase==="active"){
+        phase="active"; text=`코인 ×${info.mult} 진행 중`; short=`×${info.mult}`;
+        tip=`코인 ×${info.mult} 이벤트 진행 중 · ${coinBoostTimeText_(info.endMs)}까지${info.label?` · ${info.label}`:""}`;
+      }
+      else if(info.phase==="scheduled"){ phase="scheduled"; text=`코인 ×${info.mult} 이벤트 예약 · ${coinBoostTimeText_(info.atMs)} 시작`; tip=text; }
       if(bar.dataset.phase!==phase) bar.dataset.phase=phase;
       const tx=bar.querySelector(".mkCbText")||bar;
       if(tx.textContent!==text) tx.textContent=text;
-      if(bar.title!==text) bar.title=text;
+      const sh=bar.querySelector(".mkCbShort");
+      if(sh && sh.textContent!==short) sh.textContent=short;
+      if(bar.title!==tip) bar.title=tip;
     }
     
     function renderCoinBoostStatus_(){
@@ -36847,7 +37107,15 @@ const V50_CAT_SEED_SEC = 15 * LEVEL_SEC;
 function displayNameHtml(id){
     return String(displayName(id)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  function toast(msg){ try{ window.showToast ? window.showToast(msg) : console.log(msg); }catch(e){ console.log(msg); } }
+  
+  function toast(msg){ dashToastV169(msg); }
+  
+  function petIGa(name){
+    const s = String(name || '').trim();
+    const c = s.charCodeAt(s.length - 1);
+    if(!(c >= 0xAC00 && c <= 0xD7A3)) return '이(가)';
+    return ((c - 0xAC00) % 28) ? '이' : '가';
+  }
 
   function svgData(svg){ return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg); }
   function growthAura(stage, c, id){
@@ -37516,7 +37784,8 @@ const id = isPetId(st.activePetId) ? st.activePetId : (isPetId(st.growingPetId) 
     const before=clampSec(st.pets[id]?.totalSec); const beforeLv=levelOf(before); const after=clampSec(before + delta);
     st.pets[id].totalSec = after;
     saveState(st);
-    const afterLv=levelOf(after); if(afterLv > beforeLv) toast(`${displayName(id)}가 Lv.${afterLv}로 성장했어!`);
+    
+    const afterLv=levelOf(after); if(afterLv > beforeLv){ const nm=displayName(id); toast(`${nm}${petIGa(nm)} Lv.${afterLv}에 올랐어 🐾`); }
     renderAll();
   }
 
@@ -43281,6 +43550,13 @@ award:{ normCode:normAwardCode, prettyCode:prettyAwardCode, redeem:redeemAward, 
 
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
   
+  function petIGaV169(name){
+    var s = String(name || '').trim();
+    var c = s.charCodeAt(s.length - 1);
+    if(!(c >= 0xAC00 && c <= 0xD7A3)) return '이(가)';
+    return ((c - 0xAC00) % 28) ? '이' : '가';
+  }
+  
   function toast(msg, ms){
     try{
       if(typeof window.showToast === 'function'){ window.showToast(msg, ms || 2200); return; }
@@ -43468,13 +43744,16 @@ if(api){
           if(al > bl){
             var base = api.PETS.filter(function(p){ return p.id === id; })[0];
             var nm = (st.customNames && st.customNames[id]) || (base && base.name) || id;
-            msgs.push(nm + '가 Lv.' + al + '로 성장했어!');
+            
+            var nmT = String(nm).trim() || String(nm);
+            msgs.push(nmT + petIGaV169(nmT) + ' Lv.' + al + '에 올랐어 🐾');
           }
         });
         
         st.growingPetId = picks.indexOf(st.activePetId) >= 0 ? st.activePetId : picks[0];
         api.saveState(st);
-        msgs.forEach(toast);
+        
+        if(msgs.length) toast(msgs.join(' · '), msgs.length > 1 ? 3600 : 2200);
         
         var __nowRA = Date.now();
         if(msgs.length || (document.visibilityState !== 'hidden' && __nowRA - v169RenderAllLastMs > 5000)){
@@ -47751,19 +48030,6 @@ html body .topbar #nowClockMain{
 }
 html body:not(.joined) .topbar #nowClockMain{ display:none !important; }
 
-html body .topbar #coinBoostBar{
-  display:none; align-items:center; gap:6px; flex:0 1 auto; min-width:0;
-  height:30px; padding:0 11px; border-radius:999px;
-  border:1px solid rgba(var(--pink2rgb),.55); background:rgba(var(--pink3rgb),.14); color:var(--pink1);
-  font-size:12px; font-weight:800; letter-spacing:0; line-height:1; text-align:left; white-space:nowrap;
-}
-html body.joined .topbar #coinBoostBar[data-phase="active"],
-html body.joined .topbar #coinBoostBar[data-phase="scheduled"]{ display:inline-flex !important; }
-html body .topbar #coinBoostBar .mkIc{ width:15px; height:15px; color:var(--pink2); }
-html body .topbar #coinBoostBar .mkCbIcSoon,
-html body .topbar #coinBoostBar[data-phase="scheduled"] .mkCbIcOn{ display:none; }
-html body .topbar #coinBoostBar[data-phase="scheduled"] .mkCbIcSoon{ display:inline-block; }
-html body .topbar #coinBoostBar .mkCbText{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
 
 
 
@@ -47790,31 +48056,6 @@ html body .topbar #coinBoostBar .mkCbText{ min-width:0; overflow:hidden; text-ov
   }
 }
 
-@media (min-width:1280px){
-  html body.joined .topbar.topbar:has(#coinBoostBar[data-phase="active"]),
-  html body.joined .topbar.topbar:has(#coinBoostBar[data-phase="scheduled"]){
-    grid-template-columns:minmax(0,max-content) minmax(max-content,1fr) max-content !important;
-  }
-}
-
-@media (min-width:1101px) and (max-width:1279px){
-  html body.joined .topbar.topbar:has(#coinBoostBar[data-phase="active"]),
-  html body.joined .topbar.topbar:has(#coinBoostBar[data-phase="scheduled"]){
-    grid-template-columns:max-content max-content minmax(0,1fr) max-content !important;
-    column-gap:12px !important; row-gap:8px !important;
-  }
-  html body.joined .topbar:has(#coinBoostBar[data-phase="active"]) > .brand,
-  html body.joined .topbar:has(#coinBoostBar[data-phase="scheduled"]) > .brand{ display:contents !important; }
-  html body.joined .topbar:has(#coinBoostBar[data-phase="active"]) .brandTitle,
-  html body.joined .topbar:has(#coinBoostBar[data-phase="scheduled"]) .brandTitle{ grid-column:1 !important; grid-row:1 !important; }
-  html body.joined .topbar:has(#coinBoostBar[data-phase="active"]) #nowClockMain,
-  html body.joined .topbar:has(#coinBoostBar[data-phase="scheduled"]) #nowClockMain{ grid-column:2 !important; grid-row:1 !important; margin-left:0 !important; }
-  html body.joined .topbar:has(#coinBoostBar[data-phase="active"]) > .topCenter,
-  html body.joined .topbar:has(#coinBoostBar[data-phase="scheduled"]) > .topCenter{ grid-column:3 !important; grid-row:1 !important; justify-self:center !important; }
-  html body.joined .topbar:has(#coinBoostBar[data-phase="active"]) > .actions,
-  html body.joined .topbar:has(#coinBoostBar[data-phase="scheduled"]) > .actions{ grid-column:4 !important; grid-row:1 !important; }
-  html body.joined .topbar #coinBoostBar{ grid-column:1 / -1 !important; grid-row:2 !important; justify-self:start; max-width:100%; }
-}
 
 
 @media (min-width:761px) and (max-width:1100px){
@@ -47827,7 +48068,7 @@ html body .topbar #coinBoostBar .mkCbText{ min-width:0; overflow:hidden; text-ov
   html body .topbar #nowClockMain{ grid-column:2 !important; grid-row:1 !important; margin-left:0 !important; }
   html body .topbar > .topCenter{ grid-column:3 !important; grid-row:1 !important; justify-self:center !important; gap:6px !important; }
   html body .topbar > .actions{ grid-column:4 !important; grid-row:1 !important; gap:6px !important; }
-  html body.joined .topbar #coinBoostBar{ grid-column:1 / -1 !important; grid-row:2 !important; justify-self:start; max-width:100%; }
+  
   html body .topbar #statusBtn,
   html body .topbar #handcamBtn,
   html body .topbar #handcamViewBtn,
@@ -47872,7 +48113,7 @@ html body .topbar #coinBoostBar .mkCbText{ min-width:0; overflow:hidden; text-ov
     gap:6px !important; width:auto !important; min-width:0 !important; order:0 !important;
     position:relative !important; left:0 !important;
   }
-  html body.joined .topbar #coinBoostBar{ grid-column:1 / -1 !important; grid-row:3 !important; height:28px; justify-self:stretch; }
+  
   html body .topbar #statusBtn,
   html body .topbar #handcamBtn,
   html body .topbar #handcamViewBtn,
@@ -47912,7 +48153,7 @@ html body .topbar #coinBoostBar .mkCbText{ min-width:0; overflow:hidden; text-ov
 
 
 html body .topbar #statusMenu.statusMenu{
-  position:absolute !important; top:calc(100% + 8px) !important; left:0 !important; right:auto !important; bottom:auto !important;
+  position:absolute !important; top:calc(100% + 8px) !important; left:var(--mkStMenuX, 0px) !important; right:auto !important; bottom:auto !important;
   transform:none !important; width:220px !important; max-width:calc(100vw - 16px) !important; max-height:none !important; overflow:visible !important;
   flex-direction:column !important; gap:2px !important; padding:6px !important;
   border-radius:14px !important; border:1px solid var(--line) !important; background:rgba(28,28,33,.99) !important;
@@ -49263,6 +49504,100 @@ html body .mkHubStat > #mkCharaWallet > .mkIc.mkWalletMult{ margin-right:2px; }
   iconize();
 })();
 </script>
+
+
+<style id="v279Header">
+
+
+
+html body .topbar .brandTitle,
+html body .topbar #nowClockMain{ visibility:hidden !important; }
+@media (min-width:1101px){
+  html body .topbar .brandTitle,
+  html body .topbar #nowClockMain{ display:none !important; }
+}
+@media (max-width:760px){
+  html body .topbar .brandTitle{ display:none !important; }
+  html body:not(.joined) .topbar > .actions{ grid-row:1 !important; }
+  html body:not(.joined) .topbar > .topCenter{ grid-row:2 !important; }
+}
+
+
+html body.joined.mkAuthSlotAdmin .topbar #authStateHint.authOk{ display:none !important; }
+
+
+html body #chatCard > h3 > #coinBoostBar{
+  display:none; align-items:center; gap:4px; flex:0 1 auto; min-width:0; box-sizing:border-box;
+  height:26px; margin:0; padding:0 9px; border-radius:999px; overflow:hidden;
+  border:1px solid rgba(var(--pink2rgb),.55); background:rgba(var(--pink3rgb),.14); color:var(--pink1);
+  font-size:12px; font-weight:800; letter-spacing:0; line-height:1; text-align:left; white-space:nowrap;
+}
+html body.joined #chatCard > h3 > #coinBoostBar[data-phase="active"]{ display:inline-flex !important; }
+html body #chatCard > h3 > #coinBoostBar .mkIc{ width:15px; height:15px; color:var(--pink2); }
+html body #chatCard > h3 > #coinBoostBar .mkCbIcSoon,
+html body #chatCard > h3 > #coinBoostBar .mkCbShort{ display:none; }
+html body #chatCard > h3 > #coinBoostBar .mkCbText,
+html body #chatCard > h3 > #coinBoostBar .mkCbShort{
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none;
+  color:inherit !important; font-size:inherit !important; font-weight:inherit !important;
+}
+@media (max-width:1259px){
+  html body #chatCard > h3 > #coinBoostBar{ padding:0 8px; }
+  html body #chatCard > h3 > #coinBoostBar .mkCbText{ display:none; }
+  html body #chatCard > h3 > #coinBoostBar .mkCbShort{ display:block; }
+}
+
+
+html body #chatCard > h3 > #joinTicker.joinTicker{ display:none !important; }
+html body #chatList .msg.system.mkTickerLine{
+  align-self:center; width:auto; max-width:94%; box-sizing:border-box;
+  margin:0 auto 6px; padding:0 6px; gap:0;
+  border:0; border-radius:0; background:none; box-shadow:none;
+  color:var(--muted); font-weight:700; text-align:center;
+}
+html body #chatList .msg.system.mkTickerLine .text{ padding:1px 0; font-size:11.5px; line-height:1.4; }
+html body.mkLowSpecMode #chatList .msg.system.mkTickerLine,
+html body.mkLightMode #chatList .msg.system.mkTickerLine{ background:none !important; }
+</style>
+
+
+<style id="v279Dragon">
+
+
+
+#dragonModal .dragonPoolHead b,
+#dragonModal .dragonBagHead b{ flex:0 0 auto; white-space:nowrap; }
+
+
+@media (max-width:780px){
+  #dragonModal .dragonTabs{ gap:4px; }
+  #dragonModal .dragonTab{ padding:4px 6px; }
+  
+  #dragonModal .dragonTabs > .dragonTab[data-tip]{ position:static; }
+  #dragonModal .dragonTabs > .dragonTab[data-tip]::before{ left:50%; right:auto; translate:-50% 0; }
+  #dragonModal .dragonTabs > .dragonTab[data-tip]:nth-last-child(2)::before{ left:auto; right:12px; translate:0 0; }
+  
+  #dragonScene .worldTreeLevelOrb{ top:71px; }
+}
+@media (max-width:780px) and (min-width:360px){
+  #dragonScene:not(:has(> .dragonTabs > .dragonTab:nth-child(6))) .worldTreeLevelOrb{ top:47px; }
+}
+
+@media (min-width:781px) and (max-width:860px){
+  #dragonScene:has(> .dragonTabs > .dragonTab:nth-child(6)) .worldTreeLevelOrb{ top:78px; }
+}
+
+
+#dragonModal .dragonPoolRow strong > .mkIc{ width:12px; height:12px; margin-right:3px; vertical-align:-2px; }
+
+#dragonModal .dragonPoolRow output small > .mkIc{ width:10px; height:10px; margin-right:3px; vertical-align:-1px; color:#f2c94c; }
+
+
+#dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal{ width:12px; height:12px; margin-right:3px; vertical-align:-2px; }
+#dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-1{ color:#f2c94c; }
+#dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-2{ color:#c9d3e0; }
+#dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-3{ color:#d8925a; }
+</style>
 
 </body>
 </html>
