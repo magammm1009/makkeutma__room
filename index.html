@@ -129,6 +129,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -12530,6 +12531,7 @@ const root = rMessagesByDateRootRef(state.roomId, state.chatDayKey);
     for(const k of Object.keys(val)){
       const m = val[k] || {};
       if(NONRENDER_TYPES[String(m.type || "")]) continue;
+      if(__chatIsGhostDoc_(m)) continue;   
       const t = Number(m.tsMs || 0);
       if(t >= idTs){ idTs = t; id = k; }
     }
@@ -12770,6 +12772,13 @@ if(!registeredUid || registeredUid !== uid){
 async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
+      
+      const safeBase = mkFrameUrl_(baseUrl);
+      if(!safeBase){
+        try{ console.warn("[V283_SECJSONP] 허용 목록 밖 주소라 수다방을 열지 않았어요:", String(baseUrl).slice(0, 120)); }catch(e){}
+        showToast("수다 링크가 허용된 주소가 아니라 열지 않았어요 (☰ 관리자 설정 확인)", 3200);
+        return;
+      }
 
 const withTimeout = (p, ms, label) => Promise.race([
         p,
@@ -12835,7 +12844,7 @@ uid: (sudaUid || uid || ""),
           "rtdbSet"
         );
 
-const u = new URL(baseUrl, location.href);
+const u = new URL(safeBase);   
         u.searchParams.set("gateRoom", roomId);
         u.searchParams.set("room", roomId); 
         u.searchParams.set("ticket", tid);
@@ -12899,6 +12908,13 @@ async function __pomoTicketSweep_(maxDeletes = 5){
     async function openPomoWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 뽀모 링크가 없어! (☰에서 저장)"); return; }
+      
+      const safeBase = mkFrameUrl_(baseUrl);
+      if(!safeBase){
+        try{ console.warn("[V283_SECJSONP] 허용 목록 밖 주소라 뽀모를 열지 않았어요:", String(baseUrl).slice(0, 120)); }catch(e){}
+        showToast("뽀모 링크가 허용된 주소가 아니라 열지 않았어요 (☰ 관리자 설정 확인)", 3200);
+        return;
+      }
 
       const withTimeout = (p, ms, label) => Promise.race([
         p,
@@ -12908,6 +12924,7 @@ async function __pomoTicketSweep_(maxDeletes = 5){
 let win = null;
       try{ win = window.open("", "_blank"); }catch(_e){ win = null; }
       if(win){
+        try{ win.opener = null; }catch(_e){}
         try{
           win.document.write('<!doctype html><meta charset="utf-8">' +
             '<title>뽀모 여는 중…</title>' +
@@ -12948,7 +12965,7 @@ let win = null;
         trail.push({ tid, expAtMs });
         __pomoTicketTrailWrite_(trail);
 
-        const u = new URL(baseUrl, location.href);
+        const u = new URL(safeBase);   
         u.searchParams.set("ticket", tid);
         if(nick) u.searchParams.set("nick", nick);
 
@@ -12958,6 +12975,7 @@ const target = u.toString();
         }else{
           
           const retry = window.open(target, "_blank");
+          if(retry){ try{ retry.opener = null; }catch(_e){} }   
           if(!retry) showToast("팝업이 차단됐어! 이 사이트의 팝업을 허용해 줘 🙏", 4200);
         }
 
@@ -12976,7 +12994,31 @@ __pomoTicketSweep_(5).catch(()=>{});
       openUrl(url);
     }
 
-function loadJsonp(url, cb, timeoutMs = 12_000){
+const MK_JSONP_HOSTS_ = [];   
+    const MK_FRAME_HOSTS_ = [   
+      "magamm00-5baee.web.app", "magamm00-5baee.firebaseapp.com",   
+      "mkm-pp-mm00.web.app", "mkm-pp-mm00.firebaseapp.com",         
+      "magammm1009.github.io"                                       
+    ];
+
+function mkAllowedUrl_(raw, hosts, sameOriginOk){
+      try{
+        const u = new URL(String(raw == null ? "" : raw), location.href);
+        if(sameOriginOk && u.origin !== "null" && u.origin === location.origin) return u.href;
+        if(u.protocol === "https:" && hosts.includes(u.hostname.toLowerCase())) return u.href;
+      }catch(e){}
+      return "";
+    }
+    function mkJsonpUrlOk_(raw){ return !!mkAllowedUrl_(raw, MK_JSONP_HOSTS_, false); }
+    function mkFrameUrl_(raw){ return mkAllowedUrl_(raw, MK_FRAME_HOSTS_, true); }
+
+    function loadJsonp(url, cb, timeoutMs = 12_000){
+
+if(!mkJsonpUrlOk_(url)){
+        try{ console.warn("[V283_SECJSONP] JSONP는 폐기됐어요 — <script>를 만들지 않았어요:", String(url || "").slice(0, 120)); }catch(e){}
+        try{ cb(new Error("jsonp blocked")); }catch(e){}
+        return;
+      }
       try{
         const cbName = "__mk_cb_" + Math.random().toString(36).slice(2);
         let settled = false;
@@ -13023,6 +13065,8 @@ async function loadJsonAny(url, cb){
       };
       const fallbackJsonp = ()=>{
         if(settled) return;
+        
+        if(!mkJsonpUrlOk_(url)){ finish(new Error("jsonp host not allowed")); return; }
         const remainingMs = Math.max(1000, deadlineMs - (Date.now() - startedAt));
         loadJsonp(url, finish, remainingMs);
       };
@@ -15201,6 +15245,17 @@ state.myStatus = "break";
           updatedAt: now,
           lastSeenAtMs: now,
         });
+      }else if(state.__joinMergeOpen === true){
+        
+        try{
+          const localSec = Math.floor(Number(focusLoadSeconds()||0));
+          let remoteSec = 0;
+          try{ remoteSec = Math.floor(Number(computeDisplayedTotal(data)||0)); }catch(e){ remoteSec = Math.floor(Number(data.totalSecondsToday||0)); }
+          const resetCanonical = timerResetCanonicalState_(data) && Math.max(0, Number(data.timerResetAtMs || 0)) > 0;
+          const resetStale = timerResetRecordNeedsClamp_(data);
+          const merged = (resetCanonical || resetStale) ? remoteSec : Math.max(localSec, remoteSec);
+          if(merged !== localSec) focusSaveSeconds(merged);
+        }catch(_e){}
       }
 
 try{
@@ -17159,22 +17214,97 @@ function escapeHtml(s){
       { k:"fanfare", e:"🎉", label:"팡파레" },
     ];
 
+function __chatIsGhostDoc_(m){
+      if(!m || typeof m !== "object") return true;
+      return !(m.tsMs || m.serverTs || m.text || m.type || m.stk || m.uid);
+    }
+
+function __chatReactView_(m){
+      const pick = (o)=> (o && o.reactions && typeof o.reactions === "object") ? o.reactions
+        : ((o && o.react && typeof o.react === "object") ? o.react : null);
+      const own = pick(m) || {};
+      let ghosts = null;
+      try{
+        const store = state.chatGhostById;
+        if(m && m.id && store && Object.prototype.hasOwnProperty.call(store, m.id)) ghosts = store[m.id];
+      }catch(e){}
+      if(!ghosts || typeof ghosts !== "object") return own;
+      const out = {};
+      const add = (src)=>{
+        for(const k of Object.keys(src || {})){
+          const b = src[k];
+          if(!b || typeof b !== "object") continue;
+          const t = out[k] || (out[k] = {});
+          for(const u of Object.keys(b)) t[u] = b[u];
+        }
+      };
+      add(own);
+      for(const day of Object.keys(ghosts)) add(pick(ghosts[day]));
+      return out;
+    }
+    
+    function __chatFindMsg_(msgId){
+      const id = String(msgId || "");
+      if(!id) return null;
+      for(const pool of [state.chatCacheById, state.chatRollingById]){
+        try{
+          if(!pool || typeof pool !== "object") continue;
+          const hit = (typeof pool.get === "function") ? pool.get(id)
+            : (Object.prototype.hasOwnProperty.call(pool, id) ? pool[id] : null);
+          if(hit && !__chatIsGhostDoc_(hit)) return hit;
+        }catch(e){}
+      }
+      return null;
+    }
+
+function __chatMsgDayKey_(m){
+      try{
+        if(!m) return "";
+        const dk = String(m.dayKey || m.dateKey || "");
+        if(/^\d{4}-\d{2}-\d{2}$/.test(dk)) return dk;
+        const ts = Number(m.tsMs || m.serverTs || 0);
+        if(Number.isFinite(ts) && ts > 0) return __seoulDateKeyFromMs(ts);
+      }catch(e){}
+      return "";
+    }
+
 function __getMyReactOn(msgObj, emoji){
       try{
         if(!msgObj || !emoji || !state || !state.uid) return false;
-        const reacts = (msgObj.reactions || msgObj.react || null);
-        if(!reacts || !reacts[emoji]) return false;
-        return !!(reacts[emoji][state.uid]);
+        
+        const reacts = __chatReactView_(msgObj);
+        const bucket = reacts ? reacts[emoji] : null;
+        return !!(bucket && typeof bucket === "object" && bucket[state.uid]);
       }catch(e){ return false; }
     }
 
     async function toggleReaction(msgId, emoji){
   if(!state.roomId || !state.uid) return;
 
-let msgObj = null;
-  try{ msgObj = state.chatCacheById ? (state.chatCacheById.get ? state.chatCacheById.get(msgId) : null) : null; }catch(e){}
+const msgObj = __chatFindMsg_(msgId);
+  const dayKey = __chatMsgDayKey_(msgObj);
+  if(!msgObj || !dayKey){
+    showToast("메시지를 못 찾아 리액션을 못 달았어요 😿", 2200);
+    return;
+  }
   const wasOn = __getMyReactOn(msgObj, emoji);
   const wantOn = !wasOn;
+
+const ghostLeaves = [];
+  if(!wantOn){
+    try{
+      const store = state.chatGhostById;
+      const gs = (store && Object.prototype.hasOwnProperty.call(store, msgId)) ? store[msgId] : null;
+      for(const gDay of Object.keys(gs || {})){
+        if(!gDay || gDay === dayKey) continue;
+        const g = gs[gDay] || {};
+        for(const gk of ["reactions","react"]){
+          const b = g[gk] ? g[gk][emoji] : null;
+          if(b && typeof b === "object" && b[state.uid]) ghostLeaves.push({ day:gDay, key:gk });
+        }
+      }
+    }catch(e){}
+  }
 
   const base = (typeof rChatMsgRef === "function") ? rChatMsgRef(state.roomId, msgId) : rMessageRef(state.roomId, msgId);
 
@@ -17190,16 +17320,13 @@ const keysToTry = ["reactions","react"];
 
   for(const key of keysToTry){
     try{
-      
-      const dayKey = (()=>{
-        try{
-          if(msgObj && (msgObj.dayKey || msgObj.dateKey)) return String(msgObj.dayKey || msgObj.dateKey);
-          return __seoulDateKeyFromMs(Number((msgObj && (msgObj.tsMs || msgObj.serverTs)) || Date.now()));
-        }catch(e){ return __seoulDateKeyFromMs(Date.now()); }
-      })();
-      const updates = {};
+
+const updates = {};
       updates[`${rRoomBase(state.roomId)}/messages/${msgId}/${key}/${emoji}/${state.uid}`] = wantOn ? 1 : null;
       updates[`${rRoomBase(state.roomId)}/messagesByDate/${dayKey}/${msgId}/${key}/${emoji}/${state.uid}`] = wantOn ? 1 : null;
+      for(const gl of ghostLeaves){   
+        updates[`${rRoomBase(state.roomId)}/messagesByDate/${gl.day}/${msgId}/${gl.key}/${emoji}/${state.uid}`] = null;
+      }
       try{
         await rUpdate(rRef(rtdb), updates);
       }catch(_fanoutErr){
@@ -17224,6 +17351,21 @@ try{
           }
         }
       }catch(e){}
+
+if(ghostLeaves.length){
+        try{
+          const gs = state.chatGhostById ? state.chatGhostById[msgId] : null;
+          for(const gl of ghostLeaves){
+            const g = gs ? gs[gl.day] : null;
+            const b = (g && g[gl.key]) ? g[gl.key][emoji] : null;
+            if(b && typeof b === "object"){
+              delete b[state.uid];
+              if(Object.keys(b).length === 0) delete g[gl.key][emoji];
+            }
+          }
+        }catch(e){}
+        try{ const rr = state.__chatRenderSoon; if(typeof rr === "function") rr(); }catch(e){}
+      }
 
       return;
     }catch(e){
@@ -17380,7 +17522,8 @@ try{
 
 try{
         if(m && m.id){
-          const react = ((m.reactions && typeof m.reactions==="object") ? m.reactions : ((m.react && typeof m.react==="object") ? m.react : {}));
+          
+          const react = __chatReactView_(m);
 
 const chips = document.createElement("div");
           chips.className = "reactRow";
@@ -17790,6 +17933,16 @@ state.chatSubSeq = (Number(state.chatSubSeq) || 0) + 1;
   state.chatCacheById = {};
   state.chatFirstLoadDone = false;
   state.chatDidPrependOnce = false;
+  
+  const chatGhostById = Object.create(null);
+  state.chatGhostById = chatGhostById;
+  function noteChatGhost_(id, day, data){
+    try{
+      if(!id || !day || !data || typeof data !== "object") return;
+      const slot = chatGhostById[id] || (chatGhostById[id] = Object.create(null));
+      slot[day] = data;
+    }catch(e){}
+  }
 
 const INIT_LIMIT = 20;   
   const STAY_LIMIT = 20;   
@@ -17811,12 +17964,18 @@ const chatDayKey = __seoulDateKeyFromMs(Date.now());
   const root = rMessagesByDateRootRef(state.roomId, chatDayKey);
   const prevRoot = rMessagesByDateRootRef(state.roomId, prevChatDayKey);
   const historyRoots = (prevChatDayKey && prevChatDayKey !== chatDayKey) ? [prevRoot, root] : [root];
+  const historyDays = (prevChatDayKey && prevChatDayKey !== chatDayKey) ? [prevChatDayKey, chatDayKey] : [chatDayKey];   
   const legacyRoot = rMessagesRootRef(state.roomId); 
 
-  function normalizeDocsFromSnapVal(valObj){
+  function normalizeDocsFromSnapVal(valObj, ghostDay){
     const docs = [];
     for(const [id, data] of Object.entries(valObj || {})){
       if(!data) continue;
+      
+      if(__chatIsGhostDoc_(data)){
+        if(ghostDay) noteChatGhost_(id, ghostDay, data);
+        continue;
+      }
       docs.push({ ...data, id });
     }
     docs.sort((a,b)=>{
@@ -17968,7 +18127,7 @@ mkScheduleFrame_(()=>{
     const byId = {};
     for(const arr of (chunks || [])){
       for(const m of (arr || [])){
-        if(!m) continue;
+        if(!m || __chatIsGhostDoc_(m)) continue;   
         const id = String(m.id || `${m.tsMs||m.serverTs||''}_${m.uid||''}_${m.text||''}`);
         byId[id] = m;
       }
@@ -17986,11 +18145,11 @@ mkScheduleFrame_(()=>{
   async function loadLastOnce(n){
     
     const rawN = Math.max(Number(n)||0, RAW_INIT_LIMIT);
-    const chunks = await Promise.all(historyRoots.map(async (rr)=>{
+    const chunks = await Promise.all(historyRoots.map(async (rr, i)=>{
       const q = rQuery(rr, rOrderByChild("tsMs"), rLimitToLast(rawN));
       const snap = await rGet(q);
       const val = snap && snap.val ? (snap.val() || {}) : {};
-      return normalizeDocsFromSnapVal(val);
+      return normalizeDocsFromSnapVal(val, historyDays[i]);   
     }));
     return mergeAndLimitChatDocs(chunks, n);
   }
@@ -18000,11 +18159,11 @@ mkScheduleFrame_(()=>{
     const end = Number(ts||0) - 1;
     if(!end || end < 0) return [];
     const rawN = Math.max(Number(n)||0, RAW_MORE_LIMIT);
-    const chunks = await Promise.all(historyRoots.map(async (rr)=>{
+    const chunks = await Promise.all(historyRoots.map(async (rr, i)=>{
       const q = rQuery(rr, rOrderByChild("tsMs"), rEndAt(end), rLimitToLast(rawN));
       const snap = await rGet(q);
       const val = snap && snap.val ? (snap.val() || {}) : {};
-      return normalizeDocsFromSnapVal(val);
+      return normalizeDocsFromSnapVal(val, historyDays[i]);   
     }));
     return mergeAndLimitChatDocs(chunks, n);
   }
@@ -18068,6 +18227,7 @@ mkScheduleFrame_(()=>{
 
 state.__chatMoreLoad = loadMoreOlderOnce;
   state.__chatMoreUpdate = updateChatMoreUI;
+  state.__chatRenderSoon = __scheduleChatRender;   
 
 (async ()=>{
     try{
@@ -18104,6 +18264,13 @@ if(!isCurrentChatSub()) return;
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
+          
+          if(__chatIsGhostDoc_(data)){
+            noteChatGhost_(id, chatDayKey, data);
+            state.chatLastRecvMs = Date.now();
+            if(state.chatRollingById && state.chatRollingById[id]) __scheduleChatRender();
+            return;
+          }
           const mm = { ...data, id };
           
           state.chatLiveSeenAt = state.chatLiveSeenAt || {};
@@ -18166,12 +18333,19 @@ try{
       state.unsubChatLive = ()=>{ try{ rOff(qLive, "child_added", onAdd); }catch(e){} };
 
 const qChg = rQuery(root, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
-      const onChg = (snap)=>{
+      
+      const onChgFor = (chgDay)=>(snap)=>{
         try{
           if(!isCurrentChatSub()) return;
           const id = snap.key;
           const data = snap.val ? snap.val() : null;
           if(!id || !data) return;
+          
+          if(__chatIsGhostDoc_(data)){
+            noteChatGhost_(id, chgDay, data);
+            if(state.chatRollingById && state.chatRollingById[id]) __scheduleChatRender();
+            return;
+          }
           const mm = { ...data, id };
           
           if(mm && (mm.type==="mission" || mm.type==="sfx" || mm.type==="sys")) return;
@@ -18182,13 +18356,15 @@ if(state.chatRollingById && state.chatRollingById[id]){
           }
         }catch(e){}
       };
+      const onChg = onChgFor(chatDayKey);   
       rOnChildChanged(qChg, onChg);
       state.unsubChatChg = ()=>{ try{ rOff(qChg, "child_changed", onChg); }catch(e){} };
 
 if(prevChatDayKey && prevChatDayKey !== chatDayKey){
         const qChgPrev = rQuery(prevRoot, rOrderByChild("tsMs"), rLimitToLast(RAW_LIVE_LIMIT));
-        rOnChildChanged(qChgPrev, onChg);
-        state.unsubChatChgPrev = ()=>{ try{ rOff(qChgPrev, "child_changed", onChg); }catch(e){} };
+        const onChgPrev = onChgFor(prevChatDayKey);   
+        rOnChildChanged(qChgPrev, onChgPrev);
+        state.unsubChatChgPrev = ()=>{ try{ rOff(qChgPrev, "child_changed", onChgPrev); }catch(e){} };
       }
 
 if(els.chatList && !state._chatMoreScrollHooked){
@@ -19024,9 +19200,9 @@ if(__chatSending){
         return;
       }
 
+els.chatInput.value = "";
       const ok = await sendChatCore(text);
       if(ok){
-        els.chatInput.value = "";
 
 try{ flushChatQueue(); }catch(e){}
         try{ dedupeChatDomHard(); ensureChatDedupeObserver(); }catch(e){}
@@ -19034,8 +19210,8 @@ try{ flushChatQueue(); }catch(e){}
         setTimeout(()=>{ try{ dedupeChatDomHard(); }catch(e){} }, 650);
         try{ els.chatList.scrollTop = els.chatList.scrollHeight; }catch(e){}
       }else{
-        
-        els.chatInput.value = text;
+
+if(!String(els.chatInput.value || "").trim()) els.chatInput.value = text;
       }
     }
 
@@ -21870,7 +22046,10 @@ const isSessionReset = String(k.mode || "") === "session";
       }catch(e){}
 
 await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId), 6000);
+      
+      state.__joinMergeOpen = true;
       await joinStepGuard_("ensureMeDoc(presence 초기화)", ensureMeDoc(), 8000);
+      state.__joinMergeOpen = false;
       
       try{ Promise.resolve(mkNewbieSelfStamp_()).catch(()=>{}); }catch(_e){}
       
@@ -25404,6 +25583,13 @@ window.__MK_HOMEWORK_MODAL_V1__ = {
     if(!state.joined){ try{ showToast("입장하고 열어줘! 💗"); }catch(e){} return; }
     const src = String(url || settingsUrl() || "").trim();
     if(!src){ try{ showToast("출근부 링크가 아직 등록되지 않았어요"); }catch(e){} return; }
+    
+    const safeSrc = mkFrameUrl_(src);
+    if(!safeSrc){
+      try{ console.warn("[V283_SECJSONP] 허용 목록 밖 주소라 출근부 창에 싣지 않았어요:", src.slice(0, 120)); }catch(e){}
+      try{ showToast("출근부 링크가 허용된 주소가 아니라 열지 않았어요 (☰ 관리자 설정 확인)", 3200); }catch(e){}
+      return;
+    }
     const ov = byId('attendOverlay');
     const fr = byId('attendFrame');
     if(!ov || !fr) return;
@@ -25418,7 +25604,7 @@ try{ hideModal(els.attendModal); }catch(e){}
     atOpen = true;
     ov.classList.add('on');
     ov.setAttribute('aria-hidden', 'false');
-    fr.src = src;   
+    fr.src = safeSrc;   
   }
 
   function closeAttendBoard(){
@@ -26662,13 +26848,25 @@ if(total <= 30) return true;
       schemaVersion:'pet-cloud-v1'
     }, extra || {});
   }
+  
+  function petCloudCleanNames_(raw){
+    const out = {};
+    if(!raw || typeof raw !== 'object') return out;
+    PET_CLOUD_IDS.forEach(id=>{
+      const v = raw[id];
+      if(typeof v !== 'string') return;
+      const s = v.replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim().slice(0, 20);
+      if(s) out[id] = s;
+    });
+    return out;
+  }
   function petCloudRemoteState(remote){
     const st = remote && remote.petState ? remote.petState : null;
     if(!st || typeof st !== 'object') return null;
     const base = petCloudBaseState();
     const out = Object.assign(base, st);
     out.pets = Object.assign(base.pets, st.pets || {});
-    out.customNames = Object.assign({}, st.customNames || {});
+    out.customNames = petCloudCleanNames_(st.customNames);   
     PET_CLOUD_IDS.forEach(id=>{
       out.pets[id] = out.pets[id] || {totalSec:0};
       out.pets[id].totalSec = Math.max(0, Math.min(PET_CLOUD_MAX_SEC, Math.floor(Number(out.pets[id].totalSec)||0)));
@@ -28398,17 +28596,24 @@ async function ensureViewer(){
       if(hc.view) return hc.view;
 
       const pc = hcNewPC();
+      
+      let sessionId = "";
+      try{
 
 pc.addTransceiver("video", { direction: "recvonly" });
-      const initialOffer = await pc.createOffer();
-      await pc.setLocalDescription(initialOffer);
-      const s = await hcApi("/sessions/new", {
-        sessionDescription: { type: "offer", sdp: initialOffer.sdp }
-      });
-      const sessionId = String(s && s.sessionId || "");
-      if(!sessionId) throw new Error("no viewer sessionId");
-      if(s && s.sessionDescription){
-        await pc.setRemoteDescription(new RTCSessionDescription(s.sessionDescription));
+        const initialOffer = await pc.createOffer();
+        await pc.setLocalDescription(initialOffer);
+        const s = await hcApi("/sessions/new", {
+          sessionDescription: { type: "offer", sdp: initialOffer.sdp }
+        });
+        sessionId = String(s && s.sessionId || "");
+        if(!sessionId) throw new Error("no viewer sessionId");
+        if(s && s.sessionDescription){
+          await pc.setRemoteDescription(new RTCSessionDescription(s.sessionDescription));
+        }
+      }catch(e){
+        try{ pc.close(); }catch(_e){}
+        throw e;
       }
 
       pc.ontrack = (evt)=>{
@@ -28436,6 +28641,7 @@ pc.addTransceiver("video", { direction: "recvonly" });
           if(["failed", "closed"].includes(st)){
             clearDcTimer_();
             hc.view = null;
+            try{ pc.close(); }catch(_e){} 
             if(hcCanReceive()) syncPulls();
             return;
           }
@@ -28493,6 +28699,44 @@ pc.addTransceiver("video", { direction: "recvonly" });
       try{ view.pc && view.pc.close(); }catch(e){}
     }
 
+let hcViewRetryT_ = null, hcViewRetryN_ = 0;
+    function hcViewRetryReset_(){
+      try{ if(hcViewRetryT_) clearTimeout(hcViewRetryT_); }catch(_e){}
+      hcViewRetryT_ = null;
+      hcViewRetryN_ = 0;
+    }
+    function hcViewRetryFail_(err){
+      if(!hcCanReceive()){ hcViewRetryReset_(); return; }   
+      hcViewRetryN_++;
+      const ms = Math.min(60000, 2000 * Math.pow(2, Math.min(hcViewRetryN_ - 1, 5)));
+      try{ if(hcViewRetryT_) clearTimeout(hcViewRetryT_); }catch(_e){}
+      hcViewRetryT_ = setTimeout(()=>{
+        hcViewRetryT_ = null;
+        try{
+          if(!hcCanReceive()){ hcViewRetryReset_(); return; }
+          syncPulls();
+        }catch(_e){}
+      }, ms);
+      console.warn("[V283_HCRETRY] 손캠 시청 세션을 못 만들었습니다 — " + Math.round(ms / 1000) + "초 뒤 다시 시도합니다(연속 " + hcViewRetryN_ + "회).", err);
+      if(hcViewRetryN_ === 1){ try{ mkDiag("손캠-세션생성실패", String(err && err.message || err || "")); }catch(_e){} }
+    }
+    function hcViewRetryOk_(){
+      if(!hcViewRetryN_ && !hcViewRetryT_) return;
+      if(hcViewRetryN_){
+        console.info("[V283_HCRETRY] 손캠 시청 세션을 다시 만들었습니다(연속 실패 " + hcViewRetryN_ + "회 뒤).");
+        try{ mkDiag("손캠-세션복구", "연속 실패 " + hcViewRetryN_ + "회 뒤"); }catch(_e){}
+      }
+      hcViewRetryReset_();
+    }
+    window.addEventListener("online", ()=>{
+      try{
+        if(!hcViewRetryT_) return;   
+        clearTimeout(hcViewRetryT_); hcViewRetryT_ = null;
+        hcViewRetryN_ = 0;   
+        if(hcCanReceive()) syncPulls(); else hcViewRetryReset_();
+      }catch(_e){}
+    });
+
     function syncPulls(){
       hc.queue = hc.queue.then(syncPullsNow).catch((e)=>console.warn("[handcam] pull sync", e));
     }
@@ -28520,13 +28764,21 @@ if(hcCanReceive()){
       }
 
       if(want.size === 0){
+        hcViewRetryReset_(); 
         if(view && view.pulls.size === 0) await closeViewer();
         scheduleMount();
         return;
       }
 
       for(const [uid, d] of want){
-        view = await ensureViewer();
+        
+        try{
+          view = await ensureViewer();
+        }catch(e){
+          hcViewRetryFail_(e);
+          break;
+        }
+        hcViewRetryOk_();
         if(view.pulls.has(uid)) continue;
 
 const p = { sessionId: d.sessionId, trackName: d.trackName, mid: null, stream: null, createdAtMs: Date.now() };
@@ -28835,6 +29087,7 @@ const nextViewHtml = window.mkIc_("eye") + '<span class="mkLbl">손캠 보기</s
     }
 
 async function teardownAll(){
+      hcViewRetryReset_(); 
       try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(e){}
       try{ await stopMyCam(true); }catch(e){}
       try{ await closeViewer(); }catch(e){}
@@ -29521,7 +29774,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17167; 
+const MK_APP_BUILD = 17168; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -35314,23 +35567,26 @@ async function maybeCloseDragonRace_(){
       dragonS3Runtime.raceClosingLock=true;
       try{
         let mine=false;
-        const res=await rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
+        
+        const res=await readGuard_(rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
           mine=false;
           if(raw===null) return null;                     
           if(!raw || typeof raw!=="object" || !raw.id) return;
           if(!(Number(raw.endMs)>0) || Date.now()<Number(raw.endMs)) return;
           const cur=Object.assign({},raw);
+          
+          const leaseNow=mkGraceNowMs_();
           if(Number(raw.closedAtMs)>0){
             
             if(Number(raw.bonusDone)>0) return;                                  
-            if(raw.payBy && Date.now()-(Number(raw.payAtMs)||0)<60000) return;   
-            cur.payBy=uid; cur.payAtMs=Date.now(); mine=true;
+            if(raw.payBy && leaseNow-(Number(raw.payAtMs)||0)<60000) return;     
+            cur.payBy=uid; cur.payAtMs=leaseNow; mine=true;
             return cur;
           }
           cur.closedAtMs=Date.now(); cur.closedBy=uid;
-          cur.payBy=uid; cur.payAtMs=Date.now(); mine=true;
+          cur.payBy=uid; cur.payAtMs=leaseNow; mine=true;
           return cur;
-        });
+        }),"레이스 마감",8000);
         const val=(res && res.snapshot)?res.snapshot.val():null;
         if(val && typeof val==="object") dragonS3Runtime.race=val;
         if(!mine || !res.committed){
@@ -35343,13 +35599,43 @@ async function maybeCloseDragonRace_(){
       }catch(e){ console.warn("[dragon s3] race close failed",e); }
       finally{ dragonS3Runtime.raceClosingLock=false; }
     }
+    
+    const DRAGON_RACE_PAY_RETRY_MS=[2000,5000];   
     async function payDragonRaceBonus_(act){
       if(!act || typeof act!=="object" || !act.id) return;
       if(Number(act.bonusDone)>0) return;
       const rows=dragonRaceRankRows_(act);
       const bonus=dragonRaceBonusFor_(act.kind,rows);
       
-      if(bonus.some((b)=>b.add>0)) dragonScaleBonusApply_(bonus,await dragonScaleCampFetch_());
+      if(bonus.some((b)=>b.add>0)){
+        let camp=null;
+        try{ camp=await readGuard_(dragonScaleCampFetch_(),"레이스 보너스 특전 명단",8000); }
+        catch(e){ console.warn("[dragon s3] race bonus: perk roster wait timed out — retry after lease",e); return; }   
+        dragonScaleBonusApply_(bonus,camp);
+      }
+      const id=String(act.id), uid=String(state.uid||"");
+      let won=false;
+      const claim=rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
+        won=false;
+        if(raw===null) return null;                     
+        if(!raw || typeof raw!=="object" || String(raw.id||"")!==id) return;   
+        if(Number(raw.bonusDone)>0 || String(raw.payBy||"")!==uid) return;    
+        won=true;
+        return Object.assign({},raw,{bonusDone:1});
+      });
+      let res=null;
+      try{ res=await readGuard_(claim,"레이스 보너스 확정",8000); }
+      catch(e){
+        if(e && e.code==="mk/timeout") claim.then((r)=>((r && r.committed && won)?dragonRaceBonusPayout_(act,rows,bonus):null)).catch(()=>{});
+        else console.warn("[dragon s3] race bonus claim failed",e);
+        return;
+      }
+      if(!(res && res.committed && won)) return;      
+      await dragonRaceBonusPayout_(act,rows,bonus);
+    }
+    
+    async function dragonRaceBonusPayout_(act,rows,bonus){
+      const id=String(act.id);
       const updates={};
       const stamp=Date.now();
       bonus.forEach((b)=>{
@@ -35358,22 +35644,40 @@ async function maybeCloseDragonRace_(){
         updates[`dragonItemsV1/bags/${b.uid}/scales`]=rIncrement(b.add);
         updates[`dragonItemsV1/bags/${b.uid}/updatedAtMs`]=stamp;
       });
-      updates["dragonItemsV1/active/bonusDone"]=1;
-      updates["dragonSummaryV1/race/active"]=null;
-      updates["dragonSummaryV1/race/updatedAtMs"]=stamp;
-      try{ await rUpdate(rDragonPlaygroundRef_(),updates); }
-      catch(e){ console.warn("[dragon s3] race bonus failed",e); return; }
-      dragonRaceMergeSummary_({active:null});
-      if(dragonS3Runtime.race && dragonS3Runtime.race.id===act.id) dragonS3Runtime.race.bonusDone=1;
-      if(rows.length){
-        const top=bonus.length?bonus.map((b,i)=>`${i+1}위 ${b.name}(+${b.add})`).join(" · "):`1위 ${rows[0].name}`;
-        showToast(`🎴 용비늘 레이스 종료! 완주 ${rows.length}명 · ${top}`,5200);
-      }else{
-        showToast("🎴 용비늘 레이스가 완주자 없이 끝났어요 🐉",3400);
+      let sent=!Object.keys(updates).length;          
+      for(let i=0;!sent && i<=DRAGON_RACE_PAY_RETRY_MS.length;i++){
+        if(i>0) await new Promise((r)=>setTimeout(r,DRAGON_RACE_PAY_RETRY_MS[i-1]));
+        try{ await readGuard_(rUpdate(rDragonPlaygroundRef_(),updates),"레이스 보너스 지급",8000); sent=true; }
+        catch(e){
+          if(e && e.code==="mk/timeout"){ sent=true; console.warn("[dragon s3] race bonus write still pending — left in the SDK queue (not resent)",e); }
+          else console.warn(`[dragon s3] race bonus write rejected (${i+1}/${DRAGON_RACE_PAY_RETRY_MS.length+1})`,e);
+        }
       }
-      
-      const me=String(state.uid||"");
-      if(bonus.some((b)=>b.uid===me)) await loadDragonBagOnce_({force:true});
+      if(!sent) console.warn("[dragon s3] race bonus LOST — bonusDone is already 1, this race's bonus will not be paid again",{id,bonus});
+      let cleared=false;
+      try{
+        const mr=await readGuard_(rRunTransaction(rRef(rtdb,`${rRoomBase(state.roomId)}/playground/dragonSummaryV1/race/active`),(raw)=>{
+          cleared=false;
+          if(raw===null) return null;                   
+          if(!raw || typeof raw!=="object" || String(raw.id||"")!==id) return;   
+          cleared=true;
+          return null;
+        }),"레이스 요약 사본 정리",8000);
+        if(mr && mr.committed && cleared) rUpdate(rDragonSummaryRef_(state.roomId),{"race/updatedAtMs":stamp}).catch(()=>{});
+      }catch(e){ console.warn("[dragon s3] race mirror clear failed",e); }
+      if(String(dragonRaceSummary_().active?.id||"")===id) dragonRaceMergeSummary_({active:null});
+      if(dragonS3Runtime.race && dragonS3Runtime.race.id===act.id) dragonS3Runtime.race.bonusDone=1;
+      if(sent){
+        if(rows.length){
+          const top=bonus.length?bonus.map((b,i)=>`${i+1}위 ${b.name}(+${b.add})`).join(" · "):`1위 ${rows[0].name}`;
+          showToast(`🎴 용비늘 레이스 종료! 완주 ${rows.length}명 · ${top}`,5200);
+        }else{
+          showToast("🎴 용비늘 레이스가 완주자 없이 끝났어요 🐉",3400);
+        }
+        
+        const me=String(state.uid||"");
+        if(bonus.some((b)=>b.uid===me)){ try{ await readGuard_(loadDragonBagOnce_({force:true}),"레이스 보너스 뒤 가방 읽기",8000); }catch(e){} }
+      }
       if(dragonModalOpen_()) renderDragonS3_();
     }
 
@@ -37425,7 +37729,8 @@ function displayNameHtml(id){
     const safeId = isPetId(id) ? id : 'cat';
     const safeLv = Math.max(0, Math.min(MAX_LEVEL, Number(lv)||0));
     const safeMode = String(mode||'current').replace(/[^a-zA-Z0-9_-]/g,'') || 'current';
-    return `<div class="petStageArt ${safeMode} petType-${safeId} b${stageOf(safeLv)}" data-pet="${safeId}" data-lv="${safeLv}" title="${displayNameHtml(safeId)} Lv.${safeLv}"><img src="${petSvg(safeId,safeLv)}" alt="${displayName(safeId)} Lv.${safeLv}"></div>`;
+    
+    return `<div class="petStageArt ${safeMode} petType-${safeId} b${stageOf(safeLv)}" data-pet="${safeId}" data-lv="${safeLv}" title="${displayNameHtml(safeId)} Lv.${safeLv}"><img src="${petSvg(safeId,safeLv)}" alt="${displayNameHtml(safeId)} Lv.${safeLv}"></div>`;
   }
 
   function replaceDashCard(){
@@ -41860,6 +42165,12 @@ function loadSaved(){
         parts[n] = arr.length ? arr : null;
       }else{
         var s = chara.sel[c.key];
+        
+        if(s && !owned[ownedKeyFor(c.key, s)]){
+          var prevSavedOne = loadSaved();
+          var prevOne = (prevSavedOne && prevSavedOne.parts) ? prevSavedOne.parts[n] : null;
+          s = (typeof prevOne === 'string') ? prevOne : null;
+        }
         parts[n] = (s && owned[ownedKeyFor(c.key, s)]) ? s : null;
       }
     });
