@@ -126,6 +126,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -8078,6 +8079,14 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <div style="display:flex; align-items:center; gap:10px; width:100%;">
 <input id="sfxToggle" type="checkbox">
 <span class="tiny">입장/재입장 시 소리 재생 (내 브라우저에서만 적용)</span>
+</div>
+</div>
+
+<div class="stBlock">
+<label class="stBTitle" for="raceSfxToggle"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-race"></use></svg>게릴라 알림 소리</label>
+<div style="display:flex; align-items:center; gap:10px; width:100%;">
+<input id="raceSfxToggle" type="checkbox">
+<span class="tiny">용비늘 레이스 59분 예고·오픈 때 소리 재생 (내 브라우저에서만 적용)</span>
 </div>
 </div>
 <div class="stBlock">
@@ -29486,7 +29495,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17164; 
+const MK_APP_BUILD = 17165; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -31817,6 +31826,10 @@ const DRAGON_TICKET_GROW_COST = 10;
       raceStartId:"",         
       raceKickAtMs:0,         
       raceKickTimer:0,        
+      raceSfxEls:{},          
+      raceSfxOn:false,        
+      raceSfxListening:false, 
+      raceSfxUnlocked:new WeakSet(),   
       raceLiveId:"",          
       raceClosingLock:false,  
       raceSpawnLock:false,    
@@ -34821,6 +34834,127 @@ async function maybeRollDragonRace_(){
       s.race=Object.assign({},(s.race && typeof s.race==="object")?s.race:{},patch||{},{updatedAtMs:Date.now()});
       return s.race;
     }
+    
+    const DRAGON_RACE_SFX_KEY="mk_race_sfx_v1";                
+    const DRAGON_RACE_SFX_LAST_KEY="mk_race_sfx_last_v1";      
+    const DRAGON_RACE_SFX_SRC={cue:"sfx/dragon-race-cue.mp3?v=20260925",open:"sfx/dragon-race-open.mp3?v=20260925"};   
+    const DRAGON_RACE_SFX_VOLUME=0.9;
+    const DRAGON_RACE_SFX_LATE_MS=15000;                       
+    const DRAGON_RACE_SFX_LOCK_MS=3000;                        
+    const DRAGON_RACE_SFX_HOLD_MS=1000;                        
+    const DRAGON_RACE_SFX_WAIT_MS=10000;                       
+                                                               
+    const DRAGON_RACE_SFX_UNLOCK_EVENTS=["pointerdown","keydown","touchend","click"];   
+    function dragonRaceSfxOn_(){
+      try{ return localStorage.getItem(DRAGON_RACE_SFX_KEY)==="1"; }catch(e){ return false; }
+    }
+    
+    function dragonRaceSfxEl_(kind){
+      const k=(kind==="open")?"open":"cue";
+      try{
+        const cache=dragonS3Runtime.raceSfxEls;
+        if(cache[k] && !cache[k].error) return cache[k];
+        if(typeof Audio!=="function") return null;
+        const a=new Audio(DRAGON_RACE_SFX_SRC[k]);
+        a.preload="auto";
+        a.volume=DRAGON_RACE_SFX_VOLUME;
+        cache[k]=a;
+        if(dragonS3Runtime.raceSfxOn) dragonRaceSfxListen_(true);   
+        return a;
+      }catch(e){ return null; }
+    }
+
+function dragonRaceSfxUnlock_(ev){
+      if(ev && ((ev.type==="pointerdown" && ev.pointerType && ev.pointerType!=="mouse") || (ev.type==="keydown" && ev.key==="Escape"))) return;
+      try{
+        const done=dragonS3Runtime.raceSfxUnlocked;
+        ["cue","open"].forEach((k)=>{
+          const a=dragonRaceSfxEl_(k);
+          if(!a || done.has(a)) return;
+          if(a.paused){ try{ a.load(); }catch(e){} }
+          done.add(a);
+        });
+      }catch(e){}
+      dragonRaceSfxListen_(false);
+    }
+    
+    function dragonRaceSfxListen_(on){
+      try{
+        if(!!on===dragonS3Runtime.raceSfxListening) return;
+        dragonS3Runtime.raceSfxListening=!!on;
+        DRAGON_RACE_SFX_UNLOCK_EVENTS.forEach((t)=>{
+          if(on) window.addEventListener(t,dragonRaceSfxUnlock_,{capture:true,passive:true});
+          else window.removeEventListener(t,dragonRaceSfxUnlock_,{capture:true});
+        });
+      }catch(e){}
+    }
+
+function dragonRaceSfxApply_(on,fromGesture){
+      try{
+        dragonS3Runtime.raceSfxOn=!!on;
+        if(!on){ dragonRaceSfxListen_(false); return; }
+        if(fromGesture){ dragonRaceSfxUnlock_(); return; }
+        const done=dragonS3Runtime.raceSfxUnlocked;
+        const c=dragonRaceSfxEl_("cue"), o=dragonRaceSfxEl_("open");
+        if((c && !done.has(c)) || (o && !done.has(o))) dragonRaceSfxListen_(true);
+      }catch(e){}
+    }
+    
+    function dragonRaceSfxPlay_(kind){
+      try{
+        const a=dragonRaceSfxEl_(kind);
+        if(!a) return Promise.resolve(false);
+        if(document.hidden && a.readyState===0) return Promise.resolve(false);   
+        try{ a.currentTime=0; }catch(e){}
+        const t0=Date.now();
+        const p=a.play();
+        if(!(p && typeof p.then==="function")) return Promise.resolve(true);
+        return p.then(()=>{
+          if(Date.now()-t0<=DRAGON_RACE_SFX_LATE_MS) return true;
+          try{ a.pause(); }catch(e){}                                          
+          return false;
+        },(err)=>{
+          
+          try{
+            if(err && err.name==="NotAllowedError"){
+              dragonS3Runtime.raceSfxUnlocked.delete(a);
+              if(dragonS3Runtime.raceSfxOn) dragonRaceSfxListen_(true);
+            }
+          }catch(e){}
+          return false;
+        });
+      }catch(e){ return Promise.resolve(false); }
+    }
+    
+    function dragonRaceSfx_(kind,key){
+      try{
+        if(!dragonRaceSfxOn_()) return;
+        const calledAt=Date.now();                                             
+        const k=(kind==="open")?"open":"cue";
+        const lastKey=DRAGON_RACE_SFX_LAST_KEY+":"+k, stamp=String(key);
+        let ran=false;
+        const run=()=>{   
+          ran=true;
+          try{
+            if(Date.now()-calledAt>DRAGON_RACE_SFX_WAIT_MS) return Promise.resolve(false);   
+            if(localStorage.getItem(lastKey)===stamp) return Promise.resolve(false);   
+            return dragonRaceSfxPlay_(k).then((ok)=>{
+              if(ok){ try{ localStorage.setItem(lastKey,stamp); }catch(e){} }     
+              return ok;
+            });
+          }catch(e){ return Promise.resolve(false); }
+        };
+        const locks=(typeof navigator!=="undefined" && navigator && navigator.locks && typeof navigator.locks.request==="function")?navigator.locks:null;
+        if(!locks){ run(); return; }
+        locks.request(DRAGON_RACE_SFX_KEY,()=>{
+          let t=0;
+          const cap=new Promise((res)=>{ t=setTimeout(res,DRAGON_RACE_SFX_LOCK_MS); });
+          
+          const held=run().then((ok)=>(ok?new Promise((res)=>{ setTimeout(res,DRAGON_RACE_SFX_HOLD_MS); }):null));
+          return Promise.race([held,cap]).then(()=>{ try{ clearTimeout(t); }catch(e){} });
+        }).catch(()=>{ if(!ran) run(); });                                      
+      }catch(e){}
+    }
 
 function dragonRaceCueTick_(){
       if(!state.joined) return;
@@ -34834,6 +34968,7 @@ function dragonRaceCueTick_(){
       dragonS3Runtime.raceCueHour=hourKey;
       if(roll.will) showToast("어디선가 용비늘 소리가 들려요… 🐉",4200);
       else showToast("용비늘 소리가 저 멀리 멀어져요… 🐉",3400);
+      if(roll.will) dragonRaceSfx_("cue",hourKey);   
     }
     
     function dragonRaceStartTick_(){
@@ -34846,6 +34981,7 @@ function dragonRaceCueTick_(){
       showToast(String(a.kind||"")==="flash"
         ? "⚡ 번개 용비늘 레이스! 첫 완주자는 레버 결과가 두 배예요 🐉"
         : "🐉 게릴라 용비늘 레이스가 열렸어요! 10분 안에 카드를 다 뒤집으면 레버!",5200);
+      dragonRaceSfx_("open",id);   
     }
 
 function dragonRaceUndoClaim_(cur,sp){
@@ -36279,6 +36415,31 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
       document.getElementById("dragonGuerrillaSet")?.addEventListener("click",()=>{ setDragonGuerrilla_(false).catch(()=>{}); });
       document.getElementById("dragonGuerrillaNow")?.addEventListener("click",()=>{ setDragonGuerrilla_(true).catch(()=>{}); });
       document.getElementById("dragonGuerrillaCancel")?.addEventListener("click",()=>{ cancelDragonGuerrilla_().catch(()=>{}); });
+      
+      try{ dragonRaceSfxApply_(dragonRaceSfxOn_(),false); }catch(e){}
+      try{
+        const raceSfxToggle=document.getElementById("raceSfxToggle");
+        if(raceSfxToggle){
+          raceSfxToggle.checked=!!dragonS3Runtime.raceSfxOn;
+          raceSfxToggle.addEventListener("change",()=>{
+            const on=!!raceSfxToggle.checked;
+            try{ localStorage.setItem(DRAGON_RACE_SFX_KEY,on?"1":"0"); }catch(e){}
+            dragonRaceSfxApply_(on,true);
+            try{ showToast(on?"🔈 게릴라 알림 소리 ON":"🔇 게릴라 알림 소리 OFF",1600); }catch(e){}
+          });
+        }
+      }catch(e){}
+      try{
+        window.addEventListener("storage",(ev)=>{
+          try{
+            if(ev && ev.key!==null && ev.key!==DRAGON_RACE_SFX_KEY) return;   
+            const on=dragonRaceSfxOn_();
+            const box=document.getElementById("raceSfxToggle");
+            if(box) box.checked=on;
+            dragonRaceSfxApply_(on,false);
+          }catch(e){}
+        });
+      }catch(e){}
       document.getElementById("dragonAdminSave")?.addEventListener("click",()=>{ saveDragonAdminConfig_().catch(()=>{}); });
       document.getElementById("dragonAdminStart")?.addEventListener("click",()=>{ dragonAdminStart_().catch(()=>{}); });
       document.getElementById("dragonAdminPause")?.addEventListener("click",()=>{ dragonAdminTogglePause_().catch(()=>{}); });
@@ -36343,6 +36504,8 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
         perk:dragonPerkInfo_,
         
         addTickets:(n)=>addDragonTickets_(n),
+        
+        raceSfx:(kind)=>dragonRaceSfxPlay_(kind==="open"?"open":"cue"),
         
         tick:()=>{ dragonSeasonTick_().catch(()=>{}); },
         getState:()=>({config:dragonS3Runtime.config,summary:dragonS3Runtime.summary})
