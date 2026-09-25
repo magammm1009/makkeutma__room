@@ -125,6 +125,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -7060,6 +7061,8 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <button class="ghost" id="approveLink" style="display:none" title="가입 승인 페이지 (관리자 전용)" type="button"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-ok"></use></svg>승인</button>
 <input id="adminPassJoin" placeholder="관리자비번(선택)" style="width:150px" type="password"/>
 
+
+<button aria-label="새로고침" class="ghost" id="hardRefreshBtn" title="새로고침 — 최신 버전으로 다시 불러와요(기록은 그대로)" type="button"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-refresh"></use></svg><span class="mkRfLbl">새 버전</span><span aria-hidden="true" class="mkRfDot"></span></button>
 <button class="ghost" disabled="" id="menuBtn" title="설정" aria-label="설정"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-gear"></use></svg></button>
 <button class="primary" id="joinBtn">입장</button>
 
@@ -7192,8 +7195,7 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <button aria-pressed="false" class="modeSegBtn" id="modeSegLow" title="저사양 · 프로필 타일을 접속자 목록으로 바꾸고 손캠·장식 효과를 줄임" type="button">저사양</button>
 </span>
 </div>
-<hr class="mkVmHr">
-<button aria-label="브라우저 강력 새로고침" class="ghost mkVmItem" id="hardRefreshBtn" title="현재 방을 안전하게 다시 불러옵니다(기록 삭제 없음)" type="button"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-refresh"></use></svg>새로고침<small>문제가 있을 때 · 기록은 그대로</small></button>
+
 </div>
 </div>
 </nav>
@@ -17900,10 +17902,13 @@ mkScheduleFrame_(()=>{
         if(state.chatMoreUsed) return;
         try{ btn.disabled = true; }catch(e){}
         try{
-          await loadMoreOlderOnce();
+          
+          const load = state.__chatMoreLoad;
+          if(typeof load === "function") await load();
         }finally{
           try{ btn.disabled = false; }catch(e){}
-          updateChatMoreUI();
+          const upd = state.__chatMoreUpdate;   
+          if(typeof upd === "function") upd();
         }
       });
       bar.appendChild(btn);
@@ -18025,6 +18030,9 @@ mkScheduleFrame_(()=>{
     }
     state.chatMoreUsed = true;
   }
+
+state.__chatMoreLoad = loadMoreOlderOnce;
+  state.__chatMoreUpdate = updateChatMoreUI;
 
 (async ()=>{
     try{
@@ -18150,7 +18158,8 @@ if(prevChatDayKey && prevChatDayKey !== chatDayKey){
 
 if(els.chatList && !state._chatMoreScrollHooked){
         state._chatMoreScrollHooked = true;
-        els.chatList.addEventListener("scroll", ()=>{ try{ updateChatMoreUI(); }catch(e){} }, { passive:true });
+        
+        els.chatList.addEventListener("scroll", ()=>{ try{ const upd = state.__chatMoreUpdate; if(typeof upd === "function") upd(); }catch(e){} }, { passive:true });
       }
 
     }catch(e){
@@ -29477,9 +29486,20 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17163; 
+const MK_APP_BUILD = 17164; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
+  
+  let __mkNewBuildSeen = 0;
+  function mkMarkNewBuild_(remoteBuild){
+    try{
+      const b = Number(remoteBuild) || 0;
+      if(!(b > MK_APP_BUILD) || b <= __mkNewBuildSeen) return;
+      __mkNewBuildSeen = b;
+      try{ window.__MK_NEW_BUILD__ = b; }catch(_e){}
+      document.dispatchEvent(new CustomEvent("mk:newBuild", { detail:{ build:b, mine:MK_APP_BUILD } }));
+    }catch(_e){}
+  }
 
 const MK_PAGE_LOADED_AT = Date.now();
   const WORLD_TREE_DEW_CLICK_THROTTLE_MS = 150;
@@ -30537,7 +30557,9 @@ try{ window.__MK_ROOM_BUILD__ = remoteBuild; }catch(_e){}
           rUpdate(rWorldTreeSummaryRef(state.roomId),{appBuild:MK_APP_BUILD}).catch(()=>{});
           worldTreeS2Runtime.summary.appBuild=MK_APP_BUILD;
         }else if(remoteBuild>MK_APP_BUILD){
-          showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200);
+          
+          showToast("새 버전이 배포됐어요! 오른쪽 위 분홍색 새로고침 버튼을 눌러 주세요",4200);
+          try{ mkMarkNewBuild_(remoteBuild); }catch(_e){}
         }
         
         try{ worldTreeHandleReloadReq_(); }catch(e){}
@@ -32970,8 +32992,9 @@ async function writeDragonSummary_(){
             rUpdate(rDragonSummaryRef_(state.roomId),{appBuild:MK_APP_BUILD}).catch(()=>{});
             dragonS3Runtime.summary.appBuild=MK_APP_BUILD;
           }else if(remoteBuild>MK_APP_BUILD){
-            
-            if(!dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! Ctrl+F5(강력 새로고침)를 부탁드려요 🔄",4200); }
+
+try{ mkMarkNewBuild_(remoteBuild); }catch(_e){}
+            if(!dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! 오른쪽 위 분홍색 새로고침 버튼을 눌러 주세요",4200); }
           }
         }
         try{ renderCoinBoostBar_(); }catch(e){}   
@@ -38104,7 +38127,9 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
     try{
       if(btn){
         btn.disabled = true;
-        btn.textContent = '🔄새로고침중';
+        
+        btn.classList.add('mkRefreshBusy');
+        btn.setAttribute('aria-busy', 'true');
         btn.title = '현재 주소를 그대로 다시 불러옵니다. 저장 기록은 지우지 않습니다.';
       }
       await askServiceWorkerForFreshVersion();
@@ -38114,17 +38139,33 @@ if(document.visibilityState !== 'hidden' && now - petRenderThrottleMs > 5000){
     }
   }
 
+var TITLE_IDLE = '새로고침 — 최신 버전으로 다시 불러와요(기록은 그대로)';
+  var TITLE_NEW = '새 버전이 나왔어요 — 눌러서 새로고침';
   function bind(){
     var btn = document.getElementById('hardRefreshBtn');
     if(!btn || btn.dataset.safeRefreshBound === '1') return;
     btn.dataset.safeRefreshBound = '1';
-    btn.title = '현재 방을 다시 불러옵니다. 펫/프로필/작업 기록은 삭제하지 않습니다.';
-    btn.setAttribute('aria-label', '안전 새로고침');
+    if(!btn.classList.contains('mkRefreshNew')){
+      btn.title = TITLE_IDLE;
+      btn.setAttribute('aria-label', '새로고침');
+    }
     btn.addEventListener('click', function(ev){
       ev.preventDefault();
       runSafeRefresh();
     });
+    try{ if(Number(window.__MK_NEW_BUILD__) > 0) markNewBuild(); }catch(_e){}   
   }
+  
+  function markNewBuild(){
+    try{
+      var btn = document.getElementById('hardRefreshBtn');
+      if(!btn || btn.classList.contains('mkRefreshNew')) return;
+      btn.classList.add('mkRefreshNew');
+      btn.title = TITLE_NEW;
+      btn.setAttribute('aria-label', '새 버전 — 새로고침');
+    }catch(_e){}
+  }
+  document.addEventListener('mk:newBuild', markNewBuild);
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
 })();
@@ -49558,6 +49599,55 @@ html body #chatList .msg.system.mkTickerLine{
 html body #chatList .msg.system.mkTickerLine .text{ padding:1px 0; font-size:11.5px; line-height:1.4; }
 html body.mkLowSpecMode #chatList .msg.system.mkTickerLine,
 html body.mkLightMode #chatList .msg.system.mkTickerLine{ background:none !important; }
+
+
+html body .topbar #hardRefreshBtn{
+  position:relative !important; display:inline-flex !important; grid-column:auto !important; grid-row:auto !important; order:0 !important;
+  flex:0 0 auto !important; width:36px !important; min-width:0 !important; height:36px !important; min-height:36px !important; margin:0 !important; padding:0 !important;
+  border-radius:999px !important; align-items:center !important; justify-content:center !important; gap:6px !important;
+  font-size:13px !important; font-weight:700 !important; line-height:1 !important; letter-spacing:normal !important; white-space:nowrap !important; text-align:center !important;
+  border:1px solid var(--line) !important; background:rgba(255,255,255,.05) !important; color:var(--text) !important; box-shadow:none;
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important; overflow:visible !important;
+}
+html body .topbar #hardRefreshBtn:hover:not(:disabled){ background:rgba(255,255,255,.11) !important; border-color:rgba(255,255,255,.26) !important; }
+html body .topbar #hardRefreshBtn .mkRfLbl,
+html body .topbar #hardRefreshBtn .mkRfDot{ display:none; pointer-events:none; }
+html body .topbar #hardRefreshBtn .mkRfLbl{ color:inherit !important; font-size:inherit !important; font-weight:800 !important; }
+html body .topbar #hardRefreshBtn.mkRefreshNew{
+  border-color:rgba(var(--pink2rgb),.8) !important; background:rgba(var(--pink3rgb),.2) !important; color:var(--pink1) !important;
+  animation:mkRfPulse 2.4s ease-in-out infinite;
+}
+html body .topbar #hardRefreshBtn.mkRefreshNew:hover:not(:disabled){ background:rgba(var(--pink3rgb),.3) !important; border-color:var(--pink2) !important; }
+html body .topbar #hardRefreshBtn.mkRefreshNew .mkIc{ color:var(--pink2); }
+html body .topbar #hardRefreshBtn.mkRefreshNew .mkRfDot{
+  display:block; position:absolute; top:-2px; right:-1px; width:9px; height:9px; border-radius:50%;
+  background:var(--pink3); box-shadow:0 0 0 2px #0b0b10;
+}
+@keyframes mkRfPulse{ 0%, 100%{ box-shadow:0 0 0 0 rgba(var(--pink3rgb),.45); } 55%{ box-shadow:0 0 0 7px rgba(var(--pink3rgb),0); } }
+@media (min-width:1280px){
+  html body .topbar #hardRefreshBtn.mkRefreshNew{ width:auto !important; padding:0 14px !important; }
+  html body .topbar #hardRefreshBtn.mkRefreshNew .mkRfLbl{ display:inline; }
+}
+@media (max-width:760px){
+  html body .topbar #hardRefreshBtn{ width:34px !important; height:32px !important; min-height:32px !important; gap:4px !important; font-size:12px !important; }
+  html body.joined .topbar #hardRefreshBtn.mkRefreshNew{ width:auto !important; padding:0 10px !important; }
+  html body.joined .topbar #hardRefreshBtn.mkRefreshNew .mkRfLbl{ display:inline; }
+}
+@media (prefers-reduced-motion:reduce){ html body .topbar #hardRefreshBtn.mkRefreshNew{ animation:none; } }
+html body.mkLowSpecMode .topbar #hardRefreshBtn.mkRefreshNew,
+html body.mkLightMode .topbar #hardRefreshBtn.mkRefreshNew{ animation:none; }
+html body .topbar #hardRefreshBtn.mkRefreshBusy{ opacity:1 !important; cursor:progress !important; }
+html body .topbar #hardRefreshBtn.mkRefreshBusy .mkIc{ animation:mkRfSpin .9s linear infinite; }
+@keyframes mkRfSpin{ to{ transform:rotate(360deg); } }
+
+@media (min-width:761px) and (max-width:1100px){
+  html body .topbar.topbar{ grid-template-columns:minmax(0,max-content) minmax(0,max-content) minmax(max-content,1fr) max-content !important; }
+  html body .topbar .brandTitle{ margin-right:42px !important; }
+}
+
+@media (min-width:1101px){
+  html body:not(.joined) .topbar #name{ flex:0 1 180px !important; width:auto !important; min-width:110px !important; }
+}
 </style>
 
 
