@@ -128,6 +128,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -6016,6 +6017,11 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .dragonScene[data-el="thunder"],.dragonElTint[data-el="thunder"]{--el-light:#ead9ff;--el-deep:#8b5cf6;--el-core:#fff7ff;--el-glow:rgba(190,150,255,.6);--el-iris:#c8a6ff;--el-ink:#3e2a7a;--scene-a:#1d0f33;--scene-b:#08040f;}
   .dragonScene[data-el="mountain"],.dragonElTint[data-el="mountain"]{--el-light:#d9ecb4;--el-deep:#6a9a3a;--el-core:#f4ffd6;--el-glow:rgba(150,220,120,.55);--el-iris:#ffd166;--el-ink:#2c4a1d;--scene-a:#0f2414;--scene-b:#040a05;}
   
+  .dragonScene[data-el="earth"],.dragonElTint[data-el="earth"]{--el-light:#e8ceb8;--el-deep:#c26f2f;--el-core:#fff4e6;--el-glow:rgba(240,173,95,.55);--el-iris:#ee9d20;--el-ink:#61361e;--scene-a:#332318;--scene-b:#0d0804;}
+  .dragonScene[data-el="wind"],.dragonElTint[data-el="wind"]{--el-light:#c0f4ea;--el-deep:#29cab4;--el-core:#edfdfa;--el-glow:rgba(107,228,207,.6);--el-iris:#3aeae0;--el-ink:#05726c;--scene-a:#10312f;--scene-b:#040c0d;}
+  .dragonScene[data-el="light"],.dragonElTint[data-el="light"]{--el-light:#fff0c0;--el-deep:#ebac2b;--el-core:#fef7e9;--el-glow:rgba(252,219,116,.6);--el-iris:#edb433;--el-ink:#8e4904;--scene-a:#302613;--scene-b:#0c0904;}
+  .dragonScene[data-el="love"],.dragonElTint[data-el="love"]{--el-light:#fbb9d0;--el-deep:#d52662;--el-core:#ffebf2;--el-glow:rgba(242,93,147,.6);--el-iris:#e0437a;--el-ink:#800b2e;--scene-a:#351424;--scene-b:#10050c;}
+  
   .dragonScene,.dragonElTint{--el-light:#e7d9ff;--el-deep:#8b6cc9;--el-core:#fff7ff;--el-glow:rgba(190,160,255,.55);--el-iris:#c9a6ff;--el-ink:#3a2a5c;--scene-a:#1b1230;--scene-b:#07040c;}
 
   #dragonModal{z-index:10120;}
@@ -6074,11 +6080,16 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
   .dragonSprite{
     position:absolute; inset:0; background-repeat:no-repeat; background-size:400% 200%; background-position:0 0;
   }
-  .dragonSprite[data-el="fire"],.dragonDashArt[data-el="fire"],.dragonChipArt[data-el="fire"]{background-image:url("assets_배포/dragon/fire-growth-atlas.webp?v=20260922-dgsize");}
-  .dragonSprite[data-el="water"],.dragonDashArt[data-el="water"],.dragonChipArt[data-el="water"]{background-image:url("assets_배포/dragon/water-growth-atlas.webp?v=20260922-dgsize");}
-  .dragonSprite[data-el="thunder"],.dragonDashArt[data-el="thunder"],.dragonChipArt[data-el="thunder"]{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp?v=20260922-dgsize");}
+  .dragonSprite[data-el="fire"],.dragonDashArt[data-el="fire"],.dragonChipArt[data-el="fire"]{background-image:url("assets_배포/dragon/fire-growth-atlas.webp?v=20260926-newart");}
+  .dragonSprite[data-el="water"],.dragonDashArt[data-el="water"],.dragonChipArt[data-el="water"]{background-image:url("assets_배포/dragon/water-growth-atlas.webp?v=20260926-newart");}
+  .dragonSprite[data-el="thunder"],.dragonDashArt[data-el="thunder"],.dragonChipArt[data-el="thunder"]{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp?v=20260926-newart");}
   .dragonSprite[data-el="mountain"],.dragonDashArt[data-el="mountain"],.dragonChipArt[data-el="mountain"]{background-image:url("assets_배포/dragon/mountain-growth-atlas.webp?v=20260925-mtnart");}
   .dragonSprite[data-el="neutral"],.dragonDashArt[data-el="neutral"],.dragonChipArt[data-el="neutral"]{background-image:url("assets_배포/dragon/neutral-growth-atlas.webp?v=20260922-dgsize");}
+  
+  .dragonSprite[data-el="earth"],.dragonDashArt[data-el="earth"],.dragonChipArt[data-el="earth"]{background-image:url("assets_배포/dragon/earth-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="wind"],.dragonDashArt[data-el="wind"],.dragonChipArt[data-el="wind"]{background-image:url("assets_배포/dragon/wind-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="light"],.dragonDashArt[data-el="light"],.dragonChipArt[data-el="light"]{background-image:url("assets_배포/dragon/light-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="love"],.dragonDashArt[data-el="love"],.dragonChipArt[data-el="love"]{background-image:url("assets_배포/dragon/love-growth-atlas.webp?v=20260926-newel");}
   .dragonSprite[data-stage="0"],.dragonDashArt[data-stage="0"],.dragonChipArt[data-stage="0"]{background-position:0 0;}
   .dragonSprite[data-stage="1"],.dragonDashArt[data-stage="1"],.dragonChipArt[data-stage="1"]{background-position:33.333% 0;}
   .dragonSprite[data-stage="2"],.dragonDashArt[data-stage="2"],.dragonChipArt[data-stage="2"]{background-position:66.667% 0;}
@@ -6097,11 +6108,16 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
     animation:dgLidBlink var(--dg-blink-dur,5.2s) infinite; animation-delay:var(--dg-blink-delay,0s); will-change:transform;
   }
   .dragonSprite .dgLid.dgLid2 > .dgLidSlide{animation-name:dgLidBlink2;}
-  .dragonSprite[data-el="fire"] .dgLid b{background-image:url("assets_배포/dragon/fire-growth-atlas.webp?v=20260922-dgsize");}
-  .dragonSprite[data-el="water"] .dgLid b{background-image:url("assets_배포/dragon/water-growth-atlas.webp?v=20260922-dgsize");}
-  .dragonSprite[data-el="thunder"] .dgLid b{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp?v=20260922-dgsize");}
+  .dragonSprite[data-el="fire"] .dgLid b{background-image:url("assets_배포/dragon/fire-growth-atlas.webp?v=20260926-newart");}
+  .dragonSprite[data-el="water"] .dgLid b{background-image:url("assets_배포/dragon/water-growth-atlas.webp?v=20260926-newart");}
+  .dragonSprite[data-el="thunder"] .dgLid b{background-image:url("assets_배포/dragon/thunder-growth-atlas.webp?v=20260926-newart");}
   .dragonSprite[data-el="mountain"] .dgLid b{background-image:url("assets_배포/dragon/mountain-growth-atlas.webp?v=20260925-mtnart");}
   .dragonSprite[data-el="neutral"] .dgLid b{background-image:url("assets_배포/dragon/neutral-growth-atlas.webp?v=20260922-dgsize");}
+  
+  .dragonSprite[data-el="earth"] .dgLid b{background-image:url("assets_배포/dragon/earth-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="wind"] .dgLid b{background-image:url("assets_배포/dragon/wind-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="light"] .dgLid b{background-image:url("assets_배포/dragon/light-growth-atlas.webp?v=20260926-newel");}
+  .dragonSprite[data-el="love"] .dgLid b{background-image:url("assets_배포/dragon/love-growth-atlas.webp?v=20260926-newel");}
   .dragonSprite[data-stage="2"] .dgLid b{background-position:66.667% 0;}
   .dragonSprite[data-stage="3"] .dgLid b{background-position:100% 0;}
   .dragonSprite[data-stage="4"] .dgLid b{background-position:0 100%;}
@@ -7018,6 +7034,11 @@ body.mkLowSpecMode .gridLowSpecHybrid .tile.lowSpecSelfTile .bigTimer{
 <symbol id="mki-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="4"/><path d="M10.9 12.6L19.5 4M16.3 7.2l2.4 2.4M13.9 9.6l1.9 1.9"/></symbol>
 <symbol id="mki-grad" viewBox="0 0 24 24"><path d="M2.5 9.5L12 5l9.5 4.5L12 14z"/><path d="M6.5 11.6v4.3c1.4 1.4 3.3 2.1 5.5 2.1s4.1-.7 5.5-2.1v-4.3"/><path d="M21.5 9.5v5.5"/></symbol>
 <symbol id="mki-mute" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path d="M16 9.8l4.4 4.4M20.4 9.8L16 14.2"/></symbol>
+
+<symbol id="mki-earth" viewBox="0 0 24 24"><path d="M4 19.5c-.8 0-1.2-.8-.8-1.5l3.2-6.3c.3-.6.9-1 1.5-1.2l1.9-.5 1.7-2.8c.4-.6 1.1-1 1.9-.8l3 .7c.6.1 1.1.6 1.4 1.1l1.7 3.9 1.4 5.6c.2.9-.4 1.8-1.3 1.8z"/><path d="M5.4 15.4c2.1-.8 4.2-.8 6.3 0s4.4.8 7.9-.3"/></symbol>
+<symbol id="mki-wind" viewBox="0 0 24 24"><path d="M3.5 9h9.3a2.8 2.8 0 1 0-2.7-3.5"/><path d="M3.5 13h14a3 3 0 1 1-2.9 3.8"/><path d="M3.5 17h5.5"/></symbol>
+<symbol id="mki-light" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.6"/><path d="M12 2.8v2.7M12 18.5v2.7M2.8 12h2.7M18.5 12h2.7M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M5.5 18.5l1.9-1.9M16.6 7.4l1.9-1.9"/></symbol>
+<symbol id="mki-love" viewBox="0 0 24 24"><path d="M12 19.5s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.6-7.5 10-7.5 10z"/><path d="M12 15.1s-2.9-1.7-2.9-3.9A1.6 1.6 0 0 1 12 10.3a1.6 1.6 0 0 1 2.9.9c0 2.2-2.9 3.9-2.9 3.9z"/></symbol>
 </svg>
 <script id="v278IconHelper">
 
@@ -8260,7 +8281,8 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <input id="dragonAdminDailyMax" min="0" max="48" step="1" type="number" value="8" style="flex:1 1 120px;"/>
 </div>
 <div class="tiny" style="opacity:.78; line-height:1.5; margin:4px 0 0;">🎴 게릴라 레이스 시각(V261): <b>하루 목표 횟수</b>(매시 확률×24를 최소~상한으로 자른 값)만큼 24시간을 같은 칸으로 나눠 <b>칸마다 1회</b>, 칸 안의 시각은 랜덤으로 열려요 — 새벽에 몰리지 않고 하루에 고르게 퍼집니다. 지금 설정의 결과는 상태 줄의 "레이스 하루 n회"에 보여요.</div>
-<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">속성 등록 — 키는 영소문자만(<code>[a-z]+</code>) 쓰고, 아틀라스를 <code>assets_배포/dragon/{키}-growth-atlas.webp</code>로 먼저 배포한 뒤 활성화하세요. 마지막 빈 줄에 새 속성을 적으면 등록돼요.</div>
+
+<div class="tiny" style="opacity:.78; line-height:1.5; margin:10px 0 4px;">속성 — 코드에 준비된 기운(땅·바람·빛·사랑 포함)만 [활성]을 켜거나 다음 알로 고르세요 · 새 키는 그림·색·아이콘 코드 작업이 먼저예요(영소문자 <code>[a-z]+</code>, 마지막 빈 줄에 적으면 등록).</div>
 <div class="dragonAdminEls" id="dragonAdminEls"></div>
 <div class="row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 <label for="dragonAdminNext" style="min-width:110px;">다음 알</label>
@@ -8298,7 +8320,8 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <div class="dragonAdminAtlasHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-dragon"></use></svg>관리자 전용 성장 미리보기</b><span>눈 깜빡임까지 실제 화면과 같아요</span></div>
 <div class="dragonAdminSideBtns" id="dragonAdminPreviewEls" role="group" aria-label="기운 고르기">
 
-<button class="ghost on" type="button" data-el="fire"><svg class="mkIc dgElIc dgElIc-fire" aria-hidden="true" focusable="false"><use href="#mki-fire"></use></svg>불</button><button class="ghost" type="button" data-el="water"><svg class="mkIc dgElIc dgElIc-water" aria-hidden="true" focusable="false"><use href="#mki-water"></use></svg>물</button><button class="ghost" type="button" data-el="thunder"><svg class="mkIc dgElIc dgElIc-thunder" aria-hidden="true" focusable="false"><use href="#mki-thunder"></use></svg>전기</button><button class="ghost" type="button" data-el="mountain"><svg class="mkIc dgElIc dgElIc-mountain" aria-hidden="true" focusable="false"><use href="#mki-mountain"></use></svg>산</button><button class="ghost" type="button" data-el="neutral"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-egg"></use></svg>무속성</button>
+
+<button class="ghost on" type="button" data-el="fire"><svg class="mkIc dgElIc dgElIc-fire" aria-hidden="true" focusable="false"><use href="#mki-fire"></use></svg>불</button><button class="ghost" type="button" data-el="water"><svg class="mkIc dgElIc dgElIc-water" aria-hidden="true" focusable="false"><use href="#mki-water"></use></svg>물</button><button class="ghost" type="button" data-el="thunder"><svg class="mkIc dgElIc dgElIc-thunder" aria-hidden="true" focusable="false"><use href="#mki-thunder"></use></svg>전기</button><button class="ghost" type="button" data-el="mountain"><svg class="mkIc dgElIc dgElIc-mountain" aria-hidden="true" focusable="false"><use href="#mki-mountain"></use></svg>산</button><button class="ghost" type="button" data-el="earth"><svg class="mkIc dgElIc dgElIc-earth" aria-hidden="true" focusable="false"><use href="#mki-earth"></use></svg>땅</button><button class="ghost" type="button" data-el="wind"><svg class="mkIc dgElIc dgElIc-wind" aria-hidden="true" focusable="false"><use href="#mki-wind"></use></svg>바람</button><button class="ghost" type="button" data-el="light"><svg class="mkIc dgElIc dgElIc-light" aria-hidden="true" focusable="false"><use href="#mki-light"></use></svg>빛</button><button class="ghost" type="button" data-el="love"><svg class="mkIc dgElIc dgElIc-love" aria-hidden="true" focusable="false"><use href="#mki-love"></use></svg>사랑</button><button class="ghost" type="button" data-el="neutral"><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-egg"></use></svg>무속성</button>
 </div>
 <section class="worldTreeScene dragonScene dragonAdminPreviewScene" id="dragonAdminPreviewScene" data-el="fire" data-stage="0" aria-label="관리자 드래곤 성장 미리보기">
 <div class="dragonAura" aria-hidden="true"></div>
@@ -29498,7 +29521,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17166; 
+const MK_APP_BUILD = 17167; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -31794,12 +31817,17 @@ const DRAGON_TICKET_GROW_COST = 10;
         fire:{name:"불의 드래곤",emoji:"🔥",order:1,active:true},
         water:{name:"물의 드래곤",emoji:"💧",order:2,active:true},
         thunder:{name:"전기의 드래곤",emoji:"⚡",order:3,active:true},
-        mountain:{name:"산의 드래곤",emoji:"⛰️",order:4,active:true}
+        mountain:{name:"산의 드래곤",emoji:"⛰️",order:4,active:true},
+        
+        earth:{name:"땅의 드래곤",emoji:"🪨",order:5,active:false},
+        wind:{name:"바람의 드래곤",emoji:"🌪️",order:6,active:false},
+        light:{name:"빛의 드래곤",emoji:"✨",order:7,active:false},
+        love:{name:"사랑의 드래곤",emoji:"💗",order:8,active:false}
       },
       nextElement:""
     });
     
-    const DRAGON_EYES = {"fire":{"2":{"x":36.148,"y":66.604,"w":5.091,"h":5.684,"travel":1.0,"dir":"down","cx":39.086,"cy":69.334,"a":7.498,"b":5.858,"angle":-28.4,"lid":"paint","skinTop":"#fc3e1e","skinBot":"#fcedd8","lash":"#260505"},"3":{"x":29.57,"y":59.886,"w":6.506,"h":5.729,"travel":1.0,"dir":"down","cx":33.284,"cy":62.467,"a":10.951,"b":7.595,"angle":-21.4,"lid":"paint","skinTop":"#fc331c","skinBot":"#fcebd6","lash":"#1b0304"},"4":{"x":26.446,"y":50.457,"w":5.582,"h":4.23,"travel":1.1,"dir":"down","cx":29.286,"cy":52.061,"a":4.999,"b":5.0,"angle":-18.8},"5":{"x":20.45,"y":44.46,"w":5.495,"h":4.089,"travel":1.1,"dir":"down","cx":22.834,"cy":46.254,"a":5.688,"b":4.946,"angle":-21.5},"6":{"x":18.395,"y":37.698,"w":3.679,"h":2.722,"travel":1.1,"dir":"down","cx":20.014,"cy":38.677,"a":3.807,"b":3.127,"angle":-21.9},"7":{"x":11.983,"y":30.11,"w":3.784,"h":2.859,"travel":1.1,"dir":"down","cx":13.588,"cy":31.203,"a":4.1,"b":3.759,"angle":-14.6}},"water":{"2":{"x":37.198,"y":68.852,"w":5.096,"h":5.473,"travel":1.0,"dir":"down","cx":39.771,"cy":71.449,"a":6.867,"b":5.368,"angle":-29.6,"lid":"paint","skinTop":"#88cffc","skinBot":"#fbf9f6","lash":"#03114a"},"3":{"x":32.856,"y":61.013,"w":6.16,"h":6.237,"travel":1.0,"dir":"down","cx":35.978,"cy":63.84,"a":8.024,"b":5.956,"angle":-22.4,"lid":"paint","skinTop":"#8ad2fc","skinBot":"#fcf9f8","lash":"#031148"},"4":{"x":26.164,"y":50.591,"w":3.062,"h":2.916,"travel":1.1,"dir":"down","cx":27.622,"cy":51.926,"a":3.553,"b":3.482,"angle":-27.5},"5":{"x":25.107,"y":44.793,"w":3.108,"h":2.611,"travel":1.1,"dir":"down","cx":26.246,"cy":45.614,"a":3.186,"b":3.238,"angle":-15.7},"6":{"x":18.185,"y":35.157,"w":3.478,"h":3.022,"travel":1.1,"dir":"down","cx":19.534,"cy":36.33,"a":3.46,"b":2.353,"angle":-36.8},"7":{"x":15.066,"y":29.499,"w":3.745,"h":2.942,"travel":1.1,"dir":"down","cx":16.605,"cy":30.398,"a":3.841,"b":2.451,"angle":-25.6}},"thunder":{"2":{"x":39.625,"y":68.321,"w":5.255,"h":6.126,"travel":1.0,"dir":"down","cx":42.67,"cy":71.532,"a":7.876,"b":5.369,"angle":-45.8,"lid":"paint","skinTop":"#f0d4fc","skinBot":"#fcfafc","lash":"#1d042d","eye2":{"cx":35.541,"cy":70.674,"a":1.492,"b":5.412,"angle":0.0,"skinTop":"#fcf9fc","skinBot":"#fbf5fa","lash":"#170333"}},"3":{"x":30.251,"y":61.572,"w":6.368,"h":6.534,"travel":1.0,"dir":"down","cx":33.301,"cy":64.368,"a":9.031,"b":6.279,"angle":-44.3,"lid":"paint","skinTop":"#f5ebfc","skinBot":"#fcfbfd","lash":"#0b030c"},"4":{"x":26.837,"y":53.576,"w":3.129,"h":3.129,"travel":1.1,"dir":"down","cx":28.297,"cy":55.021,"a":3.281,"b":3.624,"angle":-36.8},"5":{"x":22.496,"y":47.698,"w":3.716,"h":2.93,"travel":1.1,"dir":"down","cx":24.556,"cy":48.94,"a":4.082,"b":3.516,"angle":-27.5},"6":{"x":18.755,"y":43.2,"w":3.146,"h":2.251,"travel":1.1,"dir":"down","cx":20.183,"cy":44.173,"a":3.424,"b":2.73,"angle":-20.1},"7":{"x":18.843,"y":31.569,"w":3.661,"h":3.255,"travel":1.1,"dir":"down","cx":20.613,"cy":33.115,"a":4.285,"b":3.588,"angle":-26.5}},"mountain":{"2":{"x":37.165,"y":68.758,"w":5.857,"h":6.315,"travel":1.0,"dir":"up","cx":40.097,"cy":71.912,"a":6.559,"b":5.127,"angle":-37.0,"lid":"paint","skinTop":"#fcf6eb","skinBot":"#fcf7ec","lash":"#161209"},"3":{"x":32.762,"y":61.587,"w":6.563,"h":6.136,"travel":1.0,"dir":"down","cx":36.047,"cy":64.641,"a":6.979,"b":5.279,"angle":-27.9,"lid":"paint","skinTop":"#fcf6ea","skinBot":"#fdf9f0","lash":"#150d08"},"4":{"x":25.876,"y":49.983,"w":4.09,"h":4.265,"travel":1.1,"dir":"up","cx":27.916,"cy":52.115,"a":4.616,"b":3.213,"angle":-36.1,"lid":"paint","skinTop":"#fcf4e5","skinBot":"#fdf7e9","lash":"#060503"},"5":{"x":25.285,"y":43.911,"w":4.172,"h":4.212,"travel":1.1,"dir":"up","cx":27.375,"cy":46.005,"a":4.843,"b":2.79,"angle":-36.5,"lid":"paint","skinTop":"#fcf7ee","skinBot":"#fcf8f0","lash":"#060b06"},"6":{"x":18.597,"y":34.364,"w":4.025,"h":4.191,"travel":1.1,"dir":"up","cx":20.609,"cy":36.48,"a":4.747,"b":2.635,"angle":-39.1,"lid":"paint","skinTop":"#fcf9f4","skinBot":"#fcf9f5","lash":"#050504"},"7":{"x":18.056,"y":29.209,"w":4.09,"h":3.379,"travel":1.1,"dir":"up","cx":20.101,"cy":30.898,"a":4.499,"b":2.374,"angle":-29.4,"lid":"paint","skinTop":"#fbf7ea","skinBot":"#fcf9f2","lash":"#070805"}}};
+    const DRAGON_EYES = {"fire":{"2":{"x":37.367,"y":68.856,"w":5.912,"h":6.212,"travel":1.0,"dir":"down","cx":40.317,"cy":71.966,"a":6.542,"b":5.115,"angle":-35.2,"lid":"paint","skinTop":"#fbf0e2","skinBot":"#fcf4e7","lash":"#260809"},"3":{"x":32.86,"y":60.472,"w":6.942,"h":7.039,"travel":1.0,"dir":"down","cx":36.332,"cy":63.987,"a":7.536,"b":5.898,"angle":-32.6,"lid":"paint","skinTop":"#fbf1e5","skinBot":"#fbf4e9","lash":"#1d0906"},"4":{"x":27.157,"y":48.655,"w":6.344,"h":5.479,"travel":1.1,"dir":"down","cx":30.329,"cy":51.377,"a":6.623,"b":4.787,"angle":-24.0,"lid":"paint","skinTop":"#fbefe2","skinBot":"#fbf1e5","lash":"#1d0c0a"},"5":{"x":23.604,"y":41.697,"w":6.938,"h":5.8,"travel":1.1,"dir":"down","cx":27.096,"cy":44.604,"a":7.176,"b":5.193,"angle":-20.5,"lid":"paint","skinTop":"#fcf0e4","skinBot":"#fbf0e4","lash":"#130707"},"6":{"x":21.252,"y":30.856,"w":5.614,"h":4.294,"travel":1.1,"dir":"down","cx":24.066,"cy":32.981,"a":6.009,"b":3.302,"angle":-24.4,"lid":"paint","skinTop":"#fcf2e6","skinBot":"#fcf3e7","lash":"#070404"},"7":{"x":17.547,"y":24.349,"w":5.137,"h":4.161,"travel":1.1,"dir":"down","cx":20.097,"cy":26.399,"a":5.734,"b":2.566,"angle":-29.8,"lid":"paint","skinTop":"#f9edde","skinBot":"#fbf5e8","lash":"#0d0706"}},"water":{"2":{"x":37.055,"y":69.025,"w":6.215,"h":6.303,"travel":1.0,"dir":"down","cx":40.171,"cy":72.18,"a":6.706,"b":5.438,"angle":-31.9,"lid":"paint","skinTop":"#a7dcfc","skinBot":"#fbf7f4","lash":"#04113d"},"3":{"x":33.108,"y":61.665,"w":7.109,"h":6.896,"travel":1.0,"dir":"down","cx":36.667,"cy":65.1,"a":7.632,"b":5.972,"angle":-28.9,"lid":"paint","skinTop":"#95d6fc","skinBot":"#fcf9f5","lash":"#071332"},"4":{"x":25.853,"y":50.743,"w":4.499,"h":4.376,"travel":1.1,"dir":"down","cx":28.112,"cy":52.919,"a":5.048,"b":3.256,"angle":-33.9,"lid":"paint","skinTop":"#a4defc","skinBot":"#fcf8f2","lash":"#040812"},"5":{"x":24.261,"y":45.162,"w":4.861,"h":4.679,"travel":1.1,"dir":"down","cx":26.681,"cy":47.521,"a":5.438,"b":3.461,"angle":-33.5,"lid":"paint","skinTop":"#bde6fc","skinBot":"#fcf7f2","lash":"#04070e"},"6":{"x":18.851,"y":34.207,"w":4.042,"h":3.867,"travel":1.1,"dir":"down","cx":20.878,"cy":36.141,"a":4.587,"b":2.524,"angle":-35.2,"lid":"paint","skinTop":"#bfeafb","skinBot":"#fbf8f4","lash":"#040609"},"7":{"x":15.26,"y":27.753,"w":4.638,"h":3.711,"travel":1.1,"dir":"down","cx":17.605,"cy":29.593,"a":5.173,"b":2.257,"angle":-29.8,"lid":"paint","skinTop":"#eaecf1","skinBot":"#fcf9f4","lash":"#05060c"}},"thunder":{"2":{"x":37.332,"y":68.846,"w":5.805,"h":6.011,"travel":1.0,"dir":"down","cx":40.244,"cy":71.852,"a":6.524,"b":4.756,"angle":-35.6,"lid":"paint","skinTop":"#fcf7f1","skinBot":"#fcf8f2","lash":"#160710"},"3":{"x":31.73,"y":59.696,"w":8.046,"h":7.412,"travel":1.0,"dir":"down","cx":35.757,"cy":63.412,"a":8.903,"b":5.725,"angle":-30.7,"lid":"paint","skinTop":"#fcf9f7","skinBot":"#fdfaf7","lash":"#0e030b"},"4":{"x":25.7,"y":50.735,"w":6.088,"h":5.053,"travel":1.1,"dir":"down","cx":28.754,"cy":53.286,"a":6.565,"b":3.878,"angle":-27.3,"lid":"paint","skinTop":"#fbf4ee","skinBot":"#fdf6ef","lash":"#090408"},"5":{"x":22.53,"y":45.386,"w":6.067,"h":5.307,"travel":1.1,"dir":"down","cx":25.546,"cy":48.026,"a":6.719,"b":3.838,"angle":-30.6,"lid":"paint","skinTop":"#f9f0e9","skinBot":"#fbf3ec","lash":"#0a060a"},"6":{"x":19.397,"y":35.606,"w":4.327,"h":3.046,"travel":1.1,"dir":"down","cx":21.567,"cy":37.136,"a":4.541,"b":2.188,"angle":-23.2,"lid":"paint","skinTop":"#fdfaf7","skinBot":"#fcf8f4","lash":"#090320"},"7":{"x":14.181,"y":28.278,"w":4.014,"h":3.107,"travel":1.1,"dir":"down","cx":16.188,"cy":29.816,"a":4.363,"b":2.129,"angle":-27.2,"lid":"paint","skinTop":"#fcf9f4","skinBot":"#fcf9f3","lash":"#0d0323"}},"mountain":{"2":{"x":37.165,"y":68.758,"w":5.857,"h":6.315,"travel":1.0,"dir":"up","cx":40.097,"cy":71.912,"a":6.559,"b":5.127,"angle":-37.0,"lid":"paint","skinTop":"#fcf6eb","skinBot":"#fcf7ec","lash":"#161209"},"3":{"x":32.762,"y":61.587,"w":6.563,"h":6.136,"travel":1.0,"dir":"down","cx":36.047,"cy":64.641,"a":6.979,"b":5.279,"angle":-27.9,"lid":"paint","skinTop":"#fcf6ea","skinBot":"#fdf9f0","lash":"#150d08"},"4":{"x":25.876,"y":49.983,"w":4.09,"h":4.265,"travel":1.1,"dir":"up","cx":27.916,"cy":52.115,"a":4.616,"b":3.213,"angle":-36.1,"lid":"paint","skinTop":"#fcf4e5","skinBot":"#fdf7e9","lash":"#060503"},"5":{"x":25.285,"y":43.911,"w":4.172,"h":4.212,"travel":1.1,"dir":"up","cx":27.375,"cy":46.005,"a":4.843,"b":2.79,"angle":-36.5,"lid":"paint","skinTop":"#fcf7ee","skinBot":"#fcf8f0","lash":"#060b06"},"6":{"x":18.597,"y":34.364,"w":4.025,"h":4.191,"travel":1.1,"dir":"up","cx":20.609,"cy":36.48,"a":4.747,"b":2.635,"angle":-39.1,"lid":"paint","skinTop":"#fcf9f4","skinBot":"#fcf9f5","lash":"#050504"},"7":{"x":18.056,"y":29.209,"w":4.09,"h":3.379,"travel":1.1,"dir":"up","cx":20.101,"cy":30.898,"a":4.499,"b":2.374,"angle":-29.4,"lid":"paint","skinTop":"#fbf7ea","skinBot":"#fcf9f2","lash":"#070805"}},"earth":{"2":{"x":36.623,"y":68.396,"w":6.331,"h":6.175,"travel":1.0,"dir":"down","cx":39.795,"cy":71.483,"a":6.868,"b":5.184,"angle":-30.8,"lid":"paint","skinTop":"#f3d9b8","skinBot":"#fcf1d7","lash":"#2a0d05"},"3":{"x":32.948,"y":60.627,"w":7.749,"h":7.136,"travel":1.0,"dir":"down","cx":36.823,"cy":64.19,"a":8.279,"b":6.141,"angle":-27.2,"lid":"paint","skinTop":"#f0d6c0","skinBot":"#fcf2e1","lash":"#1d0c06"},"4":{"x":26.337,"y":50.121,"w":4.701,"h":4.663,"travel":1.1,"dir":"down","cx":28.683,"cy":52.452,"a":5.195,"b":3.655,"angle":-32.9,"lid":"paint","skinTop":"#ecc39a","skinBot":"#fbf0de","lash":"#150a05"},"5":{"x":24.364,"y":43.503,"w":4.764,"h":4.671,"travel":1.1,"dir":"down","cx":26.746,"cy":45.845,"a":5.512,"b":3.196,"angle":-35.5,"lid":"paint","skinTop":"#e5c09e","skinBot":"#fbf1e4","lash":"#070504"},"6":{"x":18.049,"y":34.217,"w":4.183,"h":4.303,"travel":1.1,"dir":"down","cx":20.128,"cy":36.354,"a":4.936,"b":2.704,"angle":-38.4,"lid":"paint","skinTop":"#f9f0e4","skinBot":"#fcf3e5","lash":"#070504"},"7":{"x":15.349,"y":29.723,"w":5.797,"h":4.348,"travel":1.1,"dir":"down","cx":18.254,"cy":31.881,"a":6.331,"b":2.822,"angle":-27.3,"lid":"paint","skinTop":"#fbf4e8","skinBot":"#fbf1e2","lash":"#090604"}},"wind":{"2":{"x":36.778,"y":68.814,"w":5.85,"h":6.092,"travel":1.0,"dir":"down","cx":39.71,"cy":71.86,"a":6.476,"b":4.974,"angle":-34.7,"lid":"paint","skinTop":"#e7f2e9","skinBot":"#fbf9f4","lash":"#03282d"},"3":{"x":32.509,"y":60.273,"w":7.2,"h":6.884,"travel":1.0,"dir":"down","cx":36.105,"cy":63.725,"a":7.754,"b":5.757,"angle":-29.9,"lid":"paint","skinTop":"#eef4ed","skinBot":"#fcf9f5","lash":"#031a21"},"4":{"x":25.94,"y":50.122,"w":4.539,"h":4.345,"travel":1.1,"dir":"down","cx":28.209,"cy":52.295,"a":5.089,"b":3.285,"angle":-33.3,"lid":"paint","skinTop":"#d5f8ea","skinBot":"#fcf8f4","lash":"#041216"},"5":{"x":25.665,"y":44.786,"w":4.334,"h":4.543,"travel":1.1,"dir":"down","cx":27.837,"cy":47.033,"a":5.111,"b":3.007,"angle":-38.5,"lid":"paint","skinTop":"#c6eadd","skinBot":"#fbf7f3","lash":"#040707"},"6":{"x":17.623,"y":34.608,"w":4.355,"h":4.009,"travel":1.1,"dir":"down","cx":19.788,"cy":36.62,"a":4.999,"b":2.591,"angle":-33.8,"lid":"paint","skinTop":"#bbefe0","skinBot":"#fbf8f3","lash":"#040506"},"7":{"x":14.682,"y":28.792,"w":5.19,"h":3.882,"travel":1.1,"dir":"down","cx":17.283,"cy":30.75,"a":5.641,"b":2.604,"angle":-26.3,"lid":"paint","skinTop":"#c0f4e4","skinBot":"#faf8f1","lash":"#030708"}},"light":{"2":{"x":36.947,"y":68.347,"w":5.812,"h":6.337,"travel":1.0,"dir":"down","cx":39.859,"cy":71.519,"a":6.537,"b":5.115,"angle":-37.9,"lid":"paint","skinTop":"#f5e9da","skinBot":"#fdf3e4","lash":"#441904"},"3":{"x":32.5,"y":60.197,"w":7.033,"h":6.964,"travel":1.0,"dir":"down","cx":36.024,"cy":63.669,"a":7.779,"b":5.585,"angle":-33.2,"lid":"paint","skinTop":"#f6ecdf","skinBot":"#fdf7ee","lash":"#311105"},"4":{"x":25.904,"y":50.564,"w":4.553,"h":4.543,"travel":1.1,"dir":"down","cx":28.186,"cy":52.853,"a":5.21,"b":3.267,"angle":-35.6,"lid":"paint","skinTop":"#f8eee3","skinBot":"#fcf7ec","lash":"#271106"},"5":{"x":24.376,"y":43.293,"w":4.439,"h":4.336,"travel":1.1,"dir":"down","cx":26.606,"cy":45.454,"a":5.028,"b":3.122,"angle":-34.8,"lid":"paint","skinTop":"#faecd8","skinBot":"#fbf6ee","lash":"#160905"},"6":{"x":17.584,"y":34.164,"w":4.187,"h":4.235,"travel":1.1,"dir":"down","cx":19.695,"cy":36.282,"a":4.893,"b":2.713,"angle":-36.7,"lid":"paint","skinTop":"#f6e9e2","skinBot":"#faf5f0","lash":"#0d0705"},"7":{"x":15.16,"y":29.073,"w":5.443,"h":4.381,"travel":1.1,"dir":"down","cx":17.882,"cy":31.271,"a":5.994,"b":2.78,"angle":-29.5,"lid":"paint","skinTop":"#fbf4eb","skinBot":"#fcf7ef","lash":"#080504"}},"love":{"2":{"x":36.654,"y":68.26,"w":5.965,"h":6.329,"travel":1.0,"dir":"down","cx":39.637,"cy":71.414,"a":6.716,"b":5.071,"angle":-36.3,"lid":"paint","skinTop":"#f8e7e0","skinBot":"#fcf5ee","lash":"#600324"},"3":{"x":32.742,"y":60.488,"w":7.155,"h":6.933,"travel":1.0,"dir":"down","cx":36.335,"cy":63.955,"a":7.736,"b":5.845,"angle":-30.3,"lid":"paint","skinTop":"#f5e2db","skinBot":"#fcf7f1","lash":"#4d041b"},"4":{"x":26.073,"y":49.742,"w":4.53,"h":4.627,"travel":1.1,"dir":"down","cx":28.323,"cy":52.061,"a":5.186,"b":3.296,"angle":-36.0,"lid":"paint","skinTop":"#f5e5e1","skinBot":"#fcf8f3","lash":"#18070b"},"5":{"x":24.754,"y":43.363,"w":4.582,"h":4.51,"travel":1.1,"dir":"down","cx":27.06,"cy":45.618,"a":5.267,"b":3.102,"angle":-36.0,"lid":"paint","skinTop":"#f8eae4","skinBot":"#fcf5ef","lash":"#090506"},"6":{"x":17.798,"y":34.543,"w":3.951,"h":4.023,"travel":1.1,"dir":"down","cx":19.773,"cy":36.561,"a":4.622,"b":2.658,"angle":-36.4,"lid":"paint","skinTop":"#fae9e0","skinBot":"#fbf6f0","lash":"#0b0506"},"7":{"x":15.044,"y":27.864,"w":5.57,"h":4.51,"travel":1.1,"dir":"down","cx":17.809,"cy":30.143,"a":6.134,"b":3.068,"angle":-28.8,"lid":"paint","skinTop":"#fbebe3","skinBot":"#fcf4ee","lash":"#160505"}}};
 
     const dragonS3Runtime = {
       config:null,            
@@ -31912,8 +31940,8 @@ function dragonClamp_(v,min,max,fallback){
     function dragonNumFmt_(n){ return Math.round(Number(n)||0).toLocaleString("ko-KR"); }
     function dragonKeyOk_(k){ return /^[a-z]+$/.test(String(k||"")); }
     function dragonSetText_(id,text){ const el=document.getElementById(id); if(el && el.textContent!==text) el.textContent=text; }
-    
-    const DRAGON_EL_ICONS=Object.freeze({fire:"fire",water:"water",thunder:"thunder",mountain:"mountain"});
+
+const DRAGON_EL_ICONS=Object.freeze({fire:"fire",water:"water",thunder:"thunder",mountain:"mountain",earth:"earth",wind:"wind",light:"light",love:"love"});
     const DRAGON_MENU_ICONS=Object.freeze({"🌳":"tree","🍼":"bottle","🍪":"cookie","🍖":"bowl","🍗":"feast"});
     function dragonIc_(name,fallback){ return (typeof window.mkIc_==="function")?window.mkIc_(name):dragonEsc_(fallback); }
     
@@ -49602,6 +49630,11 @@ html body .mkHubStat > #mkCharaWallet > .mkIc.mkWalletMult{ margin-right:2px; }
 .mkIc.dgElIc-thunder{ color:#b48cff; }    
 .mkIc.dgElIc-mountain{ color:#8bcf62; }   
 
+.mkIc.dgElIc-earth{ color:#e1a25a; }      
+.mkIc.dgElIc-wind{ color:#5ae1c9; }       
+.mkIc.dgElIc-light{ color:#fcd660; }      
+.mkIc.dgElIc-love{ color:#f04a86; }       
+
 
 #dragonTitle > .mkIc{ width:18px; height:18px; margin-right:6px; vertical-align:-3px; }
 #dragonModal .dragonPoolHead b > .mkIc,
@@ -49853,6 +49886,14 @@ html body .topbar #hardRefreshBtn.mkRefreshBusy .mkIc{ animation:mkRfSpin .9s li
 #dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-1{ color:#f2c94c; }
 #dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-2{ color:#c9d3e0; }
 #dragonModal .dragonHallRow .dgHallTop3 .mkIc.dgMedal-3{ color:#d8925a; }
+</style>
+
+
+<style id="v282NewEl">
+
+@media (min-width:861px){
+  #dragonScene:has(> .dragonTabs > .dragonTab:nth-child(7)) .worldTreeLevelOrb{ top:78px; }
+}
 </style>
 
 </body>

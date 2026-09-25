@@ -1,5 +1,5 @@
 {
-  "_version": "20260908214121",
+  "_version": "20260926020003",
   "_webp": true,
   "_webpQuality": 92,
   "01_body": [
@@ -324,10 +324,14 @@
     "05_acc_auto_93.png",
     "05_acc_special_bangjang.png",
     "05_acc_special_bubangjang.png",
+    "05_acc_special_dragon_earth.png",
     "05_acc_special_dragon_fire.png",
+    "05_acc_special_dragon_light.png",
+    "05_acc_special_dragon_love.png",
     "05_acc_special_dragon_mountain.png",
     "05_acc_special_dragon_thunder.png",
     "05_acc_special_dragon_water.png",
+    "05_acc_special_dragon_wind.png",
     "05_acc_special_gaegeun.png",
     "05_acc_special_gaegeun_cloud.png",
     "05_acc_special_gaegeun_clover.png",
@@ -1041,6 +1045,42 @@
       "season": "S3",
       "chroma": "green",
       "updatedAt": "2026-09-08 00:39:11"
+    },
+    "05_acc/05_acc_special_dragon_earth.png": {
+      "label": "고룡 미니미 · 땅의 드래곤",
+      "desc": "시즌3 드래곤 키우기 종합 랭킹 상위 3명에게만 드리는 동반 아이템 — 땅 고룡의 미니 버전 (어깨 옆에 떠 있어요)",
+      "emoji": "🪨",
+      "shape": "dragon_earth",
+      "letters": "",
+      "season": "S3",
+      "updatedAt": "2026-09-26 01:53:00"
+    },
+    "05_acc/05_acc_special_dragon_wind.png": {
+      "label": "고룡 미니미 · 바람의 드래곤",
+      "desc": "시즌3 드래곤 키우기 종합 랭킹 상위 3명에게만 드리는 동반 아이템 — 바람 고룡의 미니 버전 (어깨 옆에 떠 있어요)",
+      "emoji": "🌪️",
+      "shape": "dragon_wind",
+      "letters": "",
+      "season": "S3",
+      "updatedAt": "2026-09-26 01:53:00"
+    },
+    "05_acc/05_acc_special_dragon_light.png": {
+      "label": "고룡 미니미 · 빛의 드래곤",
+      "desc": "시즌3 드래곤 키우기 종합 랭킹 상위 3명에게만 드리는 동반 아이템 — 빛 고룡의 미니 버전 (어깨 옆에 떠 있어요)",
+      "emoji": "✨",
+      "shape": "dragon_light",
+      "letters": "",
+      "season": "S3",
+      "updatedAt": "2026-09-26 01:53:00"
+    },
+    "05_acc/05_acc_special_dragon_love.png": {
+      "label": "고룡 미니미 · 사랑의 드래곤",
+      "desc": "시즌3 드래곤 키우기 종합 랭킹 상위 3명에게만 드리는 동반 아이템 — 사랑 고룡의 미니 버전 (어깨 옆에 떠 있어요)",
+      "emoji": "💗",
+      "shape": "dragon_love",
+      "letters": "",
+      "season": "S3",
+      "updatedAt": "2026-09-26 01:53:00"
     }
   },
   "_prices": {
@@ -3019,29 +3059,53 @@
       1002,
       462
     ],
+    "05_acc/05_acc_special_dragon_earth.png": [
+      644,
+      443,
+      294,
+      320
+    ],
     "05_acc/05_acc_special_dragon_fire.png": [
-      296,
-      419,
       658,
-      590
+      441,
+      279,
+      322
+    ],
+    "05_acc/05_acc_special_dragon_light.png": [
+      659,
+      443,
+      279,
+      320
+    ],
+    "05_acc/05_acc_special_dragon_love.png": [
+      659,
+      443,
+      279,
+      320
     ],
     "05_acc/05_acc_special_dragon_mountain.png": [
-      339,
-      417,
-      611,
-      371
+      657,
+      441,
+      280,
+      322
     ],
     "05_acc/05_acc_special_dragon_thunder.png": [
-      216,
-      404,
-      728,
-      383
+      658,
+      441,
+      279,
+      322
     ],
     "05_acc/05_acc_special_dragon_water.png": [
-      609,
-      429,
-      301,
-      339
+      621,
+      445,
+      318,
+      318
+    ],
+    "05_acc/05_acc_special_dragon_wind.png": [
+      659,
+      443,
+      279,
+      320
     ],
     "05_acc/05_acc_special_gaegeun.png": [
       106,
@@ -3871,10 +3935,14 @@
     "05_acc_auto_93.png": "hairpin",
     "05_acc_special_bangjang.png": "special",
     "05_acc_special_bubangjang.png": "special",
+    "05_acc_special_dragon_earth.png": "special",
     "05_acc_special_dragon_fire.png": "special",
+    "05_acc_special_dragon_light.png": "special",
+    "05_acc_special_dragon_love.png": "special",
     "05_acc_special_dragon_mountain.png": "special",
     "05_acc_special_dragon_thunder.png": "special",
     "05_acc_special_dragon_water.png": "special",
+    "05_acc_special_dragon_wind.png": "special",
     "05_acc_special_gaegeun.png": "special",
     "05_acc_special_gaegeun_cloud.png": "special",
     "05_acc_special_gaegeun_clover.png": "special",
