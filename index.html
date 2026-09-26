@@ -132,6 +132,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -193,6 +194,1964 @@
     load: function(){ try{ return localStorage.getItem(KEY) || ""; }catch(e){ return ""; } }
   };
   try{ var saved = window.__MK_ACCENT__.load(); if(saved) applyAccent(saved); }catch(e){}
+})();
+</script>
+
+<style id="mkw-css">
+
+
+
+
+
+:where(:root){
+  --acc3rgb:var(--pink3rgb,255,119,184);
+  --acc2rgb:var(--pink2rgb,255,182,214);
+}
+
+
+
+:where(.mkw,.mkw-pill,.mkw-pagebg):not([data-theme="dark"]){
+  --w-bg:var(--mkw-l-bg, #FFFBFD); --w-head:var(--mkw-l-head, #FFF2F8); --w-strip:var(--mkw-l-strip, #FFF6FA);
+  --w-surface:#FFFFFF; --w-surface2:var(--mkw-l-surface2, #FFF4F9); --w-sunken:var(--mkw-l-sunken, #FDF3F8);
+  --w-line:var(--mkw-l-line, #F1DCE7); --w-line2:var(--mkw-l-line2, #E8C9D9);
+  --w-text:#2B2230; --w-text2:#5F5059; --w-text3:#9A8A94;
+  --w-mine:rgba(var(--acc2rgb),.30); --w-mine-line:rgba(var(--acc3rgb),.45);
+  --w-acc-text:var(--mkw-acc-text-l, color-mix(in srgb, rgb(var(--acc3rgb)) 72%, #000)); --w-acc-soft:rgba(var(--acc3rgb),.14); --w-acc-ring:rgba(var(--acc3rgb),.55);
+  --w-rest:#7B5CD6; --w-rest-soft:rgba(123,92,214,.12);
+  --w-danger:#D93A62; --w-danger-soft:rgba(217,58,98,.10);
+  --w-warn:#9A6200; --w-warn-soft:rgba(245,166,35,.16);
+  --w-on-acc:var(--mkw-on-acc-l, #1B1020); --w-on-danger:#FFFFFF;
+  --w-shadow:0 18px 50px rgba(var(--mkw-l-shadow, 60,20,40),.22), 0 2px 8px rgba(var(--mkw-l-shadow, 60,20,40),.08); --w-shadow-sm:0 6px 18px rgba(var(--mkw-l-shadow, 60,20,40),.14);
+  --w-scrim:rgba(43,34,48,.24); --w-knob:#FFFFFF; --w-sb:rgba(154,138,148,.38);
+  --w-page:var(--mkw-l-page, #FFF5FA); --w-dots:rgba(var(--mkw-l-dots, 190,110,150),.16); --w-bg-solid:var(--mkw-l-bg, #FFFBFD);
+  --w-inv-acc:var(--mkw-acc-text-d, rgb(var(--acc2rgb))); --w-inv-danger:#FF8FA8;
+  --w-app-pomo:#E0654F; --w-app-suda:#5C9A2C; --w-app:var(--w-acc-text);
+  color-scheme:light;
+}
+:where(.mkw,.mkw-pill,.mkw-pagebg)[data-theme="dark"]{
+  --w-bg:#18181C; --w-head:rgba(0,0,0,.34); --w-strip:rgba(255,255,255,.035);
+  --w-surface:rgba(255,255,255,.06); --w-surface2:rgba(255,255,255,.09); --w-sunken:rgba(0,0,0,.22);
+  --w-line:rgba(255,255,255,.10); --w-line2:rgba(255,255,255,.16);
+  --w-text:rgba(255,255,255,.92); --w-text2:rgba(255,255,255,.70); --w-text3:rgba(255,255,255,.48);
+  --w-mine:rgba(var(--acc2rgb),.13); --w-mine-line:rgba(var(--acc2rgb),.32);
+  --w-acc-text:var(--mkw-acc-text-d, rgb(var(--acc2rgb))); --w-acc-soft:rgba(var(--acc3rgb),.18); --w-acc-ring:rgba(var(--acc2rgb),.5);
+  --w-rest:#B9A6FF; --w-rest-soft:rgba(185,166,255,.16);
+  --w-danger:#FF6B8B; --w-danger-soft:rgba(255,107,139,.14);
+  --w-warn:#FFCB6B; --w-warn-soft:rgba(255,203,107,.14);
+  --w-on-acc:var(--mkw-on-acc-d, #1B1020); --w-on-danger:#FFFFFF;
+  --w-shadow:0 18px 50px rgba(0,0,0,.55); --w-shadow-sm:0 6px 18px rgba(0,0,0,.4);
+  --w-scrim:rgba(0,0,0,.45); --w-knob:rgba(255,255,255,.96); --w-sb:rgba(255,255,255,.16);
+  --w-page:#0E0E11; --w-dots:rgba(255,255,255,.07); --w-bg-solid:#18181C;
+  --w-inv-acc:var(--mkw-acc-text-l, color-mix(in srgb, rgb(var(--acc3rgb)) 72%, #000)); --w-inv-danger:#D93A62;
+  --w-app-pomo:rgb(255,138,118); --w-app-suda:rgb(186,228,120); --w-app:var(--w-acc-text);
+  color-scheme:dark;
+}
+
+
+.mkw[data-app="pomo"],.mkw-pill[data-app="pomo"]{--w-app:var(--w-app-pomo)}
+.mkw[data-app="suda"],.mkw-pill[data-app="suda"]{--w-app:var(--w-app-suda)}
+
+.mkw-nc{color:var(--mkw-nc-l,currentColor)}
+[data-theme="dark"] .mkw-nc{color:var(--mkw-nc-d,currentColor)}
+
+
+.mkw,.mkw-pill,.mkw-pagebg{
+  --mkw-font:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR","Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji",sans-serif;
+}
+.mkw{
+  --mkw-fs:14.5px; --mkw-sat:0px; --mkw-sab:0px;
+  position:relative; box-sizing:border-box; display:flex; flex-direction:column; min-width:0; overflow:hidden;
+  container-type:inline-size; container-name:mkw;
+  background:var(--w-bg); color:var(--w-text);
+  font-family:var(--mkw-font); font-size:14px; font-weight:400; line-height:1.45; text-align:left;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+.mkw *,.mkw *::before,.mkw *::after,.mkw-pill *{box-sizing:border-box}
+.mkw,.mkw *{scrollbar-width:thin; scrollbar-color:var(--w-sb) transparent}
+.mkw ::-webkit-scrollbar{width:10px; height:10px}
+.mkw ::-webkit-scrollbar-thumb{background:var(--w-sb); border-radius:999px; border:3px solid transparent; background-clip:padding-box}
+.mkw ::-webkit-scrollbar-track{background:transparent}
+
+.mkw :where(button),.mkw-pill :where(button){font:inherit; color:inherit; cursor:pointer; border:0; border-radius:0; background:none; padding:0; margin:0; line-height:1.2; text-align:inherit; box-shadow:none}
+.mkw :where(input,textarea,select){font:inherit; color:var(--w-text); margin:0}
+.mkw :where(h1,h2,h3,h4,p){margin:0}
+.mkw :where(button:disabled){cursor:not-allowed}
+.mkw :focus-visible,.mkw-pill:focus-visible{outline:2px solid var(--w-acc-ring); outline-offset:1px}
+.mkw-grow{flex:1 1 auto; min-width:0}
+.mkw-dim{color:var(--w-text3); font-weight:500}
+
+
+.mkIc{width:1.15em; height:1.15em; flex:0 0 auto; display:inline-block; vertical-align:-.2em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; overflow:visible; pointer-events:none}
+
+
+
+.mkw--page{
+  --mkw-page-gap:16px;
+  width:min(var(--mkw-page-w,640px), calc(100% - 2 * var(--mkw-page-gap)));
+  height:calc(100vh - 2 * var(--mkw-page-gap)); height:calc(100dvh - 2 * var(--mkw-page-gap));
+  margin:var(--mkw-page-gap) auto;
+  border-radius:18px; border:1px solid var(--w-line2); box-shadow:var(--w-shadow);
+}
+
+.mkw-pagebg{
+  margin:0; min-height:100vh; min-height:100dvh; display:flow-root;
+  background-color:var(--w-page); background-image:radial-gradient(var(--w-dots) 1.3px, transparent 1.8px); background-size:22px 22px;
+  color:var(--w-text); font-family:var(--mkw-font);
+}
+
+.mkw--float{position:fixed; margin:0; border-radius:18px; border:1px solid var(--w-line2); box-shadow:var(--w-shadow)}
+.mkw--float.is-dragging{box-shadow:var(--w-shadow), var(--w-shadow-sm)}
+.mkw--float .mkw-head{cursor:grab; touch-action:none}
+.mkw--float.is-dragging .mkw-head{cursor:grabbing}
+
+.mkw--sheet{
+  --mkw-sat:env(safe-area-inset-top,0px); --mkw-sab:env(safe-area-inset-bottom,0px);
+  position:fixed; inset:0; margin:0; border-radius:0; border:0; box-shadow:none; background:var(--w-bg-solid);
+  padding:var(--mkw-sat) env(safe-area-inset-right,0px) var(--mkw-sab) env(safe-area-inset-left,0px);
+}
+
+.mkw-rz{position:absolute; z-index:8; touch-action:none}
+.mkw-rz[data-dir="n"]{top:0; left:16px; right:16px; height:6px; cursor:ns-resize}
+.mkw-rz[data-dir="s"]{bottom:0; left:16px; right:30px; height:6px; cursor:ns-resize}
+.mkw-rz[data-dir="e"]{right:0; top:16px; bottom:30px; width:6px; cursor:ew-resize}
+.mkw-rz[data-dir="w"]{left:0; top:16px; bottom:16px; width:6px; cursor:ew-resize}
+.mkw-rz[data-dir="ne"]{top:0; right:0; width:22px; height:22px; cursor:nesw-resize}
+.mkw-rz[data-dir="nw"]{top:0; left:0; width:22px; height:22px; cursor:nwse-resize}
+.mkw-rz[data-dir="sw"]{bottom:0; left:0; width:22px; height:22px; cursor:nesw-resize}
+.mkw-rz[data-dir="se"]{right:2px; bottom:2px; width:24px; height:24px; border-radius:0 0 16px 0; display:flex; align-items:center; justify-content:center; color:var(--w-text3); cursor:nwse-resize}
+.mkw-rz[data-dir="se"] .mkIc{width:22px; height:22px}
+.mkw-rz[data-dir="se"]:hover,.mkw-rz[data-dir="se"].is-on{color:var(--w-acc-text)}
+.mkw-rz:not([data-dir="se"])::after{content:""; position:absolute; opacity:0; border-radius:2px; background:rgba(var(--acc3rgb),.8); transition:opacity .12s}
+.mkw-rz[data-dir="n"]::after,.mkw-rz[data-dir="s"]::after{left:0; right:0; height:2px}
+.mkw-rz[data-dir="n"]::after{top:0}
+.mkw-rz[data-dir="s"]::after{bottom:0}
+.mkw-rz[data-dir="e"]::after,.mkw-rz[data-dir="w"]::after{top:0; bottom:0; width:2px}
+.mkw-rz[data-dir="e"]::after{right:0}
+.mkw-rz[data-dir="w"]::after{left:0}
+.mkw-rz[data-dir="ne"]::after,.mkw-rz[data-dir="nw"]::after,.mkw-rz[data-dir="sw"]::after{width:7px; height:7px; border-radius:50%}
+.mkw-rz[data-dir="ne"]::after{top:5px; right:5px}
+.mkw-rz[data-dir="nw"]::after{top:5px; left:5px}
+.mkw-rz[data-dir="sw"]::after{bottom:5px; left:5px}
+.mkw-rz:hover::after,.mkw-rz.is-on::after{opacity:1}
+
+
+.mkw-head{flex:0 0 56px; display:flex; align-items:center; gap:10px; min-width:0; padding:0 10px 0 12px; background:var(--w-head); border-bottom:1px solid var(--w-line); user-select:none; -webkit-user-select:none}
+.mkw-app{flex:0 0 30px; width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--w-app); background:color-mix(in srgb, var(--w-app) 18%, transparent)}
+.mkw-app .mkIc{width:17px; height:17px}
+.mkw-title{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; line-height:1.2}
+.mkw-title > b{font-size:15px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-title > small{margin-top:2px; font-size:11.5px; font-weight:500; color:var(--w-text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-hbtns{flex:0 0 auto; display:flex; align-items:center; gap:2px}
+.mkw-ibtn{flex:0 0 auto; width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--w-text2)}
+.mkw-ibtn:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-ibtn .mkIc{width:18px; height:18px}
+.mkw-ppl{flex:0 0 auto; height:30px; padding:0 10px; margin-right:4px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; border:1px solid var(--w-line); background:var(--w-surface); font-size:12.5px; font-weight:700; color:var(--w-text2); white-space:nowrap}
+.mkw-ppl:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-ppl .mkIc{width:15px; height:15px}
+.mkw-ibtn.is-on,.mkw-ibtn[aria-pressed="true"],.mkw-ibtn[aria-expanded="true"],.mkw-ppl.is-on,.mkw-ppl[aria-expanded="true"]{background:var(--w-acc-soft); color:var(--w-acc-text); box-shadow:inset 0 0 0 1px var(--w-acc-ring)}
+
+.mkw-notice{flex:0 0 34px; display:flex; align-items:center; gap:8px; min-width:0; padding:0 4px 0 12px; background:var(--w-strip); border-bottom:1px solid var(--w-line); font-size:12.5px; color:var(--w-text2)}
+.mkw-notice[role="button"]{cursor:pointer}
+.mkw-notice > .mkIc{width:15px; height:15px; color:var(--w-acc-text)}
+.mkw-notice-txt{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-notice-txt b{font-weight:700; color:var(--w-text)}
+.mkw-notice-x{flex:0 0 auto; height:26px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center; gap:3px; font-size:11.5px; font-weight:600; color:var(--w-text3)}
+.mkw-notice-x:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-notice-x .mkIc{width:13px; height:13px}
+
+.mkw-strip{flex:0 0 auto; min-width:0; background:var(--w-strip); border-bottom:1px solid var(--w-line)}
+.mkw-body{position:relative; flex:1 1 auto; min-height:0; display:flex; flex-direction:column}
+
+
+.mkw-listwrap{position:relative; flex:1 1 auto; min-height:0; display:flex; flex-direction:column}
+.mkw-list{flex:1 1 auto; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; padding:12px 12px 10px; background:var(--w-sunken)}
+.mkw-date{display:flex; align-items:center; gap:10px; margin:2px 0 6px; font-size:11.5px; font-weight:600; color:var(--w-text3); white-space:nowrap}
+.mkw-date::before,.mkw-date::after{content:""; flex:1 1 auto; height:1px; background:var(--w-line)}
+.mkw-sys{align-self:center; max-width:94%; display:inline-flex; align-items:center; justify-content:center; gap:5px; margin:12px auto 2px; padding:0 6px; font-size:11.5px; font-weight:600; color:var(--w-text3); text-align:center}
+.mkw-sys > .mkIc{width:14px; height:14px; color:var(--w-acc-text)}
+
+.mkw-msg{display:flex; align-items:flex-end; gap:6px; margin-top:10px; min-width:0}
+.mkw-msg.is-cont{margin-top:3px}
+.mkw-msg.is-me{flex-direction:row-reverse}
+.mkw-bubble{max-width:80%; min-width:0; padding:6px 11px 8px; border-radius:14px; background:var(--w-surface); border:1px solid var(--w-line); font-size:var(--mkw-fs); font-weight:500; line-height:1.45; overflow-wrap:anywhere}
+.mkw-msg:not(.is-cont):not(.is-me) .mkw-bubble{border-top-left-radius:6px}
+.mkw-msg.is-me:not(.is-cont) .mkw-bubble{border-top-right-radius:6px}
+.mkw-msg.is-me .mkw-bubble{background:var(--w-mine); border-color:var(--w-mine-line)}
+.mkw-name{display:block; margin:1px 0; font-size:12px; font-weight:700; line-height:1.3}
+.mkw-msg.is-me .mkw-name{text-align:right; color:var(--w-acc-text)}
+.mkw-text{white-space:pre-wrap; overflow-wrap:anywhere}
+.mkw-time{flex:0 0 auto; padding-bottom:2px; font-size:10.5px; font-weight:500; color:var(--w-text3); white-space:nowrap}
+.mkw-alink{color:var(--w-acc-text); font-weight:600; text-decoration:underline; text-underline-offset:2px; word-break:break-all}
+
+.mkw-rec{align-self:center; max-width:100%; min-width:0; display:inline-flex; align-items:center; gap:6px; min-height:28px; margin:12px auto 2px; padding:0 11px 0 9px; border-radius:999px; background:var(--w-surface2); border:1px solid var(--w-line); font-size:12.5px; font-weight:600; color:var(--w-text); white-space:nowrap}
+.mkw-rec.is-me{background:var(--w-mine); border-color:var(--w-mine-line)}
+.mkw-rec > .mkIc{width:15px; height:15px; color:var(--w-acc-text)}
+.mkw-rec-nm{flex:0 0 auto; font-weight:700}
+.mkw-rec.is-me .mkw-rec-nm{color:var(--w-acc-text)}
+.mkw-rec-tx{min-width:0; overflow:hidden; text-overflow:ellipsis}
+.mkw-rec-bar{flex:0 0 40px; width:40px; height:4px; border-radius:999px; overflow:hidden; background:var(--w-sunken); box-shadow:inset 0 0 0 1px var(--w-line)}
+.mkw-rec-bar > i{display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(var(--acc3rgb),.95), rgba(var(--acc2rgb),.9))}
+.mkw-rec-t{flex:0 0 auto; margin-left:2px; font-size:10.5px; font-weight:500; color:var(--w-text3)}
+
+.mkw-fx{align-self:center; max-width:100%; display:inline-flex; align-items:center; gap:6px; min-height:32px; margin:12px auto 2px; padding:6px 14px; border-radius:999px; text-align:center; font-size:12.5px; font-weight:700; color:var(--w-text);
+  background-color:var(--w-acc-soft);
+  background-image:radial-gradient(circle at 10% 30%, var(--w-acc-ring) 0 1.2px, transparent 1.9px), radial-gradient(circle at 90% 68%, var(--w-acc-ring) 0 1.2px, transparent 1.9px), radial-gradient(circle at 72% 18%, var(--w-acc-ring) 0 1px, transparent 1.6px), radial-gradient(circle at 26% 82%, var(--w-acc-ring) 0 1px, transparent 1.6px)}
+.mkw-fx > .mkIc{width:15px; height:15px; color:var(--w-acc-text)}
+.mkw-fx .mkw-dim{font-weight:600; color:var(--w-text2)}
+.mkw-fx.is-shout{border-radius:12px; box-shadow:inset 0 0 0 1px var(--w-acc-ring)}
+
+.mkw-img{position:relative; display:block; width:240px; max-width:100%; aspect-ratio:4 / 3; margin:6px 0 2px; padding:0; border-radius:12px; overflow:hidden; background:var(--w-surface2); border:1px solid var(--w-line); cursor:zoom-in}
+.mkw-img > img{display:block; width:100%; height:100%; object-fit:cover}
+.mkw-typing{display:flex; align-items:center; gap:6px; margin:12px 2px 2px; font-size:11.5px; font-weight:500; color:var(--w-text3)}
+.mkw-typing-dots{display:inline-flex; gap:3px}
+.mkw-typing-dots > i{width:4px; height:4px; border-radius:50%; background:currentColor; animation:mkw-dot 1.2s ease-in-out infinite}
+.mkw-typing-dots > i:nth-child(2){animation-delay:.2s}
+.mkw-typing-dots > i:nth-child(3){animation-delay:.4s}
+.mkw-newpill{position:absolute; left:50%; bottom:10px; z-index:3; transform:translateX(-50%); height:30px; padding:0 12px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; background:var(--w-bg); border:1px solid var(--w-acc-ring); color:var(--w-acc-text); font-size:12.5px; font-weight:700; white-space:nowrap; box-shadow:var(--w-shadow-sm)}
+.mkw-newpill .mkIc{width:14px; height:14px}
+
+
+.mkw-compose{flex:0 0 auto; display:flex; flex-direction:column; gap:6px; min-width:0; padding:8px 10px 10px; border-top:1px solid var(--w-line); background:var(--w-bg)}
+.mkw--float .mkw-compose{padding:8px 24px 14px 10px}
+.mkw-compose-row{display:flex; align-items:flex-end; gap:8px}
+.mkw-modechips{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none}
+.mkw-modechips::-webkit-scrollbar{display:none}
+.mkw-chip{flex:0 0 auto; height:28px; padding:0 10px 0 8px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; border:1px solid var(--w-line); background:var(--w-surface); font-size:12px; font-weight:600; color:var(--w-text); white-space:nowrap}
+button.mkw-chip:hover{background:var(--w-surface2); border-color:var(--w-line2)}
+.mkw-chip > .mkIc{width:15px; height:15px; color:var(--w-acc-text)}
+.mkw-chip.is-on,.mkw-chip[aria-pressed="true"],.mkw-chip[aria-expanded="true"]{background:var(--w-acc-soft); border-color:var(--w-acc-ring); color:var(--w-acc-text)}
+.mkw-modechips .mkw-chip{height:26px; padding:0 3px 0 9px; gap:4px; font-size:11.5px; color:var(--w-text2)}
+.mkw-modechips .mkw-chip > .mkIc{width:14px; height:14px}
+.mkw-chip-x{flex:0 0 auto; width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--w-text3)}
+.mkw-chip-x:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-chip-x .mkIc{width:12px; height:12px}
+
+.mkw-preview{display:flex; align-items:flex-start; gap:6px; padding:6px 10px; border-radius:10px; font-size:12px; font-weight:600; line-height:1.4; color:var(--w-text2); background:var(--w-surface2); border:1px solid var(--w-line)}
+.mkw-preview > .mkIc{flex:0 0 auto; width:15px; height:15px; margin-top:1px; color:var(--w-acc-text)}
+.mkw-preview b{font-weight:700; color:var(--w-acc-text)}
+.mkw-preview.is-rec{background:var(--w-acc-soft); border-color:transparent; color:var(--w-text)}
+.mkw-preview.is-mode{border-style:dashed; border-color:var(--w-line2)}
+.mkw-preview.is-warn{background:var(--w-warn-soft); border-color:transparent; color:var(--w-text)}
+.mkw-preview.is-danger{background:var(--w-danger-soft); border-color:var(--w-danger); color:var(--w-text); font-weight:700}
+.mkw-preview.is-warn > .mkIc,.mkw-preview.is-warn b{color:var(--w-warn)}
+.mkw-preview.is-danger > .mkIc,.mkw-preview.is-danger b{color:var(--w-danger)}
+
+.mkw-input{flex:1 1 auto; min-width:0; display:block; height:38px; min-height:38px; margin:0; padding:8px 12px; resize:none; overflow-y:hidden; border-radius:12px; border:1px solid var(--w-line2); background:var(--w-surface); color:var(--w-text); font-size:14px; font-weight:500; line-height:20px; outline:none}
+.mkw-input::placeholder{color:var(--w-text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-input:focus{border-color:var(--w-acc-ring); box-shadow:0 0 0 3px var(--w-acc-soft)}
+.mkw-send{flex:0 0 38px; width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(var(--acc3rgb),.92), rgba(var(--acc2rgb),.88)); color:var(--w-on-acc); box-shadow:var(--w-shadow-sm)}
+.mkw-send:hover{filter:brightness(1.05)}
+.mkw-send:disabled{opacity:.45}
+.mkw-send .mkIc{width:18px; height:18px; margin-left:-1px}
+.mkw-toolbtn{flex:0 0 38px; width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--w-surface); border:1px solid var(--w-line2); color:var(--w-text2)}
+.mkw-toolbtn:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-toolbtn .mkIc{width:19px; height:19px; transition:transform .15s}
+.mkw-toolbtn[aria-expanded="true"]{background:var(--w-acc-soft); border-color:var(--w-acc-ring); color:var(--w-acc-text)}
+.mkw-toolbtn[aria-expanded="true"] .mkIc{transform:rotate(45deg)}
+
+
+.mkw-panel{position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; min-width:0; background:var(--w-bg)}
+.mkw-panel-head{flex:0 0 46px; display:flex; align-items:center; gap:6px; min-width:0; padding:0 10px 0 4px; background:var(--w-strip); border-bottom:1px solid var(--w-line)}
+.mkw-back{flex:0 1 auto; min-width:0; height:34px; padding:0 10px 0 4px; border-radius:999px; display:inline-flex; align-items:center; gap:1px; font-size:14.5px; font-weight:800; color:var(--w-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-back:hover{background:var(--w-surface2)}
+.mkw-back .mkIc{width:20px; height:20px}
+.mkw-panel-body{flex:1 1 auto; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:10px; padding:12px}
+.mkw-panel-body > *{flex-shrink:0}
+
+.mkw-card{min-width:0; display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:14px; background:var(--w-surface); border:1px solid var(--w-line)}
+.mkw-card-title{display:flex; align-items:center; gap:7px; min-height:20px; font-size:13px; font-weight:800; color:var(--w-text)}
+.mkw-card-title > .mkIc{width:16px; height:16px; color:var(--w-acc-text)}
+.mkw-card-aside{margin-left:auto; display:inline-flex; align-items:center; gap:6px}
+.mkw-row{display:flex; align-items:center; gap:8px; min-height:32px; min-width:0}
+.mkw-row.is-wrap{flex-wrap:wrap; row-gap:6px}
+.mkw-row-label{flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:700; color:var(--w-text2)}
+.mkw-row-label > small{display:block; margin-top:1px; font-size:11px; font-weight:500; color:var(--w-text3)}
+.mkw-hint{margin:0; font-size:11.5px; font-weight:500; line-height:1.5; color:var(--w-text3)}
+.mkw-hr{height:1px; margin:0; border:0; background:var(--w-line)}
+
+.mkw-seg{display:inline-flex; gap:2px; padding:2px; border-radius:999px; background:var(--w-sunken); border:1px solid var(--w-line)}
+.mkw-seg > button{height:24px; padding:0 10px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:12px; font-weight:600; color:var(--w-text3); white-space:nowrap}
+.mkw-seg > button:hover{color:var(--w-text)}
+.mkw-seg > button[aria-pressed="true"]{background:var(--w-acc-soft); color:var(--w-acc-text); box-shadow:inset 0 0 0 1px var(--w-acc-ring); font-weight:700}
+.mkw-seg > button .mkIc{width:13px; height:13px}
+.mkw-seg.is-wide{display:flex; padding:3px; border-radius:12px}
+.mkw-seg.is-wide > button{flex:1 1 0; height:30px; border-radius:9px; font-size:12.5px}
+
+.mkw-sw{position:relative; flex:0 0 36px; width:36px; height:20px; padding:0; border:0; border-radius:999px; background:var(--w-line2); transition:background .15s}
+.mkw-sw::after{content:""; position:absolute; left:2px; top:2px; width:16px; height:16px; border-radius:50%; background:var(--w-knob); box-shadow:var(--w-shadow-sm); transition:left .15s}
+.mkw-sw[aria-checked="true"]{background:linear-gradient(135deg, rgba(var(--acc3rgb),.92), rgba(var(--acc2rgb),.88))}
+.mkw-sw[aria-checked="true"]::after{left:18px}
+.mkw-sw:disabled{opacity:.45}
+
+.mkw-range{--mkw-p:50%; flex:1 1 auto; min-width:0; height:20px; margin:0; padding:0; border:0; background:transparent; -webkit-appearance:none; appearance:none; cursor:pointer}
+.mkw-range::-webkit-slider-runnable-track{height:6px; border-radius:999px; background:linear-gradient(90deg, rgb(var(--acc3rgb)) 0 var(--mkw-p), var(--w-line2) var(--mkw-p) 100%)}
+.mkw-range::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:18px; height:18px; margin-top:-6px; border-radius:50%; background:var(--w-knob); border:2px solid rgb(var(--acc3rgb)); box-shadow:var(--w-shadow-sm)}
+.mkw-range::-moz-range-track{height:6px; border-radius:999px; background:var(--w-line2)}
+.mkw-range::-moz-range-progress{height:6px; border-radius:999px; background:rgb(var(--acc3rgb))}
+.mkw-range::-moz-range-thumb{width:14px; height:14px; border-radius:50%; background:var(--w-knob); border:2px solid rgb(var(--acc3rgb))}
+.mkw-range:focus-visible{outline:none}
+.mkw-range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--w-acc-soft)}
+.mkw-val{flex:0 0 auto; min-width:46px; text-align:right; font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--w-text)}
+
+.mkw-field{display:block; width:100%; min-width:0; height:38px; padding:0 12px; border-radius:12px; border:1px solid var(--w-line2); background:var(--w-sunken); color:var(--w-text); font-size:14px; font-weight:500; outline:none}
+.mkw-field::placeholder{color:var(--w-text3)}
+.mkw-field:focus{border-color:var(--w-acc-ring); box-shadow:0 0 0 3px var(--w-acc-soft)}
+.mkw-field[aria-invalid="true"]{border-color:var(--w-danger)}
+.mkw-field.is-num{flex:0 0 64px; width:64px; padding:0 6px; text-align:center; font-variant-numeric:tabular-nums}
+.mkw-input:focus-visible,.mkw-field:focus-visible{outline:none}
+.mkw-pw{position:relative; display:block; flex:1 1 auto; min-width:0}
+.mkw-pw > .mkw-field{padding-right:42px}
+.mkw-eye{position:absolute; right:4px; top:50%; width:32px; height:32px; margin-top:-16px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; color:var(--w-text3)}
+.mkw-eye:hover{background:var(--w-surface2); color:var(--w-text)}
+.mkw-eye[aria-pressed="true"]{color:var(--w-acc-text)}
+.mkw-eye .mkIc{width:17px; height:17px}
+
+.mkw-btn{height:38px; padding:0 14px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--w-line2); background:var(--w-surface); color:var(--w-text); font-size:13px; font-weight:700; white-space:nowrap; text-align:center}
+.mkw-btn:hover{background:var(--w-surface2)}
+.mkw-btn .mkIc{width:16px; height:16px}
+.mkw-btn.is-primary{border-color:transparent; background:linear-gradient(135deg, rgba(var(--acc3rgb),.92), rgba(var(--acc2rgb),.88)); color:var(--w-on-acc)}
+.mkw-btn.is-primary:hover{filter:brightness(1.05)}
+.mkw-btn.is-ghost{border-color:transparent; background:transparent}
+.mkw-btn.is-ghost:hover{background:var(--w-surface2)}
+.mkw-btn.is-danger{color:var(--w-danger)}
+.mkw-btn.is-danger:hover{background:var(--w-danger-soft)}
+.mkw-btn.is-danger.is-primary{border-color:transparent; background:var(--w-danger); color:var(--w-on-danger)}
+.mkw-btn.is-pill{height:34px; padding:0 12px; border-radius:999px; font-size:12.5px}
+.mkw-btn.is-sm{height:28px; padding:0 10px; font-size:12px}
+.mkw-btn.is-sm .mkIc{width:14px; height:14px}
+.mkw-btn.is-block{display:flex; width:100%}
+.mkw-btn:disabled{opacity:.45; filter:none}
+.mkw-btns{display:flex; flex-wrap:wrap; gap:6px}
+.mkw-btns.is-eq > *{flex:1 1 0}
+.mkw-link{display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:var(--w-acc-text)}
+.mkw-link .mkIc{width:14px; height:14px}
+.mkw-tag{height:20px; padding:0 7px; border-radius:999px; display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:700; white-space:nowrap; background:var(--w-acc-soft); color:var(--w-acc-text)}
+.mkw-tag.is-gray{background:var(--w-surface2); color:var(--w-text2); box-shadow:inset 0 0 0 1px var(--w-line)}
+.mkw-tag.is-rest{background:var(--w-rest-soft); color:var(--w-rest)}
+.mkw-tag .mkIc{width:12px; height:12px}
+.mkw-prog{height:4px; border-radius:999px; overflow:hidden; background:var(--w-sunken); box-shadow:inset 0 0 0 1px var(--w-line)}
+.mkw-prog > i{display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(var(--acc3rgb),.95), rgba(var(--acc2rgb),.9))}
+.mkw-prog.is-rest > i{background:var(--w-rest)}
+.mkw-prog.is-thick{height:8px}
+.mkw-empty{display:flex; flex-direction:column; align-items:center; gap:4px; padding:22px 12px; border-radius:14px; border:1px dashed var(--w-line2); text-align:center; font-size:12px; font-weight:500; color:var(--w-text3)}
+.mkw-empty > .mkIc{width:24px; height:24px; margin-bottom:4px; color:var(--w-acc-text)}
+.mkw-empty b{font-size:13.5px; font-weight:700; color:var(--w-text2)}
+
+.mkw-accentpick{display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; padding:3px 0}
+.mkw-accentpick-sw,.mkw-accentpick-custom{position:relative; flex:0 0 32px; width:32px; height:32px; border-radius:50%}
+.mkw-accentpick-sw{box-shadow:inset 0 0 0 1px var(--w-line2)}
+.mkw-accentpick-sw::after,.mkw-accentpick-custom::after{content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid transparent; pointer-events:none}
+.mkw-accentpick-sw[aria-pressed="true"]::after,.mkw-accentpick-custom.is-on::after{border-color:var(--w-text)}
+.mkw-accentpick-custom{display:block; cursor:pointer}
+.mkw-accentpick-custom > input{display:block; width:100%; height:100%; margin:0; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; -webkit-appearance:none; appearance:none}
+.mkw-accentpick-custom > input::-webkit-color-swatch-wrapper{padding:0}
+.mkw-accentpick-custom > input::-webkit-color-swatch{border:1px solid var(--w-line2); border-radius:50%}
+.mkw-accentpick-custom > input::-moz-color-swatch{border:1px solid var(--w-line2); border-radius:50%}
+.mkw-accentpick-ic{position:absolute; right:-4px; bottom:-4px; width:17px; height:17px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--w-bg-solid); color:var(--w-text2); box-shadow:0 0 0 1px var(--w-line2); pointer-events:none}
+.mkw-accentpick-ic .mkIc{width:11px; height:11px}
+.mkw-accentpick .mkw-btn{height:32px}
+
+
+.mkw-tray{position:absolute; left:8px; right:8px; bottom:calc(var(--mkw-compose-h,64px) + 8px); z-index:7; max-height:calc(100% - var(--mkw-compose-h,64px) - var(--mkw-head-h,56px) - 16px); overflow-y:auto; overscroll-behavior:contain; padding:12px; border-radius:16px; background:var(--w-bg-solid); border:1px solid var(--w-line2); box-shadow:var(--w-shadow)}
+.mkw-tray-title{display:flex; align-items:center; gap:6px; margin:0 0 10px; font-size:13px; font-weight:800; color:var(--w-text)}
+.mkw-tray-title > .mkIc{width:16px; height:16px; color:var(--w-acc-text)}
+.mkw-tray-title > small{margin-left:auto; font-size:11px; font-weight:500; color:var(--w-text3)}
+.mkw-acts{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.mkw-act{min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:10px 11px; border-radius:14px; background:var(--w-surface); border:1px solid var(--w-line); text-align:left; color:var(--w-text)}
+.mkw-act:hover{background:var(--w-surface2); border-color:var(--w-line2)}
+.mkw-act > .mkIc{width:18px; height:18px; margin-bottom:4px; color:var(--w-acc-text)}
+.mkw-act > b{font-size:13px; font-weight:700}
+.mkw-act > span{font-size:11.5px; font-weight:500; line-height:1.35; color:var(--w-text3)}
+.mkw-act.is-danger{grid-column:1 / -1; flex-direction:row; align-items:center; gap:8px; min-height:40px; padding:0 10px; border-color:transparent; background:transparent; color:var(--w-danger); font-size:12.5px; font-weight:700}
+.mkw-act.is-danger:hover{background:var(--w-danger-soft)}
+.mkw-act.is-danger > .mkIc{width:17px; height:17px; margin:0; color:var(--w-danger)}
+.mkw-act.is-danger > span{font-size:12px}
+.mkw-pop{position:absolute; z-index:8; width:200px; padding:6px; border-radius:14px; background:var(--w-bg-solid); border:1px solid var(--w-line2); box-shadow:var(--w-shadow)}
+.mkw-pop-title{padding:4px 8px 6px; font-size:11.5px; font-weight:600; color:var(--w-text3)}
+.mkw-opt{display:flex; align-items:center; gap:8px; width:100%; height:34px; padding:0 10px; border-radius:10px; font-size:13px; font-weight:600; color:var(--w-text); text-align:left}
+.mkw-opt:hover{background:var(--w-surface2)}
+.mkw-opt > .mkIc{width:15px; height:15px; color:var(--w-text3)}
+.mkw-opt[aria-checked="true"]{background:var(--w-acc-soft); color:var(--w-acc-text)}
+.mkw-opt[aria-checked="true"] > .mkIc{color:var(--w-acc-text)}
+
+
+.mkw-scrim{position:absolute; inset:0; z-index:9; background:var(--w-scrim)}
+.mkw-scrim.is-tray{z-index:6; top:var(--mkw-head-h,56px); bottom:var(--mkw-compose-h,64px)}
+.mkw-dialog{position:absolute; left:12px; right:12px; bottom:calc(12px + var(--mkw-sab)); z-index:10; max-width:440px; max-height:calc(100% - 24px - var(--mkw-sat) - var(--mkw-sab)); margin:0 auto; overflow-y:auto; padding:16px; border-radius:18px; background:var(--w-bg-solid); border:1px solid var(--w-line2); box-shadow:var(--w-shadow); color:var(--w-text); outline:none}
+.mkw-dialog-ic{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 0 10px; background:var(--w-acc-soft); color:var(--w-acc-text)}
+.mkw-dialog-ic .mkIc{width:19px; height:19px}
+.mkw-dialog.is-danger .mkw-dialog-ic{background:var(--w-danger-soft); color:var(--w-danger)}
+.mkw-dialog-title{margin:0 0 4px; font-size:15px; font-weight:800; line-height:1.35; color:var(--w-text)}
+.mkw-dialog-msg{margin:0 0 14px; font-size:12.5px; font-weight:500; line-height:1.5; color:var(--w-text2); white-space:pre-line; overflow-wrap:anywhere}
+.mkw-dialog-msg b{font-weight:700; color:var(--w-text)}
+.mkw-dialog-field{display:flex; flex-direction:column; gap:6px; margin:0 0 14px}
+.mkw-dialog-field > label{font-size:12px; font-weight:700; color:var(--w-text2)}
+.mkw-dialog-err{margin:0; font-size:12px; font-weight:600; line-height:1.4; color:var(--w-danger)}
+.mkw-dialog-btns{display:flex; gap:8px}
+.mkw-dialog-btns > .mkw-btn{flex:1 1 0; height:40px}
+.mkw-toast{position:absolute; left:50%; bottom:calc(var(--mkw-toast-b,16px) + var(--mkw-sab)); z-index:12; transform:translateX(-50%); max-width:calc(100% - 32px); display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px; background:var(--w-text); color:var(--w-bg); font-size:12.5px; font-weight:600; box-shadow:var(--w-shadow-sm); pointer-events:none; animation:mkw-toast .18s ease-out}
+.mkw-toast > .mkIc{width:15px; height:15px}
+.mkw-toast-tx{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mkw-toast.is-ok > .mkIc{color:var(--w-inv-acc)}
+.mkw-toast.is-warn > .mkIc,.mkw-toast.is-err > .mkIc{color:var(--w-inv-danger)}
+.mkw-lightbox{position:absolute; inset:0; z-index:7; display:flex; flex-direction:column; padding-top:var(--mkw-sat); background:var(--w-bg-solid); color:var(--w-text)}
+.mkw-lightbox-top{flex:0 0 48px; display:flex; align-items:center; gap:6px; min-width:0; padding:0 6px 0 14px; border-bottom:1px solid var(--w-line); font-size:13px; font-weight:700}
+.mkw-lightbox-top .mkw-dim{font-size:12px}
+.mkw-lightbox-pic{flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--w-sunken)}
+.mkw-lightbox-pic > img{display:block; max-width:100%; max-height:100%; object-fit:contain; border-radius:12px}
+.mkw-lightbox-cap{margin:0; padding:10px 14px; text-align:center; font-size:11.5px; font-weight:500; color:var(--w-text3)}
+.mkw-pill{height:44px; padding:0 8px 0 7px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; background:var(--w-bg); border:1px solid var(--w-line2); box-shadow:var(--w-shadow); color:var(--w-text); font-family:var(--mkw-font); font-size:14px; white-space:nowrap; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none}
+.mkw-pill .mkw-app{flex-basis:30px}
+.mkw-pill-t{font-size:17px; font-weight:800; letter-spacing:-.3px; font-variant-numeric:tabular-nums}
+.mkw-pill-badge{height:24px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; background:var(--w-acc-soft); color:var(--w-acc-text); font-size:12px; font-weight:700}
+.mkw-pill-badge .mkIc{width:14px; height:14px}
+
+
+.mkw-panel.is-in{animation:mkw-in .18s ease-out}
+.mkw-panel.is-out{animation:mkw-out .18s ease-in forwards}
+.mkw-tray.is-in,.mkw-dialog.is-in{animation:mkw-up .18s ease-out}
+.mkw-scrim.is-in,.mkw-lightbox.is-in{animation:mkw-fade .18s ease-out}
+@keyframes mkw-in{from{transform:translateX(22px); opacity:0}to{transform:none; opacity:1}}
+@keyframes mkw-out{from{transform:none; opacity:1}to{transform:translateX(22px); opacity:0}}
+@keyframes mkw-up{from{transform:translateY(16px); opacity:0}to{transform:none; opacity:1}}
+@keyframes mkw-fade{from{opacity:0}to{opacity:1}}
+@keyframes mkw-toast{from{opacity:0; transform:translate(-50%,6px)}to{opacity:1; transform:translate(-50%,0)}}
+@keyframes mkw-dot{0%,80%,100%{opacity:.25; transform:none}40%{opacity:1; transform:translateY(-2px)}}
+@media (prefers-reduced-motion:reduce){
+  .mkw-panel.is-in,.mkw-panel.is-out,.mkw-tray.is-in,.mkw-dialog.is-in,.mkw-scrim.is-in,.mkw-lightbox.is-in,.mkw-toast,.mkw-typing-dots > i{animation:none}
+  .mkw-toolbtn .mkIc,.mkw-sw,.mkw-sw::after,.mkw-rz::after{transition:none}
+}
+
+
+@container mkw (max-width:440px){
+  .mkw-head{gap:8px; padding:0 8px 0 10px}
+  .mkw-ibtn{width:32px; height:32px}
+  .mkw-ppl{padding:0 8px; margin-right:2px}
+}
+.mkw--sheet .mkw-head{flex-basis:52px; gap:8px; padding:0 6px 0 10px}
+.mkw--sheet .mkw-ibtn{width:36px; height:36px}
+.mkw--sheet .mkw-ppl{padding:0 8px; margin-right:2px}
+@media (max-width:560px){
+  .mkw--page{
+    --mkw-page-gap:0px; --mkw-sat:env(safe-area-inset-top,0px); --mkw-sab:env(safe-area-inset-bottom,0px);
+    border-radius:0; border:0; box-shadow:none; background:var(--w-bg-solid);
+    padding:var(--mkw-sat) env(safe-area-inset-right,0px) var(--mkw-sab) env(safe-area-inset-left,0px);
+  }
+  .mkw--page .mkw-head{flex-basis:52px; gap:8px; padding:0 6px 0 10px}
+  .mkw--page .mkw-ibtn{width:36px; height:36px}
+}
+
+@media (pointer:coarse){
+  .mkw-input,.mkw-field{font-size:16px}
+}
+
+
+
+.mkw-embedded,.mkw-embedded body{height:100%; margin:0; overflow:hidden}
+.mkw-embedded .mkw-pagebg{min-height:0; background:var(--w-bg-solid)}
+.mkw-embedded .mkw--page{--mkw-page-gap:0px; width:100%; height:100vh; height:100dvh; margin:0; border:0; border-radius:0; box-shadow:none}
+.mkw-embedded .mkw--page .mkw-head{cursor:grab; touch-action:none}
+.mkw-embedded .mkw--page .mkw-head.is-dragging{cursor:grabbing}
+
+.mkw-hostwin{background:var(--w-bg-solid)}
+.mkw-hostwin-frame{flex:1 1 auto; display:block; width:100%; min-height:0; margin:0; padding:0; border:0; background:var(--w-bg-solid)}
+.mkw-hostwin.is-min{visibility:hidden; pointer-events:none}
+.mkw-hostwin.is-resizing > .mkw-hostwin-frame{pointer-events:none}
+
+.mkw-hostwin-fail{position:absolute; left:0; right:0; top:var(--mkw-sat); z-index:7; display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; padding:10px 12px; background-color:var(--w-bg-solid); background-image:linear-gradient(var(--w-warn-soft), var(--w-warn-soft)); border-bottom:1px solid var(--w-line2); box-shadow:var(--w-shadow-sm); color:var(--w-text); font-size:13px; font-weight:700; line-height:1.4}
+.mkw-hostwin-fail-t{flex:1 1 150px; min-width:0; overflow-wrap:anywhere}
+.mkw-hostwin-fail > .mkw-btns{margin-left:auto}
+.mkw--float > .mkw-hostwin-fail{padding-right:26px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none}
+.mkw--float.is-dragging > .mkw-hostwin-fail{cursor:grabbing}
+
+.mkw-hostpill{position:fixed; left:16px; top:16px; max-width:calc(100vw - 16px)}
+.mkw-hostpill.is-dragging{cursor:grabbing}
+.mkw-hostpill .mkw-pill-t{max-width:12em; overflow:hidden; text-overflow:ellipsis}
+.mkw-hostpill-sub{font-size:12px; font-weight:600; color:var(--w-text3); white-space:nowrap}
+.mkw-hostpill-play{display:inline-flex; color:var(--w-acc-text)}
+.mkw-hostpill-play .mkIc{width:16px; height:16px}
+
+
+.mkw[hidden],.mkw [hidden],.mkw-pill[hidden],.mkw-pill [hidden],.mkw-pagebg [hidden]{display:none}
+</style>
+<script id="mkw-js">
+
+(function () {
+  'use strict';
+  var VERSION = '1.2.1';
+  if (window.MKW && window.MKW.version) {
+    if (window.MKW.version !== VERSION) console.warn('[mkw] v' + window.MKW.version + '이(가) 이미 있어 v' + VERSION + '은(는) 건너뜀');
+    return;
+  }
+  const doc = document;
+  const MKW = { version: VERSION };
+
+const isEl = (x) => !!x && x.nodeType === 1;
+  function toArr(x, fallbackSel) {
+    if (x == null) return fallbackSel ? Array.from(doc.querySelectorAll(fallbackSel)) : [];
+    if (typeof x === 'string') return Array.from(doc.querySelectorAll(x));
+    if (isEl(x)) return [x];
+    return Array.from(x).filter(isEl);
+  }
+  function mk(tag, cls) { const e = doc.createElement(tag); if (cls) e.className = cls; return e; }
+  function lsGet(k) { if (!k) return null; try { return localStorage.getItem(k); } catch (x) { return null; } }
+  function lsSet(k, v) { if (!k) return; try { localStorage.setItem(k, v); } catch (x) {  } }
+  function lsDel(k) { if (!k) return; try { localStorage.removeItem(k); } catch (x) {  } }
+  const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+  const reduced = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let uidN = 0;
+  const uid = (p) => 'mkw-' + p + '-' + (++uidN);
+  const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+  
+  const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+  function focusables(box) { return Array.from(box.querySelectorAll(FOCUSABLE)).filter((x) => !x.disabled && x.tabIndex >= 0 && !x.closest('[inert]') && shown(x)); }
+  function focusIn(box) {
+    const f = focusables(box)[0];
+    if (f) { f.focus({ preventScroll: true }); return; }
+    if (!box.hasAttribute('tabindex')) box.tabIndex = -1;
+    box.focus({ preventScroll: true });
+  }
+  function refocus(prev) {
+    if (!prev || prev === doc.body || !prev.isConnected || prev.closest('[inert]') || !shown(prev) || typeof prev.focus !== 'function') return;
+    try { prev.focus({ preventScroll: true }); } catch (x) {  }
+  }
+  function animIn(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 260); }
+  function offTop(el, root) { let y = 0; for (let e = el; e && e !== root; e = e.offsetParent) y += e.offsetTop; return y; }
+
+const ICONS = {
+    away:'<path d="M19.5 14.2A7.8 7.8 0 1 1 9.8 4.5a6.2 6.2 0 0 0 9.7 9.7z"/>',
+    back:'<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+    boost:'<path d="M12 3c2.8 1.9 4.2 4.9 4.2 8.2L14.5 15h-5l-1.7-3.8C7.8 7.9 9.2 4.9 12 3z"/><circle cx="12" cy="9.5" r="1.6"/><path d="M9.5 15l-2.8 2.3.9-4.2M14.5 15l2.8 2.3-.9-4.2M10.6 18l1.4 2.5 1.4-2.5"/>',
+    chara:'<path d="M10 3.8l1.5 4.3 4.3 1.5-4.3 1.5L10 15.4l-1.5-4.3-4.3-1.5 4.3-1.5z"/><path d="M17.5 13.8l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/>',
+    chart:'<path d="M4 20h16"/><rect x="5.5" y="12" width="3" height="5.5" rx=".8"/><rect x="10.5" y="7" width="3" height="10.5" rx=".8"/><rect x="15.5" y="9.5" width="3" height="8" rx=".8"/>',
+    chool:'<path d="M4.5 10h3l7-4.5v13L7.5 14h-3z"/><path d="M7.5 14l1.3 4.5h2.4l-1.1-3.6"/><path d="M17.6 9.3a3.8 3.8 0 0 1 0 5.4"/>',
+    clipboard:'<rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9.8 3.5h4.4a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9.8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1zM9 11.5h6M9 15h4"/>',
+    clock:'<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
+    close:'<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+    cmt:'<path d="M12 4.5c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-1.1 0-2.2-.2-3.2-.5L4.5 19.5l1.2-3.6c-1.4-1.2-2.2-2.7-2.2-4.4 0-3.9 3.8-7 8.5-7z"/>',
+    cookie:'<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5 3.4 3.4 0 0 1-4.25-4.25A3.4 3.4 0 0 1 12 3.5z"/><path d="M9 9.2h.01M15.3 15h.01M11.6 12.7h.01M8.2 14.8h.01" stroke-width="2.6"/>',
+    doc:'<path d="M6.5 3.5H14l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14 3.5V8h4.5M8.5 12h7M8.5 15.5h5"/>',
+    down:'<path d="M12 4.5v14.5M6.5 13.5l5.5 5.5 5.5-5.5"/>',
+    drop:'<path d="M12 3.5c3 3.6 5.5 6.8 5.5 10a5.5 5.5 0 0 1-11 0c0-3.2 2.5-6.4 5.5-10z"/><path d="M9.3 14.3a2.8 2.8 0 0 0 2.3 2.6"/>',
+    exit:'<path d="M13.5 4.5H7A1.5 1.5 0 0 0 5.5 6v12A1.5 1.5 0 0 0 7 19.5h6.5"/><path d="M10.5 12h10M17 8.5l3.5 3.5-3.5 3.5"/>',
+    eye:'<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8"/>',
+    eyeOff:'<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8"/><path d="M4.5 4.5l15 15"/>',
+    fire:'<path d="M12 20.5c-3.4 0-6-2.4-6-5.7 0-2.6 1.5-4.4 2.9-5.9.3 1.5 1 2.5 2.1 3.1-.2-3.5 1.3-6.2 3.8-8.5.3 2.9 1.7 4.6 2.9 6.2 1 1.4 1.3 2.6 1.3 4.1 0 3.3-2.6 6.7-7 6.7z"/><path d="M12 20.5c-1.3 0-2.2-.9-2.2-2.1 0-1.2.8-2.1 2.2-3.5 1.4 1.4 2.2 2.3 2.2 3.5 0 1.2-.9 2.1-2.2 2.1z"/>',
+    gear:'<circle cx="12" cy="12" r="3"/><path d="M10.19 5.24L10.39 2.84L13.61 2.84L13.81 5.24L15.5 5.94L17.33 4.38L19.62 6.67L18.06 8.5L18.76 10.19L21.16 10.39L21.16 13.61L18.76 13.81L18.06 15.5L19.62 17.33L17.33 19.62L15.5 18.06L13.81 18.76L13.61 21.16L10.39 21.16L10.19 18.76L8.5 18.06L6.67 19.62L4.38 17.33L5.94 15.5L5.24 13.81L2.84 13.61L2.84 10.39L5.24 10.19L5.94 8.5L4.38 6.67L6.67 4.38L8.5 5.94z"/>',
+    headphones:'<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15h2.3A1.7 1.7 0 0 1 8 16.7v1.6A1.7 1.7 0 0 1 6.3 20h-.6A1.7 1.7 0 0 1 4 18.3z"/><path d="M20 15h-2.3a1.7 1.7 0 0 0-1.7 1.7v1.6a1.7 1.7 0 0 0 1.7 1.7h.6a1.7 1.7 0 0 0 1.7-1.7z"/>',
+    heart:'<path d="M12 19.5s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.6-7.5 10-7.5 10z"/>',
+    home:'<path d="M4 11.2L12 4.5l8 6.7"/><path d="M6.5 9.6v9.9h11V9.6"/><path d="M10 19.5v-5h4v5"/>',
+    hw:'<path d="M12 6.6C10.4 5.2 8 4.6 4.5 4.6v13.6c3.5 0 5.9.6 7.5 2 1.6-1.4 4-2 7.5-2V4.6c-3.5 0-5.9.6-7.5 2z"/><path d="M12 6.6v13.6"/>',
+    key:'<circle cx="8" cy="15.5" r="4"/><path d="M10.9 12.6L19.5 4M16.3 7.2l2.4 2.4M13.9 9.6l1.9 1.9"/>',
+    keyboard:'<rect x="2.5" y="5.5" width="19" height="13" rx="2.2"/><path d="M6.5 9.5h.01M10 9.5h.01M14 9.5h.01M17.5 9.5h.01M8.2 12.6h.01M12 12.6h.01M15.8 12.6h.01" stroke-width="2.4"/><path d="M8.5 15.7h7"/>',
+    layers:'<path d="M12 4l8.5 4.3L12 12.6 3.5 8.3z"/><path d="M3.5 12.3l8.5 4.3 8.5-4.3M3.5 16.2l8.5 4.3 8.5-4.3"/>',
+    link:'<path d="M10.2 13.8a3.9 3.9 0 0 0 5.6.3l2.8-2.8a3.9 3.9 0 0 0-5.5-5.5l-1.3 1.2"/><path d="M13.8 10.2a3.9 3.9 0 0 0-5.6-.3l-2.8 2.8a3.9 3.9 0 0 0 5.5 5.5l1.2-1.2"/>',
+    lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+    palette:'<path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.3 0 2-.9 2-1.9 0-.5-.2-.9-.5-1.3s-.5-.8-.5-1.3c0-1.1.9-2 2-2h2.3c2 0 3.2-1.4 3.2-3.3 0-4-3.8-7.2-8.5-7.2z"/><path d="M7.5 11.5h.01M9.5 7.5h.01M14.5 7.5h.01" stroke-width="2.8"/>',
+    people:'<circle cx="9" cy="8.6" r="3.2"/><path d="M3.5 19.5c.5-3.4 2.7-5.5 5.5-5.5s5 2.1 5.5 5.5"/><path d="M15.6 5.7a3 3 0 0 1 0 5.8M17.3 14.4c1.8.6 3 2.4 3.2 5.1"/>',
+    photo:'<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4.5 17.5l4.8-4.3 3.4 2.9 2.8-2.4 4 3.6"/>',
+    pin:'<path d="M9 3.5h6l-.9 5.8 3.1 3.2H6.8l3.1-3.2z"/><path d="M12 12.5v8"/>',
+    pomo:'<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.8M10 3.5h4M12 3.5v3M18.3 7.2l1.3-1.3"/>',
+    repeat:'<path d="M4.5 11V9.8a3 3 0 0 1 3-3h11.5M16 3.8l3 3-3 3"/><path d="M19.5 13v1.2a3 3 0 0 1-3 3H5M8 20.2l-3-3 3-3"/>',
+    reply:'<path d="M9.5 15.5l-5-5 5-5"/><path d="M4.5 10.5H14a5.5 5.5 0 0 1 5.5 5.5v2.5"/>',
+    reset:'<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.2 4.6v4.1h4.1"/>',
+    rest:'<path d="M5 9.5h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.3 2.3 0 0 1 0 4.6H16"/><path d="M8.5 3.8c-.7.9-.7 1.8 0 2.7M12.3 3.8c-.7.9-.7 1.8 0 2.7"/>',
+    search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    send:'<path d="M20.5 3.5L3.5 10.3l6.9 3.2 3.2 6.9z"/><path d="M20.5 3.5l-10.1 10"/>',
+    smile:'<circle cx="12" cy="12" r="8.5"/><path d="M8.4 14.2c.9 1.3 2.1 1.9 3.6 1.9s2.7-.6 3.6-1.9"/><path d="M9.1 9.8h.01M14.9 9.8h.01" stroke-width="2.6"/>',
+    sound:'<path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path d="M15.8 9.2a4 4 0 0 1 0 5.6"/>',
+    star:'<path d="M12 3.8l2.45 5.05 5.55.75-4.05 3.85 1 5.5L12 16.3l-4.95 2.65 1-5.5L4 9.6l5.55-.75z"/>',
+    suda:'<path d="M6 4.5h12A2.5 2.5 0 0 1 20.5 7v7a2.5 2.5 0 0 1-2.5 2.5h-6.5L7 20v-3.5H6A2.5 2.5 0 0 1 3.5 14V7A2.5 2.5 0 0 1 6 4.5z"/><path d="M8.5 10.6h.01M12 10.6h.01M15.5 10.6h.01" stroke-width="2.8"/>',
+    thumb:'<path d="M7.5 10.5v9h-3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7.5 10.5L11 4c1.5 0 2.4 1.1 2.1 2.5l-.6 3h5a2 2 0 0 1 2 2.3l-1 5.9a2 2 0 0 1-2 1.8H7.5"/>',
+    thunder:'<path d="M13.5 3L6 13.2h5.2L10.5 21 18 10.8h-5.2z"/>',
+    trash:'<path d="M4.5 7h15"/><path d="M9.5 7V5.2a1.2 1.2 0 0 1 1.2-1.2h2.6a1.2 1.2 0 0 1 1.2 1.2V7"/><path d="M6.5 7l.9 11.3A1.8 1.8 0 0 0 9.2 20h5.6a1.8 1.8 0 0 0 1.8-1.7L17.5 7"/><path d="M10.2 10.8v5.4M13.8 10.8v5.4"/>',
+    trophy:'<path d="M7.5 4.5h9v4.3a4.5 4.5 0 0 1-9 0z"/><path d="M7.5 6.5H5a2.5 2.5 0 0 0 2.9 3.4M16.5 6.5H19a2.5 2.5 0 0 1-2.9 3.4"/><path d="M12 13.3v3.4M8.5 20.3h7M9.9 20.3c.2-2 1-3.6 2.1-3.6s1.9 1.6 2.1 3.6"/>',
+    user:'<circle cx="12" cy="8.8" r="3.6"/><path d="M5 19.5c.9-3.6 3.6-5.6 7-5.6s6.1 2 7 5.6"/>',
+    warn:'<path d="M12 4.5L3.5 19h17z"/><path d="M12 10v4.2M12 16.6h.01"/>',
+    work:'<path d="M5 19l1.1-4.4L16 4.7a2 2 0 0 1 2.8 0l.5.5a2 2 0 0 1 0 2.8l-9.9 9.9z"/><path d="M14.5 6.2l3.3 3.3M4.5 21h7"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    minus:'<path d="M5.5 12h13"/>',
+    play:'<path d="M8 5.8v12.4a1 1 0 0 0 1.5.86l10-6.2a1 1 0 0 0 0-1.72l-10-6.2A1 1 0 0 0 8 5.8z"/>',
+    pause:'<rect x="6.5" y="5.5" width="3.8" height="13" rx="1.2"/><rect x="13.7" y="5.5" width="3.8" height="13" rx="1.2"/>',
+    chevron:'<path d="M6 9.5l6 6 6-6"/>',
+    flag:'<path d="M6 20.5V4"/><path d="M6 4.8h11.2l-2.4 4.1 2.4 4.1H6"/>',
+    filePlus:'<path d="M6.5 3.5H14l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14 3.5V8h4.5M12 11.2v6M9 14.2h6"/>',
+    check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/><path d="M8 13.6h.01M12 13.6h.01M16 13.6h.01M8 17h.01M12 17h.01" stroke-width="2.6"/>',
+    resize:'<path d="M20 7.5 7.5 20M20 12.5 12.5 20M20 17.5 17.5 20"/>',
+    info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.3"/><path d="M12 7.9h.01" stroke-width="2.6"/>',
+    music:'<path d="M9 17.5V6.2l10.5-2.2v11.3"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17" cy="15.3" r="2.5"/>',
+    bomb:'<circle cx="9.5" cy="15" r="7"/><rect x="13.4" y="7.5" width="4.4" height="2.8" rx=".7" transform="rotate(45 15.6 8.9)"/><path d="M16.6 7.9c-.6-2.3.3-4.3 2.6-5"/><path d="M21.3 1.4l1-1M21.9 3.3h1.4M21.2 5l1 .9" stroke-width="1.8"/><path d="M6 13.8a4 4 0 0 1 2.6-2.8"/>',
+    dice:'<rect x="4" y="4" width="16" height="16" rx="3.2"/><path d="M8.6 8.6h.01M15.4 8.6h.01M12 12h.01M8.6 15.4h.01M15.4 15.4h.01" stroke-width="2.8"/>',
+    up:'<path d="M12 19.5V5M6.5 10.5L12 5l5.5 5.5"/>',
+    more:'<path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3.2"/>',
+    mute:'<path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path d="M16 9.8l4.4 4.4M20.4 9.8L16 14.2"/>'
+  };
+  MKW.iconNames = Object.keys(ICONS);
+  
+  MKW.ic = (name, cls) => '<svg class="mkIc' + (cls ? ' ' + cls : '') + '" aria-hidden="true" focusable="false"><use href="#mki-' + name + '"></use></svg>';
+  let sprite = null;
+  
+  MKW.injectIcons = function () {
+    if (sprite && sprite.isConnected) return sprite;
+    const ex = doc.getElementById('mkwIconDefs');
+    if (ex) return (sprite = ex);
+    if (!doc.body) { doc.addEventListener('DOMContentLoaded', MKW.injectIcons, { once: true }); return null; }
+    let s = '';
+    Object.keys(ICONS).forEach((n) => { if (!doc.getElementById('mki-' + n)) s += '<symbol id="mki-' + n + '" viewBox="0 0 24 24">' + ICONS[n] + '</symbol>'; });
+    const box = mk('div');
+    box.innerHTML = '<svg id="mkwIconDefs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">' + s + '</svg>';
+    sprite = box.firstChild;
+    doc.body.insertBefore(sprite, doc.body.firstChild);
+    return sprite;
+  };
+
+const THEMES = ['auto', 'light', 'dark'];
+  const mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const T = { roots: [], key: null, mode: 'light', fns: [] };
+  function themeGet() { return { mode: T.mode, applied: T.mode === 'auto' ? (mqDark && mqDark.matches ? 'dark' : 'light') : T.mode }; }
+  function themePaint(fire) {
+    const g = themeGet();
+    T.roots.forEach((r) => r.setAttribute('data-theme', g.applied));
+    if (fire) T.fns.slice().forEach((f) => { try { f(g); } catch (x) { console.error(x); } });
+  }
+  MKW.theme = {
+    init(o) {
+      o = o || {};
+      T.roots = toArr(o.root, '.mkw, .mkw-pill, .mkw-pagebg');
+      T.key = o.key || null;
+      const def = THEMES.indexOf(o.def) >= 0 ? o.def : 'light';
+      const saved = lsGet(T.key);
+      T.mode = THEMES.indexOf(saved) >= 0 ? saved : def;
+      themePaint(false);
+      return MKW.theme;
+    },
+    set(m) {
+      if (THEMES.indexOf(m) < 0) return themeGet();
+      T.mode = m; lsSet(T.key, m); themePaint(true);
+      return themeGet();
+    },
+    get: themeGet,
+    onChange(fn) {
+      if (typeof fn !== 'function') return () => {};
+      T.fns.push(fn);
+      return () => { const i = T.fns.indexOf(fn); if (i >= 0) T.fns.splice(i, 1); };
+    },
+  };
+  if (mqDark) {
+    const onSys = () => { if (T.mode === 'auto') themePaint(true); };
+    if (mqDark.addEventListener) mqDark.addEventListener('change', onSys); else if (mqDark.addListener) mqDark.addListener(onSys);
+  }
+  
+  function stepSetting(cssVar, attr, defSteps, defKey, rootSel) {
+    const S = { roots: [], key: null, steps: defSteps, cur: defKey, fns: [] };
+    const px = (v) => (typeof v === 'number' ? v + 'px' : String(v));
+    function paint() { const v = px(S.steps[S.cur]); S.roots.forEach((r) => { r.style.setProperty(cssVar, v); r.setAttribute(attr, S.cur); }); }
+    const api = {
+      init(o) {
+        o = o || {};
+        S.roots = toArr(o.root, rootSel); S.key = o.key || null;
+        S.steps = o.steps && typeof o.steps === 'object' ? o.steps : defSteps;
+        const keys = Object.keys(S.steps);
+        const def = has(S.steps, o.def) ? o.def : has(S.steps, defKey) ? defKey : keys[0];
+        const saved = lsGet(S.key);
+        S.cur = saved != null && has(S.steps, saved) ? saved : def;
+        paint();
+        return api;
+      },
+      set(k) {
+        if (!has(S.steps, k)) return S.cur;
+        S.cur = k; lsSet(S.key, k); paint();
+        S.fns.slice().forEach((f) => { try { f(S.cur); } catch (x) { console.error(x); } });
+        return S.cur;
+      },
+      get: () => S.cur,
+      value: () => px(S.steps[S.cur]),
+      onChange(fn) {
+        if (typeof fn !== 'function') return () => {};
+        S.fns.push(fn);
+        return () => { const i = S.fns.indexOf(fn); if (i >= 0) S.fns.splice(i, 1); };
+      },
+    };
+    return api;
+  }
+  MKW.font = stepSetting('--mkw-fs', 'data-mkw-fs', { sm: 13, md: 14.5, lg: 16, xl: 18 }, 'md', '.mkw');
+  MKW.pageWidth = stepSetting('--mkw-page-w', 'data-mkw-pw', { sm: 480, md: 640, lg: 960 }, 'md', '.mkw--page');
+
+const R = new WeakMap();
+  function st(root) {
+    let s = R.get(root);
+    if (!s) { s = { layers: [], panels: [], sheets: [], dq: [], dialog: null, inert: new Set(), toast: null }; R.set(root, s); }
+    return s;
+  }
+  function rootOf(r) {
+    let el = typeof r === 'string' ? doc.querySelector(r) : r;
+    if (!isEl(el)) el = doc.querySelector('.mkw') || doc.body;
+    st(el);
+    return el;
+  }
+  function nearestRoot(t) {
+    for (let n = t; n && n !== doc; n = n.parentNode) {
+      if (n.nodeType === 1 && (R.has(n) || n.classList.contains('mkw'))) return n;
+    }
+    return null;
+  }
+  let lastRoot = null;
+  const LAYER = new WeakMap();
+  function pushLayer(root, rec) { st(root).layers.push(rec); LAYER.set(rec.el, rec); lastRoot = root; }
+  function dropLayer(root, rec) { const s = st(root), i = s.layers.indexOf(rec); if (i >= 0) s.layers.splice(i, 1); LAYER.delete(rec.el); }
+  
+  function syncInert(root) {
+    const s = st(root), want = new Set();
+    const top = s.panels.length ? s.panels[s.panels.length - 1] : null;
+    if (top && top.el.parentElement) Array.from(top.el.parentElement.children).forEach((c) => { if (c !== top.el) want.add(c); });
+    if (s.dialog) Array.from(root.children).forEach((c) => { if (c !== s.dialog.el && c !== s.dialog.scrim && !c.classList.contains('mkw-toast')) want.add(c); });
+    s.inert.forEach((el) => { if (!want.has(el)) { el.inert = false; s.inert.delete(el); } });
+    want.forEach((el) => { if (!el.inert) { el.inert = true; s.inert.add(el); } });
+  }
+  doc.addEventListener('pointerdown', (e) => { const r = nearestRoot(e.target); if (r) lastRoot = r; closeOutsideSheets(e); }, true);
+  doc.addEventListener('focusin', (e) => { const r = nearestRoot(e.target); if (r) lastRoot = r; }, true);
+  doc.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+    let root = nearestRoot(e.target);
+    if (!root && lastRoot && lastRoot.isConnected) root = lastRoot;
+    const s = root && R.get(root);
+    if (!s || !s.layers.length) return;
+    e.preventDefault();
+    s.layers[s.layers.length - 1].close('esc');
+  });
+  doc.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest ? e.target.closest('[data-mkw-close]') : null;
+    if (!b) return;
+    const box = b.closest('[data-mkw-layer]'), rec = box && LAYER.get(box);
+    if (rec) { e.preventDefault(); rec.close('button'); }
+  });
+
+function dlgOpts(o) { return typeof o === 'string' || isEl(o) ? { message: o } : o || {}; }
+  function enqueue(kind, o) {
+    return new Promise((resolve) => {
+      const root = rootOf(o.root), s = st(root);
+      s.dq.push({ kind, o, resolve });
+      if (!s.dialog) nextDialog(root);
+    });
+  }
+  function nextDialog(root) { const s = st(root); if (s.dialog) return; const job = s.dq.shift(); if (job) showDialog(root, job); }
+  
+  MKW.confirm = (o) => enqueue('confirm', dlgOpts(o));
+  
+  MKW.alert = (o) => enqueue('alert', dlgOpts(o));
+  
+  MKW.prompt = (o) => enqueue('prompt', dlgOpts(o));
+  function trapTab(e, box) {
+    const f = focusables(box);
+    if (!f.length) { e.preventDefault(); box.focus(); return; }
+    const i = f.indexOf(doc.activeElement);
+    if (e.shiftKey) { if (i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } }
+    else if (i === -1 || i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+  }
+  function showDialog(root, job) {
+    MKW.injectIcons();
+    const kind = job.kind, o = job.o, s = st(root), danger = !!o.danger;
+    const scrim = mk('div', 'mkw-scrim');
+    const d = mk('div', 'mkw-dialog' + (danger ? ' is-danger' : ''));
+    d.setAttribute('role', kind === 'prompt' ? 'dialog' : 'alertdialog');
+    d.setAttribute('aria-modal', 'true');
+    d.tabIndex = -1;
+    const icon = o.icon === false ? '' : o.icon || (danger ? 'warn' : kind === 'prompt' ? (o.type === 'password' ? 'lock' : 'work') : 'info');
+    if (icon) { const c = mk('div', 'mkw-dialog-ic'); c.innerHTML = MKW.ic(icon); d.appendChild(c); }
+    const tid = uid('dt'), mid = uid('dm');
+    if (o.title != null && o.title !== '') {
+      const h = mk('h4', 'mkw-dialog-title'); h.id = tid; h.textContent = String(o.title); d.appendChild(h);
+      d.setAttribute('aria-labelledby', tid);
+    }
+    if (o.message != null || o.html != null) {
+      const p = mk('p', 'mkw-dialog-msg'); p.id = mid;
+      if (o.html != null) p.innerHTML = String(o.html); 
+      else if (isEl(o.message)) p.appendChild(o.message);
+      else p.textContent = String(o.message);
+      d.appendChild(p);
+      d.setAttribute(d.hasAttribute('aria-labelledby') ? 'aria-describedby' : 'aria-labelledby', mid);
+    }
+    let input = null, err = null;
+    if (kind === 'prompt') {
+      const f = mk('div', 'mkw-dialog-field'), iid = uid('di');
+      if (o.label) { const l = mk('label'); l.htmlFor = iid; l.textContent = String(o.label); f.appendChild(l); }
+      input = mk('input', 'mkw-field'); input.id = iid;
+      input.type = o.type === 'password' ? 'password' : 'text';
+      if (o.type === 'number' || o.type === 'numeric') input.inputMode = 'numeric'; 
+      input.autocomplete = o.autocomplete || 'off';
+      input.spellcheck = false;
+      if (o.placeholder != null) input.placeholder = String(o.placeholder);
+      if (o.value != null) input.value = String(o.value);
+      if (!o.label) input.setAttribute('aria-label', String(o.title || o.placeholder || '입력'));
+      err = mk('p', 'mkw-dialog-err'); err.id = uid('de'); err.hidden = true; err.setAttribute('aria-live', 'polite');
+      input.setAttribute('aria-describedby', err.id);
+      f.appendChild(input); f.appendChild(err); d.appendChild(f);
+      if (input.type === 'password') MKW.pwEye(input);
+      input.addEventListener('input', () => { if (!err.hidden) { err.hidden = true; err.textContent = ''; input.removeAttribute('aria-invalid'); } });
+    }
+    const btns = mk('div', 'mkw-dialog-btns');
+    let cancelBtn = null;
+    if (kind !== 'alert') {
+      cancelBtn = mk('button', 'mkw-btn'); cancelBtn.type = 'button';
+      cancelBtn.textContent = String(o.cancelText || '취소'); btns.appendChild(cancelBtn);
+    }
+    const okBtn = mk('button', 'mkw-btn is-primary' + (danger ? ' is-danger' : '')); okBtn.type = 'button';
+    okBtn.textContent = String(o.okText || '확인'); btns.appendChild(okBtn);
+    d.appendChild(btns);
+
+    const prev = doc.activeElement;
+    root.appendChild(scrim); root.appendChild(d);
+    if (!reduced()) { scrim.classList.add('is-in'); d.classList.add('is-in'); }
+    let done = false;
+    const rec = { type: 'dialog', el: d, scrim, close: () => cancel() };
+    s.dialog = rec; pushLayer(root, rec); syncInert(root);
+    if (input) { input.focus({ preventScroll: true }); try { input.select(); } catch (x) {  } }
+    else okBtn.focus({ preventScroll: true });
+
+    function finish(val) {
+      if (done) return;
+      done = true;
+      scrim.remove(); d.remove();
+      s.dialog = null; dropLayer(root, rec); syncInert(root);
+      refocus(prev);
+      job.resolve(val);
+      nextDialog(root);
+    }
+    function cancel() { finish(kind === 'prompt' ? null : kind === 'confirm' ? false : undefined); }
+    async function ok() {
+      if (done) return;
+      if (kind !== 'prompt') { finish(kind === 'confirm' ? true : undefined); return; }
+      const v = input.value;
+      if (typeof o.validate === 'function') {
+        okBtn.disabled = true;
+        let msg;
+        try { msg = await o.validate(v); } catch (x) { msg = String((x && x.message) || x); }
+        okBtn.disabled = false;
+        if (done) return;
+        if (typeof msg === 'string' && msg) {
+          err.textContent = msg; err.hidden = false;
+          input.setAttribute('aria-invalid', 'true'); input.focus({ preventScroll: true });
+          return;
+        }
+      }
+      finish(v);
+    }
+    okBtn.addEventListener('click', ok);
+    if (cancelBtn) cancelBtn.addEventListener('click', cancel);
+    scrim.addEventListener('click', cancel);
+    d.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { if (e.isComposing) return; e.preventDefault(); e.stopPropagation(); cancel(); return; }
+      if (e.key === 'Tab') { trapTab(e, d); return; }
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return; 
+      const t = e.target;
+      if (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'A' || t.getAttribute('role') === 'button') return; 
+      e.preventDefault(); ok();
+    });
+  }
+
+const TOAST_IC = { info: 'info', ok: 'check', warn: 'warn', err: 'warn' };
+  MKW.toast = function (msg, o) {
+    o = o || {};
+    const root = rootOf(o.root), s = st(root);
+    MKW.injectIcons();
+    if (s.toast) s.toast.close();
+    const kind = has(TOAST_IC, o.kind) ? o.kind : 'info';
+    const t = mk('div', 'mkw-toast is-' + kind);
+    t.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+    t.setAttribute('aria-live', kind === 'err' ? 'assertive' : 'polite');
+    t.innerHTML = MKW.ic(TOAST_IC[kind]) + '<span class="mkw-toast-tx"></span>';
+    t.lastChild.textContent = String(msg == null ? '' : msg);
+    const c = root.querySelector('.mkw-compose');
+    if (c && shown(c)) {
+      const pb = parseFloat(getComputedStyle(root).paddingBottom) || 0;
+      t.style.setProperty('--mkw-toast-b', Math.max(8, root.clientHeight - offTop(c, root) - pb + 10) + 'px');
+    }
+    root.appendChild(t);
+    const rec = { el: t, close() { clearTimeout(rec.tm); t.remove(); if (s.toast === rec) s.toast = null; } };
+    rec.tm = setTimeout(rec.close, +o.ms > 0 ? +o.ms : 2200);
+    s.toast = rec;
+    return rec;
+  };
+
+const CLOSE_TM = new WeakMap();
+  MKW.panel = {
+    open(root, el, o) {
+      root = rootOf(root); o = o || {};
+      if (!isEl(el)) return null;
+      const s = st(root);
+      if (s.panels.some((p) => p.el === el)) return el;
+      let added = false;
+      if (!root.contains(el)) { (root.querySelector('.mkw-body') || root).appendChild(el); added = true; }
+      clearTimeout(CLOSE_TM.get(el));
+      el.classList.add('mkw-panel'); el.classList.remove('is-out');
+      el.setAttribute('data-mkw-layer', 'panel');
+      el.hidden = false;
+      if (!reduced()) animIn(el, 'is-in');
+      const rec = { type: 'panel', el, added, onClose: o.onClose, prev: doc.activeElement, close: () => MKW.panel.close(root) };
+      s.panels.push(rec); pushLayer(root, rec); syncInert(root);
+      focusIn(el);
+      return el;
+    },
+    close(root) {
+      root = rootOf(root);
+      const s = st(root), rec = s.panels.pop();
+      if (!rec) return null;
+      const el = rec.el, hadFocus = el.contains(doc.activeElement);
+      dropLayer(root, rec); syncInert(root);
+      const done = () => { el.classList.remove('is-out', 'is-in'); el.hidden = true; el.removeAttribute('data-mkw-layer'); if (rec.added) el.remove(); };
+      if (reduced()) done();
+      else { el.classList.remove('is-in'); el.classList.add('is-out'); CLOSE_TM.set(el, setTimeout(done, 170)); }
+      if (hadFocus || doc.activeElement === doc.body) {
+        const under = s.panels.length ? s.panels[s.panels.length - 1].el : null;
+        if (rec.prev && rec.prev.isConnected && !rec.prev.closest('[inert]')) refocus(rec.prev); else if (under) focusIn(under);
+      }
+      if (typeof rec.onClose === 'function') { try { rec.onClose(el); } catch (x) { console.error(x); } }
+      return el;
+    },
+    top(root) {
+      const s = R.get(rootOf(root)), p = s && s.panels[s.panels.length - 1];
+      return p ? p.el : null;
+    },
+  };
+
+const SHEETS = [];
+  const controlsOf = (el) => (el.getAttribute('aria-controls') || '').split(/\s+/).filter(Boolean);
+  function setExpanded(root, el, on) {
+    if (!el.id) return;
+    root.querySelectorAll('[aria-controls]').forEach((c) => { if (controlsOf(c).indexOf(el.id) >= 0) c.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+  }
+  function measure(root) {
+    const h = root.querySelector('.mkw-head'), c = root.querySelector('.mkw-compose');
+    root.style.setProperty('--mkw-head-h', (h && shown(h) ? offTop(h, root) + h.offsetHeight : 0) + 'px');
+    root.style.setProperty('--mkw-compose-h', (c && shown(c) ? root.clientHeight - offTop(c, root) : 0) + 'px');
+  }
+  MKW.sheet = {
+    open(el, o) {
+      o = o || {};
+      if (!isEl(el)) return null;
+      const root = rootOf(o.root || nearestRoot(el.parentNode));
+      const s = st(root);
+      if (s.sheets.some((r) => r.el === el)) return el;
+      let added = false;
+      if (!root.contains(el)) { root.appendChild(el); added = true; }
+      measure(root);
+      const isTray = el.classList.contains('mkw-tray');
+      let scrim = null;
+      if (o.scrim != null ? !!o.scrim : isTray) {
+        scrim = mk('div', 'mkw-scrim' + (isTray ? ' is-tray' : ''));
+        el.parentNode.insertBefore(scrim, el);
+        if (!reduced()) scrim.classList.add('is-in');
+      }
+      el.hidden = false; el.setAttribute('data-mkw-layer', 'sheet');
+      if (!reduced()) animIn(el, 'is-in');
+      const rec = { type: 'sheet', el, scrim, added, root, outside: o.outside !== false, onClose: o.onClose, prev: doc.activeElement, close: () => MKW.sheet.close(el) };
+      s.sheets.push(rec); SHEETS.push(rec); pushLayer(root, rec);
+      setExpanded(root, el, true);
+      if (o.focus !== false) focusIn(el);
+      return el;
+    },
+    close(el) {
+      const rec = SHEETS.find((r) => r.el === el);
+      if (!rec) return null;
+      const s = st(rec.root), hadFocus = el.contains(doc.activeElement);
+      SHEETS.splice(SHEETS.indexOf(rec), 1);
+      s.sheets.splice(s.sheets.indexOf(rec), 1);
+      dropLayer(rec.root, rec);
+      if (rec.scrim) rec.scrim.remove();
+      el.hidden = true; el.classList.remove('is-in'); el.removeAttribute('data-mkw-layer');
+      if (rec.added) el.remove();
+      setExpanded(rec.root, el, false);
+      if (hadFocus || doc.activeElement === doc.body) refocus(rec.prev);
+      if (typeof rec.onClose === 'function') { try { rec.onClose(el); } catch (x) { console.error(x); } }
+      return el;
+    },
+  };
+  function closeOutsideSheets(e) {
+    if (!SHEETS.length) return;
+    const t = e.target;
+    SHEETS.slice().forEach((rec) => {
+      if (!rec.outside || rec.el.contains(t)) return;
+      const ctl = t && t.closest ? t.closest('[aria-controls]') : null;
+      if (ctl && rec.el.id && controlsOf(ctl).indexOf(rec.el.id) >= 0) return; 
+      MKW.sheet.close(rec.el);
+    });
+  }
+
+const SEGS = new WeakMap(), SWS = new WeakMap(), RANGES = new WeakMap(), GROWS = new WeakMap(), EYES = new WeakMap();
+  
+  MKW.seg = function (el, o) {
+    o = o || {};
+    const old = SEGS.get(el);
+    if (old) { if (o.onChange) old.o.onChange = o.onChange; if (o.value !== undefined) old.api.set(o.value); return old.api; }
+    const self = { o, cur: null };
+    const btns = () => Array.from(el.querySelectorAll('button[data-v]'));
+    const paint = () => btns().forEach((b) => b.setAttribute('aria-pressed', b.getAttribute('data-v') === self.cur ? 'true' : 'false'));
+    if (o.value != null) self.cur = String(o.value);
+    else { const p = btns().find((b) => b.getAttribute('aria-pressed') === 'true'); self.cur = p ? p.getAttribute('data-v') : null; }
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'group');
+    btns().forEach((b) => { if (!b.getAttribute('type')) b.type = 'button'; });
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest ? e.target.closest('button[data-v]') : null;
+      if (!b || !el.contains(b) || b.disabled) return;
+      const v = b.getAttribute('data-v');
+      if (v === self.cur) return;
+      self.cur = v; paint();
+      if (typeof self.o.onChange === 'function') self.o.onChange(v);
+    });
+    paint();
+    self.api = { set(v) { self.cur = v == null ? null : String(v); paint(); return self.cur; }, get: () => self.cur };
+    SEGS.set(el, self);
+    return self.api;
+  };
+  
+  MKW.sw = function (el, o) {
+    o = o || {};
+    const old = SWS.get(el);
+    if (old) { if (o.onChange) old.o.onChange = o.onChange; if (o.checked !== undefined) old.api.set(o.checked); return old.api; }
+    const self = { o, on: o.checked !== undefined ? !!o.checked : el.getAttribute('aria-checked') === 'true' };
+    el.setAttribute('role', 'switch');
+    if (el.tagName === 'BUTTON') { if (!el.getAttribute('type')) el.type = 'button'; }
+    else if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
+    const paint = () => el.setAttribute('aria-checked', self.on ? 'true' : 'false');
+    const flip = () => {
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+      self.on = !self.on; paint();
+      if (typeof self.o.onChange === 'function') self.o.onChange(self.on);
+    };
+    el.addEventListener('click', flip);
+    if (el.tagName !== 'BUTTON') el.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); } });
+    paint();
+    self.api = { set(v) { self.on = !!v; paint(); return self.on; }, get: () => self.on };
+    SWS.set(el, self);
+    return self.api;
+  };
+  
+  MKW.range = function (el, o) {
+    o = o || {};
+    const old = RANGES.get(el);
+    if (old) { Object.assign(old.o, o); old.paint(); return old.api; }
+    const self = { o };
+    self.paint = () => {
+      const min = el.min === '' ? 0 : +el.min, max = el.max === '' ? 100 : +el.max, v = +el.value;
+      const p = max > min ? Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100)) : 0;
+      el.style.setProperty('--mkw-p', +p.toFixed(2) + '%');
+      const out = self.o.out || (el.parentElement && el.parentElement.querySelector('.mkw-val'));
+      if (out) out.textContent = typeof self.o.format === 'function' ? self.o.format(v) : String(v);
+    };
+    el.addEventListener('input', () => { self.paint(); if (typeof self.o.onInput === 'function') self.o.onInput(+el.value); });
+    self.paint();
+    self.api = { set(v) { el.value = v; self.paint(); return +el.value; }, get: () => +el.value };
+    RANGES.set(el, self);
+    return self.api;
+  };
+  
+  MKW.autoGrow = function (ta, o) {
+    o = o || {};
+    const old = GROWS.get(ta);
+    if (old) { if (o.maxLines) old.max = +o.maxLines; old.api.update(); return old.api; }
+    const self = { max: +o.maxLines || 4 };
+    if (!ta.getAttribute('rows')) ta.rows = 1;
+    function update() {
+      if (!shown(ta)) return 0;
+      const cs = getComputedStyle(ta);
+      const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4 || 20;
+      const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      const bd = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+      const maxH = Math.ceil(lh * self.max + pad + bd), minH = Math.ceil(lh + pad + bd);
+      ta.style.height = '0px';
+      const need = Math.max(minH, ta.scrollHeight + bd);
+      const h = Math.min(need, maxH);
+      ta.style.height = h + 'px';
+      ta.style.overflowY = need > maxH + 1 ? 'auto' : 'hidden';
+      return h;
+    }
+    ta.addEventListener('input', update);
+    self.api = { update };
+    GROWS.set(ta, self);
+    update();
+    return self.api;
+  };
+  
+  MKW.pwEye = function (input) {
+    if (!isEl(input)) return null;
+    const old = EYES.get(input);
+    if (old) return old;
+    MKW.injectIcons();
+    let wrap = input.parentElement;
+    if (!wrap || !wrap.classList.contains('mkw-pw')) {
+      wrap = mk('span', 'mkw-pw');
+      if (input.parentNode) input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+    }
+    let btn = wrap.querySelector('.mkw-eye');
+    if (!btn) { btn = mk('button', 'mkw-eye'); btn.type = 'button'; wrap.appendChild(btn); }
+    const paint = () => {
+      const on = input.type !== 'password', t = on ? '비밀번호 가리기' : '비밀번호 보기';
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.setAttribute('aria-label', t); btn.title = t;
+      btn.innerHTML = MKW.ic(on ? 'eyeOff' : 'eye');
+    };
+    btn.addEventListener('mousedown', (e) => e.preventDefault()); 
+    btn.addEventListener('click', () => { input.type = input.type === 'password' ? 'text' : 'password'; paint(); });
+    paint();
+    const api = { set(on) { input.type = on ? 'text' : 'password'; paint(); return !!on; }, get: () => input.type !== 'password' };
+    EYES.set(input, api);
+    return api;
+  };
+
+const FLOATS = new WeakMap();
+  const DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'sw', 'se'];
+  const NODRAG = 'button, a, input, textarea, select, label, [contenteditable], [data-mkw-nodrag]';
+  MKW.float = function (win, opt) {
+    if (!isEl(win)) return null;
+    const before = FLOATS.get(win);
+    if (before) before.destroy();
+    const o = Object.assign({ handle: '.mkw-head', min: [360, 480], presets: { sm: [380, 600], md: [420, 720], lg: [520, 820] } }, opt || {});
+    const KEEP = 48, minW = +o.min[0] || 0, minH = +o.min[1] || 0;
+    MKW.injectIcons(); rootOf(win);
+    win.classList.add('mkw--float');
+    const added = [];
+    DIRS.forEach((d) => {
+      if (win.querySelector(':scope > .mkw-rz[data-dir="' + d + '"]')) return;
+      const h = mk('div', 'mkw-rz'); h.setAttribute('data-dir', d); h.setAttribute('aria-hidden', 'true');
+      if (d === 'se') { h.innerHTML = MKW.ic('resize'); h.title = '끌어서 크기 조절 · 머리 빈 곳을 두 번 누르면 크게'; } else h.title = '끌어서 크기 조절';
+      win.appendChild(h); added.push(h);
+    });
+    const sc = () => { const v = o.scale ? +o.scale() : 1; return v > 0 && isFinite(v) ? v : 1; };
+    
+    function origin(s, cs) {
+      const r = win.getBoundingClientRect();
+      if (r.width || r.height) return { x: r.left - (parseFloat(cs.left) || 0) * s, y: r.top - (parseFloat(cs.top) || 0) * s };
+      if (cs.position === 'fixed') return { x: 0, y: 0 };
+      const p = win.offsetParent || doc.documentElement, pr = p.getBoundingClientRect();
+      return { x: pr.left + p.clientLeft * s, y: pr.top + p.clientTop * s };
+    }
+    
+    function bounds() {
+      const s = sc(), cs = getComputedStyle(win);
+      let B = typeof o.bounds === 'function' ? o.bounds() : null;
+      if (!B) {
+        if (cs.position === 'fixed') { const de = doc.documentElement; B = { left: 0, top: 0, width: de.clientWidth, height: de.clientHeight }; }
+        else { const p = win.offsetParent || doc.documentElement, r = p.getBoundingClientRect(); B = { left: r.left + p.clientLeft * s, top: r.top + p.clientTop * s, width: p.clientWidth * s, height: p.clientHeight * s }; }
+      }
+      const O = origin(s, cs);
+      return { x: (B.left - O.x) / s, y: (B.top - O.y) / s, w: B.width / s, h: B.height / s };
+    }
+    
+    function fit(r, L, contain) {
+      const mw = Math.min(minW, L.w), mh = Math.min(minH, L.h);
+      const w = clamp(r.w, mw, L.w), h = clamp(r.h, mh, L.h);
+      const x = contain ? clamp(r.x, L.x, L.x + L.w - w) : clamp(r.x, L.x + KEEP - w, L.x + L.w - KEEP);
+      const y = contain ? clamp(r.y, L.y, L.y + L.h - h) : clamp(r.y, L.y, L.y + L.h - KEEP);
+      return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+    }
+    const isInside = (r, L) => r.x >= L.x - 0.5 && r.y >= L.y - 0.5 && r.x + r.w <= L.x + L.w + 0.5 && r.y + r.h <= L.y + L.h + 0.5;
+    
+    let want = null, cur = null, big = false, prev = null, inside = true, drag = null, lastTap = 0, lastXY = null;
+    const api = {};
+    function put(r) {
+      const changed = !cur || cur.x !== r.x || cur.y !== r.y || cur.w !== r.w || cur.h !== r.h;
+      cur = r;
+      win.style.left = r.x + 'px'; win.style.top = r.y + 'px'; win.style.width = r.w + 'px'; win.style.height = r.h + 'px';
+      win.classList.toggle('is-big', big);
+      if (changed && typeof o.onChange === 'function') { try { o.onChange(api.get()); } catch (x) { console.error(x); } }
+    }
+    const apply = () => { if (want) put(fit(want, bounds(), inside)); };
+    function save() { if (o.key && want) lsSet(o.key, JSON.stringify({ v: 1, x: want.x, y: want.y, w: want.w, h: want.h, inside, big, prev })); }
+    function commit() { want = Object.assign({}, cur); inside = isInside(cur, bounds()); save(); }
+    const okRect = (r) => !!r && ['x', 'y', 'w', 'h'].every((k) => typeof r[k] === 'number' && isFinite(r[k]));
+    function load() {
+      try {
+        const j = JSON.parse(lsGet(o.key) || 'null');
+        if (!okRect(j)) return null;
+        prev = okRect(j.prev) ? { x: j.prev.x, y: j.prev.y, w: j.prev.w, h: j.prev.h, inside: j.prev.inside !== false } : null;
+        big = !!j.big && !!prev;
+        inside = j.inside !== false;
+        return { x: j.x, y: j.y, w: j.w, h: j.h };
+      } catch (x) { return null; }
+    }
+    
+    function initial() {
+      const sty = win.style, L = bounds();
+      const w = parseFloat(sty.width) || o.presets.md[0], h = parseFloat(sty.height) || o.presets.md[1];
+      const x = sty.left !== '' ? parseFloat(sty.left) : L.x + (L.w - Math.min(w, L.w)) / 2;
+      const y = sty.top !== '' ? parseFloat(sty.top) : L.y + Math.max(0, (L.h - Math.min(h, L.h)) / 2);
+      return { x, y, w, h };
+    }
+    function onDown(e) {
+      if (e.button !== 0 || drag) return;
+      const t = e.target;
+      const rz = t.closest ? t.closest('.mkw-rz') : null;
+      if (rz && rz.parentElement === win) { start(e, 'rsz', rz, rz.getAttribute('data-dir') || ''); return; }
+      const hd = t.closest ? t.closest(o.handle) : null;
+      if (hd && win.contains(hd) && !t.closest(NODRAG)) start(e, 'move', hd, '');
+    }
+    function start(e, kind, handle, dir) {
+      const L = bounds();
+      drag = { id: e.pointerId, kind, dir, handle, sx: e.clientX, sy: e.clientY, r0: Object.assign({}, cur || fit(want, L, inside)), L, s: sc(), moved: false };
+      try { handle.setPointerCapture(e.pointerId); } catch (x) {  }
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+      handle.addEventListener('pointercancel', onUp);
+      handle.addEventListener('lostpointercapture', onUp);
+      if (kind === 'rsz') handle.classList.add('is-on');
+      e.preventDefault();
+    }
+    function onMove(e) {
+      const d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      if (!d.moved) {
+        if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 4) return;
+        d.moved = true; win.classList.add(d.kind === 'rsz' ? 'is-resizing' : 'is-dragging');
+      }
+      const dx = (e.clientX - d.sx) / d.s, dy = (e.clientY - d.sy) / d.s, r0 = d.r0, L = d.L;
+      if (d.kind === 'move') { put(fit({ x: r0.x + dx, y: r0.y + dy, w: r0.w, h: r0.h }, L, false)); return; }
+      let x = r0.x, y = r0.y, w = r0.w, h = r0.h;
+      const Rt = r0.x + r0.w, Bt = r0.y + r0.h, mw = Math.min(minW, L.w), mh = Math.min(minH, L.h);
+      if (d.dir.indexOf('e') >= 0) w = clamp(r0.w + dx, mw, Math.max(Math.min(L.w, L.x + L.w - r0.x), Math.min(r0.w, L.w)));
+      if (d.dir.indexOf('s') >= 0) h = clamp(r0.h + dy, mh, Math.max(Math.min(L.h, L.y + L.h - r0.y), Math.min(r0.h, L.h)));
+      if (d.dir.indexOf('w') >= 0) { x = clamp(r0.x + dx, Math.max(Math.min(L.x, r0.x), Rt - L.w), Rt - mw); w = Rt - x; }
+      if (d.dir.indexOf('n') >= 0) { y = clamp(r0.y + dy, Math.max(Math.min(L.y, r0.y), Bt - L.h), Bt - mh); h = Bt - y; }
+      if (big) { big = false; prev = null; }
+      put(fit({ x, y, w, h }, L, false));
+    }
+    function onUp(e) {
+      const d = drag;
+      if (!d || (e.pointerId !== undefined && e.pointerId !== d.id)) return;
+      drag = null;
+      const h = d.handle;
+      h.removeEventListener('pointermove', onMove); h.removeEventListener('pointerup', onUp);
+      h.removeEventListener('pointercancel', onUp); h.removeEventListener('lostpointercapture', onUp);
+      h.classList.remove('is-on'); win.classList.remove('is-dragging', 'is-resizing');
+      try { if (h.hasPointerCapture && h.hasPointerCapture(d.id)) h.releasePointerCapture(d.id); } catch (x) {  }
+      if (d.moved) { commit(); lastTap = 0; return; }
+      if (d.kind !== 'move' || e.type !== 'pointerup') return;
+      const now = Date.now();
+      if (now - lastTap < 400 && lastXY && Math.abs(e.clientX - lastXY[0]) < 12 && Math.abs(e.clientY - lastXY[1]) < 12) { lastTap = 0; api.toggleBig(); }
+      else { lastTap = now; lastXY = [e.clientX, e.clientY]; }
+    }
+    api.get = () => Object.assign({}, cur || want, { big });
+    
+    api.set = (r) => { want = Object.assign({}, cur || want, r || {}); big = false; prev = null; inside = true; apply(); commit(); return api.get(); };
+    api.preset = (name) => {
+      const p = o.presets && o.presets[name];
+      if (!p) return false;
+      const L = bounds(), c = cur || want, w = Math.min(p[0], L.w), h = Math.min(p[1], L.h);
+      want = { x: clamp(c.x, L.x, L.x + L.w - w), y: clamp(c.y, L.y, L.y + L.h - h), w, h };
+      big = false; prev = null; inside = true; apply(); commit();
+      return true;
+    };
+    api.toggleBig = () => {
+      const L = bounds();
+      if (!big) {
+        prev = Object.assign({}, cur || want, { inside });
+        const w = Math.max(Math.min(minW, L.w), Math.round(L.w * 0.7)), h = Math.max(Math.min(minH, L.h), Math.round(L.h * 0.9));
+        want = { x: L.x + (L.w - w) / 2, y: L.y + (L.h - h) / 2, w, h };
+        big = true; inside = true;
+      } else {
+        if (prev) { want = { x: prev.x, y: prev.y, w: prev.w, h: prev.h }; inside = prev.inside !== false; }
+        big = false; prev = null;
+      }
+      apply(); commit();
+      return big;
+    };
+    api.refresh = () => { if (!drag) apply(); return api.get(); };
+    
+    let ext = null;
+    api.drag = (phase, dx, dy) => {
+      if (drag) return api.get();
+      if (phase === 'start' || !ext) {
+        ext = { r0: Object.assign({}, cur || fit(want, bounds(), inside)), L: bounds(), s: sc() };
+        win.classList.add('is-dragging');
+        if (phase === 'start') return api.get();
+      }
+      const r0 = ext.r0, mx = (+dx || 0) / ext.s, my = (+dy || 0) / ext.s;
+      put(fit({ x: r0.x + mx, y: r0.y + my, w: r0.w, h: r0.h }, ext.L, false));
+      if (phase === 'end') { ext = null; win.classList.remove('is-dragging'); commit(); }
+      return api.get();
+    };
+    const onResize = () => { if (!drag) apply(); };
+    let ro = null;
+    api.destroy = () => {
+      window.removeEventListener('resize', onResize);
+      if (ro) ro.disconnect();
+      win.removeEventListener('pointerdown', onDown);
+      added.forEach((h) => h.remove());
+      FLOATS.delete(win);
+    };
+    want = (o.key && load()) || initial();
+    apply();
+    win.addEventListener('pointerdown', onDown);
+    window.addEventListener('resize', onResize);
+    if (window.ResizeObserver) {
+      ro = new ResizeObserver(onResize);
+      const p = win.offsetParent;
+      if (p && getComputedStyle(win).position !== 'fixed') ro.observe(p);
+    }
+    FLOATS.set(win, api);
+    return api;
+  };
+
+const NAME_PALETTE = [
+    ['#8fd3ff', '#2974ae'], ['#ffcb7a', '#98641a'], ['#7fe0c2', '#197e61'], ['#c9b2ff', '#7355cc'],
+    ['#ffb38a', '#ad5827'], ['#ffa3d1', '#c03d7d'], ['#9be38a', '#377e2a'], ['#ff9e9e', '#c73e3e'],
+    ['#7fd8e8', '#147a8e'], ['#afbbff', '#4a5cc4'], ['#d6e07a', '#697511'], ['#e7b3ff', '#9b45b8']
+  ];
+  function hash32(str) { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+  MKW.nameColor = (name) => { const p = NAME_PALETTE[hash32(String(name == null ? '' : name)) % NAME_PALETTE.length]; return { dark: p[0], light: p[1] }; };
+  
+  const BUBBLE_BG = { light: '#ffffff', dark: '#212124' };
+  function normHex(h) {
+    if (typeof h !== 'string') return null;
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(h.trim());
+    if (!m) return null;
+    let s = m[1].toLowerCase();
+    if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+    return '#' + s;
+  }
+  const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgbHex = (a) => '#' + a.map((v) => (v < 16 ? '0' : '') + v.toString(16)).join('');
+  function relLum(a) { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]); }
+  function ratio(a, b) { const x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function toHsl(a) {
+    const r = a[0] / 255, g = a[1] / 255, b = a[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+  function fromHsl(h, s, l) {
+    if (!s) { const v = Math.round(l * 255); return [v, v, v]; }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const f = (t) => { if (t < 0) t += 1; if (t > 1) t -= 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+    return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map((v) => Math.round(v * 255));
+  }
+  
+  MKW.adaptColor = function (hex, theme, bg, min) {
+    const c = normHex(hex);
+    if (!c) return null;
+    const b = normHex(bg) || BUBBLE_BG[theme === 'dark' ? 'dark' : 'light'];
+    const need = +min > 1 ? +min : 3;
+    const rgb = hexRgb(c), brgb = hexRgb(b);
+    if (ratio(rgb, brgb) >= need) return c;
+    const hsl = toHsl(rgb), found = [];
+    [0, 1].forEach((end) => {
+      if (ratio(fromHsl(hsl[0], hsl[1], end), brgb) < need) return;
+      let lo = hsl[2], hi = end;
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (ratio(fromHsl(hsl[0], hsl[1], mid), brgb) >= need) hi = mid; else lo = mid; }
+      let L = hi, out = fromHsl(hsl[0], hsl[1], L), guard = 0;
+      while (ratio(out, brgb) < need && guard++ < 500) { L = end ? Math.min(1, L + 0.002) : Math.max(0, L - 0.002); out = fromHsl(hsl[0], hsl[1], L); }
+      found.push({ d: Math.abs(L - hsl[2]), out });
+    });
+    if (!found.length) return ratio([0, 0, 0], brgb) >= ratio([255, 255, 255], brgb) ? '#000000' : '#ffffff';
+    found.sort((p, q) => p.d - q.d);
+    return rgbHex(found[0].out);
+  };
+
+const kst = (ms) => { const t = +ms; return isFinite(t) ? new Date(t + 9 * 3600000) : null; };
+  const pad2 = (n) => (n < 10 ? '0' : '') + n;
+  MKW.fmt = {
+    num(n) { const v = Math.round(+n || 0), s = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (v < 0 ? '-' : '') + s; },
+    time(ms) { const d = kst(ms); if (!d) return ''; const h = d.getUTCHours(); return (h < 12 ? '오전 ' : '오후 ') + ((h % 12) || 12) + ':' + pad2(d.getUTCMinutes()); },
+    date(ms) { const d = kst(ms); if (!d) return ''; return (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일 (' + '일월화수목금토'.charAt(d.getUTCDay()) + ')'; },
+  };
+
+const ACC_KEY = 'mk_accent_v1';
+  const ACC_DEF = '#ff77b8';
+  const ACC_PRESETS = [
+    { hex: '#ff77b8', name: '핑크(기본)' }, { hex: '#9d8cff', name: '라벤더' }, { hex: '#4fd6b6', name: '민트' },
+    { hex: '#5db9ff', name: '하늘' }, { hex: '#ffa25e', name: '살구' }, { hex: '#ffd166', name: '골드' }
+  ];
+  const ACC_PINK = ['--pink3', '--pink3rgb', '--pink2', '--pink2rgb', '--pinkMid', '--pinkMidrgb', '--pink1', '--pink0rgb', '--pinkTxt', '--pinkHotrgb'];
+  const ACC_TEXT = ['--mkw-acc-text-l', '--mkw-acc-text-d', '--mkw-on-acc-l', '--mkw-on-acc-d'];
+  
+  const ACC_TINT = [
+    ['--mkw-l-bg', 0.03, 0], ['--mkw-l-head', 0.095, 0], ['--mkw-l-strip', 0.066, 0], ['--mkw-l-surface2', 0.081, 0],
+    ['--mkw-l-sunken', 0.075, 0.007], ['--mkw-l-line', 0.163, 0.053], ['--mkw-l-line2', 0.249, 0.09], ['--mkw-l-page', 0.073, 0],
+    ['--mkw-l-dots', 0.788, 0.253, 'rgb'], ['--mkw-l-shadow', 1.241, 0.763, 'rgb'],
+  ];
+  const ACC_TINT_VARS = ACC_TINT.map((t) => t[0]);
+  function accTint(b, a, d) { return b.map((v) => { const x = 255 + (v - 255) * a; return Math.round((x < 0 ? 0 : x > 255 ? 255 : x) * (1 - d)); }); }
+  
+  const ACC_DEF_PAIR = [[255, 119, 184], [255, 182, 214]];
+  const WHITE3 = [255, 255, 255], BLACK3 = [0, 0, 0];
+  const BG_L0 = [255, 251, 253], BG_D = [24, 24, 28]; 
+  const ON_ACC = ['#1b1020', '#ffffff', '#000000']; 
+  
+  function accMix(rgb, to, t) { return [0, 1, 2].map((i) => { const n = Math.round(rgb[i] + (to[i] - rgb[i]) * t); return n < 0 ? 0 : n > 255 ? 255 : n; }); }
+  const accStr = (a) => a[0] + ',' + a[1] + ',' + a[2];
+  
+  function accText(a3, a2, bgL) {
+    
+    const l = MKW.adaptColor(rgbHex(a3.map((v) => Math.round(v * 0.72))), 'light', rgbHex(bgL), 4.5);
+    
+    const d = MKW.adaptColor(rgbHex(a2), 'dark', rgbHex(BG_D), 4.5);
+    
+    const on = (bg) => {
+      const m = [0, 1, 2].map((i) => Math.round((a3[i] * 0.92 + a2[i] * 0.88) / 2 + bg[i] * 0.1));
+      const cr = (h) => ratio(hexRgb(h), m);
+      return ON_ACC.find((h) => cr(h) >= 4.5) || ON_ACC.slice().sort((p, q) => cr(q) - cr(p))[0];
+    };
+    return { '--mkw-acc-text-l': l, '--mkw-acc-text-d': d, '--mkw-on-acc-l': on(bgL), '--mkw-on-acc-d': on(BG_D) };
+  }
+  
+  function accDerive(hex) {
+    const n = normHex(hex);
+    if (!n) return null;
+    const b = hexRgb(n);
+    const p2 = accMix(b, WHITE3, 0.45), pMid = accMix(b, WHITE3, 0.16), p1 = accMix(b, WHITE3, 0.66),
+      p0 = accMix(b, WHITE3, 0.70), pTxt = accMix(b, WHITE3, 0.79), pHot = accMix(b, BLACK3, 0.14);
+    const out = {
+      '--pink3': rgbHex(b), '--pink3rgb': accStr(b), '--pink2': rgbHex(p2), '--pink2rgb': accStr(p2),
+      '--pinkMid': rgbHex(pMid), '--pinkMidrgb': accStr(pMid), '--pink1': rgbHex(p1), '--pink0rgb': accStr(p0),
+      '--pinkTxt': rgbHex(pTxt), '--pinkHotrgb': accStr(pHot),
+    };
+    ACC_TINT.forEach((t) => { const c = accTint(b, t[1], t[2]); out[t[0]] = t[3] === 'rgb' ? accStr(c) : rgbHex(c); });
+    return Object.assign(out, accText(b, p2, accTint(b, ACC_TINT[0][1], ACC_TINT[0][2])));
+  }
+  const A = { cur: null, fns: [], follow: false, message: false, origins: ['https://magammm1009.github.io'] };
+  let accDefText = null;
+  
+  function accApply(hex, o, src) {
+    const root = o && isEl(o.root) ? o.root : doc.documentElement;
+    const top = root === doc.documentElement, s = root.style;
+    const d = accDerive(hex), n = d ? d['--pink3'] : null;
+    if (d) Object.keys(d).forEach((k) => s.setProperty(k, d[k]));
+    else ACC_PINK.concat(ACC_TINT_VARS).forEach((k) => s.removeProperty(k));
+    if (!top) {
+      if (d) { s.setProperty('--acc3rgb', d['--pink3rgb']); s.setProperty('--acc2rgb', d['--pink2rgb']); }
+      else ['--acc3rgb', '--acc2rgb'].concat(ACC_TEXT).forEach((k) => s.removeProperty(k));
+      return n;
+    }
+    if (!d) {
+      if (!accDefText) accDefText = accText(ACC_DEF_PAIR[0], ACC_DEF_PAIR[1], BG_L0);
+      ACC_TEXT.forEach((k) => s.setProperty(k, accDefText[k]));
+    }
+    const prev = A.cur;
+    A.cur = n;
+    if (prev !== n) A.fns.slice().forEach((f) => { try { f(n, src || 'apply'); } catch (x) { console.error(x); } });
+    return n;
+  }
+  const accLoad = () => normHex(lsGet(ACC_KEY));
+  function accSave(hex) { const n = normHex(hex); if (n) lsSet(ACC_KEY, n); return n; }
+  
+  function onAccStorage(e) { if (e.key === ACC_KEY || e.key === null) accApply(accLoad(), null, 'storage'); }
+  
+  function onAccMessage(e) {
+    const m = e.data;
+    if (!m || typeof m !== 'object' || m.type !== 'mk:accent' || A.origins.indexOf(e.origin) < 0) return;
+    if (EMB.on && e.source !== window.parent) return;
+    if (m.hex == null || m.hex === '') { lsDel(ACC_KEY); accApply(null, null, 'message'); return; }
+    const n = accSave(m.hex);
+    if (n) accApply(n, null, 'message');
+  }
+  MKW.accent = {
+    KEY: ACC_KEY,
+    DEFAULT: ACC_DEF,
+    PRESETS: ACC_PRESETS.map((p) => Object.assign({}, p)),
+    derive: accDerive,
+    apply: (hex, o) => accApply(hex, o, 'apply'),
+    load: accLoad,
+    save: accSave,
+    clear: () => lsDel(ACC_KEY),
+    current: () => A.cur,
+    
+    set(hex) {
+      if (hex == null || hex === '') { lsDel(ACC_KEY); return accApply(null, null, 'set'); }
+      const n = accSave(hex);
+      return n ? accApply(n, null, 'set') : A.cur;
+    },
+    
+    init(o) {
+      o = o || {};
+      if (Array.isArray(o.origins)) A.origins = o.origins.filter((x) => typeof x === 'string');
+      let hex = accLoad(), src = 'init';
+      const pn = o.param === undefined ? 'accent' : o.param;
+      if (pn) {
+        let pv = null;
+        try { pv = new URLSearchParams(window.location.search).get(String(pn)); } catch (x) {  }
+        const n = accSave(pv);
+        if (n) { hex = n; src = 'param'; }
+      }
+      accApply(hex, null, src);
+      const follow = o.follow !== false, msg = o.message !== false;
+      if (follow !== A.follow) { window[follow ? 'addEventListener' : 'removeEventListener']('storage', onAccStorage); A.follow = follow; }
+      if (msg !== A.message) { window[msg ? 'addEventListener' : 'removeEventListener']('message', onAccMessage); A.message = msg; }
+      return MKW.accent;
+    },
+    
+    onChange(fn) {
+      if (typeof fn !== 'function') return () => {};
+      A.fns.push(fn);
+      return () => { const i = A.fns.indexOf(fn); if (i >= 0) A.fns.splice(i, 1); };
+    },
+  };
+  
+  const PICKS = new WeakMap();
+  MKW.accent.picker = function (el, o) {
+    if (!isEl(el)) return null;
+    o = o || {};
+    const old = PICKS.get(el);
+    if (old) { if (o.onChange) old.o.onChange = o.onChange; old.paint(); return old.api; }
+    MKW.injectIcons();
+    const self = { o };
+    el.classList.add('mkw-accentpick');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'group');
+    if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', '포인트 색');
+    el.innerHTML = ACC_PRESETS.map((p) => '<button type="button" class="mkw-accentpick-sw" data-hex="' + p.hex + '" title="' + p.name + '" aria-label="' + p.name + '" aria-pressed="false" style="background:' + p.hex + '"></button>').join('') +
+      '<label class="mkw-accentpick-custom" title="직접 고르기"><input type="color" value="' + ACC_DEF + '" aria-label="포인트 색 직접 고르기"><span class="mkw-accentpick-ic">' + MKW.ic('palette') + '</span></label>' +
+      '<button type="button" class="mkw-btn is-pill is-sm mkw-accentpick-reset" title="기본 핑크로 되돌리기">' + MKW.ic('reset') + '기본</button>';
+    const input = el.querySelector('input'), custom = input.parentElement;
+    self.paint = () => {
+      const cur = A.cur || ACC_DEF;
+      let hit = false;
+      el.querySelectorAll('.mkw-accentpick-sw').forEach((b) => { const on = b.getAttribute('data-hex') === cur; if (on) hit = true; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      custom.classList.toggle('is-on', !hit);
+      if (input.value.toLowerCase() !== cur) input.value = cur;
+    };
+    const pick = (hex) => { const n = MKW.accent.set(hex); if (typeof self.o.onChange === 'function') self.o.onChange(n); };
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest ? e.target.closest('button') : null;
+      if (!b || !el.contains(b)) return;
+      if (b.classList.contains('mkw-accentpick-sw')) pick(b.getAttribute('data-hex'));
+      else if (b.classList.contains('mkw-accentpick-reset')) pick(null);
+    });
+    input.addEventListener('input', () => pick(input.value));
+    let off = MKW.accent.onChange(self.paint);
+    self.paint();
+    self.api = {
+      get: () => A.cur,
+      set: (hex) => MKW.accent.set(hex),
+      destroy() { if (off) { off(); off = null; } PICKS.delete(el); },
+    };
+    PICKS.set(el, self);
+    return self.api;
+  };
+
+const EMB_PARENT = 'https://magammm1009.github.io';                                   
+  const EMB_CHILDREN = ['https://mkm-pp-mm00.web.app', 'https://magammm1009.github.io']; 
+  const isMsg = (d) => !!d && typeof d === 'object' && typeof d.type === 'string';
+  const ST_KEYS = { title: 's', sub: 's', time: 's', phase: 's', unread: 'n', playing: 'b' };
+  
+  function stClean(o) {
+    const r = {};
+    if (!o || typeof o !== 'object') return r;
+    Object.keys(ST_KEYS).forEach((k) => {
+      const v = o[k], t = ST_KEYS[k];
+      if (v == null || v === '') return;
+      r[k] = t === 's' ? String(v).slice(0, 80) : t === 'n' ? Math.max(0, Math.min(99999, Math.floor(+v || 0))) : !!v;
+    });
+    return r;
+  }
+
+const EMB = { on: false, app: '', parent: EMB_PARENT, handle: '.mkw-head', fns: {}, st: null, stPend: null, stAt: 0, stTm: null, people: undefined, drag: null, lastTap: 0, lastXY: null };
+  let embActive = false;
+  try { embActive = new URLSearchParams(window.location.search).get('embed') === '1' && window.top !== window.self; } catch (x) { embActive = false; }
+  function embSend(type, data) {
+    if (!EMB.on) return false;
+    try { window.parent.postMessage(Object.assign({}, data || {}, { type, v: 1 }), EMB.parent); return true; } catch (x) { return false; }
+  }
+  function embFlush() {
+    EMB.stTm = null;
+    if (!EMB.stPend) return;
+    const s = EMB.stPend;
+    EMB.stPend = null; EMB.st = JSON.stringify(s); EMB.stAt = Date.now();
+    embSend('mkw:status', s);
+  }
+  
+  function embDown(e) {
+    if (!EMB.on || e.button !== 0 || EMB.drag) return;
+    const t = e.target, hd = t && t.closest ? t.closest(EMB.handle) : null;
+    if (!hd || t.closest(NODRAG)) return;
+    EMB.drag = { id: e.pointerId, el: hd, sx: e.screenX, sy: e.screenY, dx: 0, dy: 0, moved: false };
+    try { hd.setPointerCapture(e.pointerId); } catch (x) {  }
+    hd.addEventListener('pointermove', embMove);
+    hd.addEventListener('pointerup', embUp);
+    hd.addEventListener('pointercancel', embUp);
+    hd.addEventListener('lostpointercapture', embUp);
+    e.preventDefault();
+  }
+  function embMove(e) {
+    const d = EMB.drag;
+    if (!d || e.pointerId !== d.id) return;
+    d.dx = e.screenX - d.sx; d.dy = e.screenY - d.sy;
+    if (!d.moved) {
+      if (Math.abs(d.dx) + Math.abs(d.dy) < 4) return;
+      d.moved = true; d.el.classList.add('is-dragging');
+      embSend('mkw:drag', { phase: 'start', dx: 0, dy: 0 });
+    }
+    embSend('mkw:drag', { phase: 'move', dx: d.dx, dy: d.dy });
+  }
+  function embUp(e) {
+    const d = EMB.drag;
+    if (!d || (e.pointerId !== undefined && e.pointerId !== d.id)) return;
+    EMB.drag = null;
+    const h = d.el;
+    h.removeEventListener('pointermove', embMove); h.removeEventListener('pointerup', embUp);
+    h.removeEventListener('pointercancel', embUp); h.removeEventListener('lostpointercapture', embUp);
+    h.classList.remove('is-dragging');
+    try { if (h.hasPointerCapture && h.hasPointerCapture(d.id)) h.releasePointerCapture(d.id); } catch (x) {  }
+    if (d.moved) {
+      if (e.type === 'pointerup') { d.dx = e.screenX - d.sx; d.dy = e.screenY - d.sy; }
+      embSend('mkw:drag', { phase: 'end', dx: d.dx, dy: d.dy });
+      EMB.lastTap = 0;
+      return;
+    }
+    if (e.type !== 'pointerup') return;
+    const now = Date.now();
+    if (now - EMB.lastTap < 400 && EMB.lastXY && Math.abs(e.screenX - EMB.lastXY[0]) < 12 && Math.abs(e.screenY - EMB.lastXY[1]) < 12) { EMB.lastTap = 0; embSend('mkw:toggleBig'); }
+    else { EMB.lastTap = now; EMB.lastXY = [e.screenX, e.screenY]; }
+  }
+  
+  function embMsg(e) {
+    if (!EMB.on || e.source !== window.parent || e.origin !== EMB.parent) return;
+    const m = e.data;
+    if (!isMsg(m) || (m.v !== 1 && m.type !== 'mk:accent')) return;
+    if (m.type === 'mkw:visibility' && m.state !== 'open' && m.state !== 'minimized') return;
+    (EMB.fns[m.type] || []).slice().forEach((f) => { try { f(Object.assign({}, m)); } catch (x) { console.error(x); } });
+  }
+  MKW.embed = {
+    get active() { return embActive; },
+    
+    init(o) {
+      if (!embActive) return MKW.embed;
+      o = o || {};
+      EMB.app = String(o.app || '').slice(0, 20);
+      if (typeof o.parentOrigin === 'string' && o.parentOrigin) EMB.parent = o.parentOrigin;
+      if (typeof o.dragHandle === 'string' && o.dragHandle) EMB.handle = o.dragHandle;
+      doc.documentElement.classList.add('mkw-embedded');
+      if (!EMB.on) { EMB.on = true; doc.addEventListener('pointerdown', embDown); window.addEventListener('message', embMsg); }
+      embSend('mkw:ready', { app: EMB.app });
+      return MKW.embed;
+    },
+    minimize: () => embSend('mkw:minimize'),
+    close: () => embSend('mkw:close'),
+    
+    status(o) {
+      if (!EMB.on) return false;
+      const s = stClean(o), j = JSON.stringify(s);
+      if (j === EMB.st) { EMB.stPend = null; if (EMB.stTm) { clearTimeout(EMB.stTm); EMB.stTm = null; } return false; }
+      EMB.stPend = s;
+      const wait = EMB.stAt + 1000 - Date.now();
+      if (wait <= 0) embFlush(); else if (!EMB.stTm) EMB.stTm = setTimeout(embFlush, wait);
+      return true;
+    },
+    
+    count(n) {
+      if (!EMB.on) return false;
+      const v = Math.max(0, Math.floor(+n || 0));
+      if (v === EMB.people) return false;
+      EMB.people = v;
+      return embSend('mkw:count', { people: v });
+    },
+    
+    on(type, fn) {
+      if (!embActive || typeof type !== 'string' || typeof fn !== 'function') return () => {};
+      (EMB.fns[type] = EMB.fns[type] || []).push(fn);
+      return () => { const a = EMB.fns[type] || [], i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); };
+    },
+  };
+
+const H = { origins: EMB_CHILDREN.slice(), zBase: 10141, zo: [], theme: 'dark', sheetAt: 760, readyWaitMs: 8000, loadWaitMs: 3000, wins: new Map(), accent: undefined, bound: false, mq: null };
+  function hostOf(src) { let f = null; H.wins.forEach((h) => { if (!f && src && h.iframe.contentWindow === src) f = h; }); return f; }
+  function hostByFrame(el) { let f = null; H.wins.forEach((h) => { if (!f && el && h.iframe === el) f = h; }); return f; }
+  function hostPost(h, type, data) {
+    if (!h.ready || !h.iframe.contentWindow) return false;
+    try { h.iframe.contentWindow.postMessage(Object.assign({}, data || {}, { type, v: 1 }), h.origin); return true; } catch (x) { return false; }
+  }
+  function hostInfo(h) {
+    return { id: h.id, el: h.el, iframe: h.iframe, pill: h.pill, app: h.app, title: h.title, origin: h.origin, state: h.state, ready: h.ready, failed: h.failed,
+      status: Object.assign({}, h.status), people: h.people, mode: h.el.classList.contains('mkw--sheet') ? 'sheet' : 'float', rect: h.float ? h.float.get() : null };
+  }
+  
+  function zPaint() { H.zo.forEach((el, i) => { const v = String(H.zBase + i); if (el.style.zIndex !== v) el.style.zIndex = v; }); }
+  function zTop(el) {
+    const i = H.zo.indexOf(el);
+    if (i >= 0 && i === H.zo.length - 1) return; 
+    if (i >= 0) H.zo.splice(i, 1);
+    H.zo.push(el);
+    zPaint();
+  }
+  function hostFront(h) { zTop(h.el); }
+  let watchTm = null, watchAE = null;
+  function hostWatch() {
+    const ae = doc.activeElement;
+    if (ae === watchAE) return;
+    watchAE = ae;
+    const h = hostByFrame(ae);
+    if (h && h.state === 'open') hostFront(h);
+  }
+  function hostWatchSync() {
+    const need = H.wins.size >= 2;
+    if (need && !watchTm) watchTm = setInterval(hostWatch, 200);
+    else if (!need && watchTm) { clearInterval(watchTm); watchTm = null; }
+  }
+  function hostMode(h) {
+    if (H.mq && H.mq.matches) {
+      if (h.float) { h.last = h.float.get(); h.float.destroy(); h.float = null; }
+      h.el.classList.remove('mkw--float', 'is-dragging', 'is-resizing', 'is-big');
+      h.el.classList.add('mkw--sheet');
+      ['left', 'top', 'width', 'height'].forEach((p) => h.el.style.removeProperty(p));
+      return;
+    }
+    h.el.classList.remove('mkw--sheet');
+    if (h.float) return;
+    if (h.last) ['x:left', 'y:top', 'w:width', 'h:height'].forEach((p) => { const k = p.split(':'); h.el.style[k[1]] = h.last[k[0]] + 'px'; });
+    
+    h.float = MKW.float(h.el, { key: h.key, min: h.min, handle: '.mkw-hostwin-fail' });
+  }
+  function hostPillPlace(h, x, y) {
+    const p = h.pill, de = doc.documentElement;
+    p.style.left = Math.round(clamp(x, 8, de.clientWidth - p.offsetWidth - 8)) + 'px';
+    p.style.top = Math.round(clamp(y, 8, de.clientHeight - p.offsetHeight - 8)) + 'px';
+  }
+  function hostPillPaint(h) {
+    const p = h.pill;
+    if (!p) return;
+    const s = h.status || {}, title = s.title || h.title, n = s.unread || 0;
+    p.setAttribute('data-app', h.app || '');
+    p.querySelector('.mkw-app').innerHTML = MKW.ic(has(ICONS, h.app) ? h.app : 'layers');
+    p.querySelector('.mkw-pill-t').textContent = s.time || title;
+    const sub = p.querySelector('.mkw-hostpill-sub'), subTx = s.time ? s.phase || title : s.phase || s.sub || '';
+    sub.textContent = subTx; sub.hidden = !subTx;
+    const badge = p.querySelector('.mkw-pill-badge');
+    badge.hidden = !n; badge.lastChild.textContent = n > 99 ? '99+' : String(n);
+    p.querySelector('.mkw-hostpill-play').hidden = !s.playing;
+    p.setAttribute('aria-label', title + ' 창 펼치기' + (s.time ? ' · ' + s.time : '') + (s.phase ? ' ' + s.phase : '') + (n ? ' · 새 메시지 ' + n + '개' : '') + (s.playing ? ' · 음악 재생 중' : ''));
+  }
+  
+  function hostPillMake(h) {
+    const p = mk('div', 'mkw-pill mkw-hostpill');
+    p.setAttribute('role', 'button'); p.tabIndex = 0; p.setAttribute('data-theme', h.theme); p.setAttribute('data-embed-id', h.id);
+    p.innerHTML = '<span class="mkw-app"></span><span class="mkw-pill-t"></span><span class="mkw-hostpill-sub"></span>' +
+      '<span class="mkw-pill-badge">' + MKW.ic('cmt') + '<span></span></span><span class="mkw-hostpill-play">' + MKW.ic('music') + '</span>';
+    let pd = null;
+    p.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || pd) return;
+      pd = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: parseFloat(p.style.left) || 0, y: parseFloat(p.style.top) || 0, moved: false };
+      try { p.setPointerCapture(e.pointerId); } catch (x) {  }
+    });
+    p.addEventListener('pointermove', (e) => {
+      if (!pd || e.pointerId !== pd.id) return;
+      const dx = e.clientX - pd.sx, dy = e.clientY - pd.sy;
+      if (!pd.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      pd.moved = true; p.classList.add('is-dragging');
+      hostPillPlace(h, pd.x + dx, pd.y + dy);
+    });
+    const up = (e) => {
+      if (!pd || (e.pointerId !== undefined && e.pointerId !== pd.id)) return;
+      const d = pd;
+      pd = null; p.classList.remove('is-dragging');
+      if (d.moved) { h.pillXY = { x: parseFloat(p.style.left), y: parseFloat(p.style.top) }; return; }
+      if (e.type === 'pointerup') hostRestore(h);
+    };
+    p.addEventListener('pointerup', up);
+    p.addEventListener('pointercancel', up);
+    p.addEventListener('lostpointercapture', up);
+    p.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.isComposing) { e.preventDefault(); hostRestore(h); } });
+    doc.body.appendChild(p);
+    return p;
+  }
+  
+  function hostMinimize(h) {
+    if (h.state !== 'open') return false;
+    const hadFocus = doc.activeElement === h.iframe;
+    h.state = 'minimized';
+    h.el.classList.add('is-min');
+    if (!h.pill) h.pill = hostPillMake(h);
+    hostPillPaint(h);
+    h.pill.hidden = false;
+    zTop(h.pill);
+    const r = h.float ? h.float.get() : null, de = doc.documentElement;
+    const at = h.pillXY || (r ? { x: r.x, y: r.y } : { x: de.clientWidth - h.pill.offsetWidth - 16, y: de.clientHeight - h.pill.offsetHeight - 16 });
+    hostPillPlace(h, at.x, at.y);
+    hostPost(h, 'mkw:visibility', { state: 'minimized' });
+    if (hadFocus) h.pill.focus({ preventScroll: true });
+    return true;
+  }
+  function hostRestore(h) {
+    if (h.state !== 'minimized') return false;
+    h.state = 'open';
+    h.el.classList.remove('is-min');
+    if (h.pill) h.pill.hidden = true;
+    hostFront(h);
+    if (h.float) h.float.refresh();
+    hostPost(h, 'mkw:visibility', { state: 'open' });
+    hostPost(h, 'mkw:focus');
+    
+    try { h.iframe.contentWindow.focus(); } catch (x) {  }
+    return true;
+  }
+  function hostClose(h) {
+    if (h.state === 'closed') return false;
+    h.state = 'closed';
+    H.wins.delete(h.id);
+    hostWatchSync();
+    clearTimeout(h.readyTm); clearTimeout(h.loadTm); h.readyTm = h.loadTm = null;
+    H.zo = H.zo.filter((x) => x !== h.el && x !== h.pill);
+    zPaint();
+    if (h.float) { h.float.destroy(); h.float = null; }
+    h.iframe.remove(); h.el.remove();
+    if (h.pill) h.pill.remove();
+    if (typeof h.onClose === 'function') { try { h.onClose(hostInfo(h)); } catch (x) { console.error(x); } }
+    return true;
+  }
+  
+  function hostFail(h, on) {
+    if (h.state === 'closed' || h.failed === on) return;
+    h.failed = on;
+    let b = h.fail;
+    if (!b) {
+      b = h.fail = mk('div', 'mkw-hostwin-fail');
+      b.setAttribute('role', 'alert');
+      b.innerHTML = '<span class="mkw-app"></span><span class="mkw-hostwin-fail-t"></span><span class="mkw-btns">' +
+        '<button type="button" class="mkw-btn is-pill is-sm" data-act="reload">' + MKW.ic('reset') + '다시 불러오기</button>' +
+        '<button type="button" class="mkw-btn is-pill is-sm" data-act="close">' + MKW.ic('close') + '닫기</button></span>';
+      b.addEventListener('click', (e) => {
+        const t = e.target.closest ? e.target.closest('button[data-act]') : null;
+        if (!t) return;
+        if (t.getAttribute('data-act') === 'close') hostClose(h);
+        else h.iframe.src = h.src; 
+      });
+      h.el.insertBefore(b, h.el.firstChild);
+    }
+    if (on) {
+      b.querySelector('.mkw-app').innerHTML = MKW.ic(has(ICONS, h.app) ? h.app : 'layers');
+      b.querySelector('.mkw-hostwin-fail-t').textContent = h.title + ' 창을 불러오지 못했어요';
+    }
+    b.hidden = !on;
+  }
+  
+  function hostLoad(h) {
+    if (h.state === 'closed') return;
+    const seq = h.readySeq, fresh = seq !== h.loadSeq;
+    h.loadSeq = seq;
+    clearTimeout(h.loadTm); h.loadTm = null;
+    if (!fresh) h.loadTm = setTimeout(() => { h.loadTm = null; if (h.readySeq === seq) hostFail(h, true); }, H.loadWaitMs);
+  }
+  const lim = (v) => { v = +v; return isFinite(v) ? Math.max(-100000, Math.min(100000, v)) : 0; };
+  
+  function hostMsg(e) {
+    const h = hostOf(e.source);
+    if (!h || e.origin !== h.origin) return;
+    const m = e.data;
+    if (!isMsg(m) || m.v !== 1 || m.type.indexOf('mkw:') !== 0) return;
+    const sheet = h.el.classList.contains('mkw--sheet');
+    switch (m.type) {
+      case 'mkw:ready':
+        h.ready = true; h.readySeq++;
+        clearTimeout(h.readyTm); clearTimeout(h.loadTm); h.readyTm = h.loadTm = null;
+        hostFail(h, false);
+        if (typeof m.app === 'string' && /^[a-z][a-z0-9-]{0,19}$/.test(m.app)) { h.app = m.app; h.el.setAttribute('data-app', m.app); }
+        if (H.accent !== undefined) hostPost(h, 'mk:accent', { hex: H.accent });
+        if (h.state === 'minimized') hostPost(h, 'mkw:visibility', { state: 'minimized' });
+        break;
+      case 'mkw:drag':
+        if (sheet || h.state !== 'open' || !h.float || ['start', 'move', 'end'].indexOf(m.phase) < 0) return;
+        if (m.phase === 'start') hostFront(h);
+        h.float.drag(m.phase, lim(m.dx), lim(m.dy));
+        return; 
+      case 'mkw:toggleBig':
+        if (sheet || h.state !== 'open' || !h.float) return;
+        h.float.toggleBig(); hostFront(h);
+        break;
+      case 'mkw:minimize': hostMinimize(h); break;
+      case 'mkw:close': hostClose(h); break;
+      case 'mkw:status': h.status = stClean(m); hostPillPaint(h); break;
+      case 'mkw:count': { const n = Math.floor(+m.people); if (!(n >= 0)) return; h.people = Math.min(n, 99999); break; }
+      default: return;
+    }
+    if (typeof h.onMessage === 'function') { try { h.onMessage(Object.assign({}, m), hostInfo(h)); } catch (x) { console.error(x); } }
+  }
+  function hostBind() {
+    if (H.bound) return;
+    H.bound = true;
+    window.addEventListener('message', hostMsg);
+    if (window.matchMedia) {
+      H.mq = window.matchMedia('(max-width:' + H.sheetAt + 'px)');
+      const f = () => H.wins.forEach(hostMode);
+      if (H.mq.addEventListener) H.mq.addEventListener('change', f); else if (H.mq.addListener) H.mq.addListener(f);
+    }
+    
+    doc.addEventListener('focusin', (e) => { const h = hostByFrame(e.target); if (h) hostFront(h); });
+    window.addEventListener('blur', () => setTimeout(hostWatch, 0));
+    window.addEventListener('resize', () => H.wins.forEach((h) => { if (h.pill && !h.pill.hidden) hostPillPlace(h, parseFloat(h.pill.style.left) || 0, parseFloat(h.pill.style.top) || 0); }));
+  }
+  MKW.embedHost = {
+    
+    init(o) {
+      o = o || {};
+      if (Array.isArray(o.origins)) H.origins = o.origins.filter((x) => typeof x === 'string' && x);
+      if (+o.zBase > 0) { H.zBase = +o.zBase; zPaint(); }
+      if (o.theme === 'light' || o.theme === 'dark') H.theme = o.theme;
+      if (+o.sheetAt > 0 && !H.bound) H.sheetAt = +o.sheetAt;
+      if (+o.readyWaitMs > 0) H.readyWaitMs = +o.readyWaitMs;
+      if (+o.loadWaitMs > 0) H.loadWaitMs = +o.loadWaitMs;
+      return MKW.embedHost;
+    },
+    
+    open(o) {
+      o = o || {};
+      const id = String(o.id || '');
+      if (!id || !doc.body) return null;
+      const old = H.wins.get(id);
+      if (old) { if (old.state === 'minimized') hostRestore(old); else hostFront(old); return hostInfo(old); }
+      const origin = String(o.childOrigin || '');
+      if (H.origins.indexOf(origin) < 0) { console.warn('[mkw] embedHost: 허용 목록에 없는 자식 오리진 — ' + origin); return null; }
+      let url = null;
+      try { url = new URL(String(o.src || ''), window.location.href); } catch (x) { url = null; }
+      if (!url || url.origin !== origin) { console.warn('[mkw] embedHost: src 오리진이 childOrigin과 다르다'); return null; }
+      url.searchParams.set('embed', '1');
+      hostBind();
+      MKW.injectIcons();
+      const title = String(o.title || id);
+      const el = mk('div', 'mkw mkw-hostwin');
+      el.setAttribute('data-theme', o.theme === 'light' || o.theme === 'dark' ? o.theme : H.theme);
+      el.setAttribute('role', 'region'); el.setAttribute('aria-label', title); el.setAttribute('data-embed-id', id);
+      if (o.app) el.setAttribute('data-app', String(o.app));
+      const fr = mk('iframe', 'mkw-hostwin-frame');
+      fr.title = title;
+      fr.setAttribute('allow', 'autoplay; clipboard-write');
+      fr.src = url.href;
+      el.appendChild(fr);
+      const r = o.rect;
+      if (r && typeof r === 'object') ['x:left', 'y:top', 'w:width', 'h:height'].forEach((p) => { const k = p.split(':'); if (isFinite(+r[k[0]]) && r[k[0]] != null) el.style[k[1]] = +r[k[0]] + 'px'; });
+      doc.body.appendChild(el);
+      const h = { id, el, iframe: fr, origin, src: url.href, title, theme: el.getAttribute('data-theme'), app: o.app ? String(o.app) : '', key: o.key || null,
+        min: Array.isArray(o.min) ? o.min : [360, 480], onMessage: o.onMessage, onClose: o.onClose,
+        state: 'open', ready: false, failed: false, fail: null, readySeq: 0, loadSeq: 0, readyTm: null, loadTm: null,
+        status: {}, people: null, float: null, pill: null, pillXY: null, last: null };
+      H.wins.set(id, h);
+      hostWatchSync();
+      el.addEventListener('pointerdown', () => hostFront(h), true);
+      
+      fr.addEventListener('load', () => hostLoad(h));
+      h.readyTm = setTimeout(() => { h.readyTm = null; if (!h.readySeq) hostFail(h, true); }, H.readyWaitMs);
+      hostMode(h);
+      hostFront(h);
+      return hostInfo(h);
+    },
+    close(id) { const h = H.wins.get(String(id)); return h ? hostClose(h) : false; },
+    get(id) { const h = H.wins.get(String(id)); return h ? hostInfo(h) : null; },
+    minimize(id) { const h = H.wins.get(String(id)); return h ? hostMinimize(h) : false; },
+    restore(id) { const h = H.wins.get(String(id)); return h ? hostRestore(h) : false; },
+    
+    setAccent(hex) {
+      const n = hex == null || hex === '' ? null : normHex(hex);
+      if (hex != null && hex !== '' && !n) return 0;
+      H.accent = n;
+      let k = 0;
+      H.wins.forEach((h) => { if (hostPost(h, 'mk:accent', { hex: n })) k++; });
+      return k;
+    },
+  };
+
+  window.MKW = MKW;
 })();
 </script>
 <style>
@@ -12792,6 +14751,39 @@ if(!registeredUid || registeredUid !== uid){
       }
     }
 
+const MK_APP_WIN_ON_ = true;   
+    const MK_APP_WIN_ = {
+      pomo: { title: "뽀모", origin: "https://mkm-pp-mm00.web.app",   key: "mk_pomo_host_v1" },
+      suda: { title: "수다", origin: "https://magammm1009.github.io", key: "mk_suda_host_v1" }
+    };
+    function mkAppWinOpen_(app){   
+      if(!(window.MKW && MKW.embedHost && MKW.embedHost.get(app))) return false;   
+      MKW.embedHost.open({ id: app });   
+      return true;
+    }
+    function mkAppWinRect_(app){   
+      
+      const W = window.innerWidth || 1280, H = window.innerHeight || 800, w = 420, gap = 24;
+      const h = Math.max(480, Math.min(720, H - 120));
+      const x = (app === "pomo") ? (W - w - gap) : (W - 2*w - 2*gap);
+      return { x: Math.max(gap, x), y: Math.max(72, H - h - gap), w, h };
+    }
+    function mkOpenAppWin_(app, src){   
+      if(!MK_APP_WIN_ON_ || !window.MKW || !MKW.embedHost) return null;
+      const c = MK_APP_WIN_[app];
+      if(!c) return null;
+      try{
+        if(!mkOpenAppWin_.inited){ MKW.embedHost.init({ theme: "dark", zBase: 10141 }); mkOpenAppWin_.inited = true; }
+        const info = MKW.embedHost.open({ id: app, app, title: c.title, childOrigin: c.origin, src, key: c.key, rect: mkAppWinRect_(app) });
+        if(!info) console.warn("[V286_APPWIN] 창을 열지 못해 예전 길로 갑니다:", app);
+        return info;
+      }catch(e){
+        console.warn("[V286_APPWIN] 창 열기 예외 — 예전 길로 갑니다:", app, e);
+        return null;
+      }
+    }
+    try{ window.__MK_APPWIN__ = { open: mkOpenAppWin_, get: (id)=> (window.MKW && MKW.embedHost) ? MKW.embedHost.get(id) : null }; }catch(_e){}   
+
 async function openSudaWithTicket(baseUrl){
       if(!state.joined){ showToast("입장하고 눌러줘! 💗"); return; }
       if(!baseUrl){ showToast("설정된 수다 링크가 없어! (☰에서 저장)"); return; }
@@ -12802,6 +14794,8 @@ async function openSudaWithTicket(baseUrl){
         showToast("수다 링크가 허용된 주소가 아니라 열지 않았어요 (☰ 관리자 설정 확인)", 3200);
         return;
       }
+      
+      if(MK_APP_WIN_ON_ && mkAppWinOpen_("suda")) return;
 
 const withTimeout = (p, ms, label) => Promise.race([
         p,
@@ -12873,7 +14867,7 @@ const u = new URL(safeBase);
         u.searchParams.set("ticket", tid);
         u.searchParams.set("back", location.href);
 
-openSudaModal_(u.toString());
+mkOpenAppWin_("suda", u.toString()) || openSudaModal_(u.toString());
       }catch(err){
         console.error("openSudaWithTicket failed:", err);
         const msg = (err && err.message) ? err.message : String(err);
@@ -12938,6 +14932,8 @@ async function __pomoTicketSweep_(maxDeletes = 5){
         showToast("뽀모 링크가 허용된 주소가 아니라 열지 않았어요 (☰ 관리자 설정 확인)", 3200);
         return;
       }
+      
+      if(MK_APP_WIN_ON_ && mkAppWinOpen_("pomo")) return;
 
       const withTimeout = (p, ms, label) => Promise.race([
         p,
@@ -12945,7 +14941,7 @@ async function __pomoTicketSweep_(maxDeletes = 5){
       ]);
 
 let win = null;
-      try{ win = window.open("", "_blank"); }catch(_e){ win = null; }
+      if(!MK_APP_WIN_ON_ || !(window.MKW && MKW.embedHost)){ try{ win = window.open("", "_blank"); }catch(_e){ win = null; } }
       if(win){
         try{ win.opener = null; }catch(_e){}
         try{
@@ -12991,8 +14987,12 @@ let win = null;
         const u = new URL(safeBase);   
         u.searchParams.set("ticket", tid);
         if(nick) u.searchParams.set("nick", nick);
+        
+        u.searchParams.set("accent", String((window.__MK_ACCENT__ && window.__MK_ACCENT__.load()) || "#ff77b8").replace(/^#/, ""));
 
 const target = u.toString();
+        
+        if(mkOpenAppWin_("pomo", target)){ __pomoTicketSweep_(5).catch(()=>{}); return; }
         if(win && !win.closed){
           win.location.replace(target);
         }else{
@@ -22458,6 +24458,8 @@ return out;
       updateDirectUnreadUI_();
       try{ hideModal(els.directComposeModal); hideModal(els.directInboxModal); }catch(e){}
       
+      try{ MKW.embedHost.close("pomo"); MKW.embedHost.close("suda"); }catch(_e){}
+      
       try{ if(els.directArrival){ directArrivalBlur_(); els.directArrival.classList.remove("show"); els.directArrival.setAttribute("aria-hidden","true"); } }catch(e){}
 
       setControlsEnabled(false);
@@ -26155,6 +28157,7 @@ if(els.emoji){
       function useColor(hex){
         if(!acc.apply(hex)) return;
         acc.save(hex);
+        try{ window.MKW && MKW.embedHost && MKW.embedHost.setAccent(hex); }catch(_e){}   
         syncUi();
       }
       try{
@@ -26168,6 +28171,7 @@ if(els.emoji){
         });
         if(resetBtn) resetBtn.addEventListener("click", ()=>{
           acc.reset(); acc.clear();
+          try{ window.MKW && MKW.embedHost && MKW.embedHost.setAccent(null); }catch(_e){}   
           input.value = "#ff77b8";
           syncUi();
           try{ showToast("기본 핑크로 돌아왔어요"); }catch(_e){}
@@ -29876,7 +31880,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17170; 
+const MK_APP_BUILD = 17171; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
