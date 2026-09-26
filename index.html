@@ -131,6 +131,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -8057,6 +8058,27 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 <button class="dragonBagBtn dgTip" id="dragonGrowTicket" type="button" disabled data-tip="레벨권 10장 → 내 드래곤 경험치 10,000 (코인 먹이와 같은 레벨업 · 랭킹은 레벨권 +10)">10장으로 성장</button>
 </div>
 <div class="dragonBagNote" id="dragonBagNote"></div>
+</div>
+
+<div class="dragonPetLink" id="dragonPetLink">
+<div class="dragonBagHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-screen"></use></svg>데스크톱 펫</b><span>윈도우 전용</span></div>
+<p class="dragonPetLinkLore">마감용 — 내 기운의 아기 드래곤이 바탕화면에서 할 일·디데이를 챙겨 줘요</p>
+<div class="dragonBagBtns">
+<button class="dragonBagBtn dragonPetLinkMain" id="dragonPetLinkOpen" type="button">데스크톱 펫 열기</button>
+</div>
+<p class="dragonPetLinkMiss" id="dragonPetLinkMiss" role="status" hidden>펫이 안 떴나요? 아직 설치 전이라면 <a href="./pet/MagamYong.exe" download>내려받기</a> — 받은 파일을 문서 폴더 같은 곳에 두고 더블클릭해 주세요</p>
+<details class="dragonPetLinkMore" id="dragonPetLinkMore">
+<summary>코드로 연결하기</summary>
+<div class="dragonPetLinkCodeRow" id="dragonPetLinkCodeRow" hidden>
+<input class="dragonPetLinkCode" id="dragonPetLinkCode" type="text" readonly value="" aria-label="연결 코드" spellcheck="false" autocomplete="off"/>
+<button class="dragonBagBtn" id="dragonPetLinkCopy" type="button">복사</button>
+</div>
+<p class="dragonPetLinkHint">마감용 설정 → 작업방 연결에 붙여 넣기</p>
+<div class="dragonBagBtns">
+<button class="dragonBagBtn" id="dragonPetLinkMake" type="button">연결 코드 만들기</button>
+<button class="dragonBagBtn" id="dragonPetLinkNew" type="button" hidden>새 코드로 바꾸기</button>
+</div>
+</details>
 </div>
 <div class="dragonRank" id="dragonRank">
 <div class="dragonRankHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-trophy"></use></svg>종합 랭킹</b><span id="dragonRankWho">-</span></div>
@@ -29854,7 +29876,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17169; 
+const MK_APP_BUILD = 17170; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -34174,6 +34196,7 @@ if(raw===null) return null;
         dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:val});
         dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
         dragonSaveLocalCamp_(el);
+        petLinkKick_("camp");   
         dragonS3Runtime.viewEl=el;
         showToast(`${cfg.elements[el].emoji} ${cfg.elements[el].name}을 골랐어요!`,2800);
         renderDragonS3_();
@@ -36412,10 +36435,12 @@ function stopDragonRealtime_(){
       try{ closeViewMenu(); }catch(e){}
       showModal(modal);
       renderDragonS3_();
+      try{ petLinkOnModalOpen_(); }catch(e){}   
       subscribeDragonS3_();
       
       loadDragonConfigOnce_({force:true})
         .then(()=>loadDragonRosterOnce_())
+        .then(()=>{ petLinkKick_("modal"); })   
         .then(()=>{ try{ dragonReselectNag_(); }catch(e){} })   
         .then(()=>resolveDragonPerk_().catch(()=>{}))           
         .then(()=>loadDragonBagOnce_({force:true}))
@@ -36752,6 +36777,304 @@ function dragonDashInfo_(){
       }catch(e){ return null; }
     }
 
+const PETLINK_LOCAL_KEY = "mk_petlink_v1";                     
+    const PETLINK_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";   
+    const PETLINK_CODE_LEN = 20;
+    const PETLINK_CODE_RE = /^[0-9A-HJKMNP-TV-Z]{20}$/;            
+    const PETLINK_GUARD_MS = 8000;
+    const PETLINK_MISS_MS = 1800;                                  
+    const PETLINK_OPEN_MAX = 200;                                  
+    
+    const petRt = { uid:"", checked:0, code:"", lock:false, again:false, busy:false, miss:false, watch:null };
+
+    function petLinkCodeOk_(v){ return typeof v==="string" && PETLINK_CODE_RE.test(v); }
+    function petLinkNewCode_(){
+      const bytes=new Uint8Array(PETLINK_CODE_LEN);
+      crypto.getRandomValues(bytes);
+      let s="";
+      for(let i=0;i<bytes.length;i++) s+=PETLINK_ALPHABET.charAt(bytes[i]&31);
+      return s;
+    }
+    function petLinkDisplay_(code){ return petLinkCodeOk_(code)?("MKP-"+code.match(/.{5}/g).join("-")):""; }
+    function petLinkNow_(){
+      try{ if(typeof mkGraceNowMs_==="function"){ const n=Math.floor(Number(mkGraceNowMs_())); if(n>0) return n; } }catch(e){}
+      return Date.now();
+    }
+    
+    function petLinkCampOk_(v){ const c=(typeof v==="string")?v.trim():""; return (c.length<=20 && dragonKeyOk_(c))?c:""; }
+    function petLinkBase_(){ return rRoomBase(state.roomId); }
+    function petLinkLocal_(uid){
+      try{
+        const o=JSON.parse(localStorage.getItem(PETLINK_LOCAL_KEY)||"null");
+        if(uid && o && typeof o==="object" && String(o.uid||"")===uid) return {code:petLinkCodeOk_(o.code)?o.code:"",sent:(typeof o.sent==="string")?o.sent:""};
+      }catch(e){}
+      return null;
+    }
+    function petLinkSaveLocal_(uid,code,sent){ try{ localStorage.setItem(PETLINK_LOCAL_KEY,JSON.stringify({uid,code,sent})); }catch(e){} }
+    
+    function petLinkSent_(uid,code){ const loc=petLinkLocal_(uid); return (loc && code && loc.code===code)?loc.sent:""; }
+    function petLinkUid_(uid){
+      if(petRt.uid===uid) return;
+      petRt.uid=uid; petRt.checked=0; petRt.code=""; petRt.miss=false;   
+    }
+    function petLinkAdopt_(uid,code){
+      petRt.checked=2; petRt.code=code;
+      const loc=petLinkLocal_(uid);
+      if(code && (!loc || loc.code!==code)) petLinkSaveLocal_(uid,code,"");   
+    }
+    
+    function petLinkPayload_(uid){
+      const R=dragonS3Runtime;
+      let camp="", campSure=false;
+      if(R.membersFetchedAtMs>0 && R.members && typeof R.members==="object"){ camp=petLinkCampOk_(R.members[uid]?.camp); campSure=true; }
+      else{ try{ camp=petLinkCampOk_(localStorage.getItem(DRAGON_LOCAL_CAMP)); }catch(e){ camp=""; } }
+      const open=petLinkOpenList_();
+      return {camp,campSure,open,key:(open===null)?"":(camp+"|"+open)};
+    }
+    function petLinkOpenList_(){
+      const R=dragonS3Runtime;
+      const s=(R.summary && typeof R.summary==="object")?R.summary:null;
+      const a=s?s.active:null;
+      let keys=(a && typeof a==="object")?(Array.isArray(a)?a:Object.values(a)):null;
+      if(R.configFetchedAtMs>0){
+        const cAt=Math.max(0,Math.floor(Number(R.config?.updatedAtMs)||0));
+        const sAt=s?Math.max(0,Math.floor(Number(s.updatedAtMs)||0)):0;
+        if(!(keys && sAt>cAt)) keys=dragonActiveKeys_();
+      }
+      if(!keys) return null;
+      const out=[];
+      let len=0;
+      keys.forEach((raw)=>{
+        const k=String(raw||"");
+        if(!dragonKeyOk_(k) || out.indexOf(k)>=0) return;
+        const add=(out.length?1:0)+k.length;
+        if(len+add>PETLINK_OPEN_MAX) return;   
+        out.push(k); len+=add;
+      });
+      return out.join(",");
+    }
+    async function petLinkReadCode_(uid){
+      const snap=await readGuard_(rGet(rRef(rtdb,`${petLinkBase_()}/petLinkOf/${uid}`)),"펫 연결 확인",PETLINK_GUARD_MS);
+      const v=(snap && typeof snap.val==="function")?snap.val():null;
+      return petLinkCodeOk_(v)?v:"";
+    }
+    async function petLinkServerCamp_(uid){
+      const snap=await readGuard_(rGet(rDragonRef_(`members/${uid}/camp`)),"펫 연결 기운",PETLINK_GUARD_MS);
+      return petLinkCampOk_((snap && typeof snap.val==="function")?snap.val():"");
+    }
+    
+    async function petLinkPush_(uid,code){
+      const pay=petLinkPayload_(uid);
+      if(pay.open===null) return false;                              
+      const sent=petLinkSent_(uid,code);
+      if(pay.key===sent) return false;                               
+      let camp=pay.camp;
+      if(!pay.campSure){
+        camp=await petLinkServerCamp_(uid);
+        if(petRt.uid!==uid || petRt.code!==code) return false;
+        if(camp+"|"+pay.open===sent) return false;                    
+      }
+      const key=camp+"|"+pay.open;
+      const upd={};
+      upd[`${petLinkBase_()}/petLinks/${code}`]={v:1,camp,open:pay.open,t:petLinkNow_()};
+      await readGuard_(rUpdate(rRef(rtdb),upd),"펫 연결 갱신",PETLINK_GUARD_MS);
+      if(petRt.uid===uid && petRt.code===code) petLinkSaveLocal_(uid,code,key);
+      console.info("[V285_PETLINK] 펫 연결 갱신",key);
+      return true;
+    }
+    function petLinkUnlock_(){
+      petRt.lock=false;
+      petLinkRender_();
+      if(petRt.again){ petRt.again=false; petLinkKick_("again"); }   
+    }
+    function petLinkKick_(mode){ try{ petLinkSync_(mode).catch(()=>{}); }catch(e){} }
+    
+    async function petLinkSync_(mode){
+      const uid=String(state.uid||"");
+      if(!state.joined || !uid || !state.roomId) return false;
+      petLinkUid_(uid);
+      if(mode==="enter" && petRt.checked!==0) return false;          
+      if(petRt.checked===3){
+        if(mode!=="console") return false;                           
+        petRt.checked=0;
+      }
+      if(petRt.lock){ petRt.again=true; return false; }              
+      const boot=(mode==="enter" || mode==="modal" || mode==="console");
+      if(petRt.checked!==2 && !boot) return false;                   
+      if(petRt.checked===2 && !petRt.code) return false;             
+      petRt.lock=true;
+      try{
+        if(petRt.checked!==2){
+          petRt.checked=1;
+          let code="";
+          try{ code=await petLinkReadCode_(uid); }
+          catch(e){
+            if(petRt.uid===uid) petRt.checked=3;
+            console.info("[V285_PETLINK] 연결 확인 읽기 실패 — 이번 로드는 건너뛴다",String(e?.code||e?.message||e));
+            return false;
+          }
+          if(petRt.uid!==uid) return false;                          
+          petLinkAdopt_(uid,code);
+          if(!code) return false;
+        }
+        return await petLinkPush_(uid,petRt.code);
+      }catch(e){
+        console.warn("[V285_PETLINK] 자동 갱신 실패 —",mode,e);
+        return false;
+      }finally{ petLinkUnlock_(); }
+    }
+    
+    async function petLinkEnsure_(mode){
+      const uid=String(state.uid||"");
+      if(!state.joined || !uid || !state.roomId){ showToast("작업방 입장 후 연결할 수 있어요"); return ""; }
+      petLinkUid_(uid);
+      if(petRt.lock){ showToast("잠시만요 · 펫 연결을 확인하고 있어요",1800); return ""; }
+      petRt.lock=true; petRt.busy=true;
+      petLinkRender_();
+      let step="read";
+      try{
+        const cur=await petLinkReadCode_(uid);
+        if(petRt.uid!==uid) return "";
+        if(cur && mode!=="new"){
+          petLinkAdopt_(uid,cur);
+          petRt.again=true;                                          
+          return cur;
+        }
+        const pay=petLinkPayload_(uid);
+        let camp=pay.camp;
+        if(!pay.campSure){ step="camp"; camp=await petLinkServerCamp_(uid); if(petRt.uid!==uid) return ""; }
+        const open=(pay.open===null)?"":pay.open;
+        const code=petLinkNewCode_();
+        const base=petLinkBase_();
+        const upd={};
+        upd[`${base}/petLinkOf/${uid}`]=code;
+        upd[`${base}/petLinks/${code}`]={v:1,camp,open,t:petLinkNow_()};
+        if(cur) upd[`${base}/petLinks/${cur}`]=null;                
+        step="write";
+        await readGuard_(rUpdate(rRef(rtdb),upd),"펫 연결 코드 쓰기",PETLINK_GUARD_MS);
+        if(petRt.uid!==uid) return "";
+        petRt.checked=2; petRt.code=code;
+        petLinkSaveLocal_(uid,code,(pay.open===null)?"":(camp+"|"+open));
+        console.info("[V285_PETLINK] "+(cur?"새 코드로 교체":"연결 코드 발급"));
+        return code;
+      }catch(e){
+        console.warn("[V285_PETLINK] 연결 코드 "+(mode==="new"?"교체":"준비")+" 실패 —",step,e);
+        
+        if(step==="write" && petRt.uid===uid){ petRt.checked=0; petRt.code=""; }
+        showToast(mode==="new"?"새 코드로 바꾸지 못했어요 · 잠시 후 다시 시도해 주세요":"연결 코드를 준비하지 못했어요 · 잠시 후 다시 시도해 주세요",3000);
+        return "";
+      }finally{
+        petRt.busy=false;
+        petLinkUnlock_();
+      }
+    }
+    function petLinkUnwatch_(){
+      const w=petRt.watch;
+      if(!w) return;
+      petRt.watch=null;
+      try{ clearTimeout(w.timer); }catch(e){}
+      try{ window.removeEventListener("blur",w.onBlur); }catch(e){}
+      try{ document.removeEventListener("visibilitychange",w.onVis); }catch(e){}
+    }
+    
+    function petLinkLaunch_(code){
+      petLinkUnwatch_();
+      petRt.miss=false;
+      petLinkRender_();
+      const w={timer:0,onBlur:null,onVis:null};
+      w.onBlur=()=>{ if(petRt.watch===w) petLinkUnwatch_(); };
+      w.onVis=()=>{ if(document.hidden && petRt.watch===w) petLinkUnwatch_(); };
+      w.timer=setTimeout(()=>{
+        if(petRt.watch!==w) return;
+        petLinkUnwatch_();
+        petRt.miss=true;
+        petLinkRender_();
+      },PETLINK_MISS_MS);
+      petRt.watch=w;
+      try{ window.addEventListener("blur",w.onBlur); }catch(e){}
+      try{ document.addEventListener("visibilitychange",w.onVis); }catch(e){}
+      console.info("[V285_PETLINK] 데스크톱 펫 부르기");
+      try{ location.href="magamyong://link/"+code; }catch(e){ console.warn("[V285_PETLINK] 펫 부르기 실패",e); }
+    }
+    
+    async function petLinkOpenPet_(){
+      const uid=String(state.uid||"");
+      let code=(petRt.uid===uid && petRt.checked===2)?petRt.code:"";
+      if(!code) code=await petLinkEnsure_("open");
+      if(!petLinkCodeOk_(code)) return false;
+      petLinkLaunch_(code);
+      return true;
+    }
+    async function petLinkMake_(){
+      const code=await petLinkEnsure_("make");
+      if(code) showToast("연결 코드를 준비했어요 · [복사]해서 마감용 설정 → 작업방 연결에 붙여 넣어 주세요",3200);
+    }
+    async function petLinkRenew_(){
+      if(!confirm("새 코드로 바꿀까요?\n바꾸면 지금 연결된 펫은 '코드를 찾을 수 없어요'가 되고 새로 연결해야 해요.")) return;
+      const code=await petLinkEnsure_("new");
+      if(code) showToast("새 코드로 바꿨어요 · [데스크톱 펫 열기]나 새 코드로 펫을 다시 연결해 주세요",3600);
+    }
+    async function petLinkCopy_(){
+      const uid=String(state.uid||"");
+      const code=(petRt.uid===uid && petRt.checked===2)?petRt.code:"";
+      if(!code) return;
+      let ok=false;
+      try{
+        if(navigator.clipboard && typeof navigator.clipboard.writeText==="function"){
+          await readGuard_(navigator.clipboard.writeText(petLinkDisplay_(code)),"연결 코드 복사",3000);
+          ok=true;
+        }
+      }catch(e){ ok=false; }
+      if(ok){ showToast("연결 코드를 복사했어요 · 마감용 설정 → 작업방 연결에 붙여 넣어 주세요",2800); return; }
+      
+      const inp=document.getElementById("dragonPetLinkCode");
+      if(inp){ try{ inp.focus(); inp.select(); }catch(e){} }
+      showToast("코드를 선택해 뒀어요 · Ctrl+C로 복사해 주세요",3000);
+    }
+    function petLinkRender_(){
+      try{
+        if(!document.getElementById("dragonPetLink")) return;
+        const uid=String(state.uid||"");
+        const disp=petLinkDisplay_((petRt.uid===uid && petRt.checked===2)?petRt.code:"");
+        const row=document.getElementById("dragonPetLinkCodeRow");
+        if(row) row.hidden=!disp;
+        const inp=document.getElementById("dragonPetLinkCode");
+        if(inp && inp.value!==disp) inp.value=disp;
+        const make=document.getElementById("dragonPetLinkMake");
+        if(make){ make.hidden=!!disp; make.disabled=!!petRt.busy; }
+        const renew=document.getElementById("dragonPetLinkNew");
+        if(renew){ renew.hidden=!disp; renew.disabled=!!petRt.busy; }
+        const open=document.getElementById("dragonPetLinkOpen");
+        if(open) open.disabled=!!petRt.busy;
+        const miss=document.getElementById("dragonPetLinkMiss");
+        if(miss) miss.hidden=!petRt.miss;
+      }catch(e){}
+    }
+    
+    function petLinkOnModalOpen_(){
+      petLinkUnwatch_();
+      petRt.miss=false;
+      petLinkUid_(String(state.uid||""));
+      petLinkRender_();
+    }
+    try{
+      document.getElementById("dragonPetLinkOpen")?.addEventListener("click",()=>{ petLinkOpenPet_().catch(()=>{}); });
+      document.getElementById("dragonPetLinkMake")?.addEventListener("click",()=>{ petLinkMake_().catch(()=>{}); });
+      document.getElementById("dragonPetLinkNew")?.addEventListener("click",()=>{ petLinkRenew_().catch(()=>{}); });
+      document.getElementById("dragonPetLinkCopy")?.addEventListener("click",()=>{ petLinkCopy_().catch(()=>{}); });
+      
+      window.__MK_PETLINK__={
+        state:()=>{
+          const uid=String(state.uid||"");
+          const pay=petLinkPayload_(uid);
+          return {uid:petRt.uid,checked:["확인 전","확인 중","확인됨","읽기 실패"][petRt.checked]||String(petRt.checked),
+            code:petLinkDisplay_(petRt.code),lock:petRt.lock,sent:petLinkSent_(uid,petRt.code),camp:pay.camp,campSure:pay.campSure,open:pay.open};
+        },
+        sync:()=>petLinkSync_("console"),
+        open:()=>petLinkOpenPet_()
+      };
+    }catch(e){ console.warn("[V285_PETLINK] init failed",e); }
+
 try{
       document.getElementById("vmViewDragon")?.addEventListener("click",openDragonS3_);
       document.getElementById("dragonClose")?.addEventListener("click",closeDragonS3_);
@@ -36911,7 +37234,7 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
         
         isEnabled:dragonEnabled_,
         getDashInfo:dragonDashInfo_,
-        refresh:()=>loadDragonSummaryOnce_(),
+        refresh:()=>loadDragonSummaryOnce_().then((s)=>{ if(s) petLinkKick_("enter"); return s; }),   
         
         coinMult:dragonCoinMult_,
         blessing:dragonBlessingInfo_,
@@ -50285,6 +50608,29 @@ html body .topbar #hardRefreshBtn.mkRefreshBusy .mkIc{ animation:mkRfSpin .9s li
 @media (min-width:861px){
   #dragonScene:has(> .dragonTabs > .dragonTab:nth-child(7)) .worldTreeLevelOrb{ top:78px; }
 }
+</style>
+
+
+<style id="v285PetLink">
+
+.dragonPetLink{margin-top:15px; padding:14px; border:1px solid rgba(255,255,255,.1); border-radius:15px; background:rgba(255,255,255,.035);}
+
+#dragonModal .dragonPetLink [hidden]{display:none !important;}
+.dragonPetLinkLore{margin:8px 0 0; font-size:11px; line-height:1.55; color:rgba(255,255,255,.72);}
+.dragonPetLink .dragonPetLinkMain{border-color:rgba(255,214,166,.34); background:rgba(255,196,120,.10); color:#ffe9c8;}
+.dragonPetLinkMiss{margin:9px 0 0; padding:9px 11px; border-radius:12px; font-size:11px; line-height:1.55; color:#ffe9c8; border:1px solid rgba(255,214,166,.28); background:rgba(255,196,120,.07);}
+.dragonPetLinkMiss a{color:#ffd0a0; font-weight:900; text-decoration:underline;}
+.dragonPetLinkMore{margin-top:10px;}
+.dragonPetLinkMore > summary{cursor:pointer; width:max-content; max-width:100%; font-size:11px; font-weight:900; color:rgba(255,255,255,.66);}
+
+.dragonPetLinkCodeRow{display:flex; gap:8px; margin-top:10px;}
+.dragonPetLinkCode{
+  flex:1 1 auto; min-width:0; padding:7px 9px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.28); color:#fff;
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace; font-size:12px; letter-spacing:.04em;
+}
+.dragonPetLinkCodeRow .dragonBagBtn{flex:0 0 auto; min-height:0;}
+.dragonPetLinkHint{margin:8px 0 0; font-size:10px; color:rgba(255,255,255,.5);}
 </style>
 
 </body>
