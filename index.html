@@ -135,6 +135,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -13160,7 +13161,11 @@ function normalizeDirectMessages_(snap){
         const updates = {};
         updates[`${base}/directMessages/inbox/${target.uid}/${messageId}`] = payload;
         updates[`${base}/directMessages/outbox/${state.uid}/${messageId}`] = payload;
-        await rUpdate(rRef(rtdb),updates);
+        
+        await mkSlowNotice_(rUpdate(rRef(rtdb),updates), 8000, ()=>{
+          try{ if(button) button.textContent = "연결 대기 중…"; }catch(_e){}
+          showToast("쪽지를 보내는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫거나 새로고침하지 말아 주세요", 4200);
+        });
         hideModal(els.directComposeModal);
         state.directComposeTarget = null;
         if(els.directComposeText) els.directComposeText.value = "";
@@ -15740,7 +15745,7 @@ if(!sudaRtdb){
         async function readFirstExisting_(paths){
           for(const p of paths){
             try{
-              const s = await rGet(rRef(sudaRtdb, p));
+              const s = await readGuard_(rGet(rRef(sudaRtdb, p)), "수다 세션 읽기", 8000);   
               if(s.exists()) return { path: p, val: (s.val()||{}) };
             }catch(e){}
           }
@@ -15778,7 +15783,7 @@ let anyRecent = false;
         async function refreshPresenceOnce_(){
           if(!__presenceRef) return;
           try{
-            const s = await rGet(__presenceRef);
+            const s = await readGuard_(rGet(__presenceRef), "LIVE 인원 읽기", 8000);   
             const raw = s.exists() ? (s.val() || {}) : {};
             const count = computeCountFromPresence_(raw);
             try{ state.liveSudaCount = count; }catch(e){}
@@ -15810,10 +15815,10 @@ let anyRecent = false;
               __activeSessionId = sid;
               __presenceRef = rRef(sudaRtdb, `rooms/${__toRoomKey(sid)}/presenceConn`);
 
-await refreshPresenceOnce_();
-
 try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
               __pollTimer = setInterval(refreshPresenceOnce_, 60000);
+
+await refreshPresenceOnce_();
             }
           }catch(e){
             console.warn("[suda presence] session poll error", e);
@@ -15879,7 +15884,7 @@ const ids = new Set();
         async function refreshPresenceOnce_(){
           if(__stopped || !__presenceRef) return;
           try{
-            const s = await rGet(__presenceRef);
+            const s = await readGuard_(rGet(__presenceRef), "LIVE 인원 읽기", 8000);   
             const raw = s.exists() ? (s.val() || {}) : {};
             const count = computeCountFromPresence_(raw);
             if(__stopped) return;
@@ -15907,7 +15912,7 @@ if(count > 0){
         async function refreshSessionAndMaybeSwap_(){
           if(__stopped) return;
           try{
-            const s = await rGet(rRef(pomoRtdb, "pomoHub/currentSessionV1"));
+            const s = await readGuard_(rGet(rRef(pomoRtdb, "pomoHub/currentSessionV1")), "뽀모 세션 읽기", 8000);   
             const hub = s.exists() ? (s.val() || {}) : {};
             const sid = String(hub.sessionId || "").trim();
             if(!sid){
@@ -15923,10 +15928,10 @@ try{ if(__pollTimer){ clearInterval(__pollTimer); __pollTimer = null; } }catch(e
               
               __presenceRef = rRef(pomoRtdb, `rooms/${sid}/presenceConn`);
 
-await refreshPresenceOnce_();
-
 try{ if(__pollTimer) clearInterval(__pollTimer); }catch(_){}
               __pollTimer = setInterval(refreshPresenceOnce_, 60000);
+
+await refreshPresenceOnce_();
             }
           }catch(e){
             console.warn("[pomo presence] session poll error", e);
@@ -17386,6 +17391,7 @@ function detachSelfPresence_(){
 
 async function heartbeat(){
   if(!state.roomId || !state.uid) return;
+  state.__hbLastStartAtMs = Date.now();   
   try{
     
     try{ await ensureFocusDayCurrent("heartbeat"); }catch(_e){}
@@ -17629,6 +17635,14 @@ function readGuard_(promise, label, ms = 8000){
       rej(e);
     }, ms); })
   ]);
+}
+
+function mkSlowNotice_(promise, ms, onSlow){
+  const p = Promise.resolve(promise);
+  let t = setTimeout(()=>{ t = null; try{ if(onSlow) onSlow(); }catch(_e){} }, ms || 8000);
+  const clear = ()=>{ if(t){ clearTimeout(t); t = null; } };
+  p.then(clear, clear);
+  return p;
 }
 
 function startRtdbConnectionWatch(){
@@ -18053,6 +18067,8 @@ window.addEventListener("pageshow", ()=>{
       try{ autoLeaveIfIdle_("pageshow"); }catch(_e){}    
       try{ Promise.resolve(ensureFocusDayCurrent("pageshow")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
     });
+    
+    const MK_FOCUS_HB_GAP_MS = 120000;
     window.addEventListener("focus", ()=>{
       try{ ensureChatDayCurrent_("focus"); }catch(_e){}
       try{ ensureTilesAlive_("focus"); }catch(_e){}   
@@ -18066,7 +18082,12 @@ window.addEventListener("pageshow", ()=>{
       try{ presenceProbeWatchdog_("focus", true); }catch(_e){}   
       try{ tilesRenderWatchdog_("focus", true); }catch(_e){}     
       try{ chatFeedWatchdog_("focus", true); }catch(_e){}
-      try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{ if(state?.joined) heartbeat(); }); }catch(_e){}
+      try{ Promise.resolve(ensureFocusDayCurrent("focus")).finally(()=>{
+        if(!state?.joined) return;
+        const last = Number(state.__hbLastStartAtMs || 0);
+        if(MK_FOCUS_HB_GAP_MS > 0 && last > 0 && Date.now() - last < MK_FOCUS_HB_GAP_MS) return;   
+        heartbeat();
+      }); }catch(_e){}
     });
     window.addEventListener("online", ()=>{
       try{ ensureChatDayCurrent_("online"); }catch(_e){}
@@ -18763,14 +18784,14 @@ async function adminDeleteSelectedProfile_(){
   const oldHtml = button?.innerHTML || (window.mkIc_("trash") + "선택 프로필 삭제");
   try{
     if(button){ button.disabled = true; button.textContent = "삭제 중…"; }
-    await rRemove(rProfileRef(state.roomId,item.uid));
+    await readGuard_(rRemove(rProfileRef(state.roomId,item.uid)), "프로필 삭제", 8000);   
     try{ state.publicProfiles?.delete?.(item.uid); }catch(e){}
     state.directProfilesLoadedAtMs = 0;
     showToast(`${item.name}님의 저장 프로필을 삭제했어요`,3600);
     await loadAdminProfileCatalog_();
   }catch(e){
     console.warn("[admin profile] delete failed",e);
-    showToast("프로필 삭제 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);
+    showToast((e && e.code === "mk/timeout") ? "삭제 확인이 늦어요 · 잠시 뒤 목록을 새로 불러 확인해 주세요" : "프로필 삭제 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);   
   }finally{
     if(button){ button.disabled = false; button.innerHTML = oldHtml; }
     renderAdminProfileSelection_();
@@ -18815,7 +18836,7 @@ updates[`${base}/presence/${targetUid}/theme`] = null;
     updates[`${base}/presence/${targetUid}/lastSeenAtMs`] = now;
     if(Number.isFinite(Number(linked.autoBreakMin))) updates[`${base}/presence/${targetUid}/autoBreakMin`] = Number(linked.autoBreakMin);
     if(Number.isFinite(Number(linked.autoIdleMin))) updates[`${base}/presence/${targetUid}/autoIdleMin`] = Number(linked.autoIdleMin);
-    await rUpdate(rRef(rtdb),updates);
+    await readGuard_(rUpdate(rRef(rtdb),updates), "프로필 연결", 8000);   
 
     try{
       target.theme = JSON.parse(JSON.stringify(linked.theme));
@@ -18834,7 +18855,7 @@ updates[`${base}/presence/${targetUid}/theme`] = null;
     await loadAdminProfileCatalog_();
   }catch(e){
     console.warn("[admin profile] connect failed",e);
-    showToast("프로필 연결 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);
+    showToast((e && e.code === "mk/timeout") ? "연결 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요" : "프로필 연결 실패 · 새 Firebase 규칙을 적용했는지 확인해 주세요",4400);   
   }finally{
     if(button){ button.disabled = false; button.innerHTML = oldHtml; }
     renderAdminProfileSelection_();
@@ -19076,14 +19097,15 @@ async function issueAwardCodes_(){
       let code = "";
       for(let tries = 0; tries < 5; tries++){ 
         const cand = genAwardCode_(12);
-        const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+        const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`)), "쿠폰 코드 겹침 확인", 8000);   
         if(!(snap && snap.exists())){ code = cand; break; }
       }
       if(!code) throw new Error("코드 생성 실패(중복)");
       const payload = { item, createdAtMs: Date.now(), createdBy: String(state.uid || "") };
       if(label) payload.label = label;
       if(note) payload.note = note;
-      await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+      
+      await mkSlowNotice_(rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload), 8000, ()=>{ showToast("쿠폰 코드를 서버에 적는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫지 말아 주세요", 4200); });
       made.push(code);
     }
     if(els.awardCodeOut) els.awardCodeOut.value = made.map(fmtAwardCode_).join("\n");
@@ -19113,7 +19135,7 @@ async function issueCoinCoupon_(amount){
     let code = "";
     for(let tries = 0; tries < 5; tries++){ 
       const cand = genAwardCode_(12);
-      const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+      const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`)), "쿠폰 코드 겹침 확인", 8000);   
       if(!(snap && snap.exists())){ code = cand; break; }
     }
     if(!code) throw new Error("코드 생성 실패(중복)");
@@ -19124,7 +19146,8 @@ async function issueCoinCoupon_(amount){
       createdBy: String(state.uid || "")
     };
     if(note) payload.note = note;
-    await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+    
+    await mkSlowNotice_(rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload), 8000, ()=>{ showToast("쿠폰 코드를 서버에 적는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫지 말아 주세요", 4200); });
     
     if(els.awardCodeOut){
       
@@ -19157,7 +19180,7 @@ async function issueTicketCoupon_(count){
     let code = "";
     for(let tries = 0; tries < 5; tries++){ 
       const cand = genAwardCode_(12);
-      const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`));
+      const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${cand}`)), "쿠폰 코드 겹침 확인", 8000);   
       if(!(snap && snap.exists())){ code = cand; break; }
     }
     if(!code) throw new Error("코드 생성 실패(중복)");
@@ -19168,7 +19191,8 @@ async function issueTicketCoupon_(count){
       createdBy: String(state.uid || "")
     };
     if(note) payload.note = note;
-    await rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload);
+    
+    await mkSlowNotice_(rSet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes/${code}`), payload), 8000, ()=>{ showToast("쿠폰 코드를 서버에 적는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫지 말아 주세요", 4200); });
     
     if(els.awardCodeOut){
       
@@ -19194,7 +19218,7 @@ async function refreshAwardCodeList_(){
   if(!state.roomId){ box.textContent = "방 정보를 확인하지 못했어요."; return; }
   box.textContent = "발급 내역을 불러오는 중이에요…";
   try{
-    const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes`));
+    const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/awardCodes`)), "쿠폰 발급 내역", 8000);   
     const val = (snap && snap.exists()) ? (snap.val() || {}) : {};
     const rows = Object.keys(val).map((code)=>{
       const v = val[code] || {};
@@ -19225,7 +19249,9 @@ async function refreshAwardCodeList_(){
     box.innerHTML = `<div style="opacity:.75; margin-bottom:5px;">${escapeHtml(head)}</div>${list}${more}`;
   }catch(e){
     console.warn("[award v170] 발급 내역 조회 실패", e);
-    box.textContent = "관리자 인증(ownerUid) 재확인이 필요해요 — 관리자 비번을 다시 확인해 주세요";
+    box.textContent = (e && e.code === "mk/timeout")   
+      ? "발급 내역을 불러오지 못했어요 · 연결을 확인하고 다시 열어 주세요"
+      : "관리자 인증(ownerUid) 재확인이 필요해요 — 관리자 비번을 다시 확인해 주세요";
   }
 }
 async function copyAwardCodes_(){
@@ -23294,13 +23320,13 @@ async writeCharaV1(payload){
         }catch(e){ return null; }
       },
 
-async redeemAwardCode(code){
+async redeemAwardCode(code, opts){
         try{
           if(!state.uid || !state.roomId || !state.joined) return { ok:false, reason:'notJoined' };
           const key = String(code == null ? "" : code).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
           if(key.length < 4 || key.length > 24) return { ok:false, reason:'format' };
           const path = `${rRoomBase(state.roomId)}/awardCodes/${key}`;
-          const snap = await rGet(rRef(rtdb, path));
+          const snap = await readGuard_(rGet(rRef(rtdb, path)), "쿠폰 코드 확인", 8000);   
           const val = (snap && snap.exists()) ? snap.val() : null;
           if(!val || typeof val !== "object" || !val.item) return { ok:false, reason:'notFound' };
           const createdAtMs = Number(val.createdAtMs);
@@ -23323,7 +23349,8 @@ async redeemAwardCode(code){
           const myName = String(state.nickname || els.name?.value || "").trim().slice(0, 40);
           if(myName) next.usedName = myName;
           try{
-            await rSet(rRef(rtdb, path), next);
+            
+            await mkSlowNotice_(rSet(rRef(rtdb, path), next), 8000, opts && opts.onSlow);
           }catch(e){
             console.warn("[award v170] 코드 사용 처리 실패(권한/경합)", e);
             return { ok:false, reason:'race' };
@@ -23364,7 +23391,7 @@ function mkBinderForgetCharaLocal_(uid){
       
       async fetchCharasOnce(){
         if(!state.joined || !state.roomId) return null;
-        const snap = await rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/playground/charaIndexV1`));
+        const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/playground/charaIndexV1`)), "도감 읽기", 8000);   
         const val = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
         const out = [];
         Object.keys(val).forEach((uid)=>{
@@ -23401,20 +23428,23 @@ async adminDeleteChara(uid){
           updates[`${base}/playground/charaIndexV1/${target}`] = null;
           updates[`${base}/profiles/${target}/charaV1`] = null;
           updates[`${base}/profiles/${target}/updatedAtMs`] = Date.now();
-          await rUpdate(rRef(rtdb), updates);
+          await readGuard_(rUpdate(rRef(rtdb), updates), "도감 삭제", 8000);   
           mkBinderForgetCharaLocal_(target);
           return "full";
         }catch(err){
+          
+          if(err && err.code === "mk/timeout"){ console.warn("[V218_BINDERDELETE] 삭제 확인이 8초 넘게 없어요 — 결과를 모릅니다", err); return "pending"; }
           console.warn("[V218_BINDERDELETE] 정본 포함 삭제가 거부됐습니다 — 인덱스만 지웁니다(ownerUid가 다른 관리자일 수 있음)", err);
         }
         
         try{
           const only = {};
           only[`${base}/playground/charaIndexV1/${target}`] = null;
-          await rUpdate(rRef(rtdb), only);
+          await readGuard_(rUpdate(rRef(rtdb), only), "도감 삭제(인덱스)", 8000);   
           mkBinderForgetCharaLocal_(target);
           return "indexOnly";
         }catch(err2){
+          if(err2 && err2.code === "mk/timeout"){ console.warn("[V218_BINDERDELETE] 인덱스 삭제 확인이 8초 넘게 없어요 — 결과를 모릅니다", err2); return "pending"; }   
           console.warn("[V218_BINDERDELETE] 인덱스 삭제도 실패했습니다", err2);
           return "fail";
         }
@@ -24106,6 +24136,18 @@ const cur = auth.currentUser;
 }
 
 async function joinRoom(){
+      
+      const JOIN_LOCK_MS = 120000;
+      if(state.joined) return;       
+      const joinT0 = Date.now();
+      if(JOIN_LOCK_MS > 0 && state.__joinBusyAt && (joinT0 - state.__joinBusyAt) < JOIN_LOCK_MS){
+        if(!__mkAutoRejoinActive) showToast("입장하는 중이에요 · 잠시만 기다려 주세요 ⏳", 2000);
+        return;
+      }
+      const joinSeq = state.__joinSeq = (Number(state.__joinSeq) || 0) + 1;
+      state.__joinBusyAt = joinT0;
+      try{ if(els.joinBtn) els.joinBtn.disabled = true; }catch(_e){}
+      try{
       try{
         state.__presenceLeaving = false;
         state.__joinProfileReady = false;
@@ -24135,6 +24177,7 @@ try{
         }catch(e){ state.chatLimit = 70; }
         const mainUser = await ensureMainAuthReady_();
         if(!mainUser || !mainUser.uid) throw new Error("main auth user unavailable");
+        if(state.__joinSeq !== joinSeq) return;   
         
         state.uid = mainUser.uid;
 
@@ -24168,7 +24211,7 @@ try{
       try{ primeTimerResetAckForTab_(); }catch(_e){}
 
 try{
-        const ks = await rGet(rKickRef(state.roomId, state.uid));
+        const ks = await readGuard_(rGet(rKickRef(state.roomId, state.uid)), "입장 전 강퇴 확인", 8000);   
         if(ks.exists()){
           const k = ks.val() || {};
           const exp = Number(k.expiresAtMs || 0);
@@ -24193,31 +24236,34 @@ await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId
       try{ Promise.resolve(mkNewsCheckDot_()).catch(()=>{}); }catch(_e){}
       
       try{ Promise.resolve(mkBoardCheckDot_()).catch(()=>{}); }catch(_e){}
+
+try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await readGuard_(Promise.resolve(window.__MK_REFRESH_MY_PET_SLOT__(true)), "입장 펫 공개", 8000); }catch(e){}
       
-      try{ if(window.__MK_REFRESH_MY_PET_SLOT__) await window.__MK_REFRESH_MY_PET_SLOT__(true); }catch(e){}
-      
-      try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }); }catch(_e){}
+      try{ await readGuard_(rUpdate(rMePresenceRef(state.roomId, state.uid), { petMotionSeedMs: Date.now(), updatedAt: Date.now(), lastSeenAtMs: Date.now() }), "입장 펫 모션 시작점", 8000); }catch(_e){}
       
       try{
         const ap = (els.adminPassJoin && els.adminPassJoin.value) ? String(els.adminPassJoin.value).trim() : "";
         if(ap){
-          const ok = await verifyAdminPass(ap);
+          const ok = await readGuard_(verifyAdminPass(ap), "입장 관리자 확인", 8000);   
           try{ els.adminPassJoin.value = ""; }catch(e){}
           if(ok){
             
             try{
               if(state.roomId && state.uid){
-                try{ await rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid }); }catch(_e){}
+                
+                try{ await readGuard_(rUpdate(rSettingsRef(state.roomId), { ownerUid: state.uid }), "입장 관리자 ownerUid", 8000); }catch(_e){}
                 if(state.roomSettings) state.roomSettings.ownerUid = state.uid;
 
-                try{
-                  
-                  const { m, db } = await fsDb_();
-                  await m.setDoc(m.doc(db, "rooms", state.roomId), {
-                    ownerUid: state.uid,
-                    updatedAt: m.serverTimestamp()
-                  }, { merge: true });
-                }catch(_e){}
+(async()=>{
+                  try{
+                    
+                    const { m, db } = await fsDb_();
+                    await m.setDoc(m.doc(db, "rooms", state.roomId), {
+                      ownerUid: state.uid,
+                      updatedAt: m.serverTimestamp()
+                    }, { merge: true });
+                  }catch(_e){}
+                })();
               }
             }catch(_e){}
             try{ if(els.adminArea) els.adminArea.style.display = "block"; }catch(e){}
@@ -24226,12 +24272,17 @@ await joinStepGuard_("ensureRoom(Firestore 방 문서)", ensureRoom(state.roomId
             showToast("관리자 비번이 달라…");
           }
         }
-      }catch(e){}
+      }catch(e){
+        
+        if(e && e.code === "mk/timeout"){ try{ els.adminPassJoin.value = ""; }catch(_e){} showToast("관리자 확인이 늦어요 · 입장 뒤 ⚙에서 다시 확인해 주세요", 3600); }
+      }
 
 try{ startRtdbConnectionWatch(); }catch(e){}
       try{ startServerTimeOffsetWatch_(); }catch(e){}   
 
-      const meSnap = await rGet(rMePresenceRef(state.roomId, state.uid));
+let meSnap = null;
+      try{ meSnap = await readGuard_(rGet(rMePresenceRef(state.roomId, state.uid)), "입장 내 presence 읽기", 8000); }
+      catch(e){ if(!(e && e.code === "mk/timeout")) throw e; meSnap = null; }
       if(meSnap && meSnap.exists && meSnap.exists()){
         const me = Object.assign({}, meSnap.val() || {});
 
@@ -24307,7 +24358,8 @@ try{
   if(meSnap && meSnap.exists && meSnap.exists()){
     const me = meSnap.val() || {};
     if(me && (me.status === "off" || Number(me.lastSeenAtMs||0) === 0)){
-      await rUpdate(rMePresenceRef(state.roomId, state.uid), {
+      
+      await joinStepGuard_("재접속 복구(reconnectJoin)", rUpdate(rMePresenceRef(state.roomId, state.uid), {
         status: "break",
         statusSource: "reconnectJoin",
         sessionStartedAtMs: null,
@@ -24315,7 +24367,7 @@ try{
         timerStateNonce: timerStateNonceForWrite_(currentTimerEpoch_(me), Date.now()),
         updatedAt: Date.now(),
         lastSeenAtMs: Date.now()
-      });
+      }), 8000);
       state.myStatus = "break";
     }
   }
@@ -24332,10 +24384,12 @@ try{
         saveLocalProfile(lp);
       }catch(e){}
 
-setControlsEnabled(true);
+if(state.__joinSeq !== joinSeq) return;   
+      setControlsEnabled(true);
       try{ els.chatInput.disabled = true; els.sendBtn.disabled = true; }catch(e){}
 
-try{ await transitionTo("break","manualInit"); }catch(e){}
+try{ await joinStepGuard_("입장 상태(휴식중) 쓰기", transitionTo("break","manualInit"), 8000); }catch(e){}
+      if(state.__joinSeq !== joinSeq) return;   
 
       subscribeRoom();
       await subscribeParticipants();
@@ -24347,7 +24401,8 @@ try{ await transitionTo("break","manualInit"); }catch(e){}
       subscribeKicks();
       subscribeDirectMessages_();
 
-      await heartbeat();
+      await joinStepGuard_("첫 하트비트", heartbeat(), 8000);   
+      if(state.__joinSeq !== joinSeq) return;   
 
 try{ setTimeout(()=>{ inheritProfileByNick_(); }, 8000); }catch(_e){}
       
@@ -24397,9 +24452,17 @@ if(!__mkAutoRejoinActive){
         
         if(hint) showToast(hint, 4500);
       }
+      }finally{
+        
+        if(state.__joinSeq === joinSeq) state.__joinBusyAt = 0;
+        try{ if(!state.joined && els.joinBtn) els.joinBtn.disabled = false; }catch(_e){}
+      }
     }
 
     async function leaveRoom(){
+      
+      state.__joinSeq = (Number(state.__joinSeq) || 0) + 1;
+      state.__joinBusyAt = 0;
       state.__presenceLeaving = true;
       state.__joinProfileReady = false;
       try{ announcePresenceSessionLeaving_(); }catch(e){}
@@ -24412,7 +24475,7 @@ if(!__mkAutoRejoinActive){
 
 if(!state.roomId || !state.uid) return;
 
-      try{ await transitionTo("idle","manual"); }catch(e){}
+try{ await joinStepGuard_("퇴장 전 상태 커밋", transitionTo("idle","manual"), 8000); }catch(e){}
 
 state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
       if(state.unsubParticipants) state.unsubParticipants();
@@ -24444,7 +24507,7 @@ try{ if(state.__directResubTimer){ clearTimeout(state.__directResubTimer); state
 
       try{
         const mine = String(state.presenceSessionId || "");
-        await rRunTransaction(rMePresenceRef(state.roomId, state.uid), (current)=>{
+        await readGuard_(rRunTransaction(rMePresenceRef(state.roomId, state.uid), (current)=>{   
           if(!current || typeof current !== "object") return current;
           const owner = String(current.presenceSessionId || "");
           
@@ -24469,10 +24532,13 @@ const leftTotal = Number(current.totalSecondsToday);
 out.timerHidden = current.timerHidden ? 1 : 0;
 
 return out;
-        }, { applyLocally:false });
+        }, { applyLocally:false }), "퇴장 기록", 8000);
       }catch(e){
         
-        try{ await rUpdate(rMePresenceRef(state.roomId, state.uid), { disconnectedSessionId:String(state.presenceSessionId || ""), disconnectedAtMs:rServerTimestamp() }); }catch(_e){}
+        if(!(e && e.code === "mk/timeout")){
+          
+          try{ await readGuard_(rUpdate(rMePresenceRef(state.roomId, state.uid), { disconnectedSessionId:String(state.presenceSessionId || ""), disconnectedAtMs:rServerTimestamp() }), "퇴장 세션 표식", 8000); }catch(_e){}
+        }
       }
       try{ if(state._rtdbOnDisc){ state._rtdbOnDisc.cancel?.(); state._rtdbOnDisc=null; } }catch(e){}
 
@@ -26611,20 +26677,22 @@ let __mkSubmitting = false;
       if(btn){ btn.disabled = true; btn.textContent = "보내는 중…"; }
       if(els.joinReqHint) els.joinReqHint.textContent = "신청을 보내는 중…";
       try{
-        await rSet(rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/joinRequests/${u.uid}`), {
+        await readGuard_(rSet(rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/joinRequests/${u.uid}`), {
           email: u.email,
           img,
           nick: normalizeNick(String(els.name?.value || "")) || "",
           createdAtMs: Date.now(),
           status: "pending"
-        });
+        }), "가입 신청 보내기", 8000);   
         mkClearStashedShot_();
         if(els.joinReqFile) els.joinReqFile.value = "";
         showToast("신청을 보냈습니다. 관리자 승인을 기다려 주세요 🌸", 6000);
       }catch(err){
         console.warn("[V188_MAGICLINK] 신청 실패", err);
         const raw = String(err?.code || err?.message || "");
-        showToast(raw.includes("PERMISSION_DENIED")
+        showToast(raw === "mk/timeout"
+          ? "서버 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요"   
+          : raw.includes("PERMISSION_DENIED")
           ? "권한이 없습니다. 이메일 인증이 끝났는지 확인해 주세요."
           : ("신청 실패: " + (raw || "알 수 없는 오류")), 7000);
       }finally{
@@ -26666,11 +26734,11 @@ if(!mkAuthUsable_()){
       try{
         const base = rRoomBase(FIXED_ROOM_ID);
         const uid = auth.currentUser.uid;
-        if((await rGet(rRef(rtdb, `${base}/members/${uid}`))).exists()){
+        if((await readGuard_(rGet(rRef(rtdb, `${base}/members/${uid}`)), "승인 명단 확인", 8000)).exists()){   
           set("ok", "ok", "승인이 완료되었습니다", "닉네임을 입력하신 뒤 <b>입장</b>을 눌러 주세요.");
           steps(false, false, false, false); return;
         }
-        const req = await rGet(rRef(rtdb, `${base}/joinRequests/${uid}`));
+        const req = await readGuard_(rGet(rRef(rtdb, `${base}/joinRequests/${uid}`)), "가입 신청 확인", 8000);   
         if(req.exists()){
           const t = Number((req.val() || {}).createdAtMs) || 0;
           set("wait", "clock", "심사 대기 중입니다",
@@ -27312,7 +27380,7 @@ async function adminResetTimerForUid_(targetUid, targetNameHint="", trigger="sel
 
   let target = state.currentParticipants?.get?.(targetUid) || null;
   try{
-    const snap = await rGet(rMePresenceRef(state.roomId, targetUid));
+    const snap = await readGuard_(rGet(rMePresenceRef(state.roomId, targetUid)), "초기화 대상 읽기", 8000);   
     if(snap && snap.exists && snap.exists()) target = Object.assign({ id: targetUid }, snap.val() || {});
   }catch(_e){}
 
@@ -27348,7 +27416,7 @@ const oldHtml = btn ? btn.innerHTML : "";
       updatedAt: now,
     };
 
-await rUpdate(rMePresenceRef(state.roomId, targetUid), payload);
+await readGuard_(rUpdate(rMePresenceRef(state.roomId, targetUid), payload), "개별 타이머 초기화", 8000);   
 
     if(String(targetUid) === String(state.uid)){
       try{ applyTimerResetCommandToLocal_(Object.assign({}, payload, { status:"break" }), `adminOne:${trigger}`); }catch(_e){}
@@ -27368,7 +27436,7 @@ await rUpdate(rMePresenceRef(state.roomId, targetUid), payload);
     return true;
   }catch(e){
     console.warn("[adminTimerResetOne] failed", e);
-    showToast("개별 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);
+    showToast((e && e.code === "mk/timeout") ? "초기화 확인이 늦어요 · 연결되면 반영돼요(다시 눌러도 괜찮아요)" : "개별 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);   
     return false;
   }finally{
     if(btn){ btn.disabled = false; btn.innerHTML = oldHtml || (trigger === "selector" ? (window.mkIc_("user") + "선택 작가 0초 · 휴식중") : (window.mkIc_("reset") + "타이머 0초 · 휴식중")); }
@@ -27390,7 +27458,7 @@ async function adminResetAllTimers(){
   try{
     if(btn){ btn.disabled = true; btn.textContent = "⏳ 전체 타이머 초기화 중…"; }
 
-    const snap = await rGet(rPresenceRootRef(state.roomId));
+    const snap = await readGuard_(rGet(rPresenceRootRef(state.roomId)), "전체 초기화 대상 읽기", 8000);   
     const all = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
     const uids = Object.keys(all || {}).filter(uid => all[uid] && typeof all[uid] === "object");
     if(!uids.length){ showToast("초기화할 타이머가 없어"); return; }
@@ -27417,7 +27485,7 @@ async function adminResetAllTimers(){
       updates[`${base}/updatedAt`] = now;
     }
 
-    await rUpdate(rRef(rtdb), updates);
+    await readGuard_(rUpdate(rRef(rtdb), updates), "전체 타이머 초기화", 8000);   
 
     try{
       applyTimerResetCommandToLocal_({
@@ -27458,7 +27526,7 @@ async function adminResetAllTimers(){
     showToast(`⏱️ 전체 ${uids.length}명 타이머 초기화 완료 · 접속 ${onlineCount}명 휴식중`, 4200);
   }catch(e){
     console.warn("[adminTimerResetAll] failed", e);
-    showToast("전체 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);
+    showToast((e && e.code === "mk/timeout") ? "초기화 확인이 늦어요 · 연결되면 반영돼요(다시 눌러도 괜찮아요)" : "전체 타이머 초기화 실패(관리자 권한/rules 확인)", 4200);   
   }finally{
     if(btn){ btn.disabled = false; btn.innerHTML = oldHtml || (window.mkIc_("reset") + "전체 타이머 0초 · 휴식중"); }
   }
@@ -29253,7 +29321,7 @@ const shouldCheckRemote =
       let remoteToken = petCloudCachedRemoteToken || '';
 
       if(shouldCheckRemote){
-        restored = await petCloudMaybeRestoreFromRemote(nick);
+        restored = await readGuard_(petCloudMaybeRestoreFromRemote(nick), "펫 백업 확인", 8000);   
         petCloudLastRemoteCheckMs = now;
         remoteToken = petCloudCachedRemoteToken || '';
         st = petCloudReadLocal();
@@ -29283,7 +29351,7 @@ const backupRef = rPetBackupRef(state.roomId, nick);
       let blockedRemoteTotal = 0;
       let blockedByAdminToken = false;
       let blockedAdminToken = '';
-      const tx = await rRunTransaction(backupRef, (current)=>{
+      const tx = await readGuard_(rRunTransaction(backupRef, (current)=>{   
         const remote = current && typeof current === 'object' ? current : null;
         const remoteState = petCloudRemoteState(remote);
         const currentAdminToken = String(remote?.adminOverrideToken || '');
@@ -29313,7 +29381,7 @@ if(localTotal < remoteTotal || anyPetDecreased){
 return Object.assign({}, remote || {}, payload, {
           adminOverrideToken: remote?.adminOverrideToken || payload.adminOverrideToken || null
         });
-      }, { applyLocally:false });
+      }, { applyLocally:false }), "펫 백업", 8000);
 
       if(!tx?.committed){
         
@@ -32079,7 +32147,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17173; 
+const MK_APP_BUILD = 17174; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -34459,8 +34527,35 @@ const DRAGON_TICKET_GROW_COST = 10;
       nameDecideLock:{},      
       
       feedQty:1,
-      feedQtyKey:""
+      feedQtyKey:"",
+      
+      slow:{},
+      perkCoolUntilMs:0,      
+      nameDecideCool:{},      
+      hallMadeLate:{},        
+      
+      summaryFetchedAtMs:0,   
+      hiddenSumTriedAtMs:0,   
+      hiddenSumBusy:false     
     };
+
+const DRAGON_WAIT_MS=8000;
+    const DRAGON_COOL_MS=5*60*1000;
+    function dragonIsTimeout_(e){ return !!(e && e.code==="mk/timeout"); }
+    
+    function dragonSlow_(p,kind,msg){
+      const orig=Promise.resolve(p), slow=dragonS3Runtime.slow; let fired=false;
+      const t=setTimeout(()=>{ fired=true; slow[kind]=(Number(slow[kind])||0)+1; if(msg) showToast(msg,4200); },DRAGON_WAIT_MS);
+      const done=()=>{ clearTimeout(t); if(fired){ slow[kind]=Math.max(0,(Number(slow[kind])||0)-1); if(!slow[kind]) delete slow[kind]; } };
+      orig.then(done,done);
+      return orig;
+    }
+    
+    function dragonSlowBusy_(kind){
+      if(!dragonS3Runtime.slow?.[kind]) return false;
+      showToast("앞선 요청을 아직 서버가 확인하지 못했어요 · 연결되면 자동으로 마무리돼요 ⏳",3200);
+      return true;
+    }
 
 function rDragonRef_(sub){
       return rRef(rtdb, `${rRoomBase(state.roomId)}/playground/dragonV1${sub?`/${sub}`:""}`);
@@ -35444,10 +35539,11 @@ async function loadDragonConfigOnce_(opts){
       const force=!!(opts&&opts.force);
       if(!force && dragonS3Runtime.config && Date.now()-dragonS3Runtime.configFetchedAtMs<60000) return dragonS3Runtime.config;
       try{
-        const snap=await rGet(rDragonRef_("config"));
+        
+        const snap=await readGuard_(rGet(rDragonRef_("config")),"드래곤 설정 읽기",DRAGON_WAIT_MS);
         dragonS3Runtime.config=snap.val()||null;
         dragonS3Runtime.configFetchedAtMs=Date.now();
-      }catch(e){ console.warn("[dragon s3] config load failed",e); }
+      }catch(e){ console.warn("[dragon s3] config load failed",e); if(opts && opts.strict) throw e; }
       return dragonS3Runtime.config;
     }
     
@@ -35456,14 +35552,15 @@ async function loadDragonConfigOnce_(opts){
 const fresh={level:0,exp:0,skill:0,totalFed:0,totalTickets:0,graduatedAtMs:0,name:"",updatedAtMs:Date.now()};
       let cur=null;
       try{
-        const res=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+        
+        const res=await readGuard_(rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
           if(raw && typeof raw==="object") return;   
           return fresh;                              
-        });
+        }),"드래곤 행 확보",DRAGON_WAIT_MS);
         cur=(res && res.snapshot)?res.snapshot.val():null;
-      }catch(e){ console.warn("[dragon s3] ensure row failed",e); }
+      }catch(e){ if(dragonIsTimeout_(e)) throw e; console.warn("[dragon s3] ensure row failed",e); }
       if(!(cur && typeof cur==="object")){
-        const snap=await rGet(rDragonRef_(`dragons/${el}`));
+        const snap=await readGuard_(rGet(rDragonRef_(`dragons/${el}`)),"드래곤 행 읽기",DRAGON_WAIT_MS);   
         cur=snap.val();
       }
       if(!(cur && typeof cur==="object")) cur=fresh;
@@ -35473,7 +35570,7 @@ const fresh={level:0,exp:0,skill:0,totalFed:0,totalTickets:0,graduatedAtMs:0,nam
     async function ensureDragonMemberRow_(){
       const uid=String(state.uid||"");
       if(!uid) return null;
-      const snap=await rGet(rDragonRef_(`members/${uid}`));
+      const snap=await readGuard_(rGet(rDragonRef_(`members/${uid}`)),"내 기운 행 읽기",DRAGON_WAIT_MS);   
       const cur=snap.val();
       if(cur && typeof cur==="object"){
         dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:cur});
@@ -35484,12 +35581,13 @@ const fresh={level:0,exp:0,skill:0,totalFed:0,totalTickets:0,graduatedAtMs:0,nam
 
 let made=null;
       try{
-        const res=await rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
+        
+        const res=await readGuard_(rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
           if(raw && typeof raw==="object") return;
           return fresh;
-        });
+        }),"내 기운 행 만들기",DRAGON_WAIT_MS);
         made=(res && res.snapshot)?res.snapshot.val():null;
-      }catch(e){ console.warn("[dragon s3] ensure member failed",e); }
+      }catch(e){ if(dragonIsTimeout_(e)) throw e; console.warn("[dragon s3] ensure member failed",e); }
       const row=(made && typeof made==="object")?made:fresh;
       dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:row});
       dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
@@ -35501,13 +35599,13 @@ let made=null;
       const force=!!(opts&&opts.force);
       if(!force && dragonS3Runtime.rosterFetchedAtMs && Date.now()-dragonS3Runtime.rosterFetchedAtMs<DRAGON_ROSTER_CACHE_MS) return;
       try{
-        
-        const [mSnap,fSnap,dSnap,hSnap]=await Promise.all([
+
+const [mSnap,fSnap,dSnap,hSnap]=await readGuard_(Promise.all([
           rGet(rDragonRef_("members")),
           rGet(rDragonRef_("fed")),
           rGet(rDragonRef_("dragons")),
           rGet(rDragonRef_("hall"))
-        ]);
+        ]),"드래곤 명단 읽기",DRAGON_WAIT_MS);
         dragonS3Runtime.members=mSnap.val()||{};
         dragonS3Runtime.fed=fSnap.val()||{};
         dragonS3Runtime.dragons=dSnap.val()||{};
@@ -35519,7 +35617,7 @@ let made=null;
         try{ dragonMinimiCheck_(); }catch(e){}
         const mine=dragonMyCamp_();
         if(mine) dragonSaveLocalCamp_(mine);
-      }catch(e){ console.warn("[dragon s3] roster load failed",e); }
+      }catch(e){ console.warn("[dragon s3] roster load failed",e); if(opts && opts.strict) throw e; }
     }
     
     async function loadDragonNamesOnce_(el,opts){
@@ -35530,10 +35628,10 @@ let made=null;
       if(dragonS3Runtime.namesLoading[el]) return dragonNamesRow_(el);
       dragonS3Runtime.namesLoading[el]=true;
       try{
-        const snap=await rGet(rDragonNamesRef_(el));
+        const snap=await readGuard_(rGet(rDragonNamesRef_(el)),"이름 투표 읽기",DRAGON_WAIT_MS);   
         const v=snap.val();
         dragonS3Runtime.names[el]=(v && typeof v==="object")?v:null;
-      }catch(e){ console.warn("[dragon s3] names load failed",e); }
+      }catch(e){ console.warn("[dragon s3] names load failed",e); if(opts && opts.strict) throw e; }
       finally{
         
         dragonS3Runtime.namesFetchedAtMs[el]=Date.now();
@@ -35541,21 +35639,23 @@ let made=null;
       }
       return dragonNamesRow_(el);
     }
-    
-    async function ensureDragonBag_(){
+
+async function ensureDragonBag_(opts){
+      const wait=!!(opts && opts.wait);
       const uid=String(state.uid||"");
       if(!uid || !state.roomId) return null;
       const fresh={scales:0,tickets:0,updatedAtMs:Date.now()};
       let cur=null;
       try{
-        const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+        const tx=rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
           if(raw && typeof raw==="object") return;   
           return fresh;                              
         });
+        const res=wait?(await tx):(await readGuard_(tx,"가방 행 확보",DRAGON_WAIT_MS));
         cur=(res && res.snapshot)?res.snapshot.val():null;
-      }catch(e){ console.warn("[dragon s3] ensure bag failed",e); }
+      }catch(e){ if(dragonIsTimeout_(e)) throw e; console.warn("[dragon s3] ensure bag failed",e); }
       if(!(cur && typeof cur==="object")){
-        try{ const snap=await rGet(rDragonItemsRef_(`bags/${uid}`)); cur=snap.val(); }catch(e){}
+        try{ const g=rGet(rDragonItemsRef_(`bags/${uid}`)); const snap=wait?(await g):(await readGuard_(g,"가방 읽기",DRAGON_WAIT_MS)); cur=snap.val(); }catch(e){ if(dragonIsTimeout_(e)) throw e; }
       }
       if(!(cur && typeof cur==="object")) cur=fresh;
       dragonS3Runtime.bag=dragonNormalizeBag_(cur);
@@ -35568,7 +35668,7 @@ let made=null;
       const force=!!(opts&&opts.force);
       if(!force && dragonS3Runtime.bagFetchedAtMs>0) return dragonS3Runtime.bag;
       try{
-        const snap=await rGet(rDragonItemsRef_(`bags/${String(state.uid)}`));
+        const snap=await readGuard_(rGet(rDragonItemsRef_(`bags/${String(state.uid)}`)),"가방 읽기",DRAGON_WAIT_MS);   
         dragonS3Runtime.bag=dragonNormalizeBag_(snap.val()||{});
         dragonS3Runtime.bagFetchedAtMs=Date.now();
       }catch(e){ console.warn("[dragon s3] bag load failed",e); }
@@ -35578,7 +35678,7 @@ let made=null;
 async function writeDragonSummary_(){
       if(!state.roomId || !state.joined) return null;
       try{
-        const [cSnap,dSnap]=await Promise.all([rGet(rDragonRef_("config")),rGet(rDragonRef_("dragons"))]);
+        const [cSnap,dSnap]=await readGuard_(Promise.all([rGet(rDragonRef_("config")),rGet(rDragonRef_("dragons"))]),"드래곤 요약 재료 읽기",DRAGON_WAIT_MS);   
         dragonS3Runtime.config=cSnap.val()||null;
         dragonS3Runtime.configFetchedAtMs=Date.now();
         const rows=dSnap.val()||{};
@@ -35601,7 +35701,7 @@ async function writeDragonSummary_(){
           appBuild:Math.max(MK_APP_BUILD,Number(dragonS3Runtime.summary?.appBuild)||0),   
           updatedAtMs:Date.now()
         };
-        await rUpdate(rDragonSummaryRef_(state.roomId),patch);
+        await readGuard_(rUpdate(rDragonSummaryRef_(state.roomId),patch),"드래곤 요약 쓰기",DRAGON_WAIT_MS);   
         dragonS3Runtime.summary=Object.assign({},dragonS3Runtime.summary||{},patch);
         return dragonS3Runtime.summary;
       }catch(e){ console.warn("[dragon s3] summary write failed",e); return null; }
@@ -35610,8 +35710,12 @@ async function writeDragonSummary_(){
     async function loadDragonSummaryOnce_(){
       if(!state.roomId || !state.joined) return null;
       try{
-        const snap=await rGet(rDragonSummaryRef_(state.roomId));
+        
+        const snap=await readGuard_(rGet(rDragonSummaryRef_(state.roomId)),"드래곤 요약 읽기",DRAGON_WAIT_MS);
+        dragonS3Runtime.summaryFetchedAtMs=Date.now();
         const summary=snap.val();
+        
+        const quiet=(typeof document!=="undefined" && !!document.hidden);
         if(summary && typeof summary==="object"){
           dragonS3Runtime.summary=summary;
           
@@ -35622,16 +35726,28 @@ async function writeDragonSummary_(){
           }else if(remoteBuild>MK_APP_BUILD){
 
 try{ mkMarkNewBuild_(remoteBuild); }catch(_e){}
-            if(!dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! 오른쪽 위 분홍색 새로고침 버튼을 눌러 주세요",4200); }
+            if(!quiet && !dragonS3Runtime.buildNagged){ dragonS3Runtime.buildNagged=true; showToast("새 버전이 배포됐어요! 오른쪽 위 분홍색 새로고침 버튼을 눌러 주세요",4200); }   
           }
         }
-        try{ renderCoinBoostBar_(); }catch(e){}   
+        if(!quiet){ try{ renderCoinBoostBar_(); }catch(e){} }   
         
         try{ dragonGradWatchTick_(); }catch(e){}
         dragonSyncMenuButton_();
-        if(dragonModalOpen_()) renderDragonS3_();
+        if(!quiet && dragonModalOpen_()) renderDragonS3_();
         return dragonS3Runtime.summary||null;
       }catch(e){ console.warn("[dragon s3] summary load failed",e); return null; }
+    }
+    
+    const DRAGON_HIDDEN_SUMMARY_MS = 5*60*1000;
+    function dragonHiddenSummaryTick_(){
+      if(!(DRAGON_HIDDEN_SUMMARY_MS>0) || !(typeof document!=="undefined" && document.hidden)) return;
+      if(!state.joined || !state.roomId || dragonS3Runtime.hiddenSumBusy) return;
+      const now=Date.now(), last=Math.max(Number(dragonS3Runtime.summaryFetchedAtMs)||0, Number(dragonS3Runtime.hiddenSumTriedAtMs)||0);
+      if(last>0 && now-last<DRAGON_HIDDEN_SUMMARY_MS) return;
+      dragonS3Runtime.hiddenSumTriedAtMs=now;
+      dragonS3Runtime.hiddenSumBusy=true;
+      loadDragonSummaryOnce_().then(()=>{ try{ dragonRaceStartTick_(); }catch(e){} })
+        .catch(()=>{}).finally(()=>{ dragonS3Runtime.hiddenSumBusy=false; });
     }
 
 function dragonApplyScene_(){
@@ -35992,11 +36108,12 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       const opensAtMs=Math.max(0,Math.floor(Number(grad)||0));
       const fresh={opensAtMs,closesAtMs:opensAtMs+DRAGON_NAME_VOTE_MS,createdAtMs:Date.now()};
       try{
-        await rRunTransaction(rDragonNamesRef_(el),(raw)=>{
+        
+        await readGuard_(rRunTransaction(rDragonNamesRef_(el),(raw)=>{
           if(raw && typeof raw==="object") return;   
           return fresh;                              
-        });
-      }catch(e){ console.warn("[dragon s3] names root failed",e); }
+        }),"이름 투표 뼈대",DRAGON_WAIT_MS);
+      }catch(e){ if(dragonIsTimeout_(e)) throw e; console.warn("[dragon s3] names root failed",e); }
       return fresh;
     }
     
@@ -36014,9 +36131,10 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       const uid=String(state.uid);
       dragonS3Runtime.nameLock=true;
       try{
-        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_();
+        
+        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_({strict:true});
         if(!dragonNameEligible_(el)){ showToast("이 드래곤에게 먹이를 준 작가만 참여할 수 있어요",3200); return false; }
-        const names=await loadDragonNamesOnce_(el,{force:true});
+        const names=await loadDragonNamesOnce_(el,{force:true,strict:true});
         if(Date.now()>=grad+DRAGON_NAME_VOTE_MS || (names?.decided && typeof names.decided==="object")){
           showToast("이름 투표가 이미 끝났어요",2800); renderDragonS3_(); return false;
         }
@@ -36026,7 +36144,7 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
         }
         await ensureDragonNameRoot_(el,grad);
         const row={text,name:dragonText_(state.nickname||els.name?.value,"익명",40),atMs:Date.now()};
-        await rSet(rDragonRef_(`names/${el}/candidates/${uid}`),row);
+        await readGuard_(rSet(rDragonRef_(`names/${el}/candidates/${uid}`),row),"이름 후보 올리기",DRAGON_WAIT_MS);   
         const cur=dragonNamesRow_(el)||{opensAtMs:grad,closesAtMs:grad+DRAGON_NAME_VOTE_MS};
         dragonS3Runtime.names[el]=Object.assign({},cur,{candidates:Object.assign({},cur.candidates||{},{[uid]:row})});
         if(input) input.value="";
@@ -36035,6 +36153,7 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
         return true;
       }catch(e){
         console.warn("[dragon s3] name propose failed",e);
+        if(dragonIsTimeout_(e)){ showToast("서버 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요",3000); return false; }   
         showToast("이름 제안에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
         return false;
       }finally{ dragonS3Runtime.nameLock=false; }
@@ -36051,16 +36170,17 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
       const uid=String(state.uid);
       dragonS3Runtime.nameLock=true;
       try{
-        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_();
+        
+        if(!dragonS3Runtime.rosterFetchedAtMs) await loadDragonRosterOnce_({strict:true});
         if(!dragonNameEligible_(el)){ showToast("이 드래곤에게 먹이를 준 작가만 참여할 수 있어요",3200); return false; }
-        const names=await loadDragonNamesOnce_(el,{force:true});
+        const names=await loadDragonNamesOnce_(el,{force:true,strict:true});
         if(Date.now()>=grad+DRAGON_NAME_VOTE_MS || (names?.decided && typeof names.decided==="object")){
           showToast("이름 투표가 이미 끝났어요",2800); renderDragonS3_(); return false;
         }
         if(!(names?.candidates && typeof names.candidates==="object" && names.candidates[cand])){
           showToast("그 후보가 사라졌어요 · 목록을 새로 불러왔어요",3000); renderDragonS3_(); return false;
         }
-        await rSet(rDragonRef_(`names/${el}/votes/${uid}`),cand);
+        await readGuard_(rSet(rDragonRef_(`names/${el}/votes/${uid}`),cand),"이름 투표하기",DRAGON_WAIT_MS);   
         const cur=dragonNamesRow_(el)||{};
         dragonS3Runtime.names[el]=Object.assign({},cur,{votes:Object.assign({},cur.votes||{},{[uid]:cand})});
         showToast(`'${dragonText_(names.candidates[cand].text,"",DRAGON_NAME_MAX)}'에 투표했어요 🗳️`,2600);
@@ -36068,6 +36188,7 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
         return true;
       }catch(e){
         console.warn("[dragon s3] name vote failed",e);
+        if(dragonIsTimeout_(e)){ showToast("서버 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요",3000); return false; }   
         showToast("투표에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
         return false;
       }finally{ dragonS3Runtime.nameLock=false; }
@@ -36076,24 +36197,29 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
     async function decideDragonName_(el){
       if(!dragonKeyOk_(el) || !state.roomId || !state.joined) return false;
       if(dragonS3Runtime.nameDecideLock[el]) return false;
+      if(Date.now()<(Number(dragonS3Runtime.nameDecideCool[el])||0)) return false;   
       if(!dragonNameDecideFrom_(dragonNamesRow_(el),Date.now())) return false;   
       dragonS3Runtime.nameDecideLock[el]=true;
       try{
         
         let names=null;
-        try{ names=await loadDragonNamesOnce_(el,{force:true}); }catch(e){ names=null; }
+        
+        try{ names=await loadDragonNamesOnce_(el,{force:true,strict:true}); }
+        catch(e){ if(dragonIsTimeout_(e)){ dragonS3Runtime.nameDecideCool[el]=Date.now()+DRAGON_COOL_MS; return false; } names=null; }
         if(!names) names=dragonNamesRow_(el);
         const want=dragonNameDecideFrom_(names,Date.now());
         if(!want){ try{ if(dragonModalOpen_()) renderDragonS3_(); }catch(e){} return false; }
         let committed=false, val=null;
+        const decideAt=Date.now();
         try{
-          const res=await rRunTransaction(rDragonRef_(`names/${el}/decided`),(raw)=>{
+          
+          const res=await dragonSlow_(rRunTransaction(rDragonRef_(`names/${el}/decided`),(raw)=>{
             if(raw && typeof raw==="object") return;   
             return want;                                
-          });
+          }),"name");
           committed=!!res?.committed;
           val=res?.snapshot?.val();
-        }catch(e){ console.warn("[dragon s3] name decide failed",e); return false; }
+        }catch(e){ console.warn("[dragon s3] name decide failed",e); if(Date.now()-decideAt>=DRAGON_WAIT_MS) dragonS3Runtime.nameDecideCool[el]=Date.now()+DRAGON_COOL_MS; return false; }
         const decided=(val && typeof val==="object")?val:want;
         const cur=dragonNamesRow_(el)||{};
         dragonS3Runtime.names[el]=Object.assign({},cur,{decided});
@@ -36101,8 +36227,8 @@ if(!(Number(dragonS3Runtime.namesFetchedAtMs[el])>0) && !dragonS3Runtime.namesLo
         const text=decided.none?"":dragonText_(decided.text,"",DRAGON_NAME_MAX);
         if(text){
           
-          try{ await rUpdate(rDragonRef_(`dragons/${el}`),{name:text}); }catch(e){}
-          try{ await rUpdate(rDragonRef_(`hall/${el}`),{name:text}); }catch(e){}
+          try{ await readGuard_(rUpdate(rDragonRef_(`dragons/${el}`),{name:text}),"고룡 이름 쓰기",DRAGON_WAIT_MS); }catch(e){}   
+          try{ await readGuard_(rUpdate(rDragonRef_(`hall/${el}`),{name:text}),"전당 이름 쓰기",DRAGON_WAIT_MS); }catch(e){}
           try{
             if(dragonS3Runtime.dragons && dragonS3Runtime.dragons[el] && typeof dragonS3Runtime.dragons[el]==="object"){
               dragonS3Runtime.dragons=Object.assign({},dragonS3Runtime.dragons,{[el]:Object.assign({},dragonS3Runtime.dragons[el],{name:text})});
@@ -36378,7 +36504,7 @@ function dragonRankRowsFrom_(fedEl,members,keep){
     }
 
 async function selectDragonCamp_(el){
-      if(dragonS3Runtime.campLock) return;
+      if(dragonS3Runtime.campLock){ dragonSlowBusy_("camp"); return; }   
       if(!dragonKeyOk_(el)) return;
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 기운을 고를 수 있어요"); return; }
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
@@ -36404,7 +36530,8 @@ async function selectDragonCamp_(el){
           ? `${cfg.elements[el].name}으로 기운을 옮길까요?\n이미 먹인 기여는 졸업한 고룡에 그대로 남아요. 졸업 뒤 재선택은 하루 1회 규칙에 걸리지 않아요.`
           : `${cfg.elements[el].name}으로 기운을 바꿀까요?\n이미 먹인 기여는 원래 드래곤에 그대로 남아요. 오늘은 더 못 바꿔요.`)) return;
         let blocked=false;
-        const result=await rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
+        
+        const result=await dragonSlow_(rRunTransaction(rDragonRef_(`members/${uid}`),(raw)=>{
 
 if(raw===null) return null;
           if(!raw || typeof raw!=="object") return;
@@ -36418,7 +36545,7 @@ if(raw===null) return null;
           cur.name=myName;
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"camp","기운을 바꾸는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         if(blocked){ showToast("기운은 하루에 한 번만 바꿀 수 있어요 · 내일 다시 골라 주세요",3200); return; }
         const val=result?.snapshot?.val();
         if(!result?.committed || !val){ showToast("기운 고르기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
@@ -36433,12 +36560,13 @@ if(raw===null) return null;
         try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.renderAll && window.__MK_PET_V24__.renderAll(); }catch(e){}
       }catch(e){
         console.warn("[dragon s3] camp select failed",e);
+        if(dragonIsTimeout_(e)){ showToast("연결이 불안정해 기운을 고르지 못했어요 · 기운은 그대로예요",3000); return; }   
         showToast("기운 고르기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
       }finally{ dragonS3Runtime.campLock=false; }
     }
 
 async function feedDragon_(coins,menuIdx,opts){
-      if(dragonS3Runtime.feedLock) return;
+      if(dragonS3Runtime.feedLock){ dragonSlowBusy_("feed"); return; }   
       const want=Math.max(0,Math.floor(Number(coins)||0));
       if(!want) return;
       const faceIn=Math.max(0,Math.floor(Number(opts&&opts.face)||0))||want;
@@ -36452,7 +36580,7 @@ async function feedDragon_(coins,menuIdx,opts){
       let spent=0;
       try{
         
-        await loadDragonConfigOnce_({force:true});
+        await loadDragonConfigOnce_({force:true,strict:true});   
         
         if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }
         if(!(await dragonCampFreshOk_(el))) return;   
@@ -36469,8 +36597,8 @@ async function feedDragon_(coins,menuIdx,opts){
         let fedToday=0;
         let capBlocked=false;
         if(cfg.dailyCap>0){
-          
-          const capRes=await rRunTransaction(rDragonRef_(`members/${uid}/fed`),(raw)=>{
+
+const capRes=await dragonSlow_(rRunTransaction(rDragonRef_(`members/${uid}/fed`),(raw)=>{
             capBlocked=false;
             const cur=(raw && typeof raw==="object")?raw:{};
             const base=(dragonText_(cur.day,"",12)===day)?Math.max(0,Math.floor(Number(cur.coins)||0)):0;
@@ -36481,7 +36609,7 @@ async function feedDragon_(coins,menuIdx,opts){
             amount=Math.min(amount,roomPay);
             fedToday=base;
             return {day,coins:base+Math.max(amount,Math.round(amount*faceRatio))};
-          });
+          }),"feed","먹이를 전하는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
           if(capBlocked){ showToast("오늘은 배가 불러요 💤 자정에 다시 먹일 수 있어요",2800); return; }
           if(!capRes?.committed){ showToast("먹이 주기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
         }
@@ -36503,7 +36631,8 @@ async function feedDragon_(coins,menuIdx,opts){
         spent=amount;
         let after=null;
         try{
-          const result=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+          
+          const result=await dragonSlow_(rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
             
             if(raw===null) return null;
             if(!raw || typeof raw!=="object") return;      
@@ -36524,7 +36653,7 @@ async function feedDragon_(coins,menuIdx,opts){
             }
             d.updatedAtMs=Date.now();
             return d;
-          });
+          }),"feed","먹이를 전하는 중이에요 · 연결되면 자동으로 마무리돼요(코인은 잠시 맡아 둘게요) ⏳");
           const val=result?.committed?result.snapshot.val():null;
           if(val && typeof val==="object") after=dragonNormalizeRow_(val);
         }catch(e){ console.warn("[dragon s3] feed transaction failed",e); }
@@ -36540,8 +36669,8 @@ async function feedDragon_(coins,menuIdx,opts){
         const updates={};
         updates[`dragonV1/fed/${el}/${uid}/coins`]=rIncrement(face);   
         updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
-        
-        try{ await rUpdate(rDragonPlaygroundRef_(),updates); }catch(e){ console.warn("[dragon s3] fed ledger update failed",e); }
+
+try{ rUpdate(rDragonPlaygroundRef_(),updates).catch((e)=>{ console.warn("[dragon s3] fed ledger update failed",e); }); }catch(e){ console.warn("[dragon s3] fed ledger update failed",e); }
         
         try{
           const fed=dragonS3Runtime.fed=dragonS3Runtime.fed||{};
@@ -36573,6 +36702,8 @@ async function feedDragon_(coins,menuIdx,opts){
         dragonBounce_();
       }catch(e){
         console.warn("[dragon s3] feed failed",e);
+        
+        if(dragonIsTimeout_(e) && !(spent>0)){ showToast("연결이 불안정해 먹이를 주지 못했어요 · 코인은 그대로예요",3200); return; }
         if(spent>0){ dragonRefundCoins_(spent); spent=0; }
         showToast("먹이 주기에 실패했어요 · 코인은 돌려놨어요",3200);
       }finally{ dragonS3Runtime.feedLock=false; }
@@ -36583,14 +36714,15 @@ async function refundDragonTicket_(n){
       if(!uid) return false;
       const add=Math.max(1,Math.floor(Number(n)||1));   
       try{
-        const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+        
+        const res=await dragonSlow_(rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
           if(raw===null) return null;                    
           if(!raw || typeof raw!=="object") return;
           const cur=Object.assign({},raw);
           cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+add;
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"bag","레벨권을 돌려놓는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         const val=res?.committed?res.snapshot.val():null;
         if(val && typeof val==="object"){
           dragonS3Runtime.bag=dragonNormalizeBag_(val);
@@ -36601,7 +36733,7 @@ async function refundDragonTicket_(n){
       return false;
     }
     async function buyDragonTicket_(){
-      if(dragonS3Runtime.bagLock) return;
+      if(dragonS3Runtime.bagLock){ dragonSlowBusy_("bag"); return; }   
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 이용할 수 있어요"); return; }
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
       const uid=String(state.uid);
@@ -36609,7 +36741,8 @@ async function refundDragonTicket_(n){
       try{
         await ensureDragonBag_();     
         let lack=false;
-        const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+        
+        const res=await dragonSlow_(rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
 
 if(raw===null) return null;
           if(!raw || typeof raw!=="object") return;
@@ -36620,7 +36753,7 @@ if(raw===null) return null;
           cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+1;
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"bag","레벨권으로 바꾸는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         if(lack){ showToast(`용비늘이 모자라요 · 레벨권 1장에 ${DRAGON_TICKET_COST}장이 필요해요 🐉`,2800); return; }
         const val=res?.committed?res.snapshot.val():null;
         if(!(val && typeof val==="object")){ showToast("레벨권 교환에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
@@ -36630,12 +36763,13 @@ if(raw===null) return null;
         renderDragonS3_();
       }catch(e){
         console.warn("[dragon s3] ticket buy failed",e);
+        if(dragonIsTimeout_(e)){ showToast("연결이 불안정해 교환하지 못했어요 · 용비늘은 그대로예요",3000); return; }   
         showToast("레벨권 교환에 실패했어요 · 잠시 후 다시 시도해 주세요",3000);
       }finally{ dragonS3Runtime.bagLock=false; }
     }
     
     async function feedDragonTicket_(){
-      if(dragonS3Runtime.bagLock) return;
+      if(dragonS3Runtime.bagLock){ dragonSlowBusy_("bag"); return; }   
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 이용할 수 있어요"); return; }
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
       const el=dragonMyCamp_();
@@ -36645,7 +36779,7 @@ if(raw===null) return null;
       let taken=false;
       try{
         
-        await loadDragonConfigOnce_({force:true});
+        await loadDragonConfigOnce_({force:true,strict:true});   
         if(!(await dragonCampFreshOk_(el))) return;   
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
@@ -36654,7 +36788,8 @@ if(raw===null) return null;
         if(before.skill>=cfg.skillCap){ showToast(`스킬이 이미 Lv.${dragonNumFmt_(cfg.skillCap)}예요 · 더 올릴 수 없어요 ✨`,3000); return; }
         await ensureDragonBag_();
         let empty=false;
-        const bagRes=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+        
+        const bagRes=await dragonSlow_(rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
           if(raw===null) return null;                    
           if(!raw || typeof raw!=="object") return;
           const cur=Object.assign({},raw);
@@ -36663,7 +36798,7 @@ if(raw===null) return null;
           cur.tickets=tickets-1;
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"bag","레벨권을 먹이는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         if(empty){ showToast(`레벨권이 없어요 · 용비늘 ${DRAGON_TICKET_COST}장으로 먼저 바꿔 주세요 🎟️`,3000); return; }
         const bagVal=bagRes?.committed?bagRes.snapshot.val():null;
         if(!(bagVal && typeof bagVal==="object")){ showToast("레벨권 먹이기에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
@@ -36672,7 +36807,8 @@ if(raw===null) return null;
         dragonS3Runtime.bagFetchedAtMs=Date.now();
         let after=null;
         try{
-          const res=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+          
+          const res=await dragonSlow_(rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
             if(raw===null) return null;                  
             if(!raw || typeof raw!=="object") return;     
             const d=dragonNormalizeRow_(raw);
@@ -36682,7 +36818,7 @@ if(raw===null) return null;
             d.totalTickets+=1;
             d.updatedAtMs=Date.now();
             return d;
-          });
+          }),"bag","레벨권을 먹이는 중이에요 · 연결되면 자동으로 마무리돼요(레벨권은 잠시 맡아 둘게요) ⏳");
           const val=res?.committed?res.snapshot.val():null;
           if(val && typeof val==="object") after=dragonNormalizeRow_(val);
         }catch(e){ console.warn("[dragon s3] ticket feed transaction failed",e); }
@@ -36699,7 +36835,7 @@ if(raw===null) return null;
           const updates={};
           updates[`dragonV1/fed/${el}/${uid}/tickets`]=rIncrement(1);
           updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
-          await rUpdate(rDragonPlaygroundRef_(),updates);
+          rUpdate(rDragonPlaygroundRef_(),updates).catch((e)=>{ console.warn("[dragon s3] ticket ledger update failed",e); });   
         }catch(e){ console.warn("[dragon s3] ticket ledger update failed",e); }
         
         try{
@@ -36716,13 +36852,14 @@ if(raw===null) return null;
         dragonBounce_();
       }catch(e){
         console.warn("[dragon s3] ticket feed failed",e);
+        if(dragonIsTimeout_(e) && !taken){ showToast("연결이 불안정해 레벨권을 먹이지 못했어요 · 레벨권은 그대로예요",3200); return; }   
         if(taken){ await refundDragonTicket_(); taken=false; }
         showToast("레벨권 먹이기에 실패했어요 · 레벨권은 돌려놨어요",3200);
       }finally{ dragonS3Runtime.bagLock=false; }
     }
     
     async function feedDragonTicketGrow_(){
-      if(dragonS3Runtime.bagLock) return;
+      if(dragonS3Runtime.bagLock){ dragonSlowBusy_("bag"); return; }   
       if(!state.joined || !state.uid){ showToast("작업방 입장 후 이용할 수 있어요"); return; }
       if(!dragonEnabled_()){ showToast("드래곤 시즌이 아직 시작되지 않았어요 🥚"); return; }
       const el=dragonMyCamp_();
@@ -36732,7 +36869,7 @@ if(raw===null) return null;
       dragonS3Runtime.bagLock=true;
       let taken=0;
       try{
-        await loadDragonConfigOnce_({force:true});
+        await loadDragonConfigOnce_({force:true,strict:true});   
         if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }   
         if(!(await dragonCampFreshOk_(el))) return;   
         const cfg=dragonConfig_();
@@ -36745,7 +36882,8 @@ if(raw===null) return null;
         if(remain<GAIN && !confirm(`졸업까지 ${dragonNumFmt_(remain)} 경험치만 남았어요. 레벨권 ${COST}장(경험치 ${dragonNumFmt_(GAIN)})을 그대로 쓸까요? 남는 경험치는 사라져요.`)) return;
         await ensureDragonBag_();
         let lack=false;
-        const bagRes=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+        
+        const bagRes=await dragonSlow_(rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
           if(raw===null) return null;                    
           if(!raw || typeof raw!=="object") return;
           const cur=Object.assign({},raw);
@@ -36754,7 +36892,7 @@ if(raw===null) return null;
           cur.tickets=tickets-COST;
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"bag","레벨권으로 키우는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         if(lack){ showToast(`레벨권이 모자라요 · ${COST}장이 필요해요 🎟️`,3000); return; }
         const bagVal=bagRes?.committed?bagRes.snapshot.val():null;
         if(!(bagVal && typeof bagVal==="object")){ showToast("레벨권 성장에 실패했어요 · 잠시 후 다시 시도해 주세요",3000); return; }
@@ -36763,7 +36901,8 @@ if(raw===null) return null;
         dragonS3Runtime.bagFetchedAtMs=Date.now();
         let after=null;
         try{
-          const res=await rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
+          
+          const res=await dragonSlow_(rRunTransaction(rDragonRef_(`dragons/${el}`),(raw)=>{
             if(raw===null) return null;                  
             if(!raw || typeof raw!=="object") return;     
             const d=dragonNormalizeRow_(raw);
@@ -36783,7 +36922,7 @@ if(raw===null) return null;
             }
             d.updatedAtMs=Date.now();
             return d;
-          });
+          }),"bag","레벨권으로 키우는 중이에요 · 연결되면 자동으로 마무리돼요(레벨권은 잠시 맡아 둘게요) ⏳");
           const val=res?.committed?res.snapshot.val():null;
           if(val && typeof val==="object") after=dragonNormalizeRow_(val);
         }catch(e){ console.warn("[dragon s3] ticket grow transaction failed",e); }
@@ -36800,7 +36939,7 @@ if(raw===null) return null;
           const updates={};
           updates[`dragonV1/fed/${el}/${uid}/tickets`]=rIncrement(COST);
           updates[`dragonV1/fed/${el}/${uid}/updatedAtMs`]=Date.now();
-          await rUpdate(rDragonPlaygroundRef_(),updates);
+          rUpdate(rDragonPlaygroundRef_(),updates).catch((e)=>{ console.warn("[dragon s3] ticket grow ledger update failed",e); });   
         }catch(e){ console.warn("[dragon s3] ticket grow ledger update failed",e); }
         try{
           const fed=dragonS3Runtime.fed=dragonS3Runtime.fed||{};
@@ -36828,6 +36967,7 @@ if(raw===null) return null;
         dragonBounce_();
       }catch(e){
         console.warn("[dragon s3] ticket grow failed",e);
+        if(dragonIsTimeout_(e) && !(taken>0)){ showToast("연결이 불안정해 레벨권으로 키우지 못했어요 · 레벨권은 그대로예요",3200); return; }   
         if(taken>0){ await refundDragonTicket_(taken); taken=0; }
         showToast("레벨권 성장에 실패했어요 · 레벨권은 돌려놨어요",3200);
       }finally{ dragonS3Runtime.bagLock=false; }
@@ -36862,6 +37002,7 @@ function dragonHallFollowupDone_(hall){
     
     function dragonPerkToastOnce_(el){
       try{
+        if(document.hidden) return false;   
         const perk=dragonPerkOf_(el);
         if(!perk) return false;
         if(!dragonMarkOnce_(DRAGON_PERK_SEEN,el,Date.now())) return false;
@@ -36880,6 +37021,7 @@ function dragonHallFollowupDone_(hall){
       if(!cur.el || !(cur.grad>0)) return null;
       const key=`${cur.el}:${cur.grad}`;
       if(dragonS3Runtime.perkLock) return null;
+      if(Date.now()<(Number(dragonS3Runtime.perkCoolUntilMs)||0)) return null;   
       if(dragonS3Runtime.perkDone[key]) return null;
       const cache=dragonPerkCache_();
       const same=!!(cache && String(cache.el||"")===cur.el
@@ -36895,8 +37037,8 @@ function dragonHallFollowupDone_(hall){
       dragonS3Runtime.perkLock=true;
       try{
         let row=null;
-        try{ const snap=await rGet(rDragonRef_(`hall/${cur.el}`)); const v=snap.val(); row=(v && typeof v==="object")?v:null; }
-        catch(e){ console.warn("[dragon s3] perk read failed",e); return null; }
+        try{ const snap=await readGuard_(rGet(rDragonRef_(`hall/${cur.el}`)),"특전 확인",DRAGON_WAIT_MS); const v=snap.val(); row=(v && typeof v==="object")?v:null; }   
+        catch(e){ console.warn("[dragon s3] perk read failed",e); if(dragonIsTimeout_(e)) dragonS3Runtime.perkCoolUntilMs=Date.now()+DRAGON_COOL_MS; return null; }
         dragonS3Runtime.perkTries[key]=tries+1;
         if(row) dragonHallMerge_(cur.el,row);
         const camp=(row && row.camp && typeof row.camp==="object")?row.camp:null;
@@ -36936,7 +37078,7 @@ function dragonHallFollowupDone_(hall){
       const uid=String(state.uid||"");
       let res=null;
       try{
-        res=await rRunTransaction(rDragonBlessingRef_(),(raw)=>dragonBlessingUpdater_(raw,el,g,uid,Date.now()));
+        res=await readGuard_(rRunTransaction(rDragonBlessingRef_(),(raw)=>dragonBlessingUpdater_(raw,el,g,uid,Date.now())),"고룡의 축복",DRAGON_WAIT_MS);   
       }catch(e){ console.warn("[dragon s3] blessing tx failed",e); return ""; }
       const val=res?.snapshot?.val();
       if(!(val && typeof val==="object")) return "";
@@ -36952,7 +37094,7 @@ function dragonHallFollowupDone_(hall){
       let joined="";
       let res=null;
       try{
-        res=await rRunTransaction(rDragonRef_("config"),(raw)=>{
+        res=await readGuard_(rRunTransaction(rDragonRef_("config"),(raw)=>{   
           joined="";
           if(raw===null) return null;
           if(!raw || typeof raw!=="object") return;
@@ -36974,7 +37116,7 @@ function dragonHallFollowupDone_(hall){
           cur.gradApplied=Object.assign({},applied,{[el]:g});
           cur.updatedAtMs=Date.now();
           return cur;
-        });
+        }),"다음 알 합류",DRAGON_WAIT_MS);
       }catch(e){ console.warn("[dragon s3] next egg tx failed",e); return null; }
       const val=res?.snapshot?.val();
       if(!(val && typeof val==="object" && Math.floor(Number(val.gradApplied?.[el])||0)===g)) return null;
@@ -36991,7 +37133,7 @@ function dragonHallFollowupDone_(hall){
       try{
         
         let row=null;
-        try{ const snap=await rGet(rDragonRef_(`dragons/${el}`)); row=snap.val(); }catch(e){ return false; }
+        try{ const snap=await readGuard_(rGet(rDragonRef_(`dragons/${el}`)),"졸업 도장 읽기",DRAGON_WAIT_MS); row=snap.val(); }catch(e){ return false; }   
         const grad=Math.max(0,Math.floor(Number(row?.graduatedAtMs)||0));
         if(!(grad>0)) return false;
         const cfg=dragonConfig_();
@@ -37004,13 +37146,13 @@ let hall=dragonHallRow_(el);
         let madeHall=false;
         if(!dragonHallFollowupDone_(hall)){
           
-          try{ const snap=await rGet(rDragonRef_(`hall/${el}`)); const v=snap.val(); hall=(v && typeof v==="object")?v:null; }catch(e){}
+          try{ const snap=await readGuard_(rGet(rDragonRef_(`hall/${el}`)),"전당 행 읽기",DRAGON_WAIT_MS); const v=snap.val(); hall=(v && typeof v==="object")?v:null; }catch(e){}   
         }
         let membersSnap=null;   
         if(!hall){
           let fresh=null;
           try{
-            const [fSnap,mSnap]=await Promise.all([rGet(rDragonRef_(`fed/${el}`)),rGet(rDragonRef_("members"))]);
+            const [fSnap,mSnap]=await readGuard_(Promise.all([rGet(rDragonRef_(`fed/${el}`)),rGet(rDragonRef_("members"))]),"전당 top3 재료",DRAGON_WAIT_MS);   
             const mv=mSnap.val();
             membersSnap=(mv && typeof mv==="object")?mv:null;
             
@@ -37022,19 +37164,26 @@ let hall=dragonHallRow_(el);
             };
           }catch(e){ console.warn("[dragon s3] hall top3 read failed",e); }
           if(fresh){
+            let hallTx=null;
             try{
-              const res=await rRunTransaction(rDragonRef_(`hall/${el}`),(raw)=>{
+              hallTx=rRunTransaction(rDragonRef_(`hall/${el}`),(raw)=>{
                 
                 if(raw && typeof raw==="object") return;   
                 return fresh;
               });
+              const res=await readGuard_(hallTx,"전당 행 만들기",DRAGON_WAIT_MS);   
               const val=res?.snapshot?.val();
               if(val && typeof val==="object") hall=val;
               madeHall=!!(res?.committed && uid && String(val?.by||"")===uid);
-            }catch(e){ console.warn("[dragon s3] hall create failed",e); }
+            }catch(e){
+              console.warn("[dragon s3] hall create failed",e);
+              
+              if(dragonIsTimeout_(e) && hallTx) hallTx.then((r)=>{ try{ if(r?.committed && uid && String(r?.snapshot?.val()?.by||"")===uid) dragonS3Runtime.hallMadeLate[el]=1; }catch(_e){} },()=>{});
+            }
           }
         }
         if(!hall) return false;
+        if(!madeHall && dragonS3Runtime.hallMadeLate[el] && uid && String(hall.by||"")===uid) madeHall=true;   
         dragonHallMerge_(el,hall);
         try{ dragonMinimiCheck_(); }catch(e){}   
         const fu=Object.assign({},(hall.followup && typeof hall.followup==="object")?hall.followup:{});
@@ -37043,7 +37192,7 @@ if(!fu.blessed){
           const id=await dragonApplyBlessing_(el,grad);
           if(id){
             fu.blessed=id;
-            try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{blessed:id}); }catch(e){}
+            try{ await readGuard_(rUpdate(rDragonRef_(`hall/${el}/followup`),{blessed:id}),"후속 도장(축복)",DRAGON_WAIT_MS); }catch(e){}   
           }
         }
         
@@ -37051,7 +37200,7 @@ if(!fu.blessed){
           const joinRes=await dragonJoinNextEgg_(el,grad);
           if(joinRes){
             fu.activated=1;
-            try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{activated:1}); }catch(e){}
+            try{ await readGuard_(rUpdate(rDragonRef_(`hall/${el}/followup`),{activated:1}),"후속 도장(다음 알)",DRAGON_WAIT_MS); }catch(e){}   
           }
         }
         
@@ -37061,14 +37210,15 @@ if(!fu.blessed){
           try{ emitSys(`🐉 ${emoji} ${elName}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 · 작업 코인 ×3 🌟${perkTail}`); }catch(e){}
           const at=Date.now();
           fu.sys=at;
-          try{ await rUpdate(rDragonRef_(`hall/${el}/followup`),{sys:at}); }catch(e){}
+          delete dragonS3Runtime.hallMadeLate[el];   
+          try{ await readGuard_(rUpdate(rDragonRef_(`hall/${el}/followup`),{sys:at}),"후속 도장(시스템 메시지)",DRAGON_WAIT_MS); }catch(e){}   
         }
         
         let rosterSkip=false;   
         if(!fu.roster){
           let mem=membersSnap, readOk=!!membersSnap;
           if(!mem){
-            try{ const snap=await rGet(rDragonRef_("members")); const v=snap.val(); mem=(v && typeof v==="object")?v:null; readOk=true; }
+            try{ const snap=await readGuard_(rGet(rDragonRef_("members")),"명단 동결 읽기",DRAGON_WAIT_MS); const v=snap.val(); mem=(v && typeof v==="object")?v:null; readOk=true; }   
             catch(e){ console.warn("[dragon s3] roster members read failed",e); readOk=false; mem=null; }
           }
           if(mem && Object.keys(mem).length>0){
@@ -37076,8 +37226,8 @@ if(!fu.blessed){
             if(frozen.skipped) console.warn("[dragon s3] roster freeze: bad uid keys skipped",el,frozen.skipped);
             if(frozen.cut) console.warn("[dragon s3] roster freeze: truncated at",DRAGON_ROSTER_FREEZE_MAX,el,frozen.cut);
             try{
-              await rUpdate(rDragonRef_(`hall/${el}`),frozen.campN>0?{camp:frozen.camp,campN:frozen.campN}:{campN:0});
-              await rUpdate(rDragonRef_(`hall/${el}/followup`),{roster:1});
+              await readGuard_(rUpdate(rDragonRef_(`hall/${el}`),frozen.campN>0?{camp:frozen.camp,campN:frozen.campN}:{campN:0}),"명단 동결 쓰기",DRAGON_WAIT_MS);   
+              await readGuard_(rUpdate(rDragonRef_(`hall/${el}/followup`),{roster:1}),"후속 도장(명단)",DRAGON_WAIT_MS);
               fu.roster=1;
               hall=Object.assign({},hall,{camp:frozen.camp,campN:frozen.campN});
             }catch(e){ console.warn("[dragon s3] roster freeze failed",e); }   
@@ -37105,7 +37255,7 @@ if(!fu.blessed){
         const grad=Math.max(0,Math.floor(Number(dragons[el]?.grad)||0));
         if(!(grad>0)) return;
 
-if(dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,grad) && now-grad<DRAGON_BLESS_MS){
+if(!document.hidden && dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,grad) && now-grad<DRAGON_BLESS_MS){   
           const meta=dragonConfig_().elements[el];
           dragonGlowToast_(`🐉 ${dragonText_(meta?.emoji,"🐉",6)} ${dragonText_(meta?.name,el,20)}이(가) Lv.100 고룡으로 졸업했어요! 고룡의 축복 24시간 🌟`,6000,true);
           try{ if(dragonModalOpen_()) dragonBounce_(); }catch(e){}
@@ -37120,6 +37270,7 @@ if(dragonMarkOnce_(DRAGON_GRAD_SEEN_KEY,el,grad) && now-grad<DRAGON_BLESS_MS){
     }
     
     function dragonBlessingTick_(){
+      if(document.hidden) return;   
       if(!state.joined) return;
       try{
         const info=dragonBlessingInfo_();
@@ -37302,18 +37453,18 @@ async function ensureDragonDailySeed_(){
       const fresh=(Math.floor(Math.random()*4294967295)+1)>>>0;
       let val=null;
       try{
-        const res=await rRunTransaction(rDragonItemsRef_("daily/seed"),(raw)=>{
+        const res=await readGuard_(rRunTransaction(rDragonItemsRef_("daily/seed"),(raw)=>{   
           const cur=(raw && typeof raw==="object")?raw:null;
           if(cur && typeof cur[day]==="number" && isFinite(cur[day])) return;   
           
           const next={};
           next[day]=fresh;
           return next;
-        });
+        }),"하루 시드",DRAGON_WAIT_MS);
         val=(res && res.snapshot)?res.snapshot.val():null;
       }catch(e){ console.warn("[dragon s3] daily seed failed",e); }
       if(!(val && typeof val==="object")){
-        try{ const snap=await rGet(rDragonItemsRef_("daily/seed")); val=snap.val(); }catch(e){}
+        try{ const snap=await readGuard_(rGet(rDragonItemsRef_("daily/seed")),"하루 시드 읽기",DRAGON_WAIT_MS); val=snap.val(); }catch(e){}   
       }
       const seed=(val && typeof val==="object")?Math.max(0,Math.floor(Number(val[day])||0)):0;
       dragonS3Runtime.dailySeed=seed>>>0;
@@ -37327,7 +37478,7 @@ async function ensureDragonDailySeed_(){
       const day=seoulDateKey();
       if(!force && dragonS3Runtime.dailyFetchedAtMs>0 && dragonS3Runtime.dailyDay===day) return dragonS3Runtime.daily;
       try{
-        const snap=await rGet(rDragonItemsRef_(`daily/${String(state.uid)}`));
+        const snap=await readGuard_(rGet(rDragonItemsRef_(`daily/${String(state.uid)}`)),"오늘 기록 읽기",DRAGON_WAIT_MS);   
         const v=snap.val();
         dragonS3Runtime.daily=(v && typeof v==="object")?v:null;
         dragonS3Runtime.dailyFetchedAtMs=Date.now();
@@ -37341,15 +37492,18 @@ async function ensureDragonDailySeed_(){
       const uid=String(state.uid||"");
       if(!add || !uid) return false;
       try{
-        await ensureDragonBag_();   
-        const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
-          if(raw===null) return null;                    
-          if(!raw || typeof raw!=="object") return;
-          const cur=Object.assign({},raw);
-          cur.scales=Math.max(0,Math.floor(Number(cur.scales)||0))+add;
-          cur.updatedAtMs=Date.now();
-          return cur;
-        });
+        
+        const res=await dragonSlow_((async()=>{
+          await ensureDragonBag_({wait:true});   
+          return rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+            if(raw===null) return null;                    
+            if(!raw || typeof raw!=="object") return;
+            const cur=Object.assign({},raw);
+            cur.scales=Math.max(0,Math.floor(Number(cur.scales)||0))+add;
+            cur.updatedAtMs=Date.now();
+            return cur;
+          });
+        })(),"bag","용비늘을 가방에 담는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         const val=res?.committed?res.snapshot.val():null;
         if(val && typeof val==="object"){
           dragonS3Runtime.bag=dragonNormalizeBag_(val);
@@ -37366,18 +37520,23 @@ async function ensureDragonDailySeed_(){
       const uid=String(state.uid);
       for(let tries=0;tries<3;tries++){
         if(tries>0) await new Promise((r)=>setTimeout(r,180));
-        if(dragonS3Runtime.bagLock) continue;                   
-        dragonS3Runtime.bagLock=true;
+        
+        const own=!dragonS3Runtime.bagLock;
+        if(!own && !dragonS3Runtime.slow.bag) continue;         
+        if(own) dragonS3Runtime.bagLock=true;
         try{
-          await ensureDragonBag_();   
-          const res=await rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
-            if(raw===null) return null;                    
-            if(!raw || typeof raw!=="object") return;
-            const cur=Object.assign({},raw);
-            cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+n;
-            cur.updatedAtMs=Date.now();
-            return cur;
-          });
+          
+          const res=await dragonSlow_((async()=>{
+            await ensureDragonBag_({wait:true});   
+            return rRunTransaction(rDragonItemsRef_(`bags/${uid}`),(raw)=>{
+              if(raw===null) return null;                    
+              if(!raw || typeof raw!=="object") return;
+              const cur=Object.assign({},raw);
+              cur.tickets=Math.max(0,Math.floor(Number(cur.tickets)||0))+n;
+              cur.updatedAtMs=Date.now();
+              return cur;
+            });
+          })(),"bag","레벨권을 가방에 넣는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫거나 새로고침하지 말아 주세요");
           const val=res?.committed?res.snapshot.val():null;
           if(val && typeof val==="object"){
             dragonS3Runtime.bag=dragonNormalizeBag_(val);
@@ -37385,8 +37544,11 @@ async function ensureDragonDailySeed_(){
             try{ renderDragonBag_(); }catch(_e){}   
             return true;
           }
-        }catch(e){ console.warn("[dragon s3] ticket coupon add failed",e); }
-        finally{ dragonS3Runtime.bagLock=false; }
+        }catch(e){
+          console.warn("[dragon s3] ticket coupon add failed",e);
+          if(dragonIsTimeout_(e)) return false;   
+        }
+        finally{ if(own) dragonS3Runtime.bagLock=false; }   
       }
       return false;
     }
@@ -38040,7 +38202,8 @@ async function submitDragonRaceResult_(ms,flips){
       dragonS3Runtime.pending={mode:"guerrilla",key:`race:${String(act.id)}`,ms,flips,roll:draw.n,faces:draw.faces};
       let dup=false, late=false;
       try{
-        const res=await rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
+        
+        const res=await dragonSlow_(rRunTransaction(rDragonItemsRef_("active"),(raw)=>{
           dup=false; late=false;
           if(raw===null) return null;                     
           if(!raw || typeof raw!=="object" || !raw.id) return;
@@ -38053,7 +38216,7 @@ async function submitDragonRaceResult_(ms,flips){
           results[uid]={ms:Math.max(0,Math.floor(Number(ms)||0)),flips:Math.max(0,Math.floor(Number(flips)||0)),roll:draw.n,name:myName,updatedAtMs:mkGraceNowMs_()};   
           cur.results=results;
           return cur;
-        });
+        }),"race","완주 기록을 보내는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         const val=(res && res.snapshot)?res.snapshot.val():null;
         if(val && typeof val==="object") dragonS3Runtime.race=val;
         if(late){ dragonS3Runtime.pending=null; showToast("아쉬워요! 10분 안에 못 들어왔어요 ⏳",3000); renderDragonS3_(); return false; }
@@ -38182,13 +38345,14 @@ function dragonMountReels_(){
       if(lever) lever.disabled=true;
       let already=false;
       try{
-        const res=await rRunTransaction(rDragonItemsRef_(`daily/${uid}`),(raw)=>{
+        
+        const res=await dragonSlow_(rRunTransaction(rDragonItemsRef_(`daily/${uid}`),(raw)=>{
           already=false;
           const cur=(raw && typeof raw==="object")?raw:null;
           if(cur && dragonText_(cur.day,"",12)===day){ already=true; return; }   
           
           return {day,ms:Math.max(0,Math.floor(Number(p.ms)||0)),flips:Math.max(0,Math.floor(Number(p.flips)||0)),roll:draw.n,seed:roomSeed,updatedAtMs:Date.now()};
-        });
+        }),"lever","레버 결과를 기록하는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳");
         const val=(res && res.snapshot)?res.snapshot.val():null;
         if(already){
           if(val && typeof val==="object"){ dragonS3Runtime.daily=val; dragonS3Runtime.dailyDay=day; dragonS3Runtime.dailyFetchedAtMs=Date.now(); }
@@ -38464,16 +38628,16 @@ function dragonLocalInputValue_(ms){
       const btn=document.getElementById(nowMode?"dragonGuerrillaNow":"dragonGuerrillaSet");
       if(btn) btn.disabled=true;
       try{
-        await rUpdate(rDragonPlaygroundRef_(),{
+        await readGuard_(rUpdate(rDragonPlaygroundRef_(),{
           "dragonItemsV1/sched/guerrilla":g,
           "dragonSummaryV1/race/guerrilla":{id:g.id,atMs},
           "dragonSummaryV1/race/updatedAtMs":Date.now()
-        });
+        }),"게릴라 예약",DRAGON_WAIT_MS);   
         dragonRaceMergeSummary_({guerrilla:{id:g.id,atMs}});
         renderDragonGuerrillaStatus_();
         showToast(nowMode?"게릴라 용비늘 레이스를 지금 열어요 🎴":`레이스 예약 완료! ${new Date(atMs).toLocaleString("ko-KR")} 시작 🎴`,3400);
         if(nowMode) maybeSpawnDragonRace_().catch(()=>{});
-      }catch(e){ console.warn("[dragon s3] guerrilla set failed",e); showToast("예약에 실패했어요 · 연결을 확인해 주세요",3000); }
+      }catch(e){ console.warn("[dragon s3] guerrilla set failed",e); showToast(dragonIsTimeout_(e)?"서버 확인이 늦어요 · 잠시 뒤 예약 상태를 확인해 주세요":"예약에 실패했어요 · 연결을 확인해 주세요",3000); }   
       finally{ if(btn) btn.disabled=false; }
     }
     async function cancelDragonGuerrilla_(){
@@ -38763,6 +38927,7 @@ return Object.assign({},cur,{
     async function dragonSeasonTick_(){
       if(!state.joined || !state.roomId) return;
       dragonSyncMenuButton_();
+      try{ dragonHiddenSummaryTick_(); }catch(e){}   
       
       if(dragonEnabled_()){
         try{ dragonRaceCueTick_(); }catch(e){}
@@ -38937,12 +39102,12 @@ function dragonAdminRowHtml_(key,el,isNew){
       if(button) button.disabled=true;
       try{
         
-        await rUpdate(rDragonRef_("config"),{
+        await readGuard_(rUpdate(rDragonRef_("config"),{
           expBase,expSlope,dailyCap,cardSet,
           race:{hourlyChance,dailyMin,dailyMax},
           elements,nextElement,
           updatedAtMs:Date.now(),updatedBy:String(state.uid||"")
-        });
+        }),"드래곤 설정 저장",DRAGON_WAIT_MS);   
         await loadDragonConfigOnce_({force:true});
         await writeDragonSummary_();
         renderDragonAdminPanel_();
@@ -38951,33 +39116,33 @@ function dragonAdminRowHtml_(key,el,isNew){
         showToast("드래곤 설정을 저장했어요 🐉",2600);
       }catch(e){
         console.warn("[dragon s3] admin config failed",e);
-        showToast("드래곤 설정 저장에 실패했어요",2800);
+        showToast(dragonIsTimeout_(e)?"서버 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요":"드래곤 설정 저장에 실패했어요",2800);   
       }finally{ if(button) button.disabled=false; }
     }
     async function dragonAdminStart_(){
       if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
       try{
         
-        await rUpdate(rDragonRef_("config"),{enabled:true,startAtMs:mkGraceNowMs_(),startedBy:String(state.uid||""),startedAuto:0,updatedAtMs:Date.now()});
+        await readGuard_(rUpdate(rDragonRef_("config"),{enabled:true,startAtMs:mkGraceNowMs_(),startedBy:String(state.uid||""),startedAuto:0,updatedAtMs:Date.now()}),"시즌 시작",DRAGON_WAIT_MS);   
         await loadDragonConfigOnce_({force:true});
         await writeDragonSummary_();
         dragonSyncMenuButton_();
         renderDragonAdminPanel_();
         showToast("드래곤 시즌을 시작했어요 🐉",2800);
-      }catch(e){ console.warn("[dragon s3] start failed",e); showToast("시즌 시작에 실패했어요",2800); }
+      }catch(e){ console.warn("[dragon s3] start failed",e); showToast(dragonIsTimeout_(e)?"서버 확인이 늦어요 · 다시 눌러도 한 번만 반영돼요":"시즌 시작에 실패했어요",2800); }   
     }
     async function dragonAdminTogglePause_(){
       if(!state.adminOk){ showToast("먼저 관리자 비번을 확인해 주세요"); return; }
       try{
-        await loadDragonConfigOnce_({force:true});
+        await loadDragonConfigOnce_({force:true,strict:true});   
         const next=!dragonConfig_().enabled;
-        await rUpdate(rDragonRef_("config"),{enabled:next,updatedAtMs:Date.now(),updatedBy:String(state.uid||"")});
+        await readGuard_(rUpdate(rDragonRef_("config"),{enabled:next,updatedAtMs:Date.now(),updatedBy:String(state.uid||"")}),"시즌 일시정지",DRAGON_WAIT_MS);
         await loadDragonConfigOnce_({force:true});
         await writeDragonSummary_();
         dragonSyncMenuButton_();
         renderDragonAdminPanel_();
         showToast(next?"드래곤 시즌을 재개했어요 🐉":"드래곤 시즌을 일시정지했어요 ⏸️",2800);
-      }catch(e){ console.warn("[dragon s3] pause toggle failed",e); showToast("변경에 실패했어요",2800); }
+      }catch(e){ console.warn("[dragon s3] pause toggle failed",e); showToast(dragonIsTimeout_(e)?"서버 확인이 늦어요 · 잠시 뒤 상태를 확인하고 다시 눌러 주세요":"변경에 실패했어요",2800); }   
     }
 
 function dragonDashInfo_(){
@@ -39466,6 +39631,7 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
       document.addEventListener("visibilitychange",()=>{
         if(document.hidden){ stopDragonRealtime_(); return; }
         if(state.joined && dragonModalOpen_()) subscribeDragonS3_();
+        try{ const p=dragonPerkInfo_(); if(p.active) dragonPerkToastOnce_(p.el); }catch(e){}   
       });
       window.addEventListener("pagehide",()=>{ stopDragonRealtime_(); });
       dragonSyncMenuButton_();
@@ -44922,7 +45088,13 @@ try{ var ws = window.__MK_WALLET_SYNC__; if(ws && typeof ws.ev === 'function') w
     if(btn) btn.disabled = true;
     setAwardMsg('코드를 확인하는 중이에요… ⏳');
     Promise.resolve()
-      .then(function(){ return bridge.redeemAwardCode(code); })
+      .then(function(){
+        
+        return bridge.redeemAwardCode(code, { onSlow: function(){
+          setAwardMsg('서버 확인을 기다리는 중이에요 · 연결되면 자동으로 마무리돼요 ⏳ 이 창을 닫거나 새로고침하지 말아 주세요');
+          toast('🎖️ 쿠폰을 확인하는 중이에요 · 연결되면 자동으로 마무리돼요 — 창을 닫거나 새로고침하지 말아 주세요 ⏳', 4200);
+        } });
+      })
       .then(function(res){
         if(res && res.ok){ applyAwardItem(res); return; }
         var reason = (res && res.reason) || 'error';
@@ -48273,6 +48445,11 @@ function setState(msg){ var el = $('charaBinderState'); if(el) el.textContent = 
     if(!window.confirm(msg)) return;
     btn.disabled = true;
     Promise.resolve().then(function(){ return b.adminDeleteChara(it.uid); }).then(function(res){
+      if(res === 'pending'){   
+        btn.disabled = false;
+        toast('삭제 확인이 늦어요 · 잠시 뒤 새로고침으로 확인해 주세요', 4200);
+        return;
+      }
       if(res !== 'full' && res !== 'indexOnly'){
         btn.disabled = false;
         toast('삭제하지 못했어요 — 권한이나 네트워크를 확인해 주세요', 3600);
