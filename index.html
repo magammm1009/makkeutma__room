@@ -130,6 +130,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -15309,6 +15310,56 @@ try{ await armPresenceOnDisconnect_(); }catch(e){}
   }
 }
 
+function attachSelfPresence_(){
+  
+  try{
+    if(state.__selfPresUnsub) return false;
+    if(!state.joined || state.__presenceLeaving || !state.nonChatEnabled || state.unsubParticipants) return false;   
+    if(!state.roomId || !state.uid) return false;
+    const ref = rMePresenceRef(state.roomId, state.uid);
+    let off = null;
+    const onSelf = (snap)=>{
+      try{
+        if(state.__selfPresUnsub !== off) return;                  
+        state.__selfPresGotFirst = true;                            
+        if(!state.joined || state.unsubParticipants) return;        
+        const uid = String(state.uid || "");
+        const data = (snap && snap.val) ? snap.val() : null;
+        if(!data){ try{ state.currentParticipants.delete(uid); }catch(_e){} return; }   
+        const cur = state.currentParticipants.get(uid) || null;
+        let reset = false;
+        try{ reset = applyTimerResetCommandToLocal_({ id: uid, ...data }, "selfPresence") === true; }catch(_e){}
+        if(reset || !cur){ state.currentParticipants.set(uid, mergePublicProfileIntoParticipant({ id: uid, ...data })); return; }   
+        
+        const live = {};
+        for(const k of ["lastSeenAtMs", "updatedAt", "presenceSessionId", "disconnectedSessionId", "disconnectedAtMs"]) live[k] = (data[k] !== undefined) ? data[k] : null;
+        state.currentParticipants.set(uid, Object.assign({}, cur, live));
+      }catch(_e){}
+    };
+    off = ()=>{ try{ rOff(ref, "value", onSelf); }catch(_e){} };
+    state.__selfPresUnsub = off;
+    state.__selfPresGotFirst = false;
+    state.__selfPresWaitHb = 0;
+    rOnValue(ref, onSelf, (err)=>{
+      
+      try{ console.warn("[V284_SELFPRES] 내 레코드 구독이 취소됨 — 다음 하트비트에 다시 겁니다", err); }catch(_e){}
+      if(state.__selfPresUnsub === off) state.__selfPresUnsub = null;
+    });
+    return true;
+  }catch(e){
+    state.__selfPresUnsub = null;
+    try{ console.warn("[V284_SELFPRES] 내 레코드 구독 실패", e); }catch(_e){}
+    return false;
+  }
+}
+function detachSelfPresence_(){
+  try{
+    const off = state.__selfPresUnsub;
+    state.__selfPresUnsub = null;
+    if(off) off();
+  }catch(_e){ state.__selfPresUnsub = null; }
+}
+
 async function heartbeat(){
   if(!state.roomId || !state.uid) return;
   try{
@@ -15327,6 +15378,19 @@ async function heartbeat(){
     try{
       const meNow = state.currentParticipants?.get?.(state.uid) || null;
       if(meNow) applyTimerResetCommandToLocal_(meNow, "heartbeatGuard");
+    }catch(_e){}
+
+try{
+      if(state.joined && state.nonChatEnabled && !state.unsubParticipants){
+        if(state.__selfPresUnsub && state.__selfPresGotFirst !== true){
+          state.__selfPresWaitHb = Number(state.__selfPresWaitHb || 0) + 1;
+          if(state.__selfPresWaitHb >= 2){
+            detachSelfPresence_();
+            try{ mkDiag("1건구독-재부착", "첫 값 없음(하트비트 2회)"); }catch(_e){}
+          }
+        }
+        if(!state.__selfPresUnsub) attachSelfPresence_();
+      }
     }catch(_e){}
     const st = (state.myStatus || "break");
     const meRecord = state.currentParticipants?.get?.(state.uid) || null;
@@ -15349,7 +15413,8 @@ if(state.joined){
 if(st === "work"){
         try{
           const sessionStart = Number(patch.sessionStartedAtMs) || now;
-          const liveTotal = Math.floor(Number(focusLoadSeconds() || 0));
+          
+          const liveTotal = Math.floor(Math.max(Number(focusLoadSeconds() || 0), Number(computeDisplayedTotal(meRecord)) || 0));
           const elapsedSec = Math.max(0, Math.floor((now - sessionStart) / 1000));
           patch.totalSecondsToday = Math.max(0, liveTotal - elapsedSec);
           patch.dateKey = seoulDateKey();
@@ -15365,6 +15430,13 @@ if(st === "work"){
       );
 
 }
+    
+    if(state.joined && state.nonChatEnabled && !state.unsubParticipants){
+      try{
+        const cur = state.currentParticipants?.get?.(state.uid);
+        if(cur && !cur.__localPresenceShadow) state.currentParticipants.set(state.uid, Object.assign({}, cur, patch));
+      }catch(_e){}
+    }
 
     await updatePresenceCompat_(rMePresenceRef(state.roomId, state.uid), patch);
     
@@ -21639,6 +21711,8 @@ state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
       const isCurrentPresenceSub = ()=> state.presenceSubSeq === presenceSubSeq;
       if(state.unsubParticipants) state.unsubParticipants();
       state.unsubParticipants = null;
+      
+      detachSelfPresence_();
       if(!state.nonChatEnabled){ return; }
 
 const q = rQuery(
@@ -22279,6 +22353,7 @@ if(!state.roomId || !state.uid) return;
 
 state.presenceSubSeq = (Number(state.presenceSubSeq) || 0) + 1;
       if(state.unsubParticipants) state.unsubParticipants();
+      detachSelfPresence_();   
       if(state.unsubRoom) state.unsubRoom();
       if(state.unsubChat) state.unsubChat();
       if(state.unsubKick) state.unsubKick();
@@ -22425,6 +22500,11 @@ const keepPresenceInBackground = (reason === "hidden" && !!state.joined && !!sta
       state.__presenceFeedAtMs = 0; 
       if(state.unsubParticipants){ state.unsubParticipants(); state.unsubParticipants = null; }
     }
+    
+    try{
+      if(reason === "hiddenLong" && state.joined && state.nonChatEnabled) attachSelfPresence_();
+      else if(reason === "manual") detachSelfPresence_();
+    }catch(_e){}
     if(state.unsubRoom){ state.unsubRoom(); state.unsubRoom = null; }
     
     state.__backgroundPresenceKept = keepPresenceInBackground;
@@ -29774,7 +29854,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17168; 
+const MK_APP_BUILD = 17169; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
