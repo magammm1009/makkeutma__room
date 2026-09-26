@@ -134,6 +134,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -23236,6 +23237,14 @@ window.__MK_CHARA_TILE_BRIDGE__ = {
       joined(){ try{ return !!state.joined; }catch(e){ return false; } },
       
       myRemoteCharaV1(){ try{ return state.publicProfiles?.get?.(String(state.uid || ""))?.charaV1 || null; }catch(e){ return null; } },
+      
+      myRemoteLoaded(){ try{ return !!state.publicProfiles?.has?.(String(state.uid || "")); }catch(e){ return false; } },
+      async fetchMyCharaV1(){
+        if(!state.uid || !state.roomId) throw new Error("no uid");
+        const snap = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(state.roomId)}/profiles/${state.uid}/charaV1`)), "내 착장 읽기", 8000);
+        const v = (snap && typeof snap.val === "function") ? snap.val() : null;
+        return (v && typeof v === "object") ? v : null;
+      },
 
 async writeCharaV1(payload){
         if(!state.uid || !state.roomId || !payload || typeof payload !== "object") return false;
@@ -26835,37 +26844,133 @@ const WALLET_STATS_KEY = "mk_chara_stats";
     let __walletPushTimer = null;
     let __walletPushing = false;
 
-async function walletPush_(){
-      const u = auth.currentUser; if(!u || !u.uid) return;
-      const local = walletReadLocal_(); if(!local) return;
-      if(__walletPushing) return;
-      __walletPushing = true;
+const WALLET_OPS_KEY = "mk_chara_wallet_ops_v1";
+    const WALLET_COINS_MAX = 100000000;              
+    const WALLET_FL_LEASE_MS = 30000;                
+    const WALLET_RETRY_MS = 15000;                   
+    const WALLET_TAB_ID = "wt" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    let __walletFlightTok = 0;                       
+    let __walletAgain = false;
+    let __walletRetryTimer = null;
+    let __walletPulling = false;
+
+    function walletI_(v){ return Math.max(0, Math.floor(Number(v) || 0)); }
+    function walletOpsLoad_(){
       try{
-        const localTotal = Math.max(0, Math.floor(Number(local.totalSec) || 0));
-        const stamp = walletLocalStampMs_() || Date.now();
-        const payload = {
-          coins: local.coins, totalSec: localTotal,
-          coinCarrySec: local.coinCarrySec,
-          updatedAtMs: stamp
-        };
-        const res = await rRunTransaction(walletRef_(u.uid), (cur)=>{
-          
-          if(cur === null || typeof cur !== "object") return payload;
-          const remoteTotal = Math.max(0, Math.floor(Number(cur.totalSec) || 0));
-          if(remoteTotal > localTotal) return;    
-          return payload;
-        });
-        if(res && res.committed === false){
-          const remote = (res.snapshot && typeof res.snapshot.val === "function") ? res.snapshot.val() : null;
-          if(remote && Number.isFinite(Number(remote.totalSec))){
-            console.warn("[V209_WALLETGUARD] 서버 누적(" + remote.totalSec + "초)이 이 기기(" + localTotal +
-              "초)보다 많아 덮어쓰지 않았습니다 — 서버 값을 되살립니다.");
-            try{ mkDiag("지갑보호", `로컬 ${localTotal}초 < 서버 ${remote.totalSec}초 → 복원`); }catch(_e){}
-            walletApplyLocal_(remote, Number(remote.updatedAtMs) || Date.now());
-          }
-        }
-      }catch(err){ console.warn("[V189_WALLET] 백업 실패", err); }
-      finally{ __walletPushing = false; }
+        const d = JSON.parse(localStorage.getItem(WALLET_OPS_KEY) || "null");
+        if(d && typeof d === "object" && d.v === 1) return d;
+      }catch(_e){}
+      return { v:1, uid:"", base:null, ev:0, fl:null, lt:0 };
+    }
+    function walletOpsSave_(j){
+      try{ localStorage.setItem(WALLET_OPS_KEY, JSON.stringify(j)); return true; }catch(_e){ return false; }
+    }
+    function walletBaseOf_(r){
+      return (r && typeof r === "object")
+        ? { c:walletI_(r.coins), t:walletI_(r.totalSec), k:walletI_(r.coinCarrySec), u:Number(r.updatedAtMs) || 0 }
+        : { c:0, t:0, k:0, u:0 };
+    }
+    
+    function walletWriteLocal_(w){
+      try{
+        localStorage.setItem(WALLET_STATS_KEY, JSON.stringify({
+          totalSec: walletI_(w.totalSec), coins: walletI_(w.coins), coinCarrySec: walletI_(w.coinCarrySec)
+        }));
+      }catch(_e){}
+      try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.updateWalletUI && window.__MK_PET_V24__.updateWalletUI(); }catch(_e){}
+    }
+    
+    function walletMergeMath_(cur, p){
+      const c = (cur && typeof cur === "object") ? cur : {};
+      const curT = walletI_(c.totalSec), curC = walletI_(c.coins), curK = walletI_(c.coinCarrySec);
+      const tv = walletI_(p.tv), bt = Math.min(walletI_(p.bt), tv), ct = walletI_(p.ct);
+      const ev = Math.trunc(Number(p.ev) || 0);
+      let add = 0;
+      if(tv > curT){
+        const span = tv - bt;
+        add = (span > 0) ? Math.round(ct * (tv - Math.max(curT, bt)) / span) : ct;
+      }
+      const coins = Math.max(0, Math.min(WALLET_COINS_MAX, curC + add + ev));
+      return { coins, totalSec: Math.max(curT, tv), coinCarrySec: (tv > curT) ? walletI_(p.k) : curK, evEff: coins - curC - add };
+    }
+    function walletTxFn_(op){
+      return (cur)=>{
+        
+        if(cur && typeof cur === "object" && Number(cur.updatedAtMs) === op.tok) return cur;
+        
+        const m = walletMergeMath_(cur, op);
+        return { coins: m.coins, totalSec: m.totalSec, coinCarrySec: m.coinCarrySec, updatedAtMs: op.tok };
+      };
+    }
+    
+    function walletRebase_(j, R, snap){
+      if(!R || typeof R !== "object"){ j.base = walletBaseOf_(null); return; }   
+      const s = snap || {};
+      const L = walletReadLocal_() || { coins:walletI_(s.c), totalSec:walletI_(s.t), coinCarrySec:walletI_(s.k) };
+      const ev = Math.trunc(Number(j.ev) || 0);
+      const m = walletMergeMath_(R, { tv:L.totalSec, bt:walletI_(s.t), ct:Math.max(0, L.coins - walletI_(s.c) - ev), ev, k:L.coinCarrySec });
+      j.base = walletBaseOf_(R);
+      j.ev = m.evEff;
+      walletWriteLocal_({ coins:m.coins, totalSec:m.totalSec, coinCarrySec:L.coinCarrySec });
+    }
+    function walletRetrySoon_(){
+      if(__walletRetryTimer) return;
+      __walletRetryTimer = setTimeout(()=>{ __walletRetryTimer = null; walletPush_(); }, WALLET_RETRY_MS);
+    }
+    function walletSettle_(uid, op, res, err){
+      if(__walletFlightTok === op.tok) __walletFlightTok = 0;
+      const j = walletOpsLoad_();
+      const mine = !!(j.uid === uid && j.fl && j.fl.tok === op.tok);
+      if(err || !res || res.committed !== true){
+        console.warn("[V288_WALLETOPS] 지갑 백업 결과를 모릅니다 — 같은 증감을 잠시 뒤 같은 표식으로 다시 보냅니다", err || res);
+        if(mine && j.fl.lease && j.fl.lease.tab === WALLET_TAB_ID){ j.fl.lease = null; walletOpsSave_(j); }
+        walletRetrySoon_();
+        return;
+      }
+      if(!mine) return;                                  
+      const R = (res.snapshot && typeof res.snapshot.val === "function") ? res.snapshot.val() : null;
+      walletRebase_(j, R, op.snap);
+      j.fl = null;
+      walletOpsSave_(j);
+      if(Math.trunc(Number(j.ev) || 0)) setTimeout(()=>{ walletPush_(); }, 0);   
+    }
+
+    async function walletPush_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      if(__walletPushing){ __walletAgain = true; return; }
+      const uid = u.uid;
+      const j = walletOpsLoad_();
+      if(j.uid !== uid || !j.base){ walletMaybePull_(); return; }   
+      let op = j.fl;
+      if(op){
+        if(__walletFlightTok === op.tok) return;         
+        if(op.lease && op.lease.tab !== WALLET_TAB_ID && Number(op.lease.until) > Date.now()){ walletRetrySoon_(); return; }   
+      }else{
+        const L = walletReadLocal_(); if(!L) return;
+        const ev = Math.trunc(Number(j.ev) || 0);
+        const bt = walletI_(j.base.t);
+        const ct = Math.max(0, L.coins - walletI_(j.base.c) - ev);
+        if(!ev && !ct && L.totalSec <= bt) return;       
+        
+        const tok = Math.max(Date.now(), walletI_(j.lt) + 1) + (1 + Math.floor(Math.random() * 4094)) / 4096;
+        op = { tok, ev, tv:L.totalSec, bt, ct, k:L.coinCarrySec, snap:{ c:L.coins, t:L.totalSec, k:L.coinCarrySec } };
+        j.fl = op; j.ev = 0; j.lt = tok;
+      }
+      op.lease = { tab:WALLET_TAB_ID, until:Date.now() + WALLET_FL_LEASE_MS };
+      if(!walletOpsSave_(j)) return;
+      __walletPushing = true;
+      __walletFlightTok = op.tok;
+      __walletAgain = false;
+      const p = rRunTransaction(walletRef_(uid), walletTxFn_(op));
+      p.then((res)=>{ try{ walletSettle_(uid, op, res, null); }catch(e){ console.warn("[V288_WALLETOPS] settle", e); } },
+             (err)=>{ try{ walletSettle_(uid, op, null, err); }catch(e){ console.warn("[V288_WALLETOPS] settle", e); } });
+      try{ await readGuard_(p, "지갑 백업", 8000); }
+      catch(e){
+        if(e && e.code === "mk/timeout") console.warn("[V288_WALLETOPS] 지갑 백업 응답이 8초 넘게 없어요 — 연결되면 SDK가 보냅니다(같은 증감을 두 번 보내지 않아요)");
+      }finally{
+        __walletPushing = false;
+        if(__walletAgain){ __walletAgain = false; setTimeout(()=>{ walletPush_(); }, 0); }
+      }
     }
 
     function walletMarkDirty_(immediate){
@@ -26877,44 +26982,75 @@ async function walletPush_(){
       if(__walletPushTimer) return;              
       __walletPushTimer = setTimeout(()=>{ __walletPushTimer = null; walletPush_(); }, WALLET_PUSH_DEBOUNCE_MS);
     }
-
-    async function walletMaybePull_(){
-      const u = auth.currentUser; if(!u || !u.uid) return;
-      if(__walletPulledUid === u.uid) return;     
-      __walletPulledUid = u.uid;
-      try{
-        const remote = (await rGet(walletRef_(u.uid))).val();
-        const local  = walletReadLocal_();
-        if(!remote || !Number.isFinite(Number(remote.updatedAtMs))){
-          if(local) walletMarkDirty_();           
-          return;
-        }
-        if(!local){
-          walletApplyLocal_(remote, Number(remote.updatedAtMs));
-          console.info("[V189_WALLET] 새 브라우저 — 코인 " + remote.coins + " 복원");
-          return;
-        }
-        
-        const remoteTotal = Math.max(0, Math.floor(Number(remote.totalSec) || 0));
-        const localTotal  = Math.max(0, Math.floor(Number(local.totalSec) || 0));
-        if(remoteTotal > localTotal){
-          walletApplyLocal_(remote, Number(remote.updatedAtMs) || Date.now());
-          console.info("[V209_WALLETGUARD] 서버 누적이 더 많아 복원 — 코인 " + remote.coins +
-            " (서버 " + remoteTotal + "초 > 이 기기 " + localTotal + "초)");
-          try{ mkDiag("지갑복원", `서버 ${remoteTotal}초 > 로컬 ${localTotal}초`); }catch(_e){}
-        }else if(Number(remote.updatedAtMs) > walletLocalStampMs_()){
-          walletApplyLocal_(remote, Number(remote.updatedAtMs));
-          console.info("[V189_WALLET] 서버 쪽이 최신 — 코인 " + remote.coins + " 적용");
-        }else{
-          walletMarkDirty_();                     
-        }
-      }catch(err){
-        console.warn("[V189_WALLET] 지갑 동기화 실패", err);
-        __walletPulledUid = "";                   
-      }
+    
+    function walletEv_(delta){
+      const d = Math.trunc(Number(delta) || 0);
+      if(!d) return;
+      const j = walletOpsLoad_();
+      j.ev = Math.trunc(Number(j.ev) || 0) + d;
+      walletOpsSave_(j);
+      walletMarkDirty_(true);
     }
 
-window.__MK_WALLET_SYNC__ = { markDirty: walletMarkDirty_, pull: walletMaybePull_ };
+function walletInit_(uid, R){
+      const j = walletOpsLoad_();
+      if(j.uid === uid && j.base) return;                
+      const L = walletReadLocal_();
+      const ev0 = Math.trunc(Number(j.ev) || 0);         
+      const nj = { v:1, uid, base:null, ev:ev0, fl:null, lt:walletI_(j.lt) };
+      const has = !!(R && typeof R === "object" && Number.isFinite(Number(R.totalSec)));
+      if(!has){
+        nj.base = walletBaseOf_(null);                   
+      }else if(!L){
+        nj.base = walletBaseOf_(R); nj.ev = 0;
+        walletApplyLocal_(R, Number(R.updatedAtMs) || Date.now());
+        console.info("[V189_WALLET] 새 브라우저 — 코인 " + R.coins + " 복원");
+      }else{
+        const rT = walletI_(R.totalSec), rC = walletI_(R.coins);
+        nj.base = walletBaseOf_(R);
+        if(rT > L.totalSec || Number(R.updatedAtMs) > walletLocalStampMs_()){
+          
+          const m = walletMergeMath_(R, { tv:0, bt:0, ct:0, ev:ev0, k:0 });
+          nj.ev = m.evEff;
+          walletApplyLocal_({ coins:m.coins, totalSec:rT, coinCarrySec:walletI_(R.coinCarrySec) }, Number(R.updatedAtMs) || Date.now());
+          if(rT > L.totalSec){
+            console.info("[V209_WALLETGUARD] 서버 누적이 더 많아 복원 — 코인 " + R.coins + " (서버 " + rT + "초 > 이 기기 " + L.totalSec + "초)");
+            try{ mkDiag("지갑복원", `서버 ${rT}초 > 로컬 ${L.totalSec}초`); }catch(_e){}
+          }
+        }else{
+          
+          const diff = L.coins - rC - ev0;
+          if(diff < 0 || L.totalSec <= rT) nj.ev = ev0 + diff;
+        }
+      }
+      walletOpsSave_(nj);
+    }
+    async function walletMaybePull_(){
+      const u = auth.currentUser; if(!u || !u.uid) return;
+      const uid = u.uid;
+      if(__walletPulling) return;
+      if(__walletPulledUid === uid){ const j0 = walletOpsLoad_(); if(j0.uid === uid && j0.base) return; }   
+      __walletPulling = true;
+      __walletPulledUid = uid;
+      try{
+        const j = walletOpsLoad_();
+        if(!(j.uid === uid && j.base) || !j.fl){
+          
+          const snap = await readGuard_(rGet(walletRef_(uid)), "지갑 읽기", 8000);
+          const R = snap ? snap.val() : null;
+          const j2 = walletOpsLoad_();
+          if(!(j2.uid === uid && j2.base)) walletInit_(uid, R);
+          else if(!j2.fl){ walletRebase_(j2, R, j2.base); walletOpsSave_(j2); }
+        }
+      }catch(err){
+        console.warn("[V288_WALLETOPS] 지갑 동기화 실패 — 다음 기회에 다시", err);
+        __walletPulledUid = "";                   
+        return;
+      }finally{ __walletPulling = false; }
+      walletPush_();
+    }
+
+window.__MK_WALLET_SYNC__ = { markDirty: walletMarkDirty_, pull: walletMaybePull_, ev: walletEv_ };
 
 try{
       document.addEventListener("visibilitychange", ()=>{
@@ -26951,6 +27087,29 @@ const OWNED_LS_KEY = "mk_chara_owned_v2";
     let __ownedPushTimer = null;
     let __ownedPushing = false;
 
+let __ownedRetries = 0;
+    function ownedTxFn_(list){
+      return (cur)=>{
+        const server = (cur && typeof cur === "object") ? ownedUnpack_(cur.parts) : [];
+        const all = Array.from(new Set(server.concat(ownedReadLocal_() || list)));
+        if(cur && typeof cur === "object" && all.length === server.length) return;   
+        const packed = ownedPack_(all);
+        if(packed.length > OWNED_MAX_CHARS){ console.warn("[V190_OWNED] 서버와 합치면 상한을 넘어 백업하지 않음:", packed.length); return; }
+        return { parts: packed, updatedAtMs: Date.now() };   
+      };
+    }
+    function ownedAfterTx_(res){
+      __ownedRetries = 0;
+      const v = (res && res.snapshot && typeof res.snapshot.val === "function") ? res.snapshot.val() : null;
+      const server = (v && typeof v === "object") ? ownedUnpack_(v.parts) : [];
+      if(!server.length) return;
+      const local = ownedReadLocal_() || [];
+      const merged = Array.from(new Set(local.concat(server)));
+      if(merged.length === local.length) return;
+      if(!ownedWriteLocal_(merged)) return;
+      console.info("[V288_OWNEDUNION] 다른 기기에서 산 파츠 " + (merged.length - local.length) + "개를 합쳤어요 (총 " + merged.length + "개)");
+      try{ window.__MK_PET_V24__ && window.__MK_PET_V24__.updateWalletUI && window.__MK_PET_V24__.updateWalletUI(); }catch(_e){}
+    }
     async function ownedPush_(){
       const u = auth.currentUser; if(!u || !u.uid) return;
       const list = ownedReadLocal_();
@@ -26959,10 +27118,16 @@ const OWNED_LS_KEY = "mk_chara_owned_v2";
       if(packed.length > OWNED_MAX_CHARS){
         console.warn("[V190_OWNED] 목록이 상한을 넘어 백업하지 않음:", packed.length); return;
       }
-      if(__ownedPushing) return;
+      if(__ownedPushing){ ownedMarkDirty_(); return; }   
       __ownedPushing = true;
-      try{ await rSet(ownedRef_(u.uid), { parts: packed, updatedAtMs: Date.now() }); }
-      catch(err){ console.warn("[V190_OWNED] 백업 실패", err); }
+      try{
+        const tx = rRunTransaction(ownedRef_(u.uid), ownedTxFn_(list));
+        tx.then(ownedAfterTx_, (err)=>{
+          console.warn("[V190_OWNED] 백업 실패", err);
+          if(__ownedRetries < 5){ __ownedRetries++; ownedMarkDirty_(); }
+        });
+        await readGuard_(tx, "보유 파츠 백업", 8000);
+      }catch(_e){  }
       finally{ __ownedPushing = false; }
     }
     function ownedMarkDirty_(){
@@ -26974,7 +27139,7 @@ const OWNED_LS_KEY = "mk_chara_owned_v2";
       if(__ownedPulledUid === u.uid) return;      
       __ownedPulledUid = u.uid;
       try{
-        const remote = (await rGet(ownedRef_(u.uid))).val();
+        const remote = (await readGuard_(rGet(ownedRef_(u.uid)), "보유 파츠 읽기", 8000)).val();   
         const local  = ownedReadLocal_() || [];
         const server = remote ? ownedUnpack_(remote.parts) : [];
         if(!server.length){ if(local.length) ownedMarkDirty_(); return; }
@@ -31914,7 +32079,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17172; 
+const MK_APP_BUILD = 17173; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -34258,6 +34423,7 @@ const DRAGON_TICKET_GROW_COST = 10;
       raceClosingLock:false,  
       raceSpawnLock:false,    
       raceRollHour:"",        
+      raceCfgLoading:false,   
       raceTickTimer:0,        
       daily:null,             
       dailyDay:"",
@@ -34871,8 +35037,8 @@ function dragonReadStats_(){ try{ return JSON.parse(localStorage.getItem(DRAGON_
         coinCarrySec:Math.max(0,Math.floor(Number(d.coinCarrySec)||0))
       };
       try{ localStorage.setItem(DRAGON_STATS_KEY,JSON.stringify(s)); }catch(e){ return false; }
-      
-      try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
+
+try{ const ws=window.__MK_WALLET_SYNC__; if(ws && typeof ws.ev==='function') ws.ev(next-now); else if(ws) ws.markDirty(true); }catch(e){}
       try{ const a=window.__MK_PET_V24__; if(a && typeof a.updateWalletUI==="function") a.updateWalletUI(); }catch(e){}
       return true;
     }
@@ -35237,6 +35403,31 @@ function dragonMyCamp_(){
       return dragonText_(dragonS3Runtime.members?.[uid]?.campChangedDay,"",12);
     }
     function dragonSaveLocalCamp_(el){ try{ localStorage.setItem(DRAGON_LOCAL_CAMP,String(el||"")); }catch(e){} }
+    
+    async function dragonCampFreshOk_(el){
+      const uid=String(state.uid||"");
+      let row=null;
+      try{
+        const snap=await readGuard_(rGet(rDragonRef_(`members/${uid}`)),"내 기운 확인",8000);
+        row=snap?snap.val():null;
+      }catch(e){
+        console.warn("[dragon s3] camp check failed",e);
+        showToast("내 기운을 확인하지 못했어요 · 연결을 확인하고 다시 눌러 주세요",3000);
+        return false;
+      }
+      const fresh=(row && typeof row==="object")?dragonText_(row.camp,"",20):"";
+      if(!fresh || fresh===el) return true;          
+      
+      dragonS3Runtime.members=Object.assign({},dragonS3Runtime.members||{},{[uid]:row});
+      dragonS3Runtime.membersFetchedAtMs=dragonS3Runtime.membersFetchedAtMs||Date.now();
+      dragonSaveLocalCamp_(fresh);
+      const cfg=dragonConfig_();
+      const info=(fresh && cfg.elements[fresh])?cfg.elements[fresh]:null;
+      showToast(info?`다른 기기에서 기운을 바꿨어요 (지금 ${info.emoji} ${info.name}) · 화면을 맞췄으니 다시 눌러 주세요`:"다른 기기에서 기운을 바꿨어요 · 화면을 맞췄으니 다시 눌러 주세요",3600);
+      dragonS3Runtime.viewEl=fresh;
+      try{ renderDragonS3_(); }catch(e){}
+      return false;
+    }
     function dragonViewEl_(){
       
       const cfg=dragonConfig_();
@@ -36264,6 +36455,7 @@ async function feedDragon_(coins,menuIdx,opts){
         await loadDragonConfigOnce_({force:true});
         
         if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }
+        if(!(await dragonCampFreshOk_(el))) return;   
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
         const day=seoulDateKey();
@@ -36454,6 +36646,7 @@ if(raw===null) return null;
       try{
         
         await loadDragonConfigOnce_({force:true});
+        if(!(await dragonCampFreshOk_(el))) return;   
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
         const before=await ensureDragonRow_(el);
@@ -36541,6 +36734,7 @@ if(raw===null) return null;
       try{
         await loadDragonConfigOnce_({force:true});
         if(!dragonEnabled_()){ showToast("드래곤 시즌이 지금은 멈춰 있어요 ⏸️"); return; }   
+        if(!(await dragonCampFreshOk_(el))) return;   
         const cfg=dragonConfig_();
         if(!cfg.elements[el] || !cfg.elements[el].active){ showToast("그 기운의 드래곤은 지금 활성 상태가 아니에요"); return; }
         const before=await ensureDragonRow_(el);
@@ -37203,13 +37397,23 @@ async function maybeRollDragonRace_(){
       const summary=dragonS3Runtime.summary;
       if(!summary) return;
       if(dragonRaceOpen_()) return;                      
-      const now=Date.now();
+      
+      const now=mkGraceNowMs_();
       if(new Date(now).getMinutes()<50) return;
       const nextHourStartMs=now-(now%3600000)+3600000;
       const hourKey=dragonRaceHourKey_(nextHourStartMs);
       const cached=dragonRaceSummary_().roll;
       if(cached && String(cached.hour||"")===hourKey) return;      
       if(dragonS3Runtime.raceRollHour===hourKey) return;           
+      
+      if(!(Number(dragonS3Runtime.configFetchedAtMs)>0)){
+        if(dragonS3Runtime.raceCfgLoading) return;
+        dragonS3Runtime.raceCfgLoading=true;
+        try{ await readGuard_(loadDragonConfigOnce_(),"레이스 판정 설정",8000); }catch(e){}
+        finally{ dragonS3Runtime.raceCfgLoading=false; }
+        if(!(Number(dragonS3Runtime.configFetchedAtMs)>0)){ console.warn("[dragon s3] race roll skipped — admin race config not loaded yet (no default-config roll)"); return; }
+        if(dragonS3Runtime.raceRollHour===hourKey) return;         
+      }
       dragonS3Runtime.raceRollHour=hourKey;
       const cfg=dragonRaceCfg_();
       try{
@@ -37217,8 +37421,8 @@ async function maybeRollDragonRace_(){
           const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
           if(cur.roll && String(cur.roll.hour||"")===hourKey) return;  
           
-          if(cur.roll && ((cur.roll.will && !cur.roll.done && Number(cur.roll.atMs)>0 && Date.now()-Number(cur.roll.atMs)<DRAGON_RACE_STALE_MS)
-            || (cur.roll.fw && !cur.roll.fdone && Number(cur.roll.fAtMs)>0 && Date.now()-Number(cur.roll.fAtMs)<DRAGON_RACE_STALE_MS))) return;
+          if(cur.roll && ((cur.roll.will && !cur.roll.done && Number(cur.roll.atMs)>0 && mkGraceNowMs_()-Number(cur.roll.atMs)<DRAGON_RACE_STALE_MS)
+            || (cur.roll.fw && !cur.roll.fdone && Number(cur.roll.fAtMs)>0 && mkGraceNowMs_()-Number(cur.roll.fAtMs)<DRAGON_RACE_STALE_MS))) return;
           
           const dayKey=hourKey.slice(0,10);
           const dRace=(cur.day===dayKey)?(Number(cur.dRace)||0):0;
@@ -37384,7 +37588,7 @@ function dragonRaceSfxApply_(on,fromGesture){
 function dragonRaceCueTick_(){
       if(!state.joined) return;
       if(!dragonS3Runtime.summary) return;
-      const now=Date.now();
+      const now=mkGraceNowMs_();   
       if(new Date(now).getMinutes()!==59) return;
       const hourKey=dragonRaceHourKey_(now-(now%3600000)+3600000);
       if(dragonS3Runtime.raceCueHour===hourKey) return;
@@ -37514,7 +37718,7 @@ async function dragonRaceSettleClaim_(spawnId,mode,opts){
       if(dragonRaceOpen_()) return;                       
       
       try{ await maybeCloseDragonRace_(); }catch(e){}
-      const now=Date.now();
+      const now=mkGraceNowMs_();   
       const race=dragonRaceSummary_();
       const roll=(race.roll && typeof race.roll==="object")?race.roll:null;
       const rsv=(race.guerrilla && typeof race.guerrilla==="object")?race.guerrilla:null;
@@ -37541,7 +37745,7 @@ async function dragonRaceSettleClaim_(spawnId,mode,opts){
           const cur=(raw && typeof raw==="object")?Object.assign({},raw):{};
           
           if(cur.spawning && String(cur.spawning.id||"")===spawnId) return cur;
-          const nowT=Date.now();
+          const nowT=mkGraceNowMs_();   
           let undid=false;
           if(cur.spawning){
             if(nowT-(Number(cur.spawning.atMs)||0)<DRAGON_RACE_SPAWN_LEASE_MS) return; 
@@ -37611,7 +37815,7 @@ async function dragonRaceSettleClaim_(spawnId,mode,opts){
       const spawnId=String(o.spawnId||"");
       const claimAtMs=Number(o.claimAtMs)||0;
       const rollKey=String(o.rollKey||"");
-      const now=Date.now();
+      const now=mkGraceNowMs_();   
       const id=`race-${now}-${Math.random().toString(36).slice(2,8)}`;
       const seed=(Math.floor(Math.random()*4294967295)+1)>>>0;
       const fresh={id,kind:String(kind||"guerrilla"),seed,startMs:now,endMs:now+DRAGON_RACE_WINDOW_MS,results:{}};
@@ -37632,7 +37836,7 @@ if(cur && cur.id && !(Number(cur.closedAtMs)>0) && Number(cur.endMs)>0){ busy=Ob
 
 if(cur && cur.id && rollKey && String(cur.rollKey||"")===rollKey){ dup=Object.assign({},cur); return; }
           
-          if(claimAtMs>0 && Date.now()-claimAtMs>=DRAGON_RACE_SPAWN_LEASE_MS){ stale=true; return; }
+          if(claimAtMs>0 && mkGraceNowMs_()-claimAtMs>=DRAGON_RACE_SPAWN_LEASE_MS){ stale=true; return; }   
           prevKey=(cur && cur.id)?String(cur.rollKey||""):"";   
           
           return fresh;
@@ -37713,7 +37917,7 @@ async function maybeCloseDragonRace_(){
           mine=false;
           if(raw===null) return null;                     
           if(!raw || typeof raw!=="object" || !raw.id) return;
-          if(!(Number(raw.endMs)>0) || Date.now()<Number(raw.endMs)) return;
+          if(!(Number(raw.endMs)>0) || mkGraceNowMs_()<Number(raw.endMs)) return;   
           const cur=Object.assign({},raw);
           
           const leaseNow=mkGraceNowMs_();
@@ -37724,7 +37928,7 @@ async function maybeCloseDragonRace_(){
             cur.payBy=uid; cur.payAtMs=leaseNow; mine=true;
             return cur;
           }
-          cur.closedAtMs=Date.now(); cur.closedBy=uid;
+          cur.closedAtMs=leaseNow; cur.closedBy=uid;   
           cur.payBy=uid; cur.payAtMs=leaseNow; mine=true;
           return cur;
         }),"레이스 마감",8000);
@@ -37841,11 +38045,12 @@ async function submitDragonRaceResult_(ms,flips){
           if(raw===null) return null;                     
           if(!raw || typeof raw!=="object" || !raw.id) return;
           if(String(raw.id)!==String(act.id)){ late=true; return; }
-          if(Number(raw.closedAtMs)>0 || Date.now()>Number(raw.endMs||0)){ late=true; return; }
+          
+          if(Number(raw.closedAtMs)>0 || mkGraceNowMs_()>Number(raw.endMs||0)){ late=true; return; }
           const cur=Object.assign({},raw);
           const results=Object.assign({},(cur.results && typeof cur.results==="object")?cur.results:{});
           if(results[uid]){ dup=true; return; }
-          results[uid]={ms:Math.max(0,Math.floor(Number(ms)||0)),flips:Math.max(0,Math.floor(Number(flips)||0)),roll:draw.n,name:myName,updatedAtMs:Date.now()};
+          results[uid]={ms:Math.max(0,Math.floor(Number(ms)||0)),flips:Math.max(0,Math.floor(Number(flips)||0)),roll:draw.n,name:myName,updatedAtMs:mkGraceNowMs_()};   
           cur.results=results;
           return cur;
         });
@@ -38238,8 +38443,8 @@ function dragonLocalInputValue_(ms){
       if(box.textContent!==text) box.textContent=text;
       const input=document.getElementById("dragonGuerrillaTime");
       if(input && document.activeElement!==input){
-        input.min=dragonLocalInputValue_(Date.now()+3*60*1000);
-        if(!input.value) input.value=dragonLocalInputValue_(Date.now()+10*60*1000);
+        input.min=dragonLocalInputValue_(mkGraceNowMs_()+3*60*1000);   
+        if(!input.value) input.value=dragonLocalInputValue_(mkGraceNowMs_()+10*60*1000);
       }
     }
     async function setDragonGuerrilla_(nowMode){
@@ -38247,12 +38452,12 @@ function dragonLocalInputValue_(ms){
       if(!state.joined || !state.roomId){ showToast("작업방 입장 후 예약할 수 있어요"); return; }
       let atMs=0;
       if(nowMode){
-        atMs=Date.now();
+        atMs=mkGraceNowMs_();   
       }else{
         const v=String(document.getElementById("dragonGuerrillaTime")?.value||"");
         const t=v?new Date(v).getTime():NaN;
         if(!isFinite(t)){ showToast("레이스 시작 시각을 골라 주세요"); return; }
-        if(t-Date.now()<3*60*1000){ showToast("예고가 모두에게 퍼지도록 최소 3분 뒤 시각으로 정해 주세요",3400); return; }
+        if(t-mkGraceNowMs_()<3*60*1000){ showToast("예고가 모두에게 퍼지도록 최소 3분 뒤 시각으로 정해 주세요",3400); return; }   
         atMs=t;
       }
       const g={id:`dgrl-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,atMs,by:String(state.uid||""),createdAtMs:Date.now()};
@@ -39271,6 +39476,7 @@ const face=Number(btn.getAttribute("data-face"))||Number(btn.getAttribute("data-
         openRace:()=>{ dragonS3Runtime.raceTab="guerrilla"; dragonRaceResetSlotView_(); openDragonS3_(); },
         
         isEnabled:dragonEnabled_,
+        nowMs:()=>mkGraceNowMs_(),   
         getDashInfo:dragonDashInfo_,
         refresh:()=>loadDragonSummaryOnce_().then((s)=>{ if(s) petLinkKick_("enter"); return s; }),   
         
@@ -40533,10 +40739,15 @@ const retired = !!(info && info.retired);
     const m = Math.floor(t / 60), s = t % 60;
     return m + ':' + (s < 10 ? '0' : '') + s;
   }
+  
+  function dragonRaceBadgeNow(){
+    try{ const api = dashDragonApi(); if(api && typeof api.nowMs === 'function'){ const n = Number(api.nowMs()); if(n > 0) return n; } }catch(e){}
+    return Date.now();
+  }
   function paintDragonRaceBadgeText(){
     const badge = document.getElementById('dragonRaceBadge');
     if(!badge) return;
-    const left = dragonRaceBadgeEndMs - Date.now();
+    const left = dragonRaceBadgeEndMs - dragonRaceBadgeNow();
     if(left <= 0){
       badge.style.display = 'none';
       if(dragonRaceBadgeTimer){ clearInterval(dragonRaceBadgeTimer); dragonRaceBadgeTimer = 0; }
@@ -40551,7 +40762,7 @@ const retired = !!(info && info.retired);
     let badge = document.getElementById('dragonRaceBadge');
     const race = (info && info.race && typeof info.race === 'object') ? info.race : null;
     const endMs = race ? Number(race.endMs) || 0 : 0;
-    const show = !!(endMs > Date.now());
+    const show = !!(endMs > dragonRaceBadgeNow());
     if(!show){
       dragonRaceBadgeEndMs = 0;
       if(dragonRaceBadgeTimer){ clearInterval(dragonRaceBadgeTimer); dragonRaceBadgeTimer = 0; }
@@ -43766,8 +43977,11 @@ function loadSaved(){
     
     try{
       localStorage.setItem(LS_KEY, JSON.stringify(currentSavePayload()));
-      
-      try{ localStorage.setItem('mk_chara_state_stamp_v1', String(Date.now())); }catch(e3){}
+
+try{
+        var tv169 = window.__MK_CHARA_TILE_V169__, rs169 = (tv169 && typeof tv169.remoteStamp === 'function') ? (Number(tv169.remoteStamp()) || 0) : 0;
+        localStorage.setItem('mk_chara_state_stamp_v1', String(Math.max(Date.now(), rs169 + 1)));
+      }catch(e3){}
       
       try{ if(window.__MK_CHARA_TILE_V169__) window.__MK_CHARA_TILE_V169__.onLocalCharaChanged(); }catch(e2){}
     }catch(e){ console.warn('[chara v169] 저장 실패', e); }
@@ -43931,8 +44145,8 @@ var COIN = (typeof window.mkIc_ === 'function') ? window.mkIc_('coin', 'mkCoinLn
       if(s.coins < n) return false;
       s.coins -= n;
       localStorage.setItem(STATS_KEY, JSON.stringify(s));
-      
-      try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
+
+try{ var ws = window.__MK_WALLET_SYNC__; if(ws && typeof ws.ev === 'function') ws.ev(-n); else if(ws) ws.markDirty(true); }catch(e){}
       return true;
     }catch(e){ return false; }
   }
@@ -44613,7 +44827,7 @@ var awardBusy = false;
     };
     try{ localStorage.setItem(STATS_KEY, JSON.stringify(s)); }catch(e){}
 
-try{ window.__MK_WALLET_SYNC__ && window.__MK_WALLET_SYNC__.markDirty(true); }catch(e){}
+try{ var ws = window.__MK_WALLET_SYNC__; if(ws && typeof ws.ev === 'function') ws.ev(amount); else if(ws) ws.markDirty(true); }catch(e){}
     refreshWalletPill();
     if(inp) inp.value = '';
     setAwardMsg('💰 코인 ' + amount.toLocaleString('ko-KR') + ' 충전 완료!', 'ok');
@@ -47546,7 +47760,8 @@ function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, 
     if(!lc) return null; 
     
     if(!hasParts(lc.parts)) return null;
-    var payload = { v: 1, parts: {}, hue: {}, show: getMyShow(), mode: getMyMode(), updatedAtMs: Date.now() }; 
+    
+    var payload = { v: 1, parts: {}, hue: {}, show: getMyShow(), mode: getMyMode(), updatedAtMs: Math.max(Date.now(), readLocalStamp()) }; 
     PART_KEYS.forEach(function(k){ if(lc.parts[k]) payload.parts[k] = lc.parts[k]; });
     PART_KEYS.forEach(function(k){ if(lc.hue[k]) payload.hue[k] = hueOutOf(lc.hue[k]); }); 
     
@@ -47562,6 +47777,57 @@ function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, 
     if(lc.name) payload.name = lc.name; 
     return payload;
   }
+  
+  function outfitSigOf(p){ return sigOf(p && p.parts, p && p.hue, p && p.flip) + '@' + sanitizeCharaName(p && p.name); }
+  function remoteOutfitSig(remote){
+    return outfitSigOf({ parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), flip: sanitizeFlip(remote.flip), name: remote.name });
+  }
+  function remoteSigOf(remote){   
+    return writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), flip: sanitizeFlip(remote.flip) , mode: remote.mode, name: remote.name });
+  }
+  
+  function savedOutfitSig(){
+    try{
+      var d = JSON.parse(localStorage.getItem(LS_CHARA) || 'null');
+      if(!d || d.v !== 1 || !d.parts || typeof d.parts !== 'object') return '';
+      return outfitSigOf({ parts: sanitizeParts(d.parts), hue: sanitizeHue(d.hue), flip: sanitizeFlip(d.flip), name: d.name });
+    }catch(e){ return ''; }
+  }
+  
+  function withServerOutfit(b, cb){
+    var remote = (typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
+    var known = !!remote || (typeof b.myRemoteLoaded === 'function' && !!b.myRemoteLoaded());
+    if(known || typeof b.fetchMyCharaV1 !== 'function'){ cb(remote); return; }
+    Promise.resolve().then(function(){ return b.fetchMyCharaV1(); }).then(function(r){ cb(r || null); }, function(err){
+      console.warn('[V288_OUTFITGUARD] 서버 착장을 확인하지 못해 이번 발행은 건너뜁니다', err);
+    });
+  }
+  
+  function restoreFromRemote(remote){
+    var remoteStamp = Number(remote && remote.updatedAtMs || 0);
+    var rParts = sanitizeParts(remote && remote.parts);
+    if(!hasParts(rParts)) return false;
+    var restored = { v:1, parts:rParts, hue:sanitizeHue(remote.hue) };
+    var rFlip = flipOutOf(remote.flip); 
+    if(rFlip.length) restored.flip = rFlip;
+    var rName = sanitizeCharaName(remote.name);
+    if(rName) restored.name = rName;
+    try{
+      localStorage.setItem(LS_CHARA, JSON.stringify(restored));
+      writeLocalStamp(remoteStamp);
+      
+      localCache = null; 
+      try{
+        var api = window.__MK_CHARA_TILE_V169__;
+        if(api && typeof api.onLocalCharaChanged === 'function') api.onLocalCharaChanged();
+        else { localCacheLoaded = false; selfRerenderNow(); } 
+      }catch(e2){ localCacheLoaded = false; try{ selfRerenderNow(); }catch(e3){} }
+      console.info('[V225.4_OUTFIT_SYNC] 다른 기기에서 저장한 착장을 불러왔어요 (' +
+        new Date(remoteStamp).toLocaleString('ko-KR') + ' 저장본)');
+      return true;
+    }catch(e1){ return false; }
+  }
+  
   var writeTimer = 0, lastWrittenSig = null;
   function scheduleWrite(){
     clearTimeout(writeTimer);
@@ -47576,14 +47842,34 @@ function hueOutOf(a){ return (a.t == null) ? { h:a.h, s:a.s, b:a.b } : { h:a.h, 
       if(sig === lastWrittenSig) return; 
       var b = bridge();
       if(!b || !b.joined()) return; 
-      stats.writeAttemptCount++;
-      b.writeCharaV1(payload).then(function(ok){
-        if(ok){
-          lastWrittenSig = sig; stats.writeOkCount++;
-          
-          writeLocalStamp(payload.updatedAtMs);
-        }
-      }, function(){});
+      
+      withServerOutfit(b, function(remote){
+        try{
+          if(remote && Number(remote.updatedAtMs || 0) > readLocalStamp() && restoreFromRemote(remote)){
+            clearTimeout(writeTimer);                  
+            payload = buildCharaV1();
+            if(!payload) return;
+            sig = writeSigOf(payload);
+            if(sig === lastWrittenSig) return;
+          }
+          if(remote && hasParts(sanitizeParts(remote.parts))){
+            var rOut = remoteOutfitSig(remote);
+            if(savedOutfitSig() === rOut && outfitSigOf(payload) !== rOut){
+              console.info('[V288_OUTFITGUARD] 저장 착장은 서버와 같은데 이 기기 보유 목록이 아직 모르는 파츠가 걸러졌어요 — 서버 착장을 깎아 덮지 않게 발행하지 않습니다');
+              return;
+            }
+          }
+          if(remote && remoteSigOf(remote) === sig){ lastWrittenSig = sig; return; }   
+          stats.writeAttemptCount++;
+          b.writeCharaV1(payload).then(function(ok){
+            if(ok){
+              lastWrittenSig = sig; stats.writeOkCount++;
+              
+              writeLocalStamp(payload.updatedAtMs);
+            }
+          }, function(){});
+        }catch(e2){}
+      });
     }catch(e){}
   }
 
@@ -47623,40 +47909,23 @@ var joinSyncDone = false;
     setTimeout(function(){
       try{
         var b = bridge();
-        var remote = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null;
+        if(!b) return;
         
-        var remoteStamp = Number(remote && remote.updatedAtMs || 0);
-        if(remote && remoteStamp > readLocalStamp()){
-          var rParts = sanitizeParts(remote.parts);
-          if(hasParts(rParts)){
-            var restored = { v:1, parts:rParts, hue:sanitizeHue(remote.hue) };
-            var rFlip = flipOutOf(remote.flip); 
-            if(rFlip.length) restored.flip = rFlip;
-            var rName = sanitizeCharaName(remote.name);
-            if(rName) restored.name = rName;
-            try{
-              localStorage.setItem(LS_CHARA, JSON.stringify(restored));
-              writeLocalStamp(remoteStamp);
-              
-              localCache = null; 
-              try{
-                var api = window.__MK_CHARA_TILE_V169__;
-                if(api && typeof api.onLocalCharaChanged === 'function') api.onLocalCharaChanged();
-                else { localCacheLoaded = false; selfRerenderNow(); } 
-              }catch(e2){ localCacheLoaded = false; try{ selfRerenderNow(); }catch(e3){} }
-              console.info('[V225.4_OUTFIT_SYNC] 다른 기기에서 저장한 착장을 불러왔어요 (' +
-                new Date(remoteStamp).toLocaleString('ko-KR') + ' 저장본)');
-            }catch(e1){}
-          }
-        }
-        var payload = buildCharaV1();
-        if(!payload) return;
-        var sig = writeSigOf(payload);
-        if(remote && writeSigOf({ show: remote.show, parts: sanitizeParts(remote.parts), hue: sanitizeHue(remote.hue), flip: sanitizeFlip(remote.flip) , mode: remote.mode, name: remote.name }) === sig){ 
-          lastWrittenSig = sig; 
-          return;
-        }
-        scheduleWrite();
+        withServerOutfit(b, function(remote){
+          try{
+            
+            var remoteStamp = Number(remote && remote.updatedAtMs || 0);
+            if(remote && remoteStamp > readLocalStamp()) restoreFromRemote(remote);
+            var payload = buildCharaV1();
+            if(!payload) return;
+            var sig = writeSigOf(payload);
+            if(remote && remoteSigOf(remote) === sig){ 
+              lastWrittenSig = sig; 
+              return;
+            }
+            scheduleWrite();
+          }catch(e2){}
+        });
       }catch(e){}
     }, 4000); 
   }
@@ -47756,6 +48025,8 @@ window.__MK_CHARA_TILE_V169__ = {
     repairOwnedFromCharaV1: repairOwnedFromCharaV1,
     resetOwnedRepair: function(){ ownedRepairDone = false; },
     flushNow: flushWrite,      
+    
+    remoteStamp: function(){ try{ var b = bridge(); var r = (b && typeof b.myRemoteCharaV1 === 'function') ? b.myRemoteCharaV1() : null; return Number(r && r.updatedAtMs || 0) || 0; }catch(e){ return 0; } },
     stats: stats,              
     
     bakeDebug: bakeDebug,       
