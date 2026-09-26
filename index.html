@@ -136,6 +136,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -20075,6 +20076,12 @@ const INIT_LIMIT = 20;
 const RAW_INIT_LIMIT = 80;  
   const RAW_MORE_LIMIT = 80;
   const RAW_LIVE_LIMIT = 100;
+  
+  const CHAT_PAGE_V290_ON = true;
+  const RAW_PAGE = 80;              
+  const RAW_MAX_PAGES = 4;          
+  
+  if(CHAT_PAGE_V290_ON){ state.sfxInitDone = true; state.lastSfxTs = Math.max(Number(state.lastSfxTs) || 0, mkGraceNowMs_() - 5000); }
 
   state.chatWindowMax = STAY_LIMIT;     
   state.chatMoreUsed = false;           
@@ -20265,7 +20272,63 @@ mkScheduleFrame_(()=>{
     return __chatSliceKeepReal_(merged, Math.max(1, Number(n)||20));   
   }
 
+async function chatReadBucket_(bi, cursor, need){
+    const rr = historyRoots[bi], day = historyDays[bi];
+    const docs = [];
+    let real = 0, cur = cursor, exhausted = false, pages = 0, raw = 0;
+    while(pages < RAW_MAX_PAGES){
+      const q = cur ? rQuery(rr, rOrderByChild("tsMs"), rEndBefore(cur.ts, cur.key), rLimitToLast(RAW_PAGE))
+                    : rQuery(rr, rOrderByChild("tsMs"), rLimitToLast(RAW_PAGE));
+      let snap;
+      try{ snap = await readGuard_(rGet(q), "chat-page", 8000); }
+      catch(e){
+        
+        if(pages === 0 && !cursor && /permission/i.test(String((e && (e.code || e.message)) || e || ""))) throw e;
+        break;
+      }
+      pages++;
+      if(!isCurrentChatSub()) break;
+      const val = (snap && snap.val) ? (snap.val() || {}) : {};
+      const keys = Object.keys(val);
+      raw += keys.length;
+      let minTs = null, minKey = null;
+      for(const k of keys){
+        const t = val[k] && val[k].tsMs;
+        if(typeof t === "number" && isFinite(t) && (minTs === null || t < minTs || (t === minTs && k < minKey))){ minTs = t; minKey = k; }
+      }
+      for(const m of normalizeDocsFromSnapVal(val, day)){ docs.push(m); if(m && m.type !== "ticker") real++; }
+      if(keys.length < RAW_PAGE || minKey === null){ exhausted = true; break; }   
+      cur = { ts:minTs, key:minKey };
+      if(real >= need) break;
+    }
+    return { docs, real, exhausted, pages, raw };
+  }
+
+async function chatLoadRealBefore_(cursorDoc, n){
+    let bi = historyRoots.length - 1, cursor = null;
+    if(cursorDoc){
+      const t = Number(cursorDoc.tsMs || 0);
+      if(!(t > 0) || !cursorDoc.id) return [];                     
+      const at = historyDays.indexOf(__seoulDateKeyFromMs(t));     
+      bi = at >= 0 ? at : 0;
+      cursor = { ts:t, key:String(cursorDoc.id) };
+    }
+    const chunks = [], stat = [];
+    let need = Math.max(1, Number(n) || 20);
+    for(; bi >= 0; bi--){
+      const r = await chatReadBucket_(bi, cursor, need);
+      chunks.unshift(r.docs);                                      
+      stat.push({ day:historyDays[bi], pages:r.pages, raw:r.raw, real:r.real, exhausted:r.exhausted });
+      need -= r.real;
+      if(need <= 0 || !r.exhausted || !isCurrentChatSub()) break;  
+      cursor = null;
+    }
+    try{ if(isCurrentChatSub()) state.__chatPageStat = { at:Date.now(), more:!!cursorDoc, stat }; }catch(_e){}
+    return mergeAndLimitChatDocs(chunks, n);
+  }
+
   async function loadLastOnce(n){
+    if(CHAT_PAGE_V290_ON) return chatLoadRealBefore_(null, n);    
     
     const rawN = Math.max(Number(n)||0, RAW_INIT_LIMIT);
     const chunks = await Promise.all(historyRoots.map(async (rr, i)=>{
@@ -20331,7 +20394,7 @@ mkScheduleFrame_(()=>{
     const oldestTs = Number(current[0]?.tsMs||0);
     if(!oldestTs){ state.chatMoreUsed = true; return; }
 
-    const older = await loadBeforeTs(oldestTs, MORE_LIMIT);
+const older = CHAT_PAGE_V290_ON ? await chatLoadRealBefore_(current[0], MORE_LIMIT) : await loadBeforeTs(oldestTs, MORE_LIMIT);
     if(!isCurrentChatSub()) return;
     if(older && older.length){
       
@@ -27128,6 +27191,371 @@ try{
       });
     }catch(_e){}
 
+const MARBLE_BRIDGE_CH = "mk-wallet-bridge-v1";
+    const MARBLE_STAKE_MAX = 20000;
+    const MARBLE_POT_MAX = 100000;                   
+    const MARBLE_SEATS_MAX = 5;
+    const MARBLE_REFUND_MS = 24 * 3600000;           
+    const MARBLE_LIVE_MS = 3600000;                  
+    const MARBLE_SWEEP_MS = 10 * 60000;              
+    const MARBLE_TICK_MS = 30000;
+    const MARBLE_PEER_MS = 60000;                    
+    const MARBLE_J_TTL_MS = 7 * 24 * 3600000;        
+    const MARBLE_STATS_KEY = "mk_chara_stats";
+    const MARBLE_J_STAKE = "mk_marble_stake_v1:";
+    const MARBLE_J_PAY = "mk_marble_pay_v1:";
+    const MARBLE_TAB_ID = "mb" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const marbleInflight = new Set();                
+    const marbleBadSeen = new Set();                 
+    const marbleQ = [];
+    let marbleBusy = false;
+    let marbleCh = null;
+    let marbleSweptUid = "";
+    let marbleLastSweepAt = 0;
+    let marbleOpenN = -1;                            
+    let marbleWakeTimer = null;
+    let marbleSweeping = false;                      
+    let marbleSweepMore = false;                     
+
+    function marbleI_(v){ return Math.max(0, Math.floor(Number(v) || 0)); }
+    function marbleNow_(){ try{ return mkGraceNowMs_(); }catch(_e){ return Date.now(); } }
+    function marbleTok_(){ return Math.floor(marbleNow_()) + (1 + Math.floor(Math.random() * 4094)) / 4096; }
+    function marbleGkOk_(gk){ return typeof gk === "string" && gk.length <= 128 && /^v2_[^.#$\[\]\/\u0000-\u001f\u007f]+$/.test(gk); }
+    function marbleUidOk_(u){ return typeof u === "string" && /^[A-Za-z0-9_-]{6,128}$/.test(u); }
+    function marbleMe_(){
+      try{
+        const u = auth.currentUser;
+        if(!state.joined || !state.uid || !u || u.uid !== state.uid) return null;
+        return { uid:String(state.uid), nick:String(state.nickname || "") };
+      }catch(_e){ return null; }
+    }
+    function marbleCoins_(){
+      try{ return marbleI_((JSON.parse(localStorage.getItem(MARBLE_STATS_KEY) || "null") || {}).coins); }catch(_e){ return 0; }
+    }
+    
+    function marbleWalletAdd_(delta, why){
+      const d = Math.trunc(Number(delta) || 0);
+      let s = {};
+      try{ s = JSON.parse(localStorage.getItem(MARBLE_STATS_KEY) || "null") || {}; }catch(_e){ s = {}; }
+      const cur = marbleI_(s.coins), next = Math.max(0, cur + d);
+      try{
+        localStorage.setItem(MARBLE_STATS_KEY, JSON.stringify({ totalSec:marbleI_(s.totalSec), coins:next, coinCarrySec:marbleI_(s.coinCarrySec) }));
+      }catch(e){
+        console.warn("[V290_MARBLEBRIDGE] 로컬 지갑을 못 썼어요", why, e);
+        try{ mkDiag("부루마블-지갑쓰기실패", why + " " + d); }catch(_e){}
+        return null;
+      }
+      const eff = next - cur;
+      try{ const ws = window.__MK_WALLET_SYNC__; if(ws && typeof ws.ev === "function"){ if(eff) ws.ev(eff); } else if(ws) ws.markDirty(true); }catch(_e){}
+      try{ const a = window.__MK_PET_V24__; if(a && typeof a.updateWalletUI === "function") a.updateWalletUI(); }catch(_e){}
+      if(eff !== d){
+        console.warn("[V290_MARBLEBRIDGE] 잔액이 모자라 0에서 멈췄어요", why, d, eff);
+        try{ mkDiag("부루마블-잔액부족", why + " " + d + "→" + eff); }catch(_e){}
+      }
+      return eff;
+    }
+
+function marbleJKey_(pre, e){ return pre + e.gk + ":" + e.tab + ":" + e.tok; }
+    function marbleJPut_(pre, e){ try{ localStorage.setItem(marbleJKey_(pre, e), JSON.stringify(e)); return true; }catch(_e){ return false; } }
+    
+    function marbleJTake_(pre, e){
+      try{
+        const k = marbleJKey_(pre, e);
+        if(localStorage.getItem(k) === null) return false;
+        localStorage.removeItem(k);
+        return true;
+      }catch(_e){ return false; }
+    }
+    function marbleJList_(pre){
+      const keys = [], out = [];
+      try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(k && k.indexOf(pre) === 0) keys.push(k); } }catch(_e){}
+      keys.forEach((k)=>{
+        let e = null;
+        try{ e = JSON.parse(localStorage.getItem(k) || "null"); }catch(_e){ e = null; }
+        if(e && typeof e === "object" && marbleJKey_(pre, e) === k) out.push(e);
+      });
+      return out;
+    }
+    function marbleJMine_(uid){ return marbleJList_(MARBLE_J_STAKE).concat(marbleJList_(MARBLE_J_PAY)).filter((e)=>e.uid === uid); }
+    
+    function marbleRecover_(uid, gk, rec){
+      const now = Date.now(), r = (rec && typeof rec === "object") ? rec : null;
+      let wake = 0;
+      [MARBLE_J_STAKE, MARBLE_J_PAY].forEach((pre)=>{
+        marbleJList_(pre).forEach((e)=>{
+          if(e.uid !== uid || e.gk !== gk || marbleInflight.has(String(e.tok))) return;
+          const age = now - Number(e.t || 0);
+          if(e.tab !== MARBLE_TAB_ID && age < MARBLE_PEER_MS){ const w = Number(e.t || 0) + MARBLE_PEER_MS; if(!wake || w < wake) wake = w; return; }
+          const amt = marbleI_(e.amt);
+          if(pre === MARBLE_J_STAKE){
+            if(r && r.at === e.tok && marbleI_(r.amount) === amt){
+              if(marbleJTake_(pre, e)){ marbleWalletAdd_(-amt, "걸기 되찾기 " + gk); try{ mkDiag("부루마블-되찾기", "걸기 " + gk + " " + amt); }catch(_e){} }
+            }else if(r || age > MARBLE_J_TTL_MS) marbleJTake_(pre, e);
+          }else{
+            if(r && r.paid === true && r.paidAt === e.tok && marbleI_(r.payout) === amt){
+              if(marbleJTake_(pre, e)){ marbleWalletAdd_(amt, "지급 되찾기 " + gk); try{ mkDiag("부루마블-되찾기", "지급 " + gk + " " + amt); }catch(_e){} }
+            }else if(!r || r.paid === true || age > MARBLE_J_TTL_MS) marbleJTake_(pre, e);
+          }
+        });
+      });
+      return wake;
+    }
+
+function marbleWake_(at){
+      if(!at || marbleWakeTimer) return;
+      marbleWakeTimer = setTimeout(()=>{ marbleWakeTimer = null; marbleSweepStart_(); }, Math.max(1000, at - Date.now() + 1000));
+    }
+    function marbleLedgerRef_(uid, gk){ return rRef(rtdb, `${rRoomBase(FIXED_ROOM_ID)}/playground/marbleV2/ledger/${uid}` + (gk ? "/" + gk : "")); }
+    function marbleSudaRef_(gk, leaf){ return rRef(sudaRtdb, `games/marble/${gk}/${leaf}`); }
+    function marbleSnapVal_(s){ try{ return (s && typeof s.val === "function") ? s.val() : null; }catch(_e){ return null; } }
+    function marbleHas_(o, k){ return !!o && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k); }
+    function marbleErr_(e){ return { ok:false, err:(e && e.code === "mk/timeout") ? "timeout" : "net" }; }
+    function marbleDenied_(e){ return String((e && (e.code || e.message)) || e || "").toLowerCase().indexOf("permission") >= 0; }
+    async function marbleReadRec_(uid, gk){
+      const v = marbleSnapVal_(await readGuard_(rGet(marbleLedgerRef_(uid, gk)), "부루마블 장부 읽기", 8000));
+      return (v && typeof v === "object") ? v : null;
+    }
+    async function marbleSudaRead_(gk, leaf){
+      await readGuard_(Promise.resolve().then(()=>ensureSudaAuthReady_()), "수다 인증", 8000);
+      const v = marbleSnapVal_(await readGuard_(rGet(marbleSudaRef_(gk, leaf)), "부루마블 " + leaf + " 읽기", 8000));
+      return (v && typeof v === "object") ? v : null;
+    }
+    
+    function marbleFinalBad_(f, gk, uid, amount){
+      if(!f || typeof f !== "object") return ["none"];
+      const bad = [];
+      if(f.v !== 1) bad.push("v");
+      if(f.gameKey !== gk) bad.push("gameKey");
+      const st = (f.stakers && typeof f.stakers === "object") ? f.stakers : {}, po = (f.payouts && typeof f.payouts === "object") ? f.payouts : {};
+      const sk = Object.keys(st).sort(), pk = Object.keys(po).sort();
+      if(sk.join("|") !== pk.join("|")) bad.push("keys");
+      const int = (v)=>typeof v === "number" && Number.isInteger(v) && v >= 0;
+      if(!sk.every((k)=>int(st[k])) || !pk.every((k)=>int(po[k]))) bad.push("int");
+      const S = sk.reduce((a, k)=>a + (Number(st[k]) || 0), 0), P = pk.reduce((a, k)=>a + (Number(po[k]) || 0), 0);
+      if(S !== P) bad.push("sum");
+      if(S > MARBLE_POT_MAX) bad.push("pot");
+      if(st[uid] !== amount) bad.push("mine");
+      if(f.stake !== amount) bad.push("stake");
+      if(!(int(po[uid]) && po[uid] <= S)) bad.push("payout");
+      return bad;
+    }
+
+async function marbleStake_(gk, amount){
+      const me = marbleMe_(); if(!me) return { ok:false, err:"not-joined" };
+      if(!(Number.isInteger(amount) && amount >= 1 && amount <= MARBLE_STAKE_MAX)) return { ok:false, err:"bad-amount" };
+      if(!marbleGkOk_(gk)) return { ok:false, err:"bad-gamekey" };
+      let rec;
+      try{ rec = await marbleReadRec_(me.uid, gk); }catch(e){ return marbleErr_(e); }
+      marbleWake_(marbleRecover_(me.uid, gk, rec));
+      if(rec) return (marbleI_(rec.amount) === amount) ? { ok:true, amount, coins:marbleCoins_(), again:true } : { ok:false, err:"amount-mismatch" };
+      if(marbleCoins_() < amount) return { ok:false, err:"no-coins", coins:marbleCoins_() };
+      const e = { uid:me.uid, gk, amt:amount, tok:marbleTok_(), tab:MARBLE_TAB_ID, t:Date.now() };
+      if(!marbleJPut_(MARBLE_J_STAKE, e)) return { ok:false, err:"error" };
+      const tk = String(e.tok);
+      marbleInflight.add(tk);
+      marbleOpenN = -1;
+      const done = rRunTransaction(marbleLedgerRef_(me.uid, gk), (cur)=>(cur === null) ? { amount, at:e.tok, paid:false } : undefined)
+        .then((res)=>{
+          marbleInflight.delete(tk);
+          const v = marbleSnapVal_(res && res.snapshot);
+          if(res && res.committed === true && v && v.at === e.tok){
+            if(marbleJTake_(MARBLE_J_STAKE, e)) marbleWalletAdd_(-amount, "걸기 " + gk);
+            console.info("[V290_MARBLEBRIDGE] 판돈 걸기 " + gk + " -" + amount);
+            return { ok:true, amount, coins:marbleCoins_() };
+          }
+          marbleJTake_(MARBLE_J_STAKE, e);               
+          marbleWake_(marbleRecover_(me.uid, gk, v));   
+          return (v && marbleI_(v.amount) === amount) ? { ok:true, amount, coins:marbleCoins_(), again:true } : { ok:false, err:"amount-mismatch" };
+        }, (err)=>{
+          marbleInflight.delete(tk);
+          console.warn("[V290_MARBLEBRIDGE] 걸기 결과를 모릅니다 — 장부에 표식이 보이면 되찾기가 마무리해요", gk, err);
+          return { ok:false, err:"net" };
+        });
+      try{ return await readGuard_(done, "부루마블 걸기", 8000); }catch(e2){ return marbleErr_(e2); }
+    }
+
+async function marblePay_(uid, gk, rec, fin){
+      const amount = marbleI_(rec.amount);
+      const orphan = !marbleHas_(fin.stakers, uid) && !marbleHas_(fin.payouts, uid);
+      const bad = orphan ? [] : marbleFinalBad_(fin, gk, uid, amount);
+      if(bad.length){
+        if(!marbleBadSeen.has(gk)){
+          marbleBadSeen.add(gk);
+          console.warn("[V290_MARBLEBRIDGE] 정산 기록이 이상해 지급하지 않았어요", gk, bad);
+          try{ mkDiag("부루마블-정산거부", gk + " " + bad.join(",")); }catch(_e){}
+        }
+        return { ok:false, err:"bad-final" };
+      }
+      const payout = orphan ? amount : fin.payouts[uid];
+      const e = { uid, gk, amt:payout, tok:marbleTok_(), tab:MARBLE_TAB_ID, t:Date.now() };
+      if(!marbleJPut_(MARBLE_J_PAY, e)) return { ok:false, err:"error" };
+      const tk = String(e.tok);
+      marbleInflight.add(tk);
+      const done = rRunTransaction(marbleLedgerRef_(uid, gk), (cur)=>{
+        if(cur === null) return null;                    
+        if(typeof cur !== "object" || cur.paid === true || marbleI_(cur.amount) !== amount) return;   
+        return Object.assign({}, cur, { paid:true, payout, paidAt:e.tok }, orphan ? { why:"orphan" } : null);
+      }).then((res)=>{
+        marbleInflight.delete(tk);
+        const v = marbleSnapVal_(res && res.snapshot);
+        if(res && res.committed === true && v && v.paid === true && v.paidAt === e.tok){
+          if(marbleJTake_(MARBLE_J_PAY, e)) marbleWalletAdd_(payout, (orphan ? "기록없음 환불 " : "지급 ") + gk);
+          if(orphan){
+            console.info("[V290_MARBLEBRIDGE] 정산 기록에 내가 없어(게임이 걸기를 못 적음) 건 금액을 돌려줬어요 " + gk + " +" + payout);
+            try{ mkDiag("부루마블-기록없음환불", gk + " " + payout); }catch(_e){}
+          }else console.info("[V290_MARBLEBRIDGE] 판돈 정산 " + gk + " +" + payout);
+          return { ok:true, payout, coins:marbleCoins_(), orphan:orphan || undefined };
+        }
+        marbleJTake_(MARBLE_J_PAY, e);                   
+        marbleWake_(marbleRecover_(uid, gk, v));         
+        if(v && v.paid === true) return { ok:true, payout:marbleI_(v.payout), coins:marbleCoins_(), again:true, orphan:(v.why === "orphan") || undefined };
+        return { ok:false, err:v ? "amount-mismatch" : "no-stake" };
+      }, (err)=>{
+        marbleInflight.delete(tk);
+        console.warn("[V290_MARBLEBRIDGE] 지급 결과를 모릅니다 — 장부에 표식이 보이면 되찾기가 마무리해요", gk, err);
+        return { ok:false, err:"net" };
+      });
+      try{ return await readGuard_(done, "부루마블 지급", 8000); }catch(e2){ return marbleErr_(e2); }
+    }
+    async function marbleSettle_(gk){
+      const me = marbleMe_(); if(!me) return { ok:false, err:"not-joined" };
+      if(!marbleGkOk_(gk)) return { ok:false, err:"bad-gamekey" };
+      let rec, fin;
+      try{ rec = await marbleReadRec_(me.uid, gk); }catch(e){ return marbleErr_(e); }
+      marbleWake_(marbleRecover_(me.uid, gk, rec));
+      if(!rec) return { ok:false, err:"no-stake" };
+      if(rec.paid === true) return { ok:true, payout:marbleI_(rec.payout), coins:marbleCoins_(), again:true, orphan:(rec.why === "orphan") || undefined };
+      try{ fin = await marbleSudaRead_(gk, "final"); }catch(e){ return marbleErr_(e); }
+      if(!fin) return { ok:false, err:"not-final" };
+      return marblePay_(me.uid, gk, rec, fin);
+    }
+    
+    function marbleStakersOf_(st, uid, amount){
+      const out = {};
+      try{
+        const seats = (st && st.seats && typeof st.seats === "object") ? st.seats : null;
+        if(seats && st.stake === amount){
+          Object.keys(seats).forEach((id)=>{
+            const s = seats[id];
+            if(s && typeof s === "object" && s.staked === amount && marbleUidOk_(s.wuid)) out[s.wuid] = amount;
+          });
+        }
+      }catch(_e){}
+      out[uid] = amount;
+      return (Object.keys(out).length > MARBLE_SEATS_MAX) ? { [uid]:amount } : out;
+    }
+    
+    async function marbleRefund_(uid, gk, rec){
+      const amount = marbleI_(rec.amount);
+      let st = null;
+      try{ st = await marbleSudaRead_(gk, "state"); }
+      catch(e){ if(!marbleDenied_(e)) throw e; st = null; }   
+      
+      if(st && st.phase !== "OVER" && marbleNow_() - Number(st.lastAt || 0) < MARBLE_LIVE_MS) return { ok:false, err:"not-final" };
+      const stakers = marbleStakersOf_(st, uid, amount);
+      const refund = { v:1, gameKey:gk, reason:"refund", at:Math.floor(marbleNow_()), stake:amount, pot:0, stakers, payouts:Object.assign({}, stakers) };
+      const res = await readGuard_(rRunTransaction(marbleSudaRef_(gk, "final"), (cur)=>(cur === null) ? refund : undefined), "부루마블 환불 쓰기", 8000);
+      const v = marbleSnapVal_(res && res.snapshot);
+      if(res && res.committed === true){
+        console.info("[V290_MARBLEBRIDGE] 24시간이 지나도 정산이 없어 환불 final을 썼어요", gk, stakers);
+        try{ mkDiag("부루마블-환불", gk + " " + Object.keys(stakers).length + "명 " + amount); }catch(_e){}
+      }
+      if(!v || typeof v !== "object") return { ok:false, err:"not-final" };
+      return marblePay_(uid, gk, rec, v);
+    }
+
+function marbleGameWaiting_(){ return marbleBusy || marbleQ.length > 0; }
+    async function marbleSweep_(){
+      const me = marbleMe_(); if(!me) return;
+      marbleSweepMore = false;
+      if(marbleGameWaiting_()){ marbleSweepMore = true; return; }
+      marbleLastSweepAt = Date.now();
+      let recs;
+      try{
+        const v = marbleSnapVal_(await readGuard_(rGet(marbleLedgerRef_(me.uid, "")), "부루마블 장부 읽기", 8000));
+        recs = (v && typeof v === "object") ? v : {};
+      }catch(e){ console.warn("[V290_MARBLEBRIDGE] 장부를 못 읽었어요 — 다음 정리에", e); return; }
+      const gks = new Set(Object.keys(recs));
+      marbleJMine_(me.uid).forEach((e)=>gks.add(e.gk));
+      let wake = 0;
+      gks.forEach((gk)=>{ const w = marbleRecover_(me.uid, gk, recs[gk] || null); if(w && (!wake || w < wake)) wake = w; });
+      marbleWake_(wake);
+      const open = Object.keys(recs).filter((gk)=>marbleGkOk_(gk) && recs[gk] && typeof recs[gk] === "object" && recs[gk].paid !== true)
+        .sort((a, b)=>Number(recs[a].at || 0) - Number(recs[b].at || 0));
+      let left = open.length, tried = 0;
+      for(const gk of open){
+        if(marbleBadSeen.has(gk)){ left--; continue; }
+        if(tried >= 3) break;
+        if(marbleGameWaiting_()){ marbleSweepMore = true; break; }   
+        tried++;
+        let r = null;
+        try{
+          const fin = await marbleSudaRead_(gk, "final");
+          if(fin) r = await marblePay_(me.uid, gk, recs[gk], fin);
+          else if(Number(recs[gk].at) > 0 && marbleNow_() - Number(recs[gk].at) >= MARBLE_REFUND_MS) r = await marbleRefund_(me.uid, gk, recs[gk]);
+        }catch(e){ console.warn("[V290_MARBLEBRIDGE] 정리 중 실패 — 다음 정리에", gk, e); break; }
+        if(r && (r.ok || r.err === "bad-final")) left--;
+        if(r && (r.err === "timeout" || r.err === "net")) break;
+      }
+      marbleOpenN = Math.max(0, left);
+    }
+    
+    function marbleSweepStart_(){
+      if(marbleSweeping) return;
+      marbleSweeping = true;
+      readGuard_(Promise.resolve().then(marbleSweep_), "부루마블 정리", 60000)
+        .catch((e)=>{ console.warn("[V290_MARBLEBRIDGE] 정리 실패 — 다음 정리에", e); })
+        .then(()=>{ marbleSweeping = false; });
+    }
+    function marbleTick_(){
+      const me = marbleMe_(); if(!me){ marbleSweptUid = ""; return; }   
+      if(marbleSweptUid !== me.uid){ marbleSweptUid = me.uid; marbleOpenN = -1; marbleSweepStart_(); return; }   
+      if(marbleSweepMore){ marbleSweepStart_(); return; }             
+      try{ if(document.visibilityState !== "visible") return; }catch(_e){}
+      if(Date.now() - marbleLastSweepAt < MARBLE_SWEEP_MS) return;
+      if(marbleOpenN === 0 && !marbleJMine_(me.uid).length) return;   
+      marbleSweepStart_();
+    }
+
+function marbleRun_(job){
+      if(marbleQ.length >= 20) return Promise.resolve({ ok:false, err:"busy" });
+      return new Promise((resolve)=>{ marbleQ.push({ job, resolve }); marblePump_(); });
+    }
+    function marblePump_(){
+      if(marbleBusy || !marbleQ.length) return;
+      const it = marbleQ.shift();
+      marbleBusy = true;
+      readGuard_(Promise.resolve().then(it.job), "부루마블 요청", 60000)
+        .then((r)=>r, (e)=>{ console.warn("[V290_MARBLEBRIDGE] 요청 처리 실패", e); return { ok:false, err:(e && e.code === "mk/timeout") ? "timeout" : "error" }; })
+        .then((r)=>{ marbleBusy = false; try{ it.resolve(r); }catch(_e){} marblePump_(); });
+    }
+    function marbleHello_(me){ return { ok:true, wuid:me.uid, nick:me.nick, coins:marbleCoins_() }; }
+    function marbleReply_(reqId, r){
+      const o = { v:1, kind:"res", reqId, ok:!!(r && r.ok === true) };
+      ["err", "wuid", "nick", "coins", "amount", "payout", "again", "orphan"].forEach((k)=>{ if(r && r[k] !== undefined) o[k] = r[k]; });
+      try{ if(marbleCh) marbleCh.postMessage(o); }catch(_e){}
+    }
+    function marbleOnMsg_(m){
+      if(!m || typeof m !== "object" || m.v !== 1 || m.kind !== "req" || m.app !== "marble") return;
+      const reqId = m.reqId;
+      if(typeof reqId !== "string" || !reqId || reqId.length > 100) return;
+      if(m.op !== "hello" && m.op !== "stake" && m.op !== "settle") return;
+      const me = marbleMe_(); if(!me) return;                         
+      if(m.op === "hello"){ marbleReply_(reqId, marbleHello_(me)); return; }
+      const gk = m.gameKey, amount = m.amount;
+      marbleRun_(()=>(m.op === "stake") ? marbleStake_(gk, amount) : marbleSettle_(gk)).then((r)=>{
+        if(!(r && r.ok === true) && !marbleMe_()) return;              
+        marbleReply_(reqId, r);
+      });
+    }
+    try{
+      if(typeof BroadcastChannel === "function"){
+        marbleCh = new BroadcastChannel(MARBLE_BRIDGE_CH);
+        marbleCh.addEventListener("message", (ev)=>{ try{ marbleOnMsg_(ev && ev.data); }catch(_e){} });
+      }
+    }catch(_e){ marbleCh = null; }
+    try{ setInterval(()=>{ try{ marbleTick_(); }catch(_e){} }, MARBLE_TICK_MS); }catch(_e){}
+
 const OWNED_LS_KEY = "mk_chara_owned_v2";
     const OWNED_PUSH_DEBOUNCE_MS = 4000;
     const OWNED_MAX_CHARS = 20000;
@@ -32147,7 +32575,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17174; 
+const MK_APP_BUILD = 17175; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
