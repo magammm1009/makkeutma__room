@@ -137,6 +137,7 @@
 
 
 
+
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
@@ -10024,12 +10025,12 @@ window.mkIc_ = (name, cls) => '<svg class="mkIc'+(cls?' '+cls:'')+'" aria-hidden
 </div>
 
 <div class="dragonPetLink" id="dragonPetLink">
-<div class="dragonBagHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-screen"></use></svg>데스크톱 펫</b><span>윈도우 전용</span></div>
+<div class="dragonBagHead"><b><svg class="mkIc" aria-hidden="true" focusable="false"><use href="#mki-screen"></use></svg>데스크톱 펫</b><span>윈도우·맥</span></div>
 <p class="dragonPetLinkLore">마감용 — 내 기운의 아기 드래곤이 바탕화면에서 할 일·디데이를 챙겨 줘요</p>
 <div class="dragonBagBtns">
 <button class="dragonBagBtn dragonPetLinkMain" id="dragonPetLinkOpen" type="button">데스크톱 펫 열기</button>
 </div>
-<p class="dragonPetLinkMiss" id="dragonPetLinkMiss" role="status" hidden>펫이 안 떴나요? 아직 설치 전이라면 <a href="./pet/MagamYong.exe" download>내려받기</a> — 받은 파일을 문서 폴더 같은 곳에 두고 더블클릭해 주세요</p>
+<p class="dragonPetLinkMiss" id="dragonPetLinkMiss" role="status" hidden><span id="dragonPetLinkMissWin">펫이 안 떴나요? 아직 설치 전이라면 <a href="./pet/MagamYong.exe" download>내려받기</a> — 받은 파일을 문서 폴더 같은 곳에 두고 더블클릭해 주세요</span><span id="dragonPetLinkMissMac" hidden>펫이 안 떴나요? 아직 설치 전이라면 <a href="./pet/MagamYong-mac.zip" download>맥용 내려받기</a> — 받은 '마감용' 앱을 응용 프로그램 폴더로 옮긴 뒤 열어 주세요. 처음 열 때 막히면 [완료]를 누르고 시스템 설정 → 개인정보 보호 및 보안에서 [그래도 열기]를 눌러 주세요</span></p>
 <details class="dragonPetLinkMore" id="dragonPetLinkMore">
 <summary>코드로 연결하기</summary>
 <div class="dragonPetLinkCodeRow" id="dragonPetLinkCodeRow" hidden>
@@ -13789,6 +13790,7 @@ await rUpdate(rMePresenceRef(state.roomId, targetUid), {
   }
 }
 
+const MK_HC_KILLSTAMP_ON_ = true;
 async function requestForceHandcamOff(targetUid, targetName){
   if(!state.roomId || !state.uid || !targetUid) return;
   const isOwner = !!(state.roomSettings && state.roomSettings.ownerUid && state.uid === state.roomSettings.ownerUid);
@@ -13802,6 +13804,33 @@ async function requestForceHandcamOff(targetUid, targetName){
     const info = live && live.get(String(targetUid));
     if(!info || info.slotId === undefined || info.slotId === null){
       showToast("📹 현재 손캠을 켜고 있지 않아");
+      return;
+    }
+    if(MK_HC_KILLSTAMP_ON_){
+      const uid = String(targetUid), trackName = String(info.trackName || ""), slotId = String(info.slotId);
+      const nm = targetName || info.name || uid;
+      const base = rRoomBase(state.roomId);
+      let stamped = false, removed = false;
+      try{
+        
+        await readGuard_(rSet(rRef(rtdb, `${base}/settings/hcOffV1/${uid}`), { trackName, sessionId: String(info.sessionId || ""), slotId, atMs: rServerTimestamp(), by: String(state.uid) }), "손캠 끄기 도장", 8000);
+        stamped = true;
+      }catch(e){ console.warn("[V291_HCKILL] 끄기 도장 실패", e); }
+      try{
+        
+        let first = true;   
+        const tx = await readGuard_(rRunTransaction(rRef(rtdb, `${base}/handcam/live/${slotId}`), (cur)=>{
+          const isFirst = first; first = false;
+          if(cur === null || cur === undefined) return isFirst ? null : undefined;
+          if(String(cur.uid || "") === uid && String(cur.trackName || "") === trackName) return null;
+          return;
+        }), "손캠 끄기 슬롯", 8000);
+        removed = !!(tx && tx.committed);
+      }catch(e){ console.warn("[V291_HCKILL] 슬롯 삭제 실패(권한일 수 있음)", e); }
+      if(stamped && removed) showToast(`📹 ${nm}님의 손캠을 껐어`);
+      else if(stamped) showToast(`📹 ${nm}님께 손캠 끄기 신호를 보냈어 — 몇 초 안에 꺼져`);
+      else if(removed) showToast(`📹 ${nm}님의 손캠을 껐어 (신호 실패 — 다시 켜질 수 있어)`);
+      else showToast("📹 손캠 종료 실패(관리자 권한/rules 확인)");
       return;
     }
     
@@ -29954,6 +29983,11 @@ return Object.assign({}, remote || {}, payload, {
     
     const HC_MAX = 20;
     
+    const HC_V291_PROBE_SERVER = true;
+    const HC_V291_PULL_BACKOFF = true;
+    const HC_V291_KEEPALIVE = true;
+    const HC_V291_OWNER_GUARD = true;
+    
     const HC_SELF_RECOVER_MS = 7000;
     const HC_PENDING_RECOVER_MS = 6500;
     const HC_PC_FAIL_GRACE_MS = 8000;
@@ -29987,6 +30021,30 @@ const HC_ORDER = new Map();
       viewerEnabled: false,
       gridHandcamClean: false 
     };
+    
+    hc.lastLiveRaw = null;   
+    hc.offStamp = null;      
+    hc.offUnsub = null;      
+    
+    const CAM_KEEPALIVE_MS = 1000;   
+    const CAM_FREEZE_MS = 30000;     
+    
+    const hcPullBackoff_ = new Map();                       
+    const HC_PULL_BACKOFF_MS = [1500, 3000, 6000, 12000];   
+    const HC_PULL_MUTE_MS = 5 * 60 * 1000;
+    const hcRecreateLog_ = [];                               
+    const HC_RECREATE_WINDOW_MS = 10 * 60 * 1000, HC_RECREATE_MAX = 2;
+    const HC_VIEW_HOLD_S = [0, 10, 30, 60, 120, 300];        
+    let hcPcFailN_ = 0, hcViewHoldUntil_ = 0, hcPullWakeT_ = null, hcPullWakeAt_ = 0;
+    
+    const HC_MARK_KEY = "mkHcLastPubV1";
+    const HC_STALE_RESERVE_MS = 10 * 60 * 1000;
+    
+    let hcOffResubT_ = null, hcOffResubN_ = 0;
+    
+    const HC_PULL_HTTP_CAP_MS = 60000;
+    const hcPullSlowDiag_ = new Map();
+    let hcStartGen_ = 0;
 
 try{ hc.viewerEnabled = localStorage.getItem("mkHandcamViewerEnabledV1") === "1"; }catch(e){ hc.viewerEnabled = false; }
 
@@ -30078,7 +30136,7 @@ function isWorkerUrlReady(){
           cache: "no-store"
         });
         const text = await res.text();
-        if(!res.ok) throw new Error(`handcam api ${res.status} ${text}`.slice(0, 260));
+        if(!res.ok){ const he = new Error(`handcam api ${res.status} ${text}`.slice(0, 260)); he.__mkStatus = res.status; throw he; }   
         return text ? JSON.parse(text) : {};
       }finally{
         clearTimeout(timer);
@@ -30180,11 +30238,75 @@ function hcClearTimer(name){
       hc[name] = null;
     }
 
+function hcKillOn_(){ try{ return !!MK_HC_KILLSTAMP_ON_; }catch(_e){ return false; } }
+    function hcKilled_(my, stamp){
+      return !!(my && stamp && typeof stamp === "object" && stamp.trackName && String(stamp.trackName) === String(my.trackName || ""));
+    }
+    function hcStopByAdmin_(){
+      const my = hc.my;
+      if(!my) return;
+      const isScreen = my.kind === "screen";
+      try{ mkDiag("손캠-관리자끔", String(my.trackName || "").slice(-10) + " · by " + String((hc.offStamp && hc.offStamp.by) || "").slice(0, 8)); }catch(_e){}
+      console.warn("[V291_HCKILL] 관리자 끄기 도장이 이 방송을 가리킵니다 — 스스로 끕니다.");
+      stopMyCam(true).catch(()=>{});
+      try{ showToast(isScreen ? "관리자가 화면공유를 껐어요 — 다시 켜려면 손캠 버튼" : "관리자가 손캠을 껐어요 — 다시 켜려면 손캠 버튼"); }catch(_e){}
+    }
+    function hcDetachOffWatch_(){
+      try{ if(hc.offUnsub) hc.offUnsub(); }catch(_e){}
+      hc.offUnsub = null;
+      hc.offStamp = null;
+      try{ if(hcOffResubT_){ clearTimeout(hcOffResubT_); hcOffResubT_ = null; } }catch(_e){}
+    }
+    function hcAttachOffWatch_(){
+      if(!hcKillOn_()) return;
+      const my = hc.my;
+      if(!my || !my.roomId || !my.uid) return;
+      const rid = String(my.roomId), uid = String(my.uid);
+      try{ if(hc.offUnsub) hc.offUnsub(); }catch(_e){}
+      hc.offUnsub = null;
+      try{ if(hcOffResubT_){ clearTimeout(hcOffResubT_); hcOffResubT_ = null; } }catch(_e){}
+      try{
+        hc.offUnsub = rOnValue(rRef(rtdb, `${rRoomBase(rid)}/settings/hcOffV1/${uid}`), (snap)=>{
+          try{
+            hcOffResubN_ = 0;
+            const v = (snap && typeof snap.val === "function") ? snap.val() : null;
+            hc.offStamp = (v && typeof v === "object") ? v : null;
+            if(hc.my && hcKilled_(hc.my, hc.offStamp)) hcStopByAdmin_();
+          }catch(_e){}
+        }, (err)=>{
+          try{
+            console.warn("[V291_HCKILL] 끄기 도장 리스너가 취소됐습니다 — 재부착을 예약합니다.", err);
+            if(hcOffResubT_ || hcOffResubN_ >= 5) return;
+            hcOffResubT_ = setTimeout(()=>{
+              hcOffResubT_ = null;
+              try{
+                if(!hc.my || String(hc.my.uid) !== uid || String(hc.my.roomId) !== rid) return;
+                hcOffResubN_++;
+                hcAttachOffWatch_();
+              }catch(_e){}
+            }, 8000);
+          }catch(_e){}
+        });
+      }catch(e){ console.warn("[V291_HCKILL] 끄기 도장 구독 실패", e); }
+    }
+
     async function refreshOwnLive(reason){
       const my = hc.my;
       if(!my || !my.roomId || my.slotId === null || my.slotId === undefined) return false;
       const uid = String(my.uid || state.uid || "");
       if(!uid || !my.sessionId || !my.trackName) return false;
+      
+      if(hcKillOn_() && hcKilled_(my, hc.offStamp)){ hcStopByAdmin_(); return false; }
+      if(hcKillOn_() && !(hc.lastLiveRaw && hc.lastLiveRaw[String(my.slotId)])){
+
+try{
+          const ss = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(my.roomId)}/settings/hcOffV1`)), "hc-offstamp", 5000);
+          const all = (ss && typeof ss.val === "function") ? (ss.val() || {}) : {};
+          if(hc.my === my) hc.offStamp = (all && all[uid] && typeof all[uid] === "object") ? all[uid] : null;
+        }catch(_e){}   
+        if(hc.my !== my) return false;
+        if(hcKilled_(my, hc.offStamp)){ hcStopByAdmin_(); return false; }
+      }
       const ref = hcSlotRef(my.roomId, my.slotId);
       const liveNow = HC_LIVE.get(uid) || {};
       const stableTs = Number(my.startedAt || liveNow.ts || 0) || Date.now();
@@ -30199,12 +30321,28 @@ function hcClearTimer(name){
         kind: (my.kind === "screen") ? "screen" : "cam"
       };
       try{
+        const tok = hcTokOf_(my);   
+        let why = "";
         const tx = await rRunTransaction(ref, (cur)=>{
+          why = "";
+          
+          if(hc.my !== my){ why = "stopped"; return; }
           if(cur && String(cur.uid || "") !== uid) return; 
+
+if(HC_V291_OWNER_GUARD && cur && hcIsNewer_(cur, tok)){ why = "newer"; return; }
+          if(!cur && hcKillOn_() && hcKilled_(my, hc.offStamp)){ why = "killed"; return; }
+          if(!cur && HC_V291_OWNER_GUARD && hcRawHasNewer_(hc.lastLiveRaw, tok)){ why = "newer"; return; }
           return payload;
         });
         const own = tx && tx.committed && tx.snapshot && tx.snapshot.val && tx.snapshot.val();
-        if(!own || String(own.uid || "") !== uid) return false;
+        if(!own || String(own.uid || "") !== uid){
+          if(why === "killed"){ if(hc.my === my) hcStopByAdmin_(); }
+          else if(HC_V291_OWNER_GUARD && hc.my === my){
+            const cv = (tx && tx.snapshot && typeof tx.snapshot.val === "function") ? tx.snapshot.val() : null;
+            if(why === "newer" || (cv && hcIsNewer_(cv, tok)) || hcRawHasNewer_(hc.lastLiveRaw, tok)) hcYield_("refresh-" + String(reason || ""));
+          }
+          return false;
+        }
         try{ my.startedAt = Number(own.ts || stableTs); }catch(e){}
         try{ await rOnDisconnect(ref).remove(); }catch(e){}
         return true;
@@ -30222,7 +30360,7 @@ function hcClearTimer(name){
       hc.liveMissingTimer = setTimeout(async()=>{
         hc.liveMissingTimer = null;
         try{
-          if(!hc.my || hc.my !== target || HC_LIVE.has(uid)) return;
+          if(!hc.my || hc.my !== target || hcMineInLive_(target)) return;   
           const ok = await refreshOwnLive("live-missing");
           if(ok){
             scheduleMount();
@@ -30230,7 +30368,7 @@ function hcClearTimer(name){
           }
           setTimeout(()=>{
             try{
-              if(hc.my === target && uid && !HC_LIVE.has(uid)){
+              if(hc.my === target && uid && !hcMineInLive_(target)){
                 stopMyCam(true).catch(()=>{});
               }
             }catch(e){}
@@ -30254,7 +30392,7 @@ let slotVal = null;
             const ss = await rGet(hcSlotRef(cur.roomId, cur.slotId));
             slotVal = ss && ss.val ? ss.val() : null;
           }catch(_e){}
-          if(slotVal && String(slotVal.uid || "") === String(cur.uid || state.uid || "")) return;
+          if(slotVal && (HC_V291_OWNER_GUARD ? hcOwns_(slotVal, hcTokOf_(cur)) : String(slotVal.uid || "") === String(cur.uid || state.uid || ""))) return;   
           stopMyCam(true).catch(()=>{});
         }catch(e){}
       }, HC_PENDING_RECOVER_MS);
@@ -30299,22 +30437,95 @@ function hcSlotAlive_(d){
       return !!(d && d.ready !== false && d.sessionId && d.trackName);
     }
     
-    let hcLastSnapMs = 0; 
+    function hcOwns_(r, tok){
+      if(!r || !tok || !tok.uid) return false;
+      if(String(r.uid || "") !== String(tok.uid)) return false;
+      return r.trackName ? (String(r.trackName) === String(tok.trackName || "")) : (Number(r.ts) === Number(tok.startedAt));
+    }
+    function hcIsNewer_(r, tok){
+      if(!r || !tok || !tok.uid) return false;
+      if(String(r.uid || "") !== String(tok.uid)) return false;
+      if(hcOwns_(r, tok)) return false;
+      const rt = Number(r.ts || 0), mt = Number(tok.startedAt || 0);
+      if(rt !== mt) return rt > mt;
+      return String(r.trackName || "") > String(tok.trackName || "");
+    }
+    function hcRecNewer_(a, b){   
+      const ta = Number(a && a.ts || 0), tb = Number(b && b.ts || 0);
+      if(ta !== tb) return ta > tb;
+      return String(a && a.trackName || "") > String(b && b.trackName || "");
+    }
+    function hcTokOf_(o){
+      if(!o) return null;
+      return { uid: String(o.uid || state.uid || ""), startedAt: Number(o.startedAt || 0), trackName: String(o.trackName || "") };
+    }
+    
+    function hcRawHasNewer_(v, tok){
+      if(!v || typeof v !== "object" || !tok) return false;
+      for(const k of Object.keys(v)){ if(hcSlotAlive_(v[k]) && hcIsNewer_(v[k], tok)) return true; }
+      return false;
+    }
+    
+    function hcStartAborted_(gen){ return HC_V291_OWNER_GUARD && gen !== hcStartGen_; }
+    function hcMineInLive_(my){   
+      const uid = String(my && my.uid || state.uid || "");
+      if(!uid) return false;
+      if(!HC_V291_OWNER_GUARD) return HC_LIVE.has(uid);
+      const d = HC_LIVE.get(uid);
+      return !!(d && hcOwns_(d, hcTokOf_(my)));
+    }
+    
+    function hcBuildLiveMap_(v){
+      const next = new Map();
+      Object.keys(v || {}).forEach((slotId)=>{
+        const d = (v && v[slotId]) || {};
+        const uid = String(d.uid || "");
+        const resolvedUid = uid || String(slotId);
+        if(!(hcSlotAlive_(d) && resolvedUid)) return;
+        const rec = Object.assign({}, d, { slotId:String(slotId), uid:resolvedUid });
+        if(HC_V291_OWNER_GUARD){ const prev = next.get(resolvedUid); if(prev && !hcRecNewer_(rec, prev)) return; }
+        next.set(resolvedUid, rec);
+      });
+      return next;
+    }
+    
+    function hcLiveSig_(m){
+      const out = [];
+      try{ for(const [uid, d] of m) out.push(String(uid) + "|" + String(d && d.sessionId || "") + "|" + String(d && d.trackName || "")); }catch(_e){}
+      return out.sort().join(",");
+    }
+    
+    function hcYield_(why){
+      const cur = hc.my || hc.pending;
+      if(!cur) return;
+      const isScreen = cur.kind === "screen";
+      try{ mkDiag("손캠-다른기기양보", String(why || "") + " · " + String(cur.trackName || "").slice(-8)); }catch(_e){}
+      console.warn("[V291_HCOWNER] 같은 계정의 더 새 방송이 보여 이 기기의 " + (isScreen ? "화면공유" : "손캠") + "을 끕니다(" + String(why || "") + ").");
+      stopMyCam(true).catch(()=>{});
+      try{ showToast(isScreen ? "같은 계정의 다른 기기(창)에서 손캠·화면공유를 켜서 여기 화면공유는 껐어요" : "같은 계정의 다른 기기(창)에서 손캠을 켜서 여기 손캠은 껐어요"); }catch(_e){}
+    }
+    
+    function hcStopFrozen_(){
+      const cur = hc.my || hc.pending;
+      if(!cur) return;
+      let st = null;
+      try{ st = (hc.camSource && hc.camSource.stats) ? hc.camSource.stats() : null; }catch(_e){}
+      
+      try{ mkDiag("손캠-멈춤정리", "송출 공백 " + Math.round(Number(st && st.frozeMs || 0) / 1000) + "초(perf " + Math.round(Number(st && st.frozePerfMs || 0) / 1000) + "초) · 킵얼라이브 " + Number(st && st.keepalive || 0)); }catch(_e){}
+      console.warn("[V291_HCKEEP] 손캠 송출이 30초 넘게 멈췄다가 깨어났습니다 — SFU가 트랙을 치웠을 것이라 정리합니다.");
+      stopMyCam(true).catch(()=>{});
+      try{ showToast("손캠이 30초 넘게 멈춰(절전·창 멈춤) 연결을 정리했어요 — 다시 켜 주세요"); }catch(_e){}
+    }
+
+let hcLastSnapMs = 0; 
     function onLiveSnap(snap){
       try{
         hcLastSnapMs = Date.now(); 
         __hcResubTries = 0; 
         const v = (snap && snap.val && snap.val()) || {};
-        const next = new Map();
-        Object.keys(v).forEach(slotId=>{
-          const d = v[slotId] || {};
-          const uid = String(d.uid || "");
+        hc.lastLiveRaw = v;   
 
-const resolvedUid = uid || String(slotId);
-          if(hcSlotAlive_(d) && resolvedUid){ 
-            next.set(resolvedUid, Object.assign({}, d, { slotId:String(slotId), uid:resolvedUid }));
-          }
-        });
+const next = hcBuildLiveMap_(v);   
 
         let changed = (next.size !== HC_LIVE.size);
         if(!changed){
@@ -30329,8 +30540,9 @@ const resolvedUid = uid || String(slotId);
         HC_LIVE.clear();
         for(const [k, d] of next) HC_LIVE.set(k, d);
 
-const myUid = String(hc.my && hc.my.uid || state.uid || "");
-        if(hc.my && myUid && !HC_LIVE.has(myUid)) scheduleOwnLiveMissingCheck();
+if(HC_V291_OWNER_GUARD && (hc.my || hc.pending) && hcRawHasNewer_(v, hcTokOf_(hc.my || hc.pending))) hcYield_("snapshot");
+        const myUid = String(hc.my && hc.my.uid || state.uid || "");
+        if(hc.my && myUid && !hcMineInLive_(hc.my)) scheduleOwnLiveMissingCheck();   
         else hcClearTimer("liveMissingTimer");
 
 if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slotId))) schedulePendingMissingCheck();
@@ -30342,7 +30554,8 @@ if(hc.pending && !Object.prototype.hasOwnProperty.call(v, String(hc.pending.slot
       }catch(e){}
     }
 
-async function reserveSlot(roomId, uid, nickname, startedAt){
+async function reserveSlot(roomId, uid, nickname, startedAt, trackName){
+      if(HC_V291_OWNER_GUARD) return hcReserveFreeSlot_(roomId, uid, nickname, startedAt, trackName);   
 
 let preferred = null;
       try{
@@ -30388,6 +30601,116 @@ const order = [];
         }
       }
       return null;
+    }
+
+async function hcReserveFreeSlot_(roomId, uid, nickname, startedAt, trackName){
+      const tok = { uid:String(uid), startedAt:Number(startedAt), trackName:String(trackName || "") };
+      const rec = { uid:String(uid), name:String(nickname || uid).slice(0, 40), ts:Number(startedAt), ready:false };
+      if(trackName) rec.trackName = String(trackName);
+      const start = Math.floor(Math.random() * HC_MAX);
+      for(let offset = 0; offset < HC_MAX; offset++){
+        const slotId = String((start + offset) % HC_MAX);
+        try{
+          const tx = await rRunTransaction(hcSlotRef(roomId, slotId), (cur)=>{
+            if(cur) return;                    
+            return Object.assign({}, rec);
+          });
+          const own = tx && tx.committed && tx.snapshot && tx.snapshot.val && tx.snapshot.val();
+          if(own && hcOwns_(own, tok)) return { slotId, startedAt: Number(startedAt) };
+        }catch(e){
+          
+        }
+      }
+      return null;
+    }
+    
+    async function hcClearOwnSlot_(roomId, slotId, tok){
+      if(slotId === null || slotId === undefined || slotId === "") return false;
+      const ref = hcSlotRef(roomId, slotId);
+      let known = false, cleared = false, preKnown = false, pre = null;
+      try{
+        const ss = await readGuard_(rGet(rRef(rtdb, `${rRoomBase(roomId)}/handcam`)), "hc-clear-read", 8000);
+        const whole = (ss && typeof ss.val === "function") ? (ss.val() || {}) : {};
+        pre = (whole && whole.live && typeof whole.live === "object") ? (whole.live[String(slotId)] || null) : null;
+        preKnown = true;
+      }catch(e){ console.warn("[V291_HCOWNER] 내 자리 정리 — 서버 읽기 실패, 소유 조건 트랜잭션은 그래도 보냅니다", e); }
+      if(preKnown && !(pre && hcOwns_(pre, tok))){
+        known = true;   
+      }else{
+        try{
+          let first = true;
+          const tx = await readGuard_(rRunTransaction(ref, (cur)=>{
+            const isFirst = first; first = false;
+            if(cur === null || cur === undefined) return isFirst ? null : undefined;
+            return hcOwns_(cur, tok) ? null : undefined;   
+          }), "hc-clear", 8000);
+          cleared = !!(tx && tx.committed);
+          known = true;   
+        }catch(e){ console.warn("[V291_HCOWNER] 내 자리 정리 트랜잭션 확인 실패(시간 초과·거부) — onDisconnect는 남겨 둡니다", e); }
+      }
+      if(known){
+        hcMarkClear_(tok);
+        try{ await readGuard_(rOnDisconnect(ref).cancel(), "hc-odc-cancel", 8000); }catch(_e){}
+      }
+      return cleared;
+    }
+    
+    function hcMarkWrite_(o){ try{ sessionStorage.setItem(HC_MARK_KEY, JSON.stringify(o)); }catch(_e){} }
+    function hcMarkRead_(){ try{ const m = JSON.parse(sessionStorage.getItem(HC_MARK_KEY) || "null"); return (m && typeof m === "object") ? m : null; }catch(_e){ return null; } }
+    function hcMarkClear_(tok){
+      try{
+        const m = hcMarkRead_();
+        if(!m) return;
+        if(tok && !(String(m.uid || "") === String(tok.uid || "") && String(m.trackName || "") === String(tok.trackName || "") && Number(m.startedAt) === Number(tok.startedAt))) return;
+        sessionStorage.removeItem(HC_MARK_KEY);
+      }catch(_e){}
+    }
+    
+    async function hcReleaseStaleOwn_(roomId){
+      try{
+        if(!roomId || !state.uid) return;
+        if(hc.my || hc.starting || hc.pending) return; 
+        const me = String(state.uid);
+        const mark = hcMarkRead_();
+        const markOk = !!(mark && String(mark.uid || "") === me && String(mark.roomId || "") === String(roomId));
+        const markTok = markOk ? { uid: me, startedAt: Number(mark.startedAt), trackName: String(mark.trackName || "") } : null;
+        const snap = await readGuard_(rGet(hcLiveRef(roomId)), "hc-stale", 8000);
+        const all = (snap && typeof snap.val === "function") ? (snap.val() || {}) : {};
+        const now = mkNowMs_();
+        const gone = [];
+        let markSeen = false;
+        for(const k of Object.keys(all)){
+          const r = all[k];
+          if(!r || String(r.uid || "") !== me) continue;
+          let tok = null;
+          if(markTok && String(mark.slotId) === String(k) && hcOwns_(r, markTok)){ tok = markTok; markSeen = true; }
+          else if(r.ready === false && Number(r.ts) > 0 && (now - Number(r.ts)) > HC_STALE_RESERVE_MS) tok = { uid: me, startedAt: Number(r.ts), trackName: String(r.trackName || "") };
+          if(!tok) continue;
+          if(hc.my || hc.starting || hc.pending) return;
+          if(await hcClearOwnSlot_(roomId, k, tok)) gone.push(k);
+        }
+        if(markOk && !markSeen) hcMarkClear_(null);   
+        if(gone.length){
+          try{ mkDiag("손캠-잔여자리반납", `슬롯 ${gone.join(",")}`); }catch(_e){}
+          console.info("[handcam] 예전 내 손캠 자리 반납(이 탭 표식·오래된 예약):", gone.join(","));
+        }
+      }catch(e){ console.warn("[handcam] 잔여 자리 정리 실패", e); }
+    }
+    
+    async function hcWriteReady_(ref, rec, pend){
+      const tok = hcTokOf_(pend);
+      let why = "";
+      const tx = await readGuard_(rRunTransaction(ref, (cur)=>{
+        why = "";
+        if(hc.pending !== pend){ why = "stopped"; return; }
+        if(cur && !hcOwns_(cur, tok)){ why = "taken"; return; }
+        if(!cur && hcRawHasNewer_(hc.lastLiveRaw, tok)){ why = "taken"; return; }
+        return rec;
+      }), "hc-ready", 8000);
+      if(tx && tx.committed) return true;
+      const e = new Error("handcam ready " + (why || "aborted"));
+      e.__mkHcAbort = why || "aborted";
+      throw e;
     }
 
     async function clearReservedSlot(roomId, slotId){
@@ -31015,7 +31338,7 @@ const canPump = (typeof window.MediaStreamTrackProcessor === "function");
       }
       const genMode = !!out;
       if(!out) out = cv.captureStream(CAM_FPS);
-      const stats = { mode: genMode ? "generator" : "captureStream", framesIn: 0, framesSent: 0, thinned: 0, dropped: 0, pumpRestarts: 0, errors: 0 };
+      const stats = { mode: genMode ? "generator" : "captureStream", framesIn: 0, framesSent: 0, thinned: 0, dropped: 0, pumpRestarts: 0, errors: 0, keepalive: 0, maxSendGapMs: 0, frozeMs: 0, frozePerfMs: 0 };
       try{ mkDiag("손캠-파이프", stats.mode); }catch(_e){}
 
       let latest = null, lastPumpDrawMs = 0, alive = true, reader = null, sending = false;
@@ -31035,6 +31358,8 @@ const canPump = (typeof window.MediaStreamTrackProcessor === "function");
 const tiny = document.createElement("canvas"); tiny.width = CAM_STILL_GRID; tiny.height = CAM_STILL_GRID;
       const tctx = tiny.getContext("2d", { willReadFrequently: true });
       let lastKeyTiny = null, lastSentMs = 0;
+      let lastTsUs = 0, sendStartMs = 0, lastTickMs = 0, frozeFired = false;   
+      let lastSentPerf = 0, sendStartPerf = 0;   
       const frameChanged_ = ()=>{
         try{
           tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = "high";
@@ -31051,16 +31376,37 @@ const tiny = document.createElement("canvas"); tiny.width = CAM_STILL_GRID; tiny
           return false;
         }catch(_e){ return true; }
       };
-      const sendFrame_ = (tsUs)=>{
+      
+      const freezeCheck_ = (now)=>{
+        if(!(HC_V291_KEEPALIVE && genMode && sending && alive)) return false;
+        const ref0 = lastSentMs || sendStartMs;
+        const gap = ref0 ? (now - ref0) : 0;
+        if(gap < CAM_FREEZE_MS) return false;
+        stats.frozeMs = gap;
+        const pRef = lastSentPerf || sendStartPerf;
+        stats.frozePerfMs = pRef ? Math.round(performance.now() - pRef) : 0;   
+        if(gap > stats.maxSendGapMs) stats.maxSendGapMs = gap;
+        lastSentMs = 0; sendStartMs = now; lastSentPerf = 0; sendStartPerf = performance.now();   
+        try{ onSourceEnded && onSourceEnded("frozen"); }catch(_e){}
+        return true;
+      };
+      const sendFrame_ = (tsUs, keep)=>{
         if(!writer || !sending) return;
         const now = Date.now();
-        const changed = frameChanged_();
-        if(!changed && (now - lastSentMs) < Math.round(1000 / CAM_STILL_FPS)){ stats.thinned++; return; }
+        if(freezeCheck_(now)) return;
+        if(!keep){   
+          const changed = frameChanged_();
+          if(!changed && (now - lastSentMs) < Math.round(1000 / CAM_STILL_FPS)){ stats.thinned++; return; }
+        }
         if(writer.desiredSize !== null && writer.desiredSize <= 0){ stats.dropped++; return; }   
         try{
+          
+          if(HC_V291_KEEPALIVE){ tsUs = Math.max(Math.round(performance.now() * 1000), lastTsUs + 1); lastTsUs = tsUs; }
           const vf = new VideoFrame(cv, { timestamp: tsUs, alpha: "discard" });
           writer.write(vf).catch(()=>{ stats.errors++; });   
-          lastSentMs = now; stats.framesSent++;
+          if(HC_V291_KEEPALIVE && lastSentMs && (now - lastSentMs) > stats.maxSendGapMs) stats.maxSendGapMs = now - lastSentMs;
+          lastSentMs = now; lastSentPerf = performance.now(); stats.framesSent++;
+          if(keep) stats.keepalive++;
         }catch(e){ stats.errors++; }
       };
 
@@ -31093,8 +31439,24 @@ const startPump_ = ()=>{
 
 const timer = setInterval(()=>{
         const now = Date.now();
+        
+        if(HC_V291_KEEPALIVE && sending && alive){
+          if(genMode){
+            if(freezeCheck_(now)) return;
+          }else{
+            const gap = lastTickMs ? (now - lastTickMs) : 0;
+            if(gap > stats.maxSendGapMs) stats.maxSendGapMs = gap;
+            if(gap >= CAM_FREEZE_MS && !frozeFired){
+              frozeFired = true; stats.frozeMs = gap;
+              try{ mkDiag("손캠-송출공백", Math.round(gap / 1000) + "초 · " + stats.mode); }catch(_e){}
+            }
+            lastTickMs = now;
+          }
+        }
         if(lastPumpDrawMs && (now - lastPumpDrawMs) < 600) return;
         draw();
+
+if(HC_V291_KEEPALIVE && genMode && sending && alive && (now - lastSentMs) >= CAM_KEEPALIVE_MS) sendFrame_(0, true);
         if(genMode && pumpOk && alive && lastPumpDrawMs && (now - lastPumpDrawMs) > 3000
            && track.readyState === "live" && !track.muted && stats.pumpRestarts < 5){
           stats.pumpRestarts++;
@@ -31125,12 +31487,13 @@ const timer = setInterval(()=>{
       }
       saveCamCrop_(crop);
       sending = true;
+      sendStartMs = Date.now(); sendStartPerf = performance.now();   
       try{ track.addEventListener("ended", ()=>{ try{ onSourceEnded && onSourceEnded(); }catch(_e){} }, { once:true }); }catch(_e){}
 
       let adjusting = false;
       return {
         stream: out, crop, draw, track, mode: stats.mode,
-        stats(){ return Object.assign({}, stats, { lastFrameAgoMs: lastPumpDrawMs ? (Date.now() - lastPumpDrawMs) : null }); },
+        stats(){ return Object.assign({}, stats, { lastFrameAgoMs: lastPumpDrawMs ? (Date.now() - lastPumpDrawMs) : null, lastSentAgoMs: lastSentMs ? (Date.now() - lastSentMs) : null }); },
         async adjust(){
           if(adjusting) return false;
           adjusting = true;
@@ -31184,14 +31547,17 @@ async function startPublish_(kind){
 
       hc.starting = true;
       updateMyBtn();
+      const startGen = hcStartGen_;   
 
-      let stream = null;
+      let stream = null, startSrc = null;   
       if(isScreen){
         try{
           const srcObj = await makeBlurredScreenSource_(()=>{ stopMyCam(true).catch(()=>{}); });
-          hc.screenSource = srcObj;
+          if(hcStartAborted_(startGen)){ try{ srcObj.stop(); }catch(_e){} return; }   
+          hc.screenSource = srcObj; startSrc = srcObj;
           stream = srcObj.stream;
         }catch(e){
+          if(hcStartAborted_(startGen)) return;   
           hc.starting = false;
           updateMyBtn();
           showToast(e && e.__cancelled ? "화면공유를 취소했어요" : "화면공유를 시작하지 못했어요");
@@ -31200,10 +31566,12 @@ async function startPublish_(kind){
       }else{
         
         try{
-          const srcObj = await makeCroppedCamSource_(()=>{ stopMyCam(true).catch(()=>{}); });
-          hc.camSource = srcObj;
+          const srcObj = await makeCroppedCamSource_((why)=>{ if(HC_V291_KEEPALIVE && why === "frozen"){ hcStopFrozen_(); return; } stopMyCam(true).catch(()=>{}); });   
+          if(hcStartAborted_(startGen)){ try{ srcObj.stop(); }catch(_e){} return; }   
+          hc.camSource = srcObj; startSrc = srcObj;
           stream = srcObj.stream;
         }catch(e){
+          if(hcStartAborted_(startGen)) return;   
           hc.starting = false;
           updateMyBtn();
           showToast(e && e.__cancelled ? "손캠을 취소했어요" : camStartErrorText_(e));   
@@ -31212,14 +31580,34 @@ async function startPublish_(kind){
       }
 
       const nickname = normalizeNick(state.nickname || state.currentParticipants?.get?.(uid)?.name || uid);
-      const startedAt = Date.now();
+      const startedAt = HC_V291_OWNER_GUARD ? mkNowMs_() : Date.now();   
+      const preTrackName = HC_V291_OWNER_GUARD ? `hc_${uid}_${Date.now().toString(36)}` : "";   
 
-      let slotInfo = null;
+      let slotInfo = null, reserveLate = false;
+      
+      const reserveP = reserveSlot(roomId, uid, nickname, startedAt, preTrackName);
       try{
-        slotInfo = await reserveSlot(roomId, uid, nickname, startedAt);
+        slotInfo = await readGuard_(reserveP, "hc-reserve", 10000);
       }catch(e){
         slotInfo = null;
+        reserveLate = !!(e && e.code === "mk/timeout");
+        if(reserveLate){
+          reserveP.then((late)=>{
+            try{
+              if(!(late && late.slotId !== null && late.slotId !== undefined)) return;
+              if(HC_V291_OWNER_GUARD) hcClearOwnSlot_(roomId, late.slotId, { uid, startedAt: Number(late.startedAt || startedAt), trackName: preTrackName }).catch(()=>{});
+              else clearReservedSlot(roomId, late.slotId).catch(()=>{});
+            }catch(_e){}
+          }, ()=>{});
+        }
       }
+      
+      const dropStart_ = (slot, ts)=>{
+        try{ if(stream) stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ if(startSrc){ startSrc.stop(); if(hc.camSource === startSrc) hc.camSource = null; if(hc.screenSource === startSrc) hc.screenSource = null; } }catch(_e){}
+        if(slot !== null && slot !== undefined) hcClearOwnSlot_(roomId, slot, { uid, startedAt: Number(ts || startedAt), trackName: preTrackName }).catch(()=>{});
+      };
+      if(hcStartAborted_(startGen)){ dropStart_(slotInfo && slotInfo.slotId, slotInfo && slotInfo.startedAt); return; }   
       const slotId = slotInfo && slotInfo.slotId;
       const stableStartedAt = Number(slotInfo && slotInfo.startedAt || startedAt);
       if(slotId === null || slotId === undefined){
@@ -31228,24 +31616,34 @@ async function startPublish_(kind){
       try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}   
         hc.starting = false;
         updateMyBtn();
-        showToast(`${LBL} 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
+        showToast(reserveLate ? `${LBL} 자리 확보가 늦어요 — 연결을 확인하고 다시 눌러 주세요` : `${LBL} 자리가 가득 찼어요 (선착순 ${HC_MAX}명)`);
         return;
       }
+      if(HC_V291_OWNER_GUARD) hcMarkWrite_({ uid, roomId, slotId: String(slotId), startedAt: stableStartedAt, trackName: preTrackName });   
 
       const ownRef = hcSlotRef(roomId, slotId);
       try{
 
-await rOnDisconnect(ownRef).remove();
+await readGuard_(rOnDisconnect(ownRef).remove(), "hc-odc", 8000);   
       }catch(e){
-        await clearReservedSlot(roomId, slotId);
+        if(hcStartAborted_(startGen)){ dropStart_(slotId, stableStartedAt); return; }   
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
+        try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}   
+        try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}
+        
+        if(HC_V291_OWNER_GUARD) hcClearOwnSlot_(roomId, slotId, { uid, startedAt: stableStartedAt, trackName: preTrackName }).catch(()=>{});
+        else await clearReservedSlot(roomId, slotId);
         hc.starting = false;
         updateMyBtn();
         showToast("손캠 슬롯 준비에 실패했어요. 잠시 후 다시 시도해 주세요");
         return;
       }
+      if(hcStartAborted_(startGen)){ dropStart_(slotId, stableStartedAt); return; }   
 
-      hc.pending = { stream, roomId, uid, slotId, startedAt: stableStartedAt, kind };
+      const pend = { stream, roomId, uid, slotId, startedAt: stableStartedAt, kind, trackName: preTrackName };   
+      hc.pending = pend;
+      
+      if(HC_V291_OWNER_GUARD && hcRawHasNewer_(hc.lastLiveRaw, hcTokOf_(pend))){ hcYield_("pending"); return; }
       
       scheduleMount();
 
@@ -31258,7 +31656,7 @@ await rOnDisconnect(ownRef).remove();
         pc = hcNewPC();
         const track = stream.getVideoTracks()[0];
         if(!track) throw new Error("no video track");
-        trackName = `hc_${uid}_${Date.now().toString(36)}`;
+        trackName = preTrackName || `hc_${uid}_${Date.now().toString(36)}`;   
         const tr = pc.addTransceiver(track, { direction: "sendonly" });
 
 try{
@@ -31324,7 +31722,7 @@ const initialOffer = await pc.createOffer();
         if(!res || !res.sessionDescription) throw new Error("no answer");
         await pc.setRemoteDescription(new RTCSessionDescription(res.sessionDescription));
 
-await rUpdate(ownRef, {
+const readyRec = {
           uid,
           name: nickname,
           sessionId,
@@ -31332,23 +31730,33 @@ await rUpdate(ownRef, {
           ts: stableStartedAt,
           ready: true,
           kind                       
-        });
+        };
+        if(HC_V291_OWNER_GUARD) await hcWriteReady_(ownRef, readyRec, pend);   
+        else await readGuard_(rUpdate(ownRef, readyRec), "hc-ready", 8000);     
+        if(HC_V291_OWNER_GUARD && hc.pending !== pend){ const q = new Error("handcam stopped during publish"); q.__mkHcAbort = "stopped"; throw q; }   
 
         hc.my = { pc, stream, sessionId, trackName, mid, roomId, uid, slotId, name: nickname, startedAt: stableStartedAt, kind };
         hc.pending = null;
+        hcAttachOffWatch_();   
         scheduleMount();
       }catch(e){
         console.warn("[handcam] publish failed:", e);
+        
+        if(HC_V291_OWNER_GUARD && hc.pending !== pend){
+          try{ pc && pc.close(); }catch(_e){}
+          return;
+        }
         hc.pending = null;
         try{ stream.getTracks().forEach(t=>t.stop()); }catch(_e){}
         try{ if(hc.screenSource){ hc.screenSource.stop(); hc.screenSource = null; } }catch(_e){}
       try{ if(hc.camSource){ hc.camSource.stop(); hc.camSource = null; } }catch(_e){}   
         try{ pc && pc.close(); }catch(_e){}
-        await clearReservedSlot(roomId, slotId);
+        if(HC_V291_OWNER_GUARD) hcClearOwnSlot_(roomId, slotId, hcTokOf_(pend)).catch(()=>{});   
+        else await clearReservedSlot(roomId, slotId);
         hc.starting = false;
         updateMyBtn();
         scheduleMount();
-        showToast(friendlyHandcamError(e, `${LBL} 연결에 실패했어요. 잠시 후 다시 시도해 주세요`));
+        showToast((e && e.__mkHcAbort === "taken") ? `다른 기기에서 ${LBL}${isScreen ? "를" : "을"} 켜서 취소했어요` : friendlyHandcamError(e, `${LBL} 연결에 실패했어요. 잠시 후 다시 시도해 주세요`));
         return;
       }
 
@@ -31360,6 +31768,7 @@ await rUpdate(ownRef, {
     }
 
     async function stopMyCam(silent){
+      hcStartGen_++;   
       const my = hc.my;
       const pending = hc.pending;
       const wasScreen = !!(my && my.kind === "screen") || !!hc.screenSource;
@@ -31373,6 +31782,7 @@ await rUpdate(ownRef, {
       hcClearTimer("pendingMissingTimer");
       hcClearTimer("publishFailTimer");
 
+      hcDetachOffWatch_();   
       const active = my || pending;
       try{
         if(my && my.sessionId && my.mid){
@@ -31385,7 +31795,10 @@ await rUpdate(ownRef, {
 
       const roomId = String(active && active.roomId || "");
       const slotId = active && active.slotId;
-      if(roomId && slotId !== null && slotId !== undefined) await clearReservedSlot(roomId, slotId);
+      if(roomId && slotId !== null && slotId !== undefined){
+        if(HC_V291_OWNER_GUARD) await hcClearOwnSlot_(roomId, slotId, hcTokOf_(active));   
+        else await clearReservedSlot(roomId, slotId);
+      }
 
       updateMyBtn();
       hcResort();
@@ -31425,7 +31838,7 @@ pc.addTransceiver("video", { direction: "recvonly" });
           for(const [uid, p] of v.pulls){
             if(p.mid === mid){
               p.stream = new MediaStream([evt.track]);
-              try{ hcPullRetry_.delete(uid); hcPullRecreates_.delete(uid); hcPullMute_.delete(uid); }catch(_e){} 
+              try{ hcPullRetry_.delete(uid); hcPullRecreates_.delete(uid); hcPullMute_.delete(uid); hcPullBackoff_.delete(uid); }catch(_e){} 
               scheduleMount();
               break;
             }
@@ -31443,6 +31856,7 @@ pc.addTransceiver("video", { direction: "recvonly" });
             clearDcTimer_();
             hc.view = null;
             try{ pc.close(); }catch(_e){} 
+            if(HC_V291_PULL_BACKOFF) hcViewPcFailed_(st);   
             if(hcCanReceive()) syncPulls();
             return;
           }
@@ -31456,12 +31870,13 @@ pc.addTransceiver("video", { direction: "recvonly" });
                 try{ mkDiag("손캠-세션재생성", "disconnected 10초"); }catch(_e){}
                 hc.view = null;
                 try{ pc.close(); }catch(_e){}
+                if(HC_V291_PULL_BACKOFF) hcViewPcFailed_("disconnected 10초");   
                 if(hcCanReceive()) syncPulls();
               }catch(_e){}
             }, 10000);
             return;
           }
-          if(st === "connected") clearDcTimer_();
+          if(st === "connected"){ clearDcTimer_(); if(HC_V291_PULL_BACKOFF){ hcPcFailN_ = 0; hcViewHoldUntil_ = 0; } }   
         }catch(e){}
       });
 
@@ -31538,6 +31953,140 @@ let hcViewRetryT_ = null, hcViewRetryN_ = 0;
       }catch(_e){}
     });
 
+function hcPullSig_(d){ return String(d && d.sessionId || "") + "/" + String(d && d.trackName || ""); }
+    function hcPullSkip_(uid, d){
+      const now = Date.now(), sig = hcPullSig_(d);
+      const mute = hcPullMute_.get(uid);
+      if(mute){
+        if(mute.sig === sig && now < mute.until) return true;   
+        hcPullMute_.delete(uid); hcPullRetry_.delete(uid); hcPullRecreates_.delete(uid); hcPullBackoff_.delete(uid);   
+      }
+      const b = hcPullBackoff_.get(uid);
+      if(b){
+        if(b.sig !== sig){ hcPullBackoff_.delete(uid); return false; }   
+        if(now < b.nextAt) return true;
+      }
+      return false;
+    }
+    function hcRecreateBudgetOk_(){
+      const now = Date.now();
+      while(hcRecreateLog_.length && (now - hcRecreateLog_[0]) > HC_RECREATE_WINDOW_MS) hcRecreateLog_.shift();
+      return hcRecreateLog_.length < HC_RECREATE_MAX;
+    }
+    async function hcPullFailV291_(view, uid, d, e){
+      const now = Date.now(), sig = hcPullSig_(d), who = String(uid).slice(0, 8);
+      const status = Number(e && e.__mkStatus || 0);
+      const msg = String(e && e.message || "");
+      
+      const trackLevel = !!(e && e.__mkTrackErr) || /not_found_track_error|empty_track_error/i.test(msg);
+      const sessionDead = !trackLevel && (status === 410 || /session_error/i.test(String(e && e.__mkReqErr || "")) || /session_error/i.test(msg));
+      const httpLevel = !trackLevel && !sessionDead;
+      let b = hcPullBackoff_.get(uid);
+      if(!b || b.sig !== sig) b = { sig, n: 0, httpN: 0, nextAt: 0, http: false };
+      b.n++;
+      if(httpLevel){
+        
+        b.http = true; b.httpN = (b.httpN || 0) + 1;
+        const wait = Math.min(HC_PULL_HTTP_CAP_MS, HC_PULL_BACKOFF_MS[0] * Math.pow(2, b.n - 1));
+        b.nextAt = now + wait;
+        hcPullBackoff_.set(uid, b);
+        if(wait >= HC_PULL_HTTP_CAP_MS && hcPullSlowDiag_.get(uid) !== sig){
+          hcPullSlowDiag_.set(uid, sig);
+          console.warn("[V291_HCPULL] " + who + " tracks/new HTTP 실패 " + b.n + "회 — 60초 간격으로 계속 다시 당깁니다(뮤트 없음).");
+          try{ mkDiag("손캠-풀지연", who + " HTTP 실패 " + b.n + "회 · 60초 간격"); }catch(_e){}
+        }
+      }else{
+        
+        b.http = false; b.httpN = 0;
+        if(b.n >= 5){
+          hcPullBackoff_.delete(uid);
+          hcPullMute_.set(uid, { sig, until: now + HC_PULL_MUTE_MS });
+          const code = String((e && (e.__mkTrackErr || e.__mkReqErr)) || "");
+          console.warn("[V291_HCPULL] " + who + " tracks/new가 " + b.n + "회 실패 — 5분간 조용히 둡니다(방송을 다시 켜면 즉시 재시도).");
+          try{ mkDiag("손캠-풀포기", who + " tracks/new " + b.n + "회 · 5분 뮤트" + (code ? " · " + code : (status ? " · HTTP " + status : ""))); }catch(_e){}
+        }else{
+          b.nextAt = now + HC_PULL_BACKOFF_MS[b.n - 1];
+          hcPullBackoff_.set(uid, b);
+        }
+      }
+      if(trackLevel){ view.httpFail = null; return; }
+      
+      let reason = "";
+      if(sessionDead) reason = "410/session_error";
+      else{
+        const run = view.httpFail || (view.httpFail = { n: 0, uids: new Set() });
+        run.n++; run.uids.add(uid);
+        let anyStream = false;
+        try{ for(const [, p0] of view.pulls){ if(p0 && p0.stream){ anyStream = true; break; } } }catch(_e){}
+        if(!anyStream){
+          if(run.n >= 2 && run.uids.size >= 2) reason = "tracks/new 연속실패 " + run.n + "회 · uid " + run.uids.size + "명";
+          else if(hcPullSoloTarget_(uid) && b.httpN >= 3) reason = "tracks/new 연속실패 " + b.httpN + "회 · 볼 사람 1명";   
+        }
+      }
+      if(!reason || hc.view !== view) return;   
+      if(!hcRecreateBudgetOk_()){
+        
+        console.warn("[V291_HCPULL] 시청 세션 재생성 예산(10분 2회) 소진 — 재생성 없이 uid별 백오프만 이어 갑니다(" + reason + ").");
+        return;
+      }
+      hcRecreateLog_.push(now);
+      console.warn("[V291_HCPULL] 시청 세션을 재생성합니다 — " + reason);
+      try{ mkDiag("손캠-세션재생성", reason); }catch(_e){}
+      
+      for(const [, bb] of hcPullBackoff_){ if(bb && bb.http){ bb.nextAt = 0; bb.httpN = 0; } }
+      await closeViewer();
+      syncPulls();   
+    }
+    
+    function hcPullSoloTarget_(uid){
+      const me = String(state.uid || "");
+      let n = 0, only = "";
+      for(const k of HC_LIVE.keys()){ if(k !== me){ n++; only = k; } }
+      return n === 1 && only === String(uid);
+    }
+    function hcPullWakeArm_(){
+      const now = Date.now();
+      let at = 0;
+      for(const [uid, b] of Array.from(hcPullBackoff_)){
+        if(!HC_LIVE.has(uid)){ hcPullBackoff_.delete(uid); continue; }
+        if(b.nextAt > now && (!at || b.nextAt < at)) at = b.nextAt;
+      }
+      for(const [uid, m] of hcPullMute_){
+        if(!HC_LIVE.has(uid)) continue;
+        if(hc.view && hc.view.pulls && hc.view.pulls.has(uid)) continue;   
+        if(m.until > now && (!at || m.until < at)) at = m.until;
+      }
+      if(!hc.view && hcViewHoldUntil_ > now && (!at || hcViewHoldUntil_ < at)) at = hcViewHoldUntil_;
+      if(!at){
+        if(hcPullWakeT_){ try{ clearTimeout(hcPullWakeT_); }catch(_e){} hcPullWakeT_ = null; hcPullWakeAt_ = 0; }
+        return;
+      }
+      if(hcPullWakeT_ && hcPullWakeAt_ === at) return;
+      if(hcPullWakeT_){ try{ clearTimeout(hcPullWakeT_); }catch(_e){} }
+      hcPullWakeAt_ = at;
+      hcPullWakeT_ = setTimeout(()=>{
+        hcPullWakeT_ = null; hcPullWakeAt_ = 0;
+        try{ if(hcCanReceive()) syncPulls(); }catch(_e){}
+      }, Math.max(50, at - now + 20));
+    }
+    function hcViewPcFailed_(why){
+      hcPcFailN_++;
+      const s = HC_VIEW_HOLD_S[Math.min(hcPcFailN_ - 1, HC_VIEW_HOLD_S.length - 1)];
+      hcViewHoldUntil_ = s ? (Date.now() + s * 1000) : 0;
+      if(s) console.warn("[V291_HCPULL] 시청 연결이 " + hcPcFailN_ + "회째 실패(" + String(why || "") + ") — " + s + "초 뒤에 새로 만듭니다.");
+      if(hcPcFailN_ === 3){ try{ mkDiag("손캠-시청연결반복실패", String(why || "") + " · " + hcPcFailN_ + "회 → " + s + "초 쉼"); }catch(_e){} }
+    }
+    function hcV291Reset_(){
+      try{ hcPullBackoff_.clear(); }catch(_e){}
+      try{ hcPullSlowDiag_.clear(); }catch(_e){}
+      hcRecreateLog_.length = 0;
+      hcPcFailN_ = 0; hcViewHoldUntil_ = 0;
+      try{ if(hcPullWakeT_) clearTimeout(hcPullWakeT_); }catch(_e){}
+      hcPullWakeT_ = null; hcPullWakeAt_ = 0;
+      hcDetachOffWatch_();
+      hc.lastLiveRaw = null;
+    }
+
     function syncPulls(){
       hc.queue = hc.queue.then(syncPullsNow).catch((e)=>console.warn("[handcam] pull sync", e));
     }
@@ -31571,7 +32120,9 @@ if(hcCanReceive()){
         return;
       }
 
+if(HC_V291_PULL_BACKOFF && !hc.view && Date.now() < hcViewHoldUntil_){ hcPullWakeArm_(); scheduleMount(); return; }
       for(const [uid, d] of want){
+        if(HC_V291_PULL_BACKOFF && hcPullSkip_(uid, d)) continue;   
         
         try{
           view = await ensureViewer();
@@ -31589,12 +32140,20 @@ const p = { sessionId: d.sessionId, trackName: d.trackName, mid: null, stream: n
             tracks: [{ location: "remote", sessionId: d.sessionId, trackName: d.trackName }]
           });
           const t = (res.tracks || []).find(x => x.trackName === d.trackName) || (res.tracks || [])[0];
+          
+          if(HC_V291_PULL_BACKOFF && ((t && t.errorCode) || (res && res.errorCode))){
+            const te = new Error("handcam track " + String((t && t.errorCode) || res.errorCode) + " " + String((t && t.errorDescription) || (res && res.errorDescription) || "").slice(0, 120));
+            if(t && t.errorCode) te.__mkTrackErr = String(t.errorCode); else te.__mkReqErr = String(res.errorCode);
+            throw te;
+          }
           p.mid = t ? (t.mid || null) : null;
           await hcHandleRenegotiate(view, res);
           view.apiFailCount = 0; 
+          if(HC_V291_PULL_BACKOFF){ hcPullBackoff_.delete(uid); view.httpFail = null; }   
         }catch(e){
           console.warn("[handcam] pull failed:", uid, e);
           view.pulls.delete(uid);
+          if(HC_V291_PULL_BACKOFF){ await hcPullFailV291_(view, uid, d, e); continue; }   
           
           view.apiFailCount = (view.apiFailCount || 0) + 1;
           if(view.apiFailCount >= 2 && hc.view === view){ 
@@ -31606,6 +32165,7 @@ const p = { sessionId: d.sessionId, trackName: d.trackName, mid: null, stream: n
           setTimeout(()=>{ if(hcCanReceive() && HC_LIVE.has(uid)) syncPulls(); }, 1500);
         }
       }
+      if(HC_V291_PULL_BACKOFF) hcPullWakeArm_();   
       scheduleMount();
     }
 
@@ -31889,6 +32449,7 @@ const nextViewHtml = window.mkIc_("eye") + '<span class="mkLbl">손캠 보기</s
 
 async function teardownAll(){
       hcViewRetryReset_(); 
+      hcV291Reset_();      
       try{ if(hc.unsub){ hc.unsub(); hc.unsub = null; } }catch(e){}
       try{ await stopMyCam(true); }catch(e){}
       try{ await closeViewer(); }catch(e){}
@@ -31900,6 +32461,7 @@ async function teardownAll(){
     }
 
 async function releaseStaleOwnSlots_(roomId){
+      if(HC_V291_OWNER_GUARD) return hcReleaseStaleOwn_(roomId);   
       try{
         if(!roomId || !state.uid) return;
         if(hc.my || hc.starting) return; 
@@ -31997,6 +32559,7 @@ let __hcProbeAtMs = 0, __hcReattachCount = 0;
         if(now - __hcProbeAtMs < 30000) return;
         __hcProbeAtMs = now;
         const probedRoom = hc.roomId; 
+        if(HC_V291_PROBE_SERVER){ hcProbeServer_(probedRoom, reason); return; }   
         rGet(hcLiveRef(probedRoom)).then((snap)=>{
           try{
             if(!state.joined || hc.roomId !== probedRoom || !hc.unsub) return; 
@@ -32026,6 +32589,25 @@ let __hcProbeAtMs = 0, __hcReattachCount = 0;
           }catch(_e){}
         }).catch(()=>{});
       }catch(_e){}
+    }
+    
+    function hcProbeServer_(probedRoom, reason){
+      const preSig = hcLiveSig_(HC_LIVE), preSize = HC_LIVE.size;
+      readGuard_(rGet(rRef(rtdb, `${rRoomBase(probedRoom)}/handcam`)), "hc-probe", 8000).then((snap)=>{
+        try{
+          if(!state.joined || hc.roomId !== probedRoom || !hc.unsub) return; 
+          const whole = (snap && typeof snap.val === "function") ? (snap.val() || {}) : {};
+          const v = (whole && typeof whole.live === "object" && whole.live) ? whole.live : {};
+          const server = hcBuildLiveMap_(v);
+          const sSig = hcLiveSig_(server);
+          if(sSig === preSig && sSig === hcLiveSig_(HC_LIVE)) return;   
+          __hcReattachCount++;
+          console.warn("[V291_HCPROBE] 손캠 명단이 서버와 어긋나 있어 동기화 + 리스너 재부착 (" + reason + ", 누적 " + __hcReattachCount + "회) — 서버 " + server.size + "명 / 읽기 전 화면 " + preSize + "명");
+          try{ mkDiag("손캠-좀비복구", "서버 " + server.size + " / 화면 " + preSize + " · 부모읽기"); }catch(_e){}
+          onLiveSnap({ val: ()=>v });
+          hcAttachLive_(probedRoom);
+        }catch(_e){}
+      }).catch(()=>{});
     }
     document.addEventListener("visibilitychange", ()=>{
 
@@ -32077,15 +32659,16 @@ let __hcPeriodicAt = 0;
         if(n >= 3){
           const recEntry = hcPullRecreates_.get(uid);
           const recN = (recEntry && recEntry.sig === sig) ? Number(recEntry.n || 0) : 0;
-          if(anyStream || recN >= 2){
+          if(anyStream || recN >= 2 || (HC_V291_PULL_BACKOFF && !hcRecreateBudgetOk_())){   
             
             hcPullMute_.set(uid, { sig, until: now + 5 * 60 * 1000 });
             hcPullRetry_.delete(uid);
             console.warn("[V236.1_HCBACKOFF] " + who + " 영상이 재시도로도 안 옵니다 — 송출측 문제로 보고 5분간 조용히 둡니다(방송을 다시 켜면 즉시 재시도)." + (anyStream ? " 다른 영상은 정상 수신 중이라 세션은 건드리지 않습니다." : ""));
-            try{ mkDiag("손캠-풀포기", who + " 5분 뮤트" + (anyStream ? " · 세션무죄" : " · 재생성2회소진")); }catch(_e){}
+            try{ mkDiag("손캠-풀포기", who + " 5분 뮤트" + (anyStream ? " · 세션무죄" : (recN >= 2 ? " · 재생성2회소진" : " · 재생성예산소진"))); }catch(_e){}
             continue;
           }
           hcPullRecreates_.set(uid, { sig, n: recN + 1 });
+          if(HC_V291_PULL_BACKOFF) hcRecreateLog_.push(now);   
           console.warn("[V233_HCSESSION] " + who + " 영상이 " + n + "회 연속으로 안 와 시청 세션을 통째로 재생성합니다(" + (recN + 1) + "/2).");
           try{ mkDiag("손캠-세션재생성", who + " 풀 " + n + "회 무응답 · " + (recN + 1) + "/2"); }catch(_e){}
           hcPullRetry_.clear();
@@ -32100,7 +32683,7 @@ let __hcPeriodicAt = 0;
         syncPulls();
       }
       
-      for(const m of [hcPullRetry_, hcPullRecreates_, hcPullMute_]){
+      for(const m of [hcPullRetry_, hcPullRecreates_, hcPullMute_, hcPullBackoff_, hcPullSlowDiag_]){   
         if(!m.size) continue;
         for(const uid of Array.from(m.keys())){
           if(!HC_LIVE.has(uid)) m.delete(uid);
@@ -32112,6 +32695,7 @@ window.__MK_HC_RESUB__ = function(){
       try{
         if(!state.joined || !hc.roomId) return; 
         try{ hcAttachLive_(hc.roomId); }catch(e){ console.warn("[V233_HCSESSION] 손캠 명단 재구독 실패", e); }
+        try{ if(hc.my) hcAttachOffWatch_(); }catch(_e){}   
         try{ syncPulls(); }catch(e){ console.warn("[V233_HCSESSION] 손캠 pull 재동기화 실패", e); }
         try{ scheduleMount(); }catch(_e){}
       }catch(_e){}
@@ -32124,7 +32708,8 @@ window.__MK_HC_DIAG__ = function(){
           LIVE수: HC_LIVE.size,
           마지막수신: hcLastSnapMs ? (Math.round((Date.now() - hcLastSnapMs) / 1000) + "초 전") : "없음",
           재부착_횟수: __hcReattachCount,
-          송출중: !!hc.my
+          송출중: !!hc.my,
+          V291: { 풀백오프: hcPullBackoff_.size, 풀뮤트: hcPullMute_.size, 시청연결실패: hcPcFailN_, 재생성_10분: hcRecreateLog_.filter((t)=> Date.now() - t <= HC_RECREATE_WINDOW_MS).length, 끄기도장구독: !!hc.offUnsub }
         };
       }catch(e){ return { 오류: String(e && e.message || e) }; }
     };
@@ -32575,7 +33160,7 @@ const WORLD_TREE_DEW_SPAWN_MIN_MS = 3 * 60 * 60 * 1000;
 
 const WORLD_TREE_DEW_FLASH_CHANCE = 0.01;
 
-const MK_APP_BUILD = 17175; 
+const MK_APP_BUILD = 17176; 
   
   try{ window.__MK_BUILD__ = MK_APP_BUILD; }catch(_e){}
   
@@ -39620,6 +40205,7 @@ const PETLINK_LOCAL_KEY = "mk_petlink_v1";
     const PETLINK_GUARD_MS = 8000;
     const PETLINK_MISS_MS = 1800;                                  
     const PETLINK_OPEN_MAX = 200;                                  
+    const PETLINK_IS_MAC = (()=>{ try{ const p=String((navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||""); return /mac/i.test(p) && !(navigator.maxTouchPoints>1); }catch(e){ return false; } })();   
     
     const petRt = { uid:"", checked:0, code:"", lock:false, again:false, busy:false, miss:false, watch:null };
 
@@ -39865,7 +40451,7 @@ const PETLINK_LOCAL_KEY = "mk_petlink_v1";
       
       const inp=document.getElementById("dragonPetLinkCode");
       if(inp){ try{ inp.focus(); inp.select(); }catch(e){} }
-      showToast("코드를 선택해 뒀어요 · Ctrl+C로 복사해 주세요",3000);
+      showToast("코드를 선택해 뒀어요 · "+(PETLINK_IS_MAC?"⌘C":"Ctrl+C")+"로 복사해 주세요",3000);
     }
     function petLinkRender_(){
       try{
@@ -39894,6 +40480,10 @@ const PETLINK_LOCAL_KEY = "mk_petlink_v1";
       petLinkRender_();
     }
     try{
+      if(PETLINK_IS_MAC){   
+        const w=document.getElementById("dragonPetLinkMissWin"), m=document.getElementById("dragonPetLinkMissMac");
+        if(w && m){ w.hidden=true; m.hidden=false; }
+      }
       document.getElementById("dragonPetLinkOpen")?.addEventListener("click",()=>{ petLinkOpenPet_().catch(()=>{}); });
       document.getElementById("dragonPetLinkMake")?.addEventListener("click",()=>{ petLinkMake_().catch(()=>{}); });
       document.getElementById("dragonPetLinkNew")?.addEventListener("click",()=>{ petLinkRenew_().catch(()=>{}); });
